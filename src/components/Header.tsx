@@ -53,8 +53,8 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
   });
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-divider">
-      <div className="flex items-center justify-between h-14 px-4">
+    <header className="sticky top-0 z-50 bg-white border-b border-[#D4D4D4]">
+      <div className="flex items-center justify-between h-16 px-6 max-w-5xl mx-auto">
         <div className="flex items-center gap-3">
           <div 
             onClick={() => navigate("/")}
