@@ -99,39 +99,15 @@ const Home = () => {
 
   const articles = data?.pages.flat() ?? [];
 
-  // Group articles by date
-  const groupedArticles = articles.reduce((groups: { [key: string]: typeof articles }, article) => {
-    const date = article.published_at 
-      ? new Date(article.published_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-      : "Unknown Date";
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(article);
-    return groups;
-  }, {});
-
-  const dateGroups = Object.entries(groupedArticles);
-
-  const today = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
     <div className="min-h-screen bg-background">
       <Header onSearchToggle={() => setIsSearchOpen(!isSearchOpen)} />
 
       <main className="max-w-2xl mx-auto">
-        <div className="px-4 pt-4">
-          <h2 className="font-sans text-2xl font-medium mb-2">
-            {section ? `More ${section}` : "More World"}
+        <div className="px-4 pt-6">
+          <h2 className="font-sans text-3xl font-bold mb-6 text-[#111111]">
+            {section ? `${section}` : "Discover more"}
           </h2>
-          <div className="border-b border-divider mb-2" />
-          <div className="text-xs uppercase text-muted-text mb-4">
-            {today}
-          </div>
           
           {isSearchOpen && (
             <div 
@@ -178,28 +154,15 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {dateGroups.map(([date, groupArticles]) => (
-              <div key={date} className="px-4 mb-8">
-                <div className="mb-2">
-                  <h2 className="font-sans text-sm font-semibold text-[#4A3C35] mb-0">{date}</h2>
-                  <hr className="border-0 border-t border-[#E2D4C6] my-2 mb-1" />
-                </div>
-                
-                <h3 className="font-serif text-lg font-semibold text-[#111111] mb-3">
-                  Stories most read
-                </h3>
-                
-                <div className="flex flex-col gap-3">
-                  {groupArticles.map((article, index) => (
-                    <RankedArticleItem 
-                      key={article.id} 
-                      article={article}
-                      rank={index + 1}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="px-4">
+              {articles.map((article) => (
+                <RankedArticleItem 
+                  key={article.id} 
+                  article={article}
+                  rank={0}
+                />
+              ))}
+            </div>
 
             <div ref={observerTarget} className="py-8">
               {isFetchingNextPage && (
