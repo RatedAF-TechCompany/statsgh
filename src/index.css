@@ -8,9 +8,9 @@
 
 @layer base {
   :root {
-    /* Base colors from JSON spec - #F7EBDD warm beige background */
-    --background: 32 44% 92%;
-    --surface: 32 44% 92%;
+    /* Base colors - #D7E1EF light blue background */
+    --background: 215 43% 89%;
+    --surface: 215 43% 89%;
     --foreground: 0 0% 7%;
     
     /* Divider and borders */
@@ -30,7 +30,7 @@
     --primary-foreground: 0 0% 100%;
     
     /* Card styling */
-    --card: 32 44% 92%;
+    --card: 215 43% 89%;
     --card-foreground: 0 0% 7%;
     
     /* Input and interactive elements */
@@ -45,7 +45,7 @@
     --muted: 32 28% 88%;
     
     /* Popover */
-    --popover: 32 44% 92%;
+    --popover: 215 43% 89%;
     --popover-foreground: 0 0% 7%;
     
     /* Destructive */
