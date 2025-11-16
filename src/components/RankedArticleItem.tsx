@@ -15,7 +15,7 @@ export const RankedArticleItem = ({ article, rank }: RankedArticleItemProps) => 
   const navigate = useNavigate();
 
   return (
-    <div className="flex gap-4 py-2 border-b border-divider cursor-pointer hover:opacity-70 transition-opacity" onClick={() => navigate(`/article/${article.slug}`)}>
+    <div className="flex gap-4 py-3 px-4 bg-white border-b border-divider cursor-pointer hover:opacity-70 transition-opacity" onClick={() => navigate(`/article/${article.slug}`)}>
       <div className="flex-shrink-0 w-8 flex items-start justify-center">
         <span className="font-serif text-[26px] font-bold text-[#C1126B] leading-none">
           {rank}
