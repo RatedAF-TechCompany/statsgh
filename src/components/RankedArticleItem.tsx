@@ -15,20 +15,18 @@ export const RankedArticleItem = ({ article, rank }: RankedArticleItemProps) => 
   const navigate = useNavigate();
 
   return (
-    <div className="flex gap-4 py-3 px-4 bg-white border-b border-divider cursor-pointer hover:opacity-70 transition-opacity" onClick={() => navigate(`/article/${article.slug}`)}>
-      <div className="flex-shrink-0 w-8 flex items-start justify-center">
-        <span className="font-serif text-[26px] font-bold text-[#C1126B] leading-none">
-          {rank}
-        </span>
+    <div className="flex items-start py-2 cursor-pointer border-b border-[#E2D4C6] hover:opacity-70 transition-opacity" onClick={() => navigate(`/article/${article.slug}`)}>
+      <div className="min-w-[32px] mr-4 text-center font-serif text-[26px] font-bold leading-none text-[#C1126B]">
+        {rank}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[11px] font-bold uppercase text-[#C1126B] mb-0.5 font-sans">
+      <div className="flex-1">
+        <div className="font-sans text-[11px] font-bold uppercase tracking-wider text-[#C1126B] mb-0.5">
           {article.section}
         </div>
-        <h3 className="font-serif text-base font-semibold text-foreground leading-tight mb-1">
+        <h3 className="font-serif text-base font-semibold text-[#111111] m-0 mb-1">
           {article.title}
         </h3>
-        <p className="font-sans text-sm text-muted-text leading-relaxed line-clamp-2">
+        <p className="font-sans text-sm text-[#4A3C35] m-0">
           {article.summary}
         </p>
       </div>
