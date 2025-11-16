@@ -100,19 +100,16 @@ const Home = () => {
   const articles = data?.pages.flat() ?? [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Header onSearchToggle={() => setIsSearchOpen(!isSearchOpen)} />
 
-      <main className="max-w-2xl mx-auto">
-        <div className="px-4 pt-6">
-          <h2 className="font-sans text-3xl font-bold mb-6 text-[#111111]">
-            {section ? `${section}` : "Discover more"}
-          </h2>
+      <main className="max-w-5xl mx-auto bg-white">
+        <div className="px-6 pt-0">
           
           {isSearchOpen && (
             <div 
               ref={searchContainerRef}
-              className="relative mb-4 animate-in slide-in-from-top-2 fade-in duration-200"
+              className="relative mb-6 animate-in slide-in-from-top-2 fade-in duration-200"
             >
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-text" />
               <Input
@@ -139,7 +136,7 @@ const Home = () => {
         </div>
 
         {isLoading ? (
-          <div className="space-y-4 px-4">
+          <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="space-y-2">
                 <Skeleton className="h-4 w-20" />
@@ -149,12 +146,12 @@ const Home = () => {
             ))}
           </div>
         ) : articles.length === 0 ? (
-          <div className="text-center py-12 px-4">
-            <p className="text-muted-text">No articles found</p>
+          <div className="text-center py-12">
+            <p className="text-gray-500">No articles found</p>
           </div>
         ) : (
           <>
-            <div className="px-4">
+            <div>
               {articles.map((article) => (
                 <RankedArticleItem 
                   key={article.id} 
@@ -166,7 +163,7 @@ const Home = () => {
 
             <div ref={observerTarget} className="py-8">
               {isFetchingNextPage && (
-                <div className="space-y-4 px-4">
+                <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="space-y-2">
                       <Skeleton className="h-4 w-20" />
@@ -177,7 +174,7 @@ const Home = () => {
                 </div>
               )}
               {!hasNextPage && articles.length > 0 && (
-                <p className="text-center text-muted-text text-sm">
+                <p className="text-center text-gray-500 text-sm">
                   No more stories
                 </p>
               )}
