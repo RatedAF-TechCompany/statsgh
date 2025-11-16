@@ -5,8 +5,9 @@ import { Header } from "@/components/Header";
 import { ArticleCard } from "@/components/ArticleCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 10;
 
@@ -14,7 +15,9 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const section = searchParams.get("section");
   const observerTarget = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -69,6 +72,31 @@ const Home = () => {
     };
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
+  // Handle click outside to close search
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    };
+
+    if (isSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscKey);
+    };
+  }, [isSearchOpen]);
+
   const articles = data?.pages.flat() ?? [];
 
   // Background color palette for alternating blocks
@@ -102,7 +130,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onSearchToggle={() => setIsSearchOpen(!isSearchOpen)} />
 
       <main className="max-w-2xl mx-auto">
         <div className="px-4 pt-4">
@@ -114,16 +142,33 @@ const Home = () => {
             {today}
           </div>
           
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-text" />
-            <Input
-              type="text"
-              placeholder="Search articles by title, summary, or section..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          {isSearchOpen && (
+            <div 
+              ref={searchContainerRef}
+              className="relative mb-4 animate-in slide-in-from-top-2 fade-in duration-200"
+            >
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-text" />
+              <Input
+                type="text"
+                placeholder="Search articles by title, summary, or section..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-10"
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                onClick={() => {
+                  setSearchQuery("");
+                  setIsSearchOpen(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (

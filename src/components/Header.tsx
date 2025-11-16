@@ -1,4 +1,4 @@
-import { Menu, User } from "lucide-react";
+import { Menu, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -21,7 +21,11 @@ const navigationItems = [
   { label: "Saved", href: "/saved" },
 ];
 
-export const Header = () => {
+interface HeaderProps {
+  onSearchToggle?: () => void;
+}
+
+export const Header = ({ onSearchToggle }: HeaderProps) => {
   const navigate = useNavigate();
 
   const { data: session } = useQuery({
@@ -93,13 +97,24 @@ export const Header = () => {
           STATSGH
         </h1>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(session ? "/saved" : "/auth")}
-        >
-          <User className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {onSearchToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSearchToggle}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(session ? "/saved" : "/auth")}
+          >
+            <User className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
     </header>
   );
