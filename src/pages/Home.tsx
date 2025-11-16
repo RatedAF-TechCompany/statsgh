@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { ArticleCard } from "@/components/ArticleCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 const PAGE_SIZE = 10;
@@ -12,10 +14,11 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const section = searchParams.get("section");
   const observerTarget = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["articles", section],
+      queryKey: ["articles", section, searchQuery],
       queryFn: async ({ pageParam = 0 }) => {
         let query = supabase
           .from("articles")
@@ -26,6 +29,12 @@ const Home = () => {
 
         if (section) {
           query = query.eq("section", section);
+        }
+
+        if (searchQuery.trim()) {
+          query = query.or(
+            `title.ilike.%${searchQuery}%,summary.ilike.%${searchQuery}%,section.ilike.%${searchQuery}%`
+          );
         }
 
         const { data, error } = await query;
@@ -95,6 +104,17 @@ const Home = () => {
           <div className="border-b border-divider mb-2" />
           <div className="text-xs uppercase text-muted-text mb-4">
             {today}
+          </div>
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-text" />
+            <Input
+              type="text"
+              placeholder="Search articles by title, summary, or section..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
           </div>
         </div>
 
