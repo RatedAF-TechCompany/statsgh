@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import statsghLogo from "@/assets/statsgh-logo.jpeg";
 
 const navigationItems = [
   { label: "Top Stories", href: "/" },
@@ -93,9 +94,13 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
 
           <div 
             onClick={() => navigate("/")}
-            className="w-8 h-8 md:w-10 md:h-10 bg-[#C1126B] rounded flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+            className="w-8 h-8 md:w-10 md:h-10 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden"
           >
-            <span className="text-white font-bold text-xs md:text-sm">SG</span>
+            <img 
+              src={statsghLogo} 
+              alt="StatsGH" 
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
 
