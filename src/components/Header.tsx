@@ -56,6 +56,32 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
     <header className="sticky top-0 z-50 bg-background border-b border-divider">
       <div className="flex items-center justify-between h-14 px-4">
         <div className="flex items-center gap-3">
+          <div 
+            onClick={() => navigate("/")}
+            className="w-10 h-10 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
+          >
+            <img 
+              src={statsghLogo} 
+              alt="StatsGH" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => navigate("/auth")}
+            className="hidden sm:flex bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-full px-6"
+          >
+            Subscribe
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate(session ? "/saved" : "/auth")}
+            className="hidden sm:inline-flex"
+          >
+            Log in
+          </Button>
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -91,20 +117,6 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
               </nav>
             </SheetContent>
           </Sheet>
-
-          <div 
-            onClick={() => navigate("/")}
-            className="w-8 h-8 md:w-10 md:h-10 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden"
-          >
-            <img 
-              src={statsghLogo} 
-              alt="StatsGH" 
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
           {onSearchToggle && (
             <Button
               variant="ghost"
@@ -114,13 +126,6 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
               <Search className="h-5 w-5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(session ? "/saved" : "/auth")}
-          >
-            <User className="h-5 w-5" />
-          </Button>
         </div>
       </div>
     </header>
