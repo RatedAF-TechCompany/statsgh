@@ -104,7 +104,7 @@ const Home = () => {
       <Header onSearchToggle={() => setIsSearchOpen(!isSearchOpen)} />
 
       <main className="max-w-5xl mx-auto bg-white">
-        <div className="px-6 pt-0">
+        <div className="pt-0">
           
           {isSearchOpen && (
             <div 

@@ -53,81 +53,88 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
   });
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-[#D4D4D4]">
-      <div className="flex items-center justify-between h-16 px-6 max-w-5xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div 
-            onClick={() => navigate("/")}
-            className="w-10 h-10 rounded cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
-          >
-            <img 
-              src={statsghLogo} 
-              alt="StatsGH" 
-              className="w-full h-full object-cover"
-            />
+    <>
+      <div className="sticky top-0 z-50">
+        {/* Red brand strip with logo */}
+        <div className="bg-[#C1126B] h-12">
+          <div className="max-w-5xl mx-auto px-6 h-full flex items-center">
+            <div 
+              onClick={() => navigate("/")}
+              className="w-8 h-8 md:w-10 md:h-10 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
+            >
+              <img 
+                src={statsghLogo} 
+                alt="StatsGH" 
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => navigate("/auth")}
-            className="hidden sm:flex bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-full px-6"
-          >
-            Subscribe
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => navigate(session ? "/saved" : "/auth")}
-            className="hidden sm:inline-flex"
-          >
-            Log in
-          </Button>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72">
-              <SheetHeader>
-                <SheetTitle className="font-serif text-xl font-semibold">
-                  Navigation
-                </SheetTitle>
-              </SheetHeader>
-              <nav className="mt-6 space-y-1">
-                {navigationItems.map((item) => (
-                  <button
-                    key={item.href}
-                    onClick={() => {
-                      navigate(item.href);
-                    }}
-                    className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-                {isAdmin && (
-                  <button
-                    onClick={() => navigate("/admin")}
-                    className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
-                  >
-                    Admin Dashboard
-                  </button>
-                )}
-              </nav>
-            </SheetContent>
-          </Sheet>
-          {onSearchToggle && (
+        
+        {/* White navigation row */}
+        <div className="bg-white border-b border-[#D4D4D4]">
+          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-end gap-3">
+            <Button
+              onClick={() => navigate("/auth")}
+              className="hidden sm:flex bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-full px-6 h-9"
+            >
+              Subscribe
+            </Button>
             <Button
               variant="ghost"
-              size="icon"
-              onClick={onSearchToggle}
+              onClick={() => navigate(session ? "/saved" : "/auth")}
+              className="hidden sm:inline-flex h-9"
             >
-              <Search className="h-5 w-5" />
+              Log in
             </Button>
-          )}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72">
+                <SheetHeader>
+                  <SheetTitle className="font-serif text-xl font-semibold">
+                    Navigation
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 space-y-1">
+                  {navigationItems.map((item) => (
+                    <button
+                      key={item.href}
+                      onClick={() => {
+                        navigate(item.href);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                  {isAdmin && (
+                    <button
+                      onClick={() => navigate("/admin")}
+                      className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
+                    >
+                      Admin Dashboard
+                    </button>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+            {onSearchToggle && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onSearchToggle}
+                className="h-9 w-9"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-    </header>
+    </>
   );
 };
