@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           hero_image_url: string | null
           id: string
+          is_most_read: boolean
           is_published: boolean
           published_at: string | null
           section: string
@@ -35,6 +36,7 @@ export type Database = {
           created_at?: string
           hero_image_url?: string | null
           id?: string
+          is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
           section: string
@@ -49,6 +51,7 @@ export type Database = {
           created_at?: string
           hero_image_url?: string | null
           id?: string
+          is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
           section?: string

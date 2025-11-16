@@ -34,6 +34,7 @@ const AdminArticleEditor = () => {
   const [authorName, setAuthorName] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [isPublished, setIsPublished] = useState(false);
+  const [isMostRead, setIsMostRead] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { data: session } = useQuery({
@@ -90,6 +91,7 @@ const AdminArticleEditor = () => {
       setAuthorName(article.author_name);
       setHeroImageUrl(article.hero_image_url || "");
       setIsPublished(article.is_published);
+      setIsMostRead(article.is_most_read || false);
     }
   }, [article]);
 
@@ -114,6 +116,7 @@ const AdminArticleEditor = () => {
         author_name: authorName,
         hero_image_url: heroImageUrl || null,
         is_published: isPublished,
+        is_most_read: isMostRead,
         published_at: isPublished ? new Date().toISOString() : null,
       };
 
@@ -258,6 +261,15 @@ const AdminArticleEditor = () => {
               onCheckedChange={setIsPublished}
             />
             <Label htmlFor="published">Publish immediately</Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="most-read"
+              checked={isMostRead}
+              onCheckedChange={setIsMostRead}
+            />
+            <Label htmlFor="most-read">Mark as Most Read (special highlight)</Label>
           </div>
 
           <div className="flex gap-4">

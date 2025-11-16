@@ -19,7 +19,7 @@ const Home = () => {
       queryFn: async ({ pageParam = 0 }) => {
         let query = supabase
           .from("articles")
-          .select("id, title, slug, section, summary, hero_image_url, published_at")
+          .select("id, title, slug, section, summary, hero_image_url, published_at, is_most_read")
           .eq("is_published", true)
           .order("published_at", { ascending: false })
           .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
@@ -119,11 +119,11 @@ const Home = () => {
                 <div className="px-4 mb-3">
                   <div className="text-xs uppercase text-muted-text">{date}</div>
                 </div>
-                {groupArticles.map((article, index) => (
+                {groupArticles.map((article) => (
                   <ArticleCard 
                     key={article.id} 
                     article={article} 
-                    isMostRead={groupIndex === 0 && index === 0}
+                    isMostRead={article.is_most_read || false}
                   />
                 ))}
               </div>
