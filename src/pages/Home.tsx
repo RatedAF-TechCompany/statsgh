@@ -71,6 +71,15 @@ const Home = () => {
 
   const articles = data?.pages.flat() ?? [];
 
+  // Background color palette for alternating blocks
+  const blockColors = ["#F5EFE6", "#F2EBE0", "#EEE6D9", "#EAE1D2", "#E6DCCC"];
+  
+  // Function to get background color based on article index
+  const getArticleBackground = (index: number) => {
+    const blockIndex = Math.floor(index / 5) % blockColors.length;
+    return blockColors[blockIndex];
+  };
+
   // Group articles by date
   const groupedArticles = articles.reduce((groups: { [key: string]: typeof articles }, article) => {
     const date = article.published_at 
@@ -84,7 +93,6 @@ const Home = () => {
   }, {});
 
   const dateGroups = Object.entries(groupedArticles);
-  const backgroundColors = ["bg-[hsl(var(--date-group-bg-1))]", "bg-[hsl(var(--date-group-bg-2))]", "bg-[hsl(var(--date-group-bg-3))]"];
 
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -134,20 +142,29 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {dateGroups.map(([date, groupArticles], groupIndex) => (
-              <div key={date} className={`${backgroundColors[groupIndex % 3]} py-4`}>
-                <div className="px-4 mb-3">
-                  <div className="text-xs uppercase text-muted-text">{date}</div>
+            {dateGroups.map(([date, groupArticles]) => {
+              // Calculate the starting index for this date group
+              const startIndex = articles.findIndex(a => a.id === groupArticles[0].id);
+              
+              return (
+                <div key={date}>
+                  <div className="px-4 mb-3 pt-4">
+                    <div className="text-xs uppercase text-muted-text">{date}</div>
+                  </div>
+                  {groupArticles.map((article, indexInGroup) => {
+                    const overallIndex = startIndex + indexInGroup;
+                    return (
+                      <ArticleCard 
+                        key={article.id} 
+                        article={article} 
+                        isMostRead={article.is_most_read || false}
+                        backgroundColor={getArticleBackground(overallIndex)}
+                      />
+                    );
+                  })}
                 </div>
-                {groupArticles.map((article) => (
-                  <ArticleCard 
-                    key={article.id} 
-                    article={article} 
-                    isMostRead={article.is_most_read || false}
-                  />
-                ))}
-              </div>
-            ))}
+              );
+            })}
 
             <div ref={observerTarget} className="py-8">
               {isFetchingNextPage && (

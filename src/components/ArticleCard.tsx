@@ -15,9 +15,10 @@ interface ArticleCardProps {
     hero_image_url: string | null;
   };
   isMostRead?: boolean;
+  backgroundColor?: string;
 }
 
-export const ArticleCard = ({ article, isMostRead = false }: ArticleCardProps) => {
+export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: ArticleCardProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -77,10 +78,12 @@ export const ArticleCard = ({ article, isMostRead = false }: ArticleCardProps) =
 
   return (
     <article 
-      className="flex gap-4 py-3 px-4 border-b border-divider hover:bg-muted/50 transition-colors"
+      className="flex gap-4 py-3 px-4 border-b border-divider transition-colors"
       style={isMostRead ? {
         backgroundColor: '#F2DAC4',
         borderLeft: '4px solid #B03060'
+      } : backgroundColor ? {
+        backgroundColor
       } : undefined}
     >
       <div className="flex-1 min-w-0">
