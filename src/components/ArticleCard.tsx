@@ -77,9 +77,11 @@ export const ArticleCard = ({ article, isMostRead = false }: ArticleCardProps) =
 
   return (
     <article 
-      className={`flex gap-4 py-3 px-4 border-b border-divider hover:bg-muted/50 transition-colors ${
-        isMostRead ? 'bg-[hsl(var(--most-read-bg))] border-l-[4px] border-l-[hsl(var(--most-read-border))]' : ''
-      }`}
+      className="flex gap-4 py-3 px-4 border-b border-divider hover:bg-muted/50 transition-colors"
+      style={isMostRead ? {
+        backgroundColor: '#F2DAC4',
+        borderLeft: '4px solid #B03060'
+      } : undefined}
     >
       <div className="flex-1 min-w-0">
         <div
