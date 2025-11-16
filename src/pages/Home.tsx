@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { ArticleCard } from "@/components/ArticleCard";
+import { RankedArticleItem } from "@/components/RankedArticleItem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
@@ -99,19 +99,10 @@ const Home = () => {
 
   const articles = data?.pages.flat() ?? [];
 
-  // Background color palette for alternating blocks
-  const blockColors = ["#F5EFE6", "#F2EBE0", "#EEE6D9", "#EAE1D2", "#E6DCCC"];
-  
-  // Function to get background color based on article index
-  const getArticleBackground = (index: number) => {
-    const blockIndex = Math.floor(index / 5) % blockColors.length;
-    return blockColors[blockIndex];
-  };
-
   // Group articles by date
   const groupedArticles = articles.reduce((groups: { [key: string]: typeof articles }, article) => {
     const date = article.published_at 
-      ? new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      ? new Date(article.published_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
       : "Unknown Date";
     if (!groups[date]) {
       groups[date] = [];
@@ -187,29 +178,28 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {dateGroups.map(([date, groupArticles]) => {
-              // Calculate the starting index for this date group
-              const startIndex = articles.findIndex(a => a.id === groupArticles[0].id);
-              
-              return (
-                <div key={date}>
-                  <div className="px-4 mb-3 pt-4">
-                    <div className="text-xs uppercase text-muted-text">{date}</div>
-                  </div>
-                  {groupArticles.map((article, indexInGroup) => {
-                    const overallIndex = startIndex + indexInGroup;
-                    return (
-                      <ArticleCard 
-                        key={article.id} 
-                        article={article} 
-                        isMostRead={article.is_most_read || false}
-                        backgroundColor={getArticleBackground(overallIndex)}
-                      />
-                    );
-                  })}
+            {dateGroups.map(([date, groupArticles]) => (
+              <div key={date} className="px-4 mb-8">
+                <div className="mt-8 mb-2">
+                  <h2 className="font-sans text-sm font-semibold text-[#4A3C35]">{date}</h2>
+                  <div className="border-b border-[#E2D4C6] mt-1 mb-4" />
                 </div>
-              );
-            })}
+                
+                <h3 className="font-serif text-lg font-semibold text-foreground mb-4">
+                  Stories most read
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10">
+                  {groupArticles.map((article, index) => (
+                    <RankedArticleItem 
+                      key={article.id} 
+                      article={article}
+                      rank={index + 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
 
             <div ref={observerTarget} className="py-8">
               {isFetchingNextPage && (
