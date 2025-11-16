@@ -180,16 +180,16 @@ const Home = () => {
           <>
             {dateGroups.map(([date, groupArticles]) => (
               <div key={date} className="px-4 mb-8">
-                <div className="mt-8 mb-2">
-                  <h2 className="font-sans text-sm font-semibold text-[#4A3C35]">{date}</h2>
-                  <div className="border-b border-[#E2D4C6] mt-1 mb-4" />
+                <div className="mb-2">
+                  <h2 className="font-sans text-sm font-semibold text-[#4A3C35] mb-0">{date}</h2>
+                  <hr className="border-0 border-t border-[#E2D4C6] my-2 mb-1" />
                 </div>
                 
-                <h3 className="font-serif text-lg font-semibold text-foreground mb-4">
+                <h3 className="font-serif text-lg font-semibold text-[#111111] mb-3">
                   Stories most read
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10">
+                <div className="flex flex-col gap-3">
                   {groupArticles.map((article, index) => (
                     <RankedArticleItem 
                       key={article.id} 
