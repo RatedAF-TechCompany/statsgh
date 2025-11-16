@@ -19,7 +19,7 @@ const Home = () => {
       queryFn: async ({ pageParam = 0 }) => {
         let query = supabase
           .from("articles")
-          .select("id, title, slug, section, summary, hero_image_url")
+          .select("id, title, slug, section, summary, hero_image_url, published_at")
           .eq("is_published", true)
           .order("published_at", { ascending: false })
           .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
@@ -62,6 +62,21 @@ const Home = () => {
 
   const articles = data?.pages.flat() ?? [];
 
+  // Group articles by date
+  const groupedArticles = articles.reduce((groups: { [key: string]: typeof articles }, article) => {
+    const date = article.published_at 
+      ? new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "Unknown Date";
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(article);
+    return groups;
+  }, {});
+
+  const dateGroups = Object.entries(groupedArticles);
+  const backgroundColors = ["bg-[hsl(var(--date-group-bg-1))]", "bg-[hsl(var(--date-group-bg-2))]", "bg-[hsl(var(--date-group-bg-3))]"];
+
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -99,8 +114,19 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {articles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+            {dateGroups.map(([date, groupArticles], groupIndex) => (
+              <div key={date} className={`${backgroundColors[groupIndex % 3]} py-4`}>
+                <div className="px-4 mb-3">
+                  <div className="text-xs uppercase text-muted-text">{date}</div>
+                </div>
+                {groupArticles.map((article, index) => (
+                  <ArticleCard 
+                    key={article.id} 
+                    article={article} 
+                    isMostRead={groupIndex === 0 && index === 0}
+                  />
+                ))}
+              </div>
             ))}
 
             <div ref={observerTarget} className="py-8">

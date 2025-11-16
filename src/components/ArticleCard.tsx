@@ -14,9 +14,10 @@ interface ArticleCardProps {
     summary: string;
     hero_image_url: string | null;
   };
+  isMostRead?: boolean;
 }
 
-export const ArticleCard = ({ article }: ArticleCardProps) => {
+export const ArticleCard = ({ article, isMostRead = false }: ArticleCardProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -75,7 +76,11 @@ export const ArticleCard = ({ article }: ArticleCardProps) => {
   });
 
   return (
-    <article className="flex gap-4 py-3 px-4 border-b border-divider hover:bg-muted/50 transition-colors">
+    <article 
+      className={`flex gap-4 py-3 px-4 border-b border-divider hover:bg-muted/50 transition-colors ${
+        isMostRead ? 'bg-[hsl(var(--most-read-bg))] border-l-[4px] border-l-[hsl(var(--most-read-border))]' : ''
+      }`}
+    >
       <div className="flex-1 min-w-0">
         <div
           className="cursor-pointer"
