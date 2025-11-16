@@ -54,48 +54,50 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-divider">
       <div className="flex items-center justify-between h-14 px-4">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72">
-            <SheetHeader>
-              <SheetTitle className="font-serif text-xl font-semibold">
-                Navigation
-              </SheetTitle>
-            </SheetHeader>
-            <nav className="mt-6 space-y-1">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.href}
-                  onClick={() => {
-                    navigate(item.href);
-                  }}
-                  className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
-                >
-                  {item.label}
-                </button>
-              ))}
-              {isAdmin && (
-                <button
-                  onClick={() => navigate("/admin")}
-                  className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
-                >
-                  Admin Dashboard
-                </button>
-              )}
-            </nav>
-          </SheetContent>
-        </Sheet>
+        <div className="flex items-center gap-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72">
+              <SheetHeader>
+                <SheetTitle className="font-serif text-xl font-semibold">
+                  Navigation
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 space-y-1">
+                {navigationItems.map((item) => (
+                  <button
+                    key={item.href}
+                    onClick={() => {
+                      navigate(item.href);
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
+                  >
+                    Admin Dashboard
+                  </button>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
 
-        <h1
-          onClick={() => navigate("/")}
-          className="font-serif text-xl font-semibold cursor-pointer"
-        >
-          STATSGH
-        </h1>
+          <div 
+            onClick={() => navigate("/")}
+            className="w-8 h-8 md:w-10 md:h-10 bg-[#C1126B] rounded flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+          >
+            <span className="text-white font-bold text-xs md:text-sm">SG</span>
+          </div>
+        </div>
 
         <div className="flex items-center gap-2">
           {onSearchToggle && (
