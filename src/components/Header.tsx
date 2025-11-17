@@ -55,16 +55,13 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
   return (
     <>
       <div className="sticky top-0 z-50">
-        {/* Red brand strip */}
-        <div className="bg-[#C1126B] h-12"></div>
-        
-        {/* White navigation row */}
+        {/* White navigation row with responsive height */}
         <div className="bg-white border-b border-[#D4D4D4]">
-          <div className="max-w-5xl mx-auto px-6 h-[120px] flex items-center justify-between gap-3">
-            {/* Logo - 120x120px perfect square */}
+          <div className="max-w-5xl mx-auto px-6 h-[80px] md:h-[120px] flex items-center justify-between gap-3">
+            {/* Logo - responsive size */}
             <div 
               onClick={() => navigate("/")}
-              className="w-[120px] h-[120px] cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
+              className="w-[80px] h-[80px] md:w-[120px] md:h-[120px] cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
             >
               <img 
                 src={statsghLogo} 
