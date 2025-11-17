@@ -58,13 +58,13 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
         {/* Red brand strip */}
         <div className="bg-[#C1126B] h-12"></div>
         
-        {/* White navigation row with overlapping logo */}
-        <div className="bg-white border-b border-[#D4D4D4] relative">
-          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-3">
-            {/* Logo positioned to overlap red strip and white nav */}
+        {/* White navigation row */}
+        <div className="bg-white border-b border-[#D4D4D4]">
+          <div className="max-w-5xl mx-auto px-6 h-[120px] flex items-center justify-between gap-3">
+            {/* Logo - 120x120px perfect square */}
             <div 
               onClick={() => navigate("/")}
-              className="absolute -top-6 left-6 w-[80px] h-[80px] md:w-[100px] md:h-[100px] cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0 bg-white shadow-sm"
+              className="w-[120px] h-[120px] cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
             >
               <img 
                 src={statsghLogo} 
@@ -73,7 +73,7 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
               />
             </div>
             
-            <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-3">
             <Button
               onClick={() => navigate("/auth")}
               className="hidden sm:flex bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-full px-6 h-9"
