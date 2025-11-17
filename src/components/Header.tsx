@@ -55,12 +55,16 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
   return (
     <>
       <div className="sticky top-0 z-50">
-        {/* Red brand strip with logo */}
-        <div className="bg-[#C1126B] h-12">
-          <div className="max-w-5xl mx-auto px-6 h-full flex items-center">
+        {/* Red brand strip */}
+        <div className="bg-[#C1126B] h-12"></div>
+        
+        {/* White navigation row with overlapping logo */}
+        <div className="bg-white border-b border-[#D4D4D4] relative">
+          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between gap-3">
+            {/* Logo positioned to overlap red strip and white nav */}
             <div 
               onClick={() => navigate("/")}
-              className="w-8 h-8 md:w-10 md:h-10 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0"
+              className="absolute -top-6 left-6 w-[80px] h-[80px] md:w-[100px] md:h-[100px] cursor-pointer hover:opacity-90 transition-opacity overflow-hidden flex-shrink-0 bg-white shadow-sm"
             >
               <img 
                 src={statsghLogo} 
@@ -68,12 +72,8 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
                 className="w-full h-full object-cover"
               />
             </div>
-          </div>
-        </div>
-        
-        {/* White navigation row */}
-        <div className="bg-white border-b border-[#D4D4D4]">
-          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-end gap-3">
+            
+            <div className="ml-auto flex items-center gap-3">
             <Button
               onClick={() => navigate("/auth")}
               className="hidden sm:flex bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-full px-6 h-9"
@@ -122,16 +122,17 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
                 </nav>
               </SheetContent>
             </Sheet>
-            {onSearchToggle && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onSearchToggle}
-                className="h-9 w-9"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-            )}
+              {onSearchToggle && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onSearchToggle}
+                  className="h-9 w-9"
+                >
+                  <Search className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
