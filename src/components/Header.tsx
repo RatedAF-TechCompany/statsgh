@@ -56,7 +56,7 @@ export const Header = ({ onSearchToggle }: HeaderProps) => {
     <>
       <div className="sticky top-0 z-50">
         {/* White navigation row with responsive height */}
-        <div className="bg-white border-b border-[#D4D4D4]">
+        <div className="bg-gradient-to-b from-white to-muted/20 border-b border-[#D4D4D4]">
           <div className="max-w-5xl mx-auto px-6 h-[80px] md:h-[120px] flex items-center justify-between gap-3">
             {/* Logo - responsive size */}
             <div 
