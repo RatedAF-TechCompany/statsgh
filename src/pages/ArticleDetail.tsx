@@ -30,6 +30,17 @@ const ArticleDetail = () => {
         .eq("is_published", true)
         .single();
       if (error) throw error;
+      
+      // Track view
+      if (data) {
+        await supabase.from("article_views").insert({
+          article_id: data.id,
+          user_agent: navigator.userAgent,
+          referrer: document.referrer,
+          device_type: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
+        });
+      }
+      
       return data;
     },
   });
