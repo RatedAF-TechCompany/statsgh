@@ -21,7 +21,7 @@ const ArticleDetail = () => {
     },
   });
 
-  const { data: article, isLoading } = useQuery({
+  const { data: article, isLoading, error } = useQuery({
     queryKey: ["article", slug],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -29,10 +29,11 @@ const ArticleDetail = () => {
         .select("*")
         .eq("slug", slug)
         .eq("is_published", true)
-        .single();
+        .maybeSingle();
+      
       if (error) throw error;
       
-      // Track view
+      // Track view only if article exists
       if (data) {
         await supabase.from("article_views").insert({
           article_id: data.id,
@@ -118,12 +119,15 @@ const ArticleDetail = () => {
     );
   }
 
-  if (!article) {
+  if (error || !article) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="max-w-3xl mx-auto px-5 py-12 text-center">
-          <p className="text-muted-text mb-4">Article not found</p>
+          <h2 className="text-2xl font-serif font-bold mb-4">Article not found</h2>
+          <p className="text-muted-foreground mb-6">
+            The article you're looking for doesn't exist or has been removed.
+          </p>
           <Button onClick={() => navigate("/")} variant="outline">
             Go Home
           </Button>
