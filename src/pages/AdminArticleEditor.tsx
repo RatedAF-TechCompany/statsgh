@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Eye } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
+import { logAuditEvent } from "@/lib/audit";
 
 const statuses = ["draft", "review", "scheduled", "published"];
 
@@ -195,9 +196,34 @@ const AdminArticleEditor = () => {
           .update(articleData)
           .eq("id", id);
         if (error) throw error;
+
+        await logAuditEvent({
+          actionType: status === "published" ? "ARTICLE_PUBLISHED" : "ARTICLE_UPDATED",
+          targetType: "article",
+          targetId: id!,
+          description: `${status === "published" ? "Published" : "Updated"} article: ${title}`,
+          metadata: {
+            status: articleData.status,
+            is_published: articleData.is_published,
+          },
+        });
       } else {
-        const { error } = await supabase.from("articles").insert([articleData]);
+        const { data, error } = await supabase
+          .from("articles")
+          .insert([articleData])
+          .select()
+          .single();
         if (error) throw error;
+
+        await logAuditEvent({
+          actionType: "ARTICLE_CREATED",
+          targetType: "article",
+          targetId: data.id,
+          description: `Created article: ${title}`,
+          metadata: {
+            status: articleData.status,
+          },
+        });
       }
     },
     onSuccess: () => {

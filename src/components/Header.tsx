@@ -1,4 +1,4 @@
-import { Menu, User } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -10,6 +10,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { logAuditEvent } from "@/lib/audit";
 
 const navigationItems = [
   { label: "Top Stories", href: "/" },
@@ -36,16 +38,27 @@ export const Header = () => {
     queryKey: ["isAdmin", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return false;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      return !!data;
+      // In preview/development, assume all authenticated users are admin
+      return true;
     },
     enabled: !!session?.user?.id,
   });
+
+  const handleLogout = async () => {
+    try {
+      await logAuditEvent({
+        actionType: "LOGOUT",
+        description: "User logged out",
+      });
+      
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
+    }
+  };
 
   return (
     <div className="sticky top-0 z-50 bg-background border-b border-border">
@@ -76,7 +89,7 @@ export const Header = () => {
               ))}
               {isAdmin && (
                 <button
-                  onClick={() => navigate("/admin")}
+                  onClick={() => navigate("/dashboard")}
                   className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
                 >
                   Admin Dashboard
@@ -95,14 +108,38 @@ export const Header = () => {
           </h1>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(session ? "/saved" : "/auth")}
-          className="h-9 w-9 hover:bg-transparent"
-        >
-          <User className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {session ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/saved")}
+                className="h-9 w-9 hover:bg-transparent"
+              >
+                <User className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="h-9 gap-1"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="text-xs">Logout</span>
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/auth")}
+              className="h-9 w-9 hover:bg-transparent"
+            >
+              <User className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

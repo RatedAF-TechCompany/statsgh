@@ -15,6 +15,9 @@ import {
   Settings,
   Image,
   FolderOpen,
+  Tag,
+  BarChart3,
+  ScrollText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -195,6 +198,18 @@ const Dashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Manage team members
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate("/admin/audit-log")}>
+            <CardHeader>
+              <ScrollText className="h-8 w-8 mb-2 text-accent" />
+              <CardTitle>Audit Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View system activity
               </p>
             </CardContent>
           </Card>

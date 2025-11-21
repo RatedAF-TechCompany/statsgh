@@ -171,6 +171,53 @@ export type Database = {
           },
         ]
       }
+      audit_events: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          target_id: string | null
+          target_type: string | null
+          timestamp: string | null
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string | null
+          user_email: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookmarks: {
         Row: {
           article_id: string
@@ -285,17 +332,26 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          full_name: string | null
           id: string
+          last_login_at: string | null
+          status: string | null
         }
         Insert: {
           created_at?: string
           email: string
+          full_name?: string | null
           id: string
+          last_login_at?: string | null
+          status?: string | null
         }
         Update: {
           created_at?: string
           email?: string
+          full_name?: string | null
           id?: string
+          last_login_at?: string | null
+          status?: string | null
         }
         Relationships: []
       }
@@ -340,6 +396,53 @@ export type Database = {
           {
             foreignKeyName: "site_settings_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invite_token: string
+          invited_by: string | null
+          note: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          invite_token: string
+          invited_by?: string | null
+          note?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invite_token?: string
+          invited_by?: string | null
+          note?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_invited_by_fkey"
+            columns: ["invited_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

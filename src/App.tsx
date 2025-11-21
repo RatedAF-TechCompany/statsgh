@@ -8,6 +8,7 @@ import ArticleDetail from "./pages/ArticleDetail";
 import Auth from "./pages/Auth";
 import Saved from "./pages/Saved";
 import Admin from "./pages/Admin";
+import AuditLog from "./pages/AuditLog";
 import Dashboard from "./pages/Dashboard";
 import AdminArticles from "./pages/AdminArticles";
 import AdminArticleEditor from "./pages/AdminArticleEditor";
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/admin/categories" element={<Categories />} />
           <Route path="/admin/analytics" element={<Analytics />} />
           <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/audit-log" element={<AuditLog />} />
           <Route path="/admin/settings" element={<SiteSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
