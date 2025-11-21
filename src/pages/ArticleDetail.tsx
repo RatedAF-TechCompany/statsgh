@@ -200,13 +200,8 @@ const ArticleDetail = () => {
             lineHeight: "1.6",
             color: "hsl(var(--foreground))",
           }}
-        >
-          {article.body.split("\n").map((paragraph, index) => (
-            <p key={index} className="mb-4">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+          dangerouslySetInnerHTML={{ __html: article.body }}
+        />
       </main>
     </div>
   );
