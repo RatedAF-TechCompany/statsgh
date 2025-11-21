@@ -1,4 +1,4 @@
-import { Menu, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -12,16 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/lib/audit";
-
-const navigationItems = [
-  { label: "Top Stories", href: "/" },
-  { label: "World", href: "/?section=World" },
-  { label: "Markets", href: "/?section=Markets" },
-  { label: "Economy", href: "/?section=Economy" },
-  { label: "Technology", href: "/?section=Technology" },
-  { label: "Opinion", href: "/?section=Opinion" },
-  { label: "Saved", href: "/saved" },
-];
+import { SITE_NAVIGATION } from "@/lib/navigation";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -70,23 +61,60 @@ export const Header = () => {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72">
-            <SheetHeader>
-              <SheetTitle className="font-serif text-xl font-semibold">
-                Navigation
-              </SheetTitle>
-            </SheetHeader>
-            <nav className="mt-6 space-y-1">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.href}
-                  onClick={() => {
-                    navigate(item.href);
-                  }}
-                  className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
-                >
-                  {item.label}
-                </button>
-              ))}
+          <SheetHeader>
+            <SheetTitle className="font-serif text-xl font-semibold">
+              Navigation
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="mt-6">
+            {SITE_NAVIGATION.sideMenu.grouped.map((group) => (
+              <div key={group.label} className="mb-4">
+                <p className="px-4 py-2 text-xs font-bold tracking-[0.15em] uppercase text-muted-foreground">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.items.map((itemSlug) => {
+                    const navItem = SITE_NAVIGATION.primaryNav.find(n => n.slug === itemSlug);
+                    if (!navItem) return null;
+                    
+                    if (navItem.type === "external") {
+                      return (
+                        <a
+                          key={navItem.slug}
+                          href={navItem.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                        >
+                          {navItem.label}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      );
+                    }
+                    
+                    return (
+                      <button
+                        key={navItem.slug}
+                        onClick={() => {
+                          navigate(navItem.slug === "top-stories" ? "/" : `/section/${navItem.slug}`);
+                        }}
+                        className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                      >
+                        {navItem.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            
+            <div className="border-t border-border mt-2 pt-2">
+              <button
+                onClick={() => navigate("/saved")}
+                className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+              >
+                Saved
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => navigate("/dashboard")}
@@ -95,7 +123,8 @@ export const Header = () => {
                   Admin Dashboard
                 </button>
               )}
-            </nav>
+            </div>
+          </nav>
           </SheetContent>
         </Sheet>
 
