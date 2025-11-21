@@ -8,8 +8,14 @@ import ArticleDetail from "./pages/ArticleDetail";
 import Auth from "./pages/Auth";
 import Saved from "./pages/Saved";
 import Admin from "./pages/Admin";
+import Dashboard from "./pages/Dashboard";
 import AdminArticles from "./pages/AdminArticles";
 import AdminArticleEditor from "./pages/AdminArticleEditor";
+import MediaLibrary from "./pages/MediaLibrary";
+import Categories from "./pages/Categories";
+import Analytics from "./pages/Analytics";
+import Users from "./pages/Users";
+import SiteSettings from "./pages/SiteSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,9 +32,15 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/saved" element={<Saved />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/articles" element={<AdminArticles />} />
           <Route path="/admin/articles/new" element={<AdminArticleEditor />} />
-          <Route path="/admin/articles/:id/edit" element={<AdminArticleEditor />} />
+          <Route path="/admin/articles/:id" element={<AdminArticleEditor />} />
+          <Route path="/admin/media" element={<MediaLibrary />} />
+          <Route path="/admin/categories" element={<Categories />} />
+          <Route path="/admin/analytics" element={<Analytics />} />
+          <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/settings" element={<SiteSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
