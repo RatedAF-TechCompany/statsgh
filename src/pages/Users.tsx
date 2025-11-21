@@ -89,6 +89,31 @@ const Users = () => {
 
       if (error) throw error;
 
+      // Send invitation email
+      const inviteLink = `${window.location.origin}/auth?invite=${inviteToken}`;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", session?.user?.id!)
+        .single();
+
+      try {
+        await supabase.functions.invoke("send-invitation-email", {
+          body: {
+            email: inviteEmail,
+            fullName: inviteFullName,
+            role: inviteRole,
+            inviteLink,
+            invitedBy: profile?.full_name || profile?.email || "Admin",
+            note: inviteNote,
+          },
+        });
+        console.log("Invitation email sent successfully");
+      } catch (emailError) {
+        console.error("Failed to send invitation email:", emailError);
+        // Don't fail the whole operation if email fails
+      }
+
       await logAuditEvent({
         actionType: "INVITE_SENT",
         targetType: "invitation",
@@ -102,7 +127,7 @@ const Users = () => {
       const inviteLink = `${window.location.origin}/auth?invite=${token}`;
       setGeneratedInvite({ token, link: inviteLink });
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("Invitation created successfully");
+      toast.success("Invitation created and email sent successfully!");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to create invitation");
