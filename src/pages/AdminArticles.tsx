@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Edit, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { logAuditEvent } from "@/lib/audit";
 import { useEffect } from "react";
 
 const AdminArticles = () => {
@@ -50,9 +51,16 @@ const AdminArticles = () => {
   });
 
   const deleteArticle = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("articles").delete().eq("id", id);
+    mutationFn: async (article: { id: string; title: string }) => {
+      const { error } = await supabase.from("articles").delete().eq("id", article.id);
       if (error) throw error;
+
+      await logAuditEvent({
+        actionType: "ARTICLE_DELETED",
+        targetType: "article",
+        targetId: article.id,
+        description: `Deleted article: ${article.title}`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-articles"] });
@@ -125,7 +133,7 @@ const AdminArticles = () => {
                       if (
                         confirm("Are you sure you want to delete this article?")
                       ) {
-                        deleteArticle.mutate(article.id);
+                        deleteArticle.mutate({ id: article.id, title: article.title });
                       }
                     }}
                   >
