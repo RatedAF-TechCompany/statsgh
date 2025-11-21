@@ -12,3 +12,6 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://statsgh.com/sitemap.xml
+Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap
