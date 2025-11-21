@@ -14,53 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
+      article_versions: {
+        Row: {
+          article_id: string | null
+          body: string
+          created_at: string | null
+          id: string
+          is_autosave: boolean | null
+          saved_by: string | null
+          title: string
+          version_number: number
+        }
+        Insert: {
+          article_id?: string | null
+          body: string
+          created_at?: string | null
+          id?: string
+          is_autosave?: boolean | null
+          saved_by?: string | null
+          title: string
+          version_number: number
+        }
+        Update: {
+          article_id?: string | null
+          body?: string
+          created_at?: string | null
+          id?: string
+          is_autosave?: boolean | null
+          saved_by?: string | null
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_versions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "article_versions_saved_by_fkey"
+            columns: ["saved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      article_views: {
+        Row: {
+          article_id: string | null
+          device_type: string | null
+          id: string
+          referrer: string | null
+          user_agent: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          article_id?: string | null
+          device_type?: string | null
+          id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          article_id?: string | null
+          device_type?: string | null
+          id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_views_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articles: {
         Row: {
           author_name: string
           body: string
+          category_id: string | null
           created_at: string
           hero_image_url: string | null
           id: string
           is_most_read: boolean
           is_published: boolean
           published_at: string | null
+          scheduled_at: string | null
           section: string
+          seo_description: string | null
           slug: string
+          status: string | null
+          subtitle: string | null
           summary: string
+          tags: string[] | null
           title: string
           updated_at: string
         }
         Insert: {
           author_name: string
           body: string
+          category_id?: string | null
           created_at?: string
           hero_image_url?: string | null
           id?: string
           is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
+          scheduled_at?: string | null
           section: string
+          seo_description?: string | null
           slug: string
+          status?: string | null
+          subtitle?: string | null
           summary: string
+          tags?: string[] | null
           title: string
           updated_at?: string
         }
         Update: {
           author_name?: string
           body?: string
+          category_id?: string | null
           created_at?: string
           hero_image_url?: string | null
           id?: string
           is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
+          scheduled_at?: string | null
           section?: string
+          seo_description?: string | null
           slug?: string
+          status?: string | null
+          subtitle?: string | null
           summary?: string
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "articles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookmarks: {
         Row: {
@@ -98,6 +207,80 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      media: {
+        Row: {
+          alt_text: string | null
+          created_at: string | null
+          filename: string
+          id: string
+          mime_type: string | null
+          size: number | null
+          tags: string[] | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string | null
+          filename: string
+          id?: string
+          mime_type?: string | null
+          size?: number | null
+          tags?: string[] | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string | null
+          filename?: string
+          id?: string
+          mime_type?: string | null
+          size?: number | null
+          tags?: string[] | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -115,6 +298,53 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      site_settings: {
+        Row: {
+          default_seo_description: string | null
+          favicon_url: string | null
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          site_name: string | null
+          social_image_url: string | null
+          theme_colors: Json | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          default_seo_description?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          site_name?: string | null
+          social_image_url?: string | null
+          theme_colors?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          default_seo_description?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          site_name?: string | null
+          social_image_url?: string | null
+          theme_colors?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
