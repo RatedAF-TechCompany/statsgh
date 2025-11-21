@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, ExternalLink } from "lucide-react";
+import { Menu, User, LogOut, ExternalLink, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -115,14 +115,6 @@ export const Header = () => {
               >
                 Saved
               </button>
-              {isAdmin && (
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors font-medium text-accent"
-                >
-                  Admin Dashboard
-                </button>
-              )}
             </div>
           </nav>
           </SheetContent>
@@ -140,6 +132,17 @@ export const Header = () => {
         <div className="flex items-center gap-2">
           {session ? (
             <>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/dashboard")}
+                  className="h-9 w-9 hover:bg-transparent"
+                  title="Dashboard"
+                >
+                  <LayoutDashboard className="h-5 w-5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
