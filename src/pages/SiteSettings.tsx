@@ -123,7 +123,7 @@ const SiteSettings = () => {
               id="siteName"
               value={siteName}
               onChange={(e) => setSiteName(e.target.value)}
-              placeholder="STATS GH"
+              placeholder="StatsGH"
             />
           </div>
 
