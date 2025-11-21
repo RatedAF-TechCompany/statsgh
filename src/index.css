@@ -8,58 +8,45 @@
 
 @layer base {
   :root {
-    /* Base colors - #D7E1EF light blue background */
-    --background: 215 43% 89%;
-    --surface: 215 43% 89%;
-    --foreground: 0 0% 7%;
+    /* Base colors - #f5e6d8 warm beige background */
+    --background: 30 45% 92%;
+    --foreground: 0 0% 15%;
     
-    /* Divider and borders */
-    --divider: 32 28% 85%;
-    --border: 32 28% 85%;
+    /* Divider and borders - #e0cdb9 */
+    --border: 30 35% 86%;
     
     /* Text colors */
-    --primary-text: 0 0% 7%;
-    --secondary-text: 20 16% 24%;
-    --muted-text: 25 14% 43%;
-    --muted-foreground: 25 14% 43%;
-    
-    /* Accent color - #C1126B pink/magenta */
-    --accent: 332 82% 41%;
-    --accent-foreground: 0 0% 100%;
-    --primary: 332 82% 41%;
-    --primary-foreground: 0 0% 100%;
+    --primary-text: 0 0% 15%;
+    --muted-foreground: 30 20% 44%;
     
     /* Card styling */
-    --card: 215 43% 89%;
-    --card-foreground: 0 0% 7%;
+    --card: 30 45% 92%;
+    --card-foreground: 0 0% 15%;
     
     /* Input and interactive elements */
-    --input: 32 28% 85%;
-    --ring: 332 82% 41%;
+    --input: 30 35% 86%;
+    --ring: 0 0% 15%;
     
     /* Secondary actions */
-    --secondary: 32 28% 85%;
-    --secondary-foreground: 0 0% 7%;
+    --secondary: 30 30% 85%;
+    --secondary-foreground: 0 0% 15%;
     
     /* Muted backgrounds */
-    --muted: 32 28% 88%;
+    --muted: 30 20% 44%;
     
     /* Popover */
-    --popover: 215 43% 89%;
-    --popover-foreground: 0 0% 7%;
+    --popover: 30 45% 92%;
+    --popover-foreground: 0 0% 15%;
+    
+    /* Primary/Accent */
+    --primary: 0 0% 15%;
+    --primary-foreground: 30 45% 92%;
+    --accent: 30 30% 85%;
+    --accent-foreground: 0 0% 15%;
     
     /* Destructive */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    
-    /* Date group backgrounds - alternating warm tones */
-    --date-group-bg-1: 32 44% 92%;
-    --date-group-bg-2: 32 38% 90%;
-    --date-group-bg-3: 38 50% 93%;
-    
-    /* Most read highlight */
-    --most-read-bg: 28 58% 85%;
-    --most-read-border: 338 52% 44%;
+    --destructive-foreground: 30 45% 92%;
     
     --radius: 0rem;
   }
@@ -72,20 +59,12 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-family: Georgia, 'Times New Roman', serif;
   }
 }
 
 @layer utilities {
   .font-serif {
-    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  }
-  
-  .font-sans {
-    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
   }
 }
