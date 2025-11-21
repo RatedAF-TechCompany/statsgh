@@ -276,7 +276,7 @@ const ArticleDetail = () => {
         )}
 
         <div
-          className="prose prose-lg max-w-none"
+          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed"
           style={{
             fontSize: "16px",
             lineHeight: "1.6",
