@@ -20,6 +20,7 @@ import { ArrowLeft, Save, Eye } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
 import { logAuditEvent } from "@/lib/audit";
+import { SITE_NAVIGATION } from "@/lib/navigation";
 
 const statuses = ["draft", "review", "scheduled", "published"];
 
@@ -362,13 +363,20 @@ const AdminArticleEditor = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="section">Section *</Label>
-                <Input
-                  id="section"
-                  value={section}
-                  onChange={(e) => setSection(e.target.value)}
-                  required
-                  placeholder="Markets, World, etc."
-                />
+                <Select value={section} onValueChange={setSection} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SITE_NAVIGATION.primaryNav
+                      .filter(item => item.type === 'section')
+                      .map((item) => (
+                        <SelectItem key={item.slug} value={item.slug}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
