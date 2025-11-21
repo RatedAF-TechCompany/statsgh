@@ -136,8 +136,40 @@ const ArticleDetail = () => {
     { year: "numeric", month: "long", day: "numeric" }
   );
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `https://statsgh.com/article/${article.slug}`
+    },
+    "headline": article.title,
+    "description": article.summary,
+    "image": article.hero_image_url ? [article.hero_image_url] : [],
+    "datePublished": article.published_at,
+    "dateModified": article.updated_at,
+    "author": {
+      "@type": "Person",
+      "name": article.author_name
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "StatsGH",
+      "url": "https://statsgh.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://statsgh.com/icons/header-logo-desktop.png"
+      }
+    },
+    "isAccessibleForFree": "true"
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <Header />
 
       <main className="max-w-3xl mx-auto px-5 py-6">
