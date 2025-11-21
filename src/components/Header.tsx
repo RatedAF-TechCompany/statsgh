@@ -103,8 +103,8 @@ export const Header = () => {
           onClick={() => navigate("/")}
           className="cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <h1 className="font-serif text-xl font-semibold tracking-[0.125em] uppercase">
-            STATS GH
+          <h1 className="font-serif text-xl font-semibold">
+            StatsGH
           </h1>
         </div>
 

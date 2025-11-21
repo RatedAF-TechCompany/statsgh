@@ -40,16 +40,16 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "STATSGH Chronicle <onboarding@resend.dev>",
+        from: "StatsGH Chronicle <onboarding@resend.dev>",
         to: [email],
-        subject: `You've been invited to join STATSGH Chronicle as ${role}`,
+        subject: `You've been invited to join StatsGH Chronicle as ${role}`,
         html: `
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>STATSGH Chronicle Invitation</title>
+              <title>StatsGH Chronicle Invitation</title>
             </head>
             <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -59,8 +59,8 @@ const handler = async (req: Request): Promise<Response> => {
                       <!-- Header -->
                       <tr>
                         <td style="padding: 40px 40px 24px; text-align: center; border-bottom: 1px solid #e5e5e5;">
-                          <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #1a1a1a; letter-spacing: 0.05em;">
-                            STATSGH CHRONICLE
+                          <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #1a1a1a;">
+                            StatsGH Chronicle
                           </h1>
                         </td>
                       </tr>
@@ -69,11 +69,11 @@ const handler = async (req: Request): Promise<Response> => {
                       <tr>
                         <td style="padding: 40px;">
                           <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">
-                            Welcome to STATSGH Chronicle, ${fullName}!
+                            Welcome to StatsGH Chronicle, ${fullName}!
                           </h2>
                           
                           <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #525252;">
-                            You've been invited by <strong>${invitedBy}</strong> to join the STATSGH Chronicle content management system.
+                            You've been invited by <strong>${invitedBy}</strong> to join the StatsGH Chronicle content management system.
                           </p>
                           
                           <div style="background-color: #f9fafb; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
@@ -130,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
                             If you didn't expect this invitation, you can safely ignore this email.
                           </p>
                           <p style="margin: 16px 0 0; font-size: 13px; color: #a3a3a3;">
-                            © ${new Date().getFullYear()} STATSGH Chronicle. All rights reserved.
+                            © ${new Date().getFullYear()} StatsGH Chronicle. All rights reserved.
                           </p>
                         </td>
                       </tr>
