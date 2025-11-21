@@ -60,13 +60,13 @@ export const Header = () => {
               <Menu className="h-6 w-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72">
-          <SheetHeader>
+          <SheetContent side="left" className="w-72 flex flex-col">
+          <SheetHeader className="flex-shrink-0">
             <SheetTitle className="font-serif text-xl font-semibold">
               Navigation
             </SheetTitle>
           </SheetHeader>
-          <nav className="mt-6">
+          <nav className="mt-6 overflow-y-auto flex-1 -mx-6 px-6">
             {SITE_NAVIGATION.sideMenu.grouped.map((group) => (
               <div key={group.label} className="mb-4">
                 <p className="px-4 py-2 text-xs font-bold tracking-[0.15em] uppercase text-muted-foreground">
