@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import React from "react";
 
 const ArticleDetail = () => {
   const { slug } = useParams();
@@ -163,6 +164,55 @@ const ArticleDetail = () => {
     },
     "isAccessibleForFree": "true"
   };
+
+  // Update document head with meta tags
+  React.useEffect(() => {
+    if (article) {
+      // Set page title
+      document.title = `${article.title} - StatsGH`;
+      
+      // Add/update canonical link
+      let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+      if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.rel = 'canonical';
+        document.head.appendChild(canonical);
+      }
+      canonical.href = `https://statsgh.com/article/${article.slug}`;
+      
+      // Add/update meta description
+      let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = 'description';
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = article.summary;
+      
+      // Add/update OG tags
+      const ogTags = [
+        { property: 'og:title', content: article.title },
+        { property: 'og:description', content: article.summary },
+        { property: 'og:type', content: 'article' },
+        { property: 'og:url', content: `https://statsgh.com/article/${article.slug}` },
+        { property: 'og:image', content: article.hero_image_url || '' },
+        { property: 'article:published_time', content: article.published_at },
+        { property: 'article:modified_time', content: article.updated_at },
+        { property: 'article:author', content: article.author_name },
+      ];
+      
+      ogTags.forEach(({ property, content }) => {
+        if (!content) return;
+        let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+        if (!tag) {
+          tag = document.createElement('meta');
+          tag.setAttribute('property', property);
+          document.head.appendChild(tag);
+        }
+        tag.content = content;
+      });
+    }
+  }, [article]);
 
   return (
     <div className="min-h-screen bg-background">
