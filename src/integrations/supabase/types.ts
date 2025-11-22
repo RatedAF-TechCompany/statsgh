@@ -305,6 +305,50 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          article_id: string
+          body: string
+          created_at: string
+          email: string
+          id: string
+          is_published: boolean
+          name: string | null
+          verification_code: string
+          verification_expires_at: string
+        }
+        Insert: {
+          article_id: string
+          body: string
+          created_at?: string
+          email: string
+          id?: string
+          is_published?: boolean
+          name?: string | null
+          verification_code: string
+          verification_expires_at: string
+        }
+        Update: {
+          article_id?: string
+          body?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_published?: boolean
+          name?: string | null
+          verification_code?: string
+          verification_expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media: {
         Row: {
           alt_text: string | null
