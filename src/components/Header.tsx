@@ -72,46 +72,41 @@ export const Header = () => {
             </SheetTitle>
           </SheetHeader>
           <nav className="mt-6 overflow-y-auto flex-1 -mx-6 px-6">
-            {SITE_NAVIGATION.sideMenu.grouped.map((group) => (
-              <div key={group.label} className="mb-4">
-                <p className="px-4 py-2 text-xs font-bold tracking-[0.15em] uppercase text-muted-foreground">
-                  {group.label}
-                </p>
-                <div className="space-y-1">
-                  {group.items.map((itemSlug) => {
-                    const navItem = SITE_NAVIGATION.primaryNav.find(n => n.slug === itemSlug);
-                    if (!navItem) return null;
-                    
-                    if (navItem.type === "external") {
-                      return (
-                        <a
-                          key={navItem.slug}
-                          href={navItem.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
-                        >
-                          {navItem.label}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      );
-                    }
-                    
+            <div className="mb-4">
+              <p className="px-4 py-2 text-xs font-bold tracking-[0.15em] uppercase text-muted-foreground">
+                Categories
+              </p>
+              <div className="space-y-1">
+                {SITE_NAVIGATION.categories.map((navItem) => {
+                  if (navItem.type === "external") {
                     return (
-                      <button
+                      <a
                         key={navItem.slug}
-                        onClick={() => {
-                          navigate(navItem.slug === "top-stories" ? "/" : `/section/${navItem.slug}`);
-                        }}
-                        className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                        href={navItem.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
                       >
                         {navItem.label}
-                      </button>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     );
-                  })}
-                </div>
+                  }
+                  
+                  return (
+                    <button
+                      key={navItem.slug}
+                      onClick={() => {
+                        navigate(navItem.slug === "top-stories" ? "/" : `/category/${navItem.slug}`);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
+                    >
+                      {navItem.label}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </div>
             
             <div className="border-t border-border mt-2 pt-2">
               <button

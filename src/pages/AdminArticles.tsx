@@ -12,13 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { logAuditEvent } from "@/lib/audit";
 import { useEffect, useState } from "react";
-import { SITE_NAVIGATION, SECTION_MAPPING } from "@/lib/navigation";
+import { SITE_NAVIGATION, CATEGORY_MAPPING } from "@/lib/navigation";
 
 const AdminArticles = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState<"section" | "category" | "status" | null>(null);
+  const [bulkAction, setBulkAction] = useState<"category" | "status" | null>(null);
   const [bulkValue, setBulkValue] = useState<string>("");
   const [showBulkDialog, setShowBulkDialog] = useState(false);
 
@@ -95,14 +95,7 @@ const AdminArticles = () => {
 
   const bulkUpdate = useMutation({
     mutationFn: async ({ field, value }: { field: string; value: string }) => {
-      const updates: any = {};
-      
-      // Map the field names correctly
-      if (field === "category") {
-        updates.category_id = value;
-      } else {
-        updates[field] = value;
-      }
+      const updates: any = { [field]: value };
       
       for (const articleId of selectedArticles) {
         const { error } = await supabase
@@ -147,7 +140,7 @@ const AdminArticles = () => {
     );
   };
 
-  const handleBulkAction = (action: "section" | "category" | "status") => {
+  const handleBulkAction = (action: "category" | "status") => {
     setBulkAction(action);
     setBulkValue("");
     setShowBulkDialog(true);
@@ -155,7 +148,9 @@ const AdminArticles = () => {
 
   const executeBulkAction = () => {
     if (!bulkAction || !bulkValue) return;
-    bulkUpdate.mutate({ field: bulkAction, value: bulkValue });
+    // Map UI "category" to database "section" field
+    const field = bulkAction === "category" ? "section" : bulkAction;
+    bulkUpdate.mutate({ field, value: bulkValue });
   };
 
   if (!session || isLoadingAuth) {
@@ -190,9 +185,6 @@ const AdminArticles = () => {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => handleBulkAction("section")}>
-                Update Section
-              </Button>
               <Button size="sm" onClick={() => handleBulkAction("category")}>
                 Update Category
               </Button>
@@ -244,7 +236,7 @@ const AdminArticles = () => {
                           {article.is_published ? "Published" : "Draft"}
                         </Badge>
                         <span className="text-xs text-muted-text">
-                          {SECTION_MAPPING[article.section as keyof typeof SECTION_MAPPING] || article.section}
+                          {CATEGORY_MAPPING[article.section as keyof typeof CATEGORY_MAPPING] || article.section}
                         </span>
                       </div>
                       <h3 className="font-serif text-xl font-semibold mb-1">
@@ -287,7 +279,7 @@ const AdminArticles = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                Bulk Update {bulkAction === "section" ? "Section" : bulkAction === "category" ? "Category" : "Status"}
+                Bulk Update {bulkAction === "category" ? "Category" : "Status"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -295,26 +287,6 @@ const AdminArticles = () => {
                 Update {selectedArticles.length} selected article{selectedArticles.length > 1 ? "s" : ""}
               </p>
               
-              {bulkAction === "section" && (
-                <div className="space-y-2">
-                  <Label>New Section</Label>
-                  <Select value={bulkValue} onValueChange={setBulkValue}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SITE_NAVIGATION.primaryNav
-                        .filter(item => item.type === 'section')
-                        .map((item) => (
-                          <SelectItem key={item.slug} value={item.slug}>
-                            {item.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {bulkAction === "category" && (
                 <div className="space-y-2">
                   <Label>New Category</Label>
@@ -323,11 +295,13 @@ const AdminArticles = () => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories?.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
+                      {SITE_NAVIGATION.categories
+                        .filter(item => item.type === 'category')
+                        .map((item) => (
+                          <SelectItem key={item.slug} value={item.slug}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
