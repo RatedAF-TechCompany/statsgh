@@ -1,7 +1,7 @@
 project_id = "ofhejtwaigiqyejbvncz"
 
 [functions.send-invitation-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.news-sitemap]
 verify_jwt = false
