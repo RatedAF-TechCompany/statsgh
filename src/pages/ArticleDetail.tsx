@@ -7,6 +7,7 @@ import { Bookmark, Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
+import DOMPurify from "dompurify";
 
 const ArticleDetail = () => {
   const { slug } = useParams();
@@ -286,7 +287,12 @@ const ArticleDetail = () => {
             lineHeight: "1.6",
             color: "hsl(var(--foreground))",
           }}
-          dangerouslySetInnerHTML={{ __html: article.body }}
+          dangerouslySetInnerHTML={{ 
+            __html: DOMPurify.sanitize(article.body, {
+              ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
+              ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel']
+            })
+          }}
         />
       </main>
     </div>
