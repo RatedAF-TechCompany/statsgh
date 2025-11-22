@@ -21,8 +21,22 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_NAVIGATION } from "@/lib/navigation";
+import { z } from "zod";
 
 const statuses = ["draft", "review", "scheduled", "published"];
+
+// Validation schema for article data
+const articleSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  subtitle: z.string().trim().max(300, "Subtitle must be less than 300 characters").optional(),
+  slug: z.string().trim().min(1, "Slug is required").max(200, "Slug must be less than 200 characters").regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens"),
+  section: z.string().min(1, "Section is required"),
+  summary: z.string().trim().min(1, "Summary is required").max(500, "Summary must be less than 500 characters"),
+  body: z.string().trim().min(1, "Article body is required").max(50000, "Article body must be less than 50,000 characters"),
+  author_name: z.string().trim().min(1, "Author name is required").max(100, "Author name must be less than 100 characters"),
+  hero_image_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  seo_description: z.string().trim().max(160, "SEO description must be less than 160 characters").optional(),
+});
 
 const AdminArticleEditor = () => {
   const { id } = useParams();
@@ -170,6 +184,27 @@ const AdminArticleEditor = () => {
 
   const saveArticle = useMutation({
     mutationFn: async () => {
+      // Validate input data
+      try {
+        const validatedData = articleSchema.parse({
+          title,
+          subtitle: subtitle || "",
+          slug,
+          section,
+          summary,
+          body,
+          author_name: authorName,
+          hero_image_url: heroImageUrl || "",
+          seo_description: seoDescription || "",
+        });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          const firstError = error.errors[0];
+          throw new Error(firstError.message);
+        }
+        throw error;
+      }
+
       const tagsArray = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
       
       const articleData = {
