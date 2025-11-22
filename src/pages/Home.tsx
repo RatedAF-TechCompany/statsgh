@@ -1,12 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+
+const ARTICLES_PER_PAGE = 20;
 
 const Home = () => {
   const navigate = useNavigate();
+  const observerTarget = useRef(null);
 
   // Fetch the single most recent article for "Recent Story"
   const { data: recentStory, isLoading: loadingRecent } = useQuery({
@@ -25,16 +29,25 @@ const Home = () => {
     },
   });
 
-  // Fetch all other articles (excluding the recent story)
-  const { data: allArticles, isLoading: loadingArticles } = useQuery({
+  // Fetch all other articles with infinite scrolling (excluding the recent story)
+  const {
+    data: articlesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: loadingArticles,
+  } = useInfiniteQuery({
     queryKey: ["all-articles", recentStory?.id],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = pageParam * ARTICLES_PER_PAGE;
+      const to = from + ARTICLES_PER_PAGE - 1;
+
       let query = supabase
         .from("articles")
         .select("id, title, slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
         .order("published_at", { ascending: false })
-        .limit(20);
+        .range(from, to);
 
       // Exclude the recent story from the list
       if (recentStory?.id) {
@@ -45,9 +58,33 @@ const Home = () => {
       if (error) throw error;
       return data;
     },
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.length < ARTICLES_PER_PAGE) return undefined;
+      return pages.length;
+    },
+    initialPageParam: 0,
     enabled: !loadingRecent, // Wait for recent story to load first
   });
 
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const allArticles = articlesData?.pages.flatMap((page) => page) || [];
   const isLoading = loadingRecent || loadingArticles;
 
   return (
@@ -94,10 +131,28 @@ const Home = () => {
                       isHero={false}
                     />
                   ))}
+
+                  {/* Infinite scroll trigger and loading indicator */}
+                  <div ref={observerTarget} className="py-4">
+                    {isFetchingNextPage ? (
+                      <div className="space-y-4">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="space-y-2 py-4">
+                            <Skeleton className="h-6 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : !hasNextPage ? (
+                      <p className="text-center text-muted-foreground text-sm">
+                        No more stories
+                      </p>
+                    ) : null}
+                  </div>
                 </>
               ) : (
                 <p className="text-center py-6 text-muted-foreground text-sm">
-                  No more articles available
+                  No articles available
                 </p>
               )}
             </div>
