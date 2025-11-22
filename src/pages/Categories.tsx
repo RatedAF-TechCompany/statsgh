@@ -32,8 +32,13 @@ const Categories = () => {
     queryKey: ["isAdmin", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return false;
-      // In preview/development, assume all authenticated users are admin
-      return true;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      return !!data;
     },
     enabled: !!session?.user?.id,
   });
