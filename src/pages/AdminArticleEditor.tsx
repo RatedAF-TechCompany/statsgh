@@ -30,7 +30,7 @@ const articleSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
   subtitle: z.string().trim().max(300, "Subtitle must be less than 300 characters").optional(),
   slug: z.string().trim().min(1, "Slug is required").max(200, "Slug must be less than 200 characters").regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens"),
-  section: z.string().min(1, "Section is required"),
+  section: z.string().min(1, "Category is required"),
   summary: z.string().trim().min(1, "Summary is required").max(500, "Summary must be less than 500 characters"),
   body: z.string().trim().min(1, "Article body is required").max(50000, "Article body must be less than 50,000 characters"),
   author_name: z.string().trim().min(1, "Author name is required").max(100, "Author name must be less than 100 characters"),
@@ -402,14 +402,14 @@ const AdminArticleEditor = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="section">Section *</Label>
+                <Label htmlFor="section">Category *</Label>
                 <Select value={section} onValueChange={setSection} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select section" />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SITE_NAVIGATION.primaryNav
-                      .filter(item => item.type === 'section')
+                    {SITE_NAVIGATION.categories
+                      .filter(item => item.type === 'category')
                       .map((item) => (
                         <SelectItem key={item.slug} value={item.slug}>
                           {item.label}
