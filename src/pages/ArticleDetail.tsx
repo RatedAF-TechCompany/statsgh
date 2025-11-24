@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import DOMPurify from "dompurify";
+import { CommentsList } from "@/components/CommentsList";
+import { CommentForm } from "@/components/CommentForm";
 
 const ArticleDetail = () => {
   const { slug } = useParams();
@@ -294,6 +296,20 @@ const ArticleDetail = () => {
             })
           }}
         />
+
+        {/* Comments Section */}
+        <div className="mt-12 pt-8 border-t border-border">
+          <CommentsList articleId={article.id} />
+          
+          <div className="mt-8">
+            <CommentForm 
+              articleId={article.id} 
+              onCommentSubmitted={() => {
+                queryClient.invalidateQueries({ queryKey: ["comments", article.id] });
+              }}
+            />
+          </div>
+        </div>
       </main>
     </div>
   );
