@@ -314,6 +314,7 @@ export type Database = {
           id: string
           is_published: boolean
           name: string | null
+          parent_id: string | null
           verification_code: string
           verification_expires_at: string
         }
@@ -325,6 +326,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name?: string | null
+          parent_id?: string | null
           verification_code: string
           verification_expires_at: string
         }
@@ -336,6 +338,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name?: string | null
+          parent_id?: string | null
           verification_code?: string
           verification_expires_at?: string
         }
@@ -345,6 +348,13 @@ export type Database = {
             columns: ["article_id"]
             isOneToOne: false
             referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
         ]

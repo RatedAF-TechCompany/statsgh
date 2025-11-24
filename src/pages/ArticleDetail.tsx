@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import React from "react";
+import React, { useState } from "react";
 import DOMPurify from "dompurify";
 import { CommentsList } from "@/components/CommentsList";
 import { CommentForm } from "@/components/CommentForm";
@@ -15,6 +15,8 @@ const ArticleDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null);
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -299,13 +301,27 @@ const ArticleDetail = () => {
 
         {/* Comments Section */}
         <div className="mt-12 pt-8 border-t border-border">
-          <CommentsList articleId={article.id} />
+          <CommentsList 
+            articleId={article.id}
+            onReply={(commentId, author) => {
+              setReplyToId(commentId);
+              setReplyToAuthor(author);
+            }}
+          />
           
           <div className="mt-8">
             <CommentForm 
-              articleId={article.id} 
+              articleId={article.id}
+              replyToId={replyToId}
+              replyToAuthor={replyToAuthor}
+              onCancelReply={() => {
+                setReplyToId(null);
+                setReplyToAuthor(null);
+              }}
               onCommentSubmitted={() => {
                 queryClient.invalidateQueries({ queryKey: ["comments", article.id] });
+                setReplyToId(null);
+                setReplyToAuthor(null);
               }}
             />
           </div>

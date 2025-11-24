@@ -16,6 +16,7 @@ interface CommentRequest {
   name: string;
   email: string;
   body: string;
+  parentId?: string | null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { articleId, name, email, body }: CommentRequest = await req.json();
+    const { articleId, name, email, body, parentId }: CommentRequest = await req.json();
 
     // Validate input
     if (!articleId || !email || !body) {
@@ -56,6 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
         name: name || "Anonymous",
         email,
         body,
+        parent_id: parentId || null,
         verification_code: verificationCode,
         verification_expires_at: verificationExpiresAt.toISOString(),
         is_published: false,
