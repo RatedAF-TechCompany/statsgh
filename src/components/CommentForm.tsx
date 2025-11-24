@@ -9,9 +9,18 @@ import { supabase } from "@/integrations/supabase/client";
 interface CommentFormProps {
   articleId: string;
   onCommentSubmitted: () => void;
+  replyToId?: string | null;
+  replyToAuthor?: string | null;
+  onCancelReply?: () => void;
 }
 
-export const CommentForm = ({ articleId, onCommentSubmitted }: CommentFormProps) => {
+export const CommentForm = ({ 
+  articleId, 
+  onCommentSubmitted, 
+  replyToId, 
+  replyToAuthor,
+  onCancelReply 
+}: CommentFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [body, setBody] = useState("");
@@ -39,6 +48,7 @@ export const CommentForm = ({ articleId, onCommentSubmitted }: CommentFormProps)
           name: name.trim() || "Anonymous",
           email: email.trim(),
           body: body.trim(),
+          parentId: replyToId || null,
         },
       });
 
@@ -59,7 +69,16 @@ export const CommentForm = ({ articleId, onCommentSubmitted }: CommentFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 border-t border-border pt-6">
-      <h3 className="font-serif text-xl font-bold">Leave a Comment</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-serif text-xl font-bold">
+          {replyToId ? `Reply to ${replyToAuthor}` : "Leave a Comment"}
+        </h3>
+        {replyToId && onCancelReply && (
+          <Button type="button" variant="ghost" size="sm" onClick={onCancelReply}>
+            Cancel Reply
+          </Button>
+        )}
+      </div>
       
       <div className="space-y-2">
         <Label htmlFor="name">Name (optional)</Label>
