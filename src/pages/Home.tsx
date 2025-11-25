@@ -68,7 +68,7 @@ const Home = () => {
         {/* Section Title */}
         <div className="mb-8">
           <h2 className="font-serif text-[22px] font-medium tracking-[0.04em]">
-            More World
+            Stats News
           </h2>
         </div>
 
