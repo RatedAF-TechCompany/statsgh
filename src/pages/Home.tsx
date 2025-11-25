@@ -1,10 +1,10 @@
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { RankedArticleItem } from "@/components/RankedArticleItem";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
+import { format } from "date-fns";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -12,49 +12,25 @@ const Home = () => {
   const navigate = useNavigate();
   const observerTarget = useRef(null);
 
-  // Fetch the single most recent article for "Recent Story"
-  const { data: recentStory, isLoading: loadingRecent } = useQuery({
-    queryKey: ["recent-story"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("articles")
-        .select("id, title, slug, section, summary, hero_image_url, published_at")
-        .eq("is_published", true)
-        .order("published_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch all other articles with infinite scrolling (excluding the recent story)
   const {
     data: articlesData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading: loadingArticles,
+    isLoading,
   } = useInfiniteQuery({
-    queryKey: ["all-articles", recentStory?.id],
+    queryKey: ["all-articles"],
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * ARTICLES_PER_PAGE;
       const to = from + ARTICLES_PER_PAGE - 1;
 
-      let query = supabase
+      const { data, error } = await supabase
         .from("articles")
         .select("id, title, slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range(from, to);
 
-      // Exclude the recent story from the list
-      if (recentStory?.id) {
-        query = query.neq("id", recentStory.id);
-      }
-      
-      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -63,10 +39,8 @@ const Home = () => {
       return pages.length;
     },
     initialPageParam: 0,
-    enabled: !loadingRecent, // Wait for recent story to load first
   });
 
-  // Set up intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -85,76 +59,99 @@ const Home = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const allArticles = articlesData?.pages.flatMap((page) => page) || [];
-  const isLoading = loadingRecent || loadingArticles;
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-[480px] mx-auto bg-background">
+      <main className="max-w-[1120px] mx-auto px-8 py-8">
+        {/* Section Title */}
+        <div className="mb-8">
+          <h2 className="font-serif text-[22px] font-medium tracking-[0.04em]">
+            More World
+          </h2>
+        </div>
+
         {isLoading ? (
-          <div className="px-4 space-y-4 pt-4">
+          <div className="space-y-6">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="space-y-2 py-4">
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-16 w-full" />
+              <div key={i} className="flex gap-8 py-5 border-b border-border">
+                <div className="w-40">
+                  <Skeleton className="h-4 w-24 mb-6" />
+                  <Skeleton className="h-[135px] w-[240px]" />
+                </div>
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-6 w-full mb-2" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <>
-            {/* Recent Story Section */}
-            {recentStory && (
-              <div className="px-4 pt-4 pb-6 border-b border-border">
-                <div className="pb-2 mb-2">
-                  <h2 className="font-serif text-sm font-bold tracking-[0.2em] uppercase text-muted-foreground">
-                    Recent Story
-                  </h2>
-                </div>
-                <RankedArticleItem 
-                  article={recentStory}
-                  rank={0}
-                  isHero={true}
-                />
-              </div>
-            )}
-
-            {/* All Other Articles */}
-            <div className="px-4 pt-6">
-              {allArticles && allArticles.length > 0 ? (
-                <>
-                  {allArticles.map((article, index) => (
-                    <RankedArticleItem 
-                      key={article.id} 
-                      article={article}
-                      rank={index + 1}
-                      isHero={false}
-                    />
-                  ))}
-
-                  {/* Infinite scroll trigger and loading indicator */}
-                  <div ref={observerTarget} className="py-4">
-                    {isFetchingNextPage ? (
-                      <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="space-y-2 py-4">
-                            <Skeleton className="h-6 w-full" />
-                            <Skeleton className="h-16 w-full" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : !hasNextPage ? (
-                      <p className="text-center text-muted-foreground text-sm">
-                        No more stories
-                      </p>
-                    ) : null}
+            <div className="space-y-0">
+              {allArticles.map((article) => (
+                <article
+                  key={article.id}
+                  className="flex gap-8 py-5 border-b border-border cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate(`/article/${article.slug}`)}
+                >
+                  {/* Left Column: Date + Image */}
+                  <div className="w-40 flex-shrink-0">
+                    <time className="block font-sans text-[11px] font-normal tracking-[0.18em] uppercase text-muted-foreground mb-6">
+                      {article.published_at
+                        ? format(new Date(article.published_at), "MMMM d yyyy")
+                        : ""}
+                    </time>
+                    {article.hero_image_url && (
+                      <img
+                        src={article.hero_image_url}
+                        alt={article.title}
+                        className="w-[240px] h-[135px] object-cover"
+                      />
+                    )}
                   </div>
-                </>
-              ) : (
-                <p className="text-center py-6 text-muted-foreground text-sm">
-                  No articles available
+
+                  {/* Right Column: Category + Title + Excerpt */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-sans text-[12px] font-semibold tracking-[0.18em] text-[#C70033] mb-1">
+                      {article.section}
+                    </div>
+                    <h3 className="font-serif text-[18px] font-medium leading-[1.25] text-foreground mb-1.5 hover:underline">
+                      {article.title}
+                    </h3>
+                    <p className="font-sans text-[13px] leading-[1.4] text-muted-foreground line-clamp-3">
+                      {article.summary}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {/* Infinite scroll trigger */}
+            <div ref={observerTarget} className="py-8">
+              {isFetchingNextPage ? (
+                <div className="space-y-6">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex gap-8 py-5 border-b border-border">
+                      <div className="w-40">
+                        <Skeleton className="h-4 w-24 mb-6" />
+                        <Skeleton className="h-[135px] w-[240px]" />
+                      </div>
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-6 w-full mb-2" />
+                        <Skeleton className="h-16 w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : !hasNextPage ? (
+                <p className="text-center text-muted-foreground text-sm font-sans">
+                  No more stories
                 </p>
-              )}
+              ) : null}
             </div>
           </>
         )}

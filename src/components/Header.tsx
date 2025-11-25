@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, ExternalLink, LayoutDashboard } from "lucide-react";
+import { Menu, User, LogOut, ExternalLink, LayoutDashboard, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -58,13 +58,14 @@ export const Header = () => {
 
   return (
     <div className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="max-w-[480px] mx-auto px-4 h-12 flex items-center justify-between">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-transparent">
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
+      <div className="max-w-[1120px] mx-auto px-8 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-transparent">
+                <Menu className="h-[22px] w-[22px]" />
+              </Button>
+            </SheetTrigger>
           <SheetContent side="left" className="w-72 flex flex-col">
           <SheetHeader className="flex-shrink-0">
             <SheetTitle className="font-serif text-xl font-semibold">
@@ -118,13 +119,17 @@ export const Header = () => {
             </div>
           </nav>
           </SheetContent>
-        </Sheet>
+          </Sheet>
+          <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-transparent">
+            <Search className="h-[22px] w-[22px]" />
+          </Button>
+        </div>
 
         <div 
           onClick={() => navigate("/")}
-          className="cursor-pointer hover:opacity-90 transition-opacity"
+          className="cursor-pointer hover:opacity-90 transition-opacity absolute left-1/2 -translate-x-1/2"
         >
-          <h1 className="font-serif text-xl font-semibold">
+          <h1 className="font-serif text-[20px] font-medium tracking-[0.06em]">
             StatsGH
           </h1>
         </div>
