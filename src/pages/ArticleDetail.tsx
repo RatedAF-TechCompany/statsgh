@@ -99,7 +99,13 @@ const ArticleDetail = () => {
   React.useEffect(() => {
     if (article) {
       // Set page title
-      document.title = `${article.title} - StatsGH`;
+      document.title = `${article.title} | StatsGH`;
+      
+      // Determine absolute image URL - ensure it's a full URL
+      let imageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        imageUrl = `https://statsgh.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      }
       
       // Add/update canonical link
       let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
@@ -117,20 +123,14 @@ const ArticleDetail = () => {
         metaDesc.name = 'description';
         document.head.appendChild(metaDesc);
       }
-      metaDesc.content = article.summary;
+      metaDesc.content = article.summary || article.subtitle || 'Latest Ghana news from StatsGH';
       
-      // Determine absolute image URL - ensure it's a full URL
-      let imageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
-      if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `https://statsgh.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-      }
-      
-      // Add/update OG tags
+      // Add/update OG tags - these will override homepage tags
       const ogTags = [
         { property: 'og:type', content: 'article' },
         { property: 'og:url', content: `https://statsgh.com/article/${article.slug}` },
         { property: 'og:title', content: article.title },
-        { property: 'og:description', content: article.summary },
+        { property: 'og:description', content: article.summary || article.subtitle || 'Latest Ghana news from StatsGH' },
         { property: 'og:image', content: imageUrl },
         { property: 'og:site_name', content: 'StatsGH' },
         { property: 'article:published_time', content: article.published_at },
@@ -149,12 +149,12 @@ const ArticleDetail = () => {
         tag.content = content;
       });
       
-      // Add/update Twitter card tags
+      // Add/update Twitter card tags - these will override homepage tags
       const twitterTags = [
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:site', content: '@StatsGH' },
         { name: 'twitter:title', content: article.title },
-        { name: 'twitter:description', content: article.summary },
+        { name: 'twitter:description', content: article.summary || article.subtitle || 'Ghana news explained with data' },
         { name: 'twitter:image', content: imageUrl },
       ];
       
@@ -169,6 +169,11 @@ const ArticleDetail = () => {
         tag.content = content;
       });
     }
+    
+    // Cleanup function to restore homepage meta tags when leaving article
+    return () => {
+      document.title = 'StatsGH – Ghana\'s Premier News Source';
+    };
   }, [article]);
 
   const handleShare = () => {
@@ -222,6 +227,12 @@ const ArticleDetail = () => {
     { year: "numeric", month: "long", day: "numeric" }
   );
 
+  // Prepare absolute image URL for structured data
+  let absoluteImageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
+  if (absoluteImageUrl && !absoluteImageUrl.startsWith('http')) {
+    absoluteImageUrl = `https://statsgh.com${absoluteImageUrl.startsWith('/') ? '' : '/'}${absoluteImageUrl}`;
+  }
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
@@ -230,13 +241,13 @@ const ArticleDetail = () => {
       "@id": `https://statsgh.com/article/${article.slug}`
     },
     "headline": article.title,
-    "description": article.summary,
-    "image": article.hero_image_url ? [article.hero_image_url] : [],
+    "description": article.summary || article.subtitle || 'Latest Ghana news from StatsGH',
+    "image": [absoluteImageUrl],
     "datePublished": article.published_at,
-    "dateModified": article.updated_at,
+    "dateModified": article.updated_at || article.published_at,
     "author": {
-      "@type": "Person",
-      "name": article.author_name
+      "@type": "Organization",
+      "name": "StatsGH"
     },
     "publisher": {
       "@type": "Organization",
@@ -244,7 +255,7 @@ const ArticleDetail = () => {
       "url": "https://statsgh.com",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://statsgh.com/icons/header-logo-desktop.png"
+        "url": "https://statsgh.com/social/statsgh-og-1200x630.png"
       }
     },
     "isAccessibleForFree": "true"
