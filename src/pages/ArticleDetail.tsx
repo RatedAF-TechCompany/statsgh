@@ -138,6 +138,36 @@ const ArticleDetail = () => {
         { property: 'article:author', content: article.author_name },
       ];
       
+      // Add video OG tags if video_url exists
+      if (article.video_url) {
+        let videoUrl = article.video_url;
+        // Ensure full URL
+        if (videoUrl && !videoUrl.startsWith('http')) {
+          videoUrl = `https://statsgh.com${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`;
+        }
+        
+        ogTags.push(
+          { property: 'og:video', content: videoUrl },
+          { property: 'og:video:secure_url', content: videoUrl },
+          { property: 'og:video:type', content: 'text/html' }
+        );
+      }
+      
+      // Add audio OG tags if audio_url exists
+      if (article.audio_url) {
+        let audioUrl = article.audio_url;
+        // Ensure full URL
+        if (audioUrl && !audioUrl.startsWith('http')) {
+          audioUrl = `https://statsgh.com${audioUrl.startsWith('/') ? '' : '/'}${audioUrl}`;
+        }
+        
+        ogTags.push(
+          { property: 'og:audio', content: audioUrl },
+          { property: 'og:audio:secure_url', content: audioUrl },
+          { property: 'og:audio:type', content: 'audio/mpeg' }
+        );
+      }
+      
       ogTags.forEach(({ property, content }) => {
         if (!content) return;
         let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
@@ -157,6 +187,20 @@ const ArticleDetail = () => {
         { name: 'twitter:description', content: article.summary || article.subtitle || 'Ghana news explained with data' },
         { name: 'twitter:image', content: imageUrl },
       ];
+      
+      // Add video player card if video exists
+      if (article.video_url) {
+        twitterTags[0] = { name: 'twitter:card', content: 'player' };
+        let videoUrl = article.video_url;
+        if (videoUrl && !videoUrl.startsWith('http')) {
+          videoUrl = `https://statsgh.com${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`;
+        }
+        twitterTags.push(
+          { name: 'twitter:player', content: videoUrl },
+          { name: 'twitter:player:width', content: '1280' },
+          { name: 'twitter:player:height', content: '720' }
+        );
+      }
       
       twitterTags.forEach(({ name, content }) => {
         if (!content) return;

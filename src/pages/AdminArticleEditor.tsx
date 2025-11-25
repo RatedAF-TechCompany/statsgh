@@ -53,6 +53,8 @@ const AdminArticleEditor = () => {
   const [body, setBody] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [audioUrl, setAudioUrl] = useState("");
   const [tags, setTags] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
   const [status, setStatus] = useState("draft");
@@ -126,6 +128,8 @@ const AdminArticleEditor = () => {
       setBody(article.body);
       setAuthorName(article.author_name);
       setHeroImageUrl(article.hero_image_url || "");
+      setVideoUrl(article.video_url || "");
+      setAudioUrl(article.audio_url || "");
       setTags(article.tags?.join(", ") || "");
       setSeoDescription(article.seo_description || "");
       setStatus(article.status || "draft");
@@ -222,6 +226,8 @@ const AdminArticleEditor = () => {
         body,
         author_name: authorName,
         hero_image_url: heroImageUrl || null,
+        video_url: videoUrl || null,
+        audio_url: audioUrl || null,
         tags: tagsArray,
         seo_description: seoDescription,
         status,
@@ -359,6 +365,32 @@ const AdminArticleEditor = () => {
                   currentImage={heroImageUrl}
                   onRemove={() => setHeroImageUrl("")}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="video-url">Video URL (YouTube, Vimeo, etc.)</Label>
+                <Input
+                  id="video-url"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enhances social media preview with video playback
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="audio-url">Audio URL (MP3, podcast, etc.)</Label>
+                <Input
+                  id="audio-url"
+                  value={audioUrl}
+                  onChange={(e) => setAudioUrl(e.target.value)}
+                  placeholder="https://example.com/audio.mp3"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Adds audio player to social media previews
+                </p>
               </div>
 
               <div className="space-y-2">

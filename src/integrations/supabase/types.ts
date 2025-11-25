@@ -106,6 +106,7 @@ export type Database = {
       }
       articles: {
         Row: {
+          audio_url: string | null
           author_name: string
           body: string
           category_id: string | null
@@ -125,8 +126,10 @@ export type Database = {
           tags: string[] | null
           title: string
           updated_at: string
+          video_url: string | null
         }
         Insert: {
+          audio_url?: string | null
           author_name: string
           body: string
           category_id?: string | null
@@ -146,8 +149,10 @@ export type Database = {
           tags?: string[] | null
           title: string
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
+          audio_url?: string | null
           author_name?: string
           body?: string
           category_id?: string | null
@@ -167,6 +172,7 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
           {
