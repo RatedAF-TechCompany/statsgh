@@ -119,13 +119,17 @@ const ArticleDetail = () => {
       }
       metaDesc.content = article.summary;
       
+      // Determine absolute image URL
+      const imageUrl = article.hero_image_url || 'https://statsgh.com/icons/og-image-1200x630.png';
+      
       // Add/update OG tags
       const ogTags = [
-        { property: 'og:title', content: article.title },
-        { property: 'og:description', content: article.summary },
         { property: 'og:type', content: 'article' },
         { property: 'og:url', content: `https://statsgh.com/article/${article.slug}` },
-        { property: 'og:image', content: article.hero_image_url || '' },
+        { property: 'og:title', content: article.title },
+        { property: 'og:description', content: article.summary },
+        { property: 'og:image', content: imageUrl },
+        { property: 'og:site_name', content: 'StatsGH' },
         { property: 'article:published_time', content: article.published_at },
         { property: 'article:modified_time', content: article.updated_at },
         { property: 'article:author', content: article.author_name },
@@ -137,6 +141,26 @@ const ArticleDetail = () => {
         if (!tag) {
           tag = document.createElement('meta');
           tag.setAttribute('property', property);
+          document.head.appendChild(tag);
+        }
+        tag.content = content;
+      });
+      
+      // Add/update Twitter card tags
+      const twitterTags = [
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:site', content: '@StatsGH' },
+        { name: 'twitter:title', content: article.title },
+        { name: 'twitter:description', content: article.summary },
+        { name: 'twitter:image', content: imageUrl },
+      ];
+      
+      twitterTags.forEach(({ name, content }) => {
+        if (!content) return;
+        let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+        if (!tag) {
+          tag = document.createElement('meta');
+          tag.name = name;
           document.head.appendChild(tag);
         }
         tag.content = content;
