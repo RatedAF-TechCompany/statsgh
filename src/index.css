@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,45 +9,48 @@
 
 @layer base {
   :root {
-    /* Base colors - #f5e6d8 warm beige background */
-    --background: 30 45% 92%;
-    --foreground: 0 0% 15%;
+    /* FT-inspired color scheme */
+    --background: 40 34% 93%; /* #F7F1E1 cream */
+    --foreground: 0 0% 0%; /* #000000 black */
     
-    /* Divider and borders - #e0cdb9 */
-    --border: 30 35% 86%;
+    /* Divider and borders */
+    --border: 35 28% 81%; /* #E0CDB5 light brown */
     
     /* Text colors */
-    --primary-text: 0 0% 15%;
-    --muted-foreground: 30 20% 44%;
+    --primary-text: 0 0% 0%;
+    --muted-foreground: 27 6% 38%; /* #5F5A56 muted brown */
+    
+    /* Red accent for categories */
+    --category-red: 346 100% 39%; /* #C70033 */
     
     /* Card styling */
-    --card: 30 45% 92%;
-    --card-foreground: 0 0% 15%;
+    --card: 40 34% 93%;
+    --card-foreground: 0 0% 0%;
     
     /* Input and interactive elements */
-    --input: 30 35% 86%;
-    --ring: 0 0% 15%;
+    --input: 35 28% 81%;
+    --ring: 0 0% 0%;
     
     /* Secondary actions */
-    --secondary: 30 30% 85%;
-    --secondary-foreground: 0 0% 15%;
+    --secondary: 35 28% 81%;
+    --secondary-foreground: 0 0% 0%;
     
     /* Muted backgrounds */
-    --muted: 30 20% 44%;
+    --muted: 35 20% 90%;
     
     /* Popover */
-    --popover: 30 45% 92%;
-    --popover-foreground: 0 0% 15%;
+    --popover: 40 34% 93%;
+    --popover-foreground: 0 0% 0%;
     
     /* Primary/Accent */
-    --primary: 0 0% 15%;
-    --primary-foreground: 30 45% 92%;
-    --accent: 30 30% 85%;
-    --accent-foreground: 0 0% 15%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 40 34% 93%;
+    --accent: 35 28% 81%;
+    --accent-foreground: 0 0% 0%;
     
     /* Destructive */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 30 45% 92%;
+    --destructive-foreground: 40 34% 93%;
     
     --radius: 0rem;
   }
@@ -59,12 +63,16 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
   }
 }
 
 @layer utilities {
   .font-serif {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+  }
+  
+  .font-sans {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
   }
 }
