@@ -119,8 +119,11 @@ const ArticleDetail = () => {
       }
       metaDesc.content = article.summary;
       
-      // Determine absolute image URL
-      const imageUrl = article.hero_image_url || 'https://statsgh.com/icons/og-image-1200x630.png';
+      // Determine absolute image URL - ensure it's a full URL
+      let imageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        imageUrl = `https://statsgh.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      }
       
       // Add/update OG tags
       const ogTags = [
