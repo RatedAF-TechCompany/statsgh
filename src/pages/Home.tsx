@@ -69,9 +69,9 @@ const Home = () => {
           className="p-2 -ml-2 hover:opacity-70 transition-opacity"
           aria-label="Menu"
         >
-          <Menu size={24} className="text-foreground" />
+          <Menu size={24} className="text-ft-maroon" />
         </button>
-        <h1 className="font-serif text-lg font-semibold text-foreground">
+        <h1 className="font-serif text-lg font-semibold text-ft-maroon">
           StatsGH
         </h1>
         <button 
@@ -79,7 +79,7 @@ const Home = () => {
           className="p-2 -mr-2 hover:opacity-70 transition-opacity"
           aria-label="User account"
         >
-          <User size={22} className="text-foreground" />
+          <User size={22} className="text-ft-maroon" />
         </button>
       </header>
 
@@ -119,11 +119,11 @@ const Home = () => {
                     className="w-full aspect-video object-cover mb-3"
                   />
                 )}
-                <h1 className="font-serif text-[22px] leading-[28px] font-medium text-foreground mb-2">
+                <h1 className="font-serif text-[22px] leading-[28px] font-medium text-ft-maroon mb-2">
                   {leadStory.title}
                 </h1>
                 {leadStory.summary && (
-                  <p className="font-sans text-[14px] leading-[20px] text-muted-foreground line-clamp-3">
+                  <p className="font-sans text-[14px] leading-[20px] text-ft-maroon line-clamp-3">
                     {leadStory.summary}
                   </p>
                 )}
@@ -138,7 +138,7 @@ const Home = () => {
                   className="py-4 border-t border-border cursor-pointer hover:opacity-70 transition-opacity"
                   onClick={() => navigate(`/article/${article.slug}`)}
                 >
-                  <h2 className="font-serif text-[17px] leading-[23px] font-medium text-foreground">
+                  <h2 className="font-serif text-[17px] leading-[23px] font-medium text-ft-maroon">
                     {article.title}
                   </h2>
                 </article>
@@ -157,7 +157,7 @@ const Home = () => {
                   ))}
                 </div>
               ) : !hasNextPage ? (
-                <p className="text-center text-muted-foreground text-sm font-sans py-4 border-t border-border">
+                <p className="text-center text-ft-maroon text-sm font-sans py-4 border-t border-border">
                   No more stories
                 </p>
               ) : null}
