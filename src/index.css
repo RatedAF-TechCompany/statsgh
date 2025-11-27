@@ -23,6 +23,9 @@
     /* Red accent for categories */
     --category-red: 346 100% 39%; /* #C70033 */
     
+    /* FT maroon for text */
+    --ft-maroon: 334 100% 30%; /* #9A0044 */
+    
     /* Card styling */
     --card: 40 34% 93%;
     --card-foreground: 0 0% 0%;

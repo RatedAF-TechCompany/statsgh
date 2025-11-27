@@ -57,6 +57,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "ft-maroon": "hsl(var(--ft-maroon))",
       },
       borderRadius: {
         lg: "var(--radius)",
