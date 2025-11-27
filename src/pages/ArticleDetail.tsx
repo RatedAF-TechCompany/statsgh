@@ -373,11 +373,11 @@ const ArticleDetail = () => {
         )}
 
         <div
-          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-ft-maroon [&_a]:text-ft-maroon [&_a]:underline [&_a]:transition-opacity [&_a]:duration-200 hover:[&_a]:opacity-70"
+          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-foreground [&_a]:text-ft-maroon [&_a]:underline [&_a]:transition-opacity [&_a]:duration-200 hover:[&_a]:opacity-70"
           style={{
             fontSize: "16px",
             lineHeight: "1.6",
-            color: "hsl(var(--ft-maroon))",
+            color: "hsl(var(--foreground))",
           }}
           dangerouslySetInnerHTML={{ 
             __html: DOMPurify.sanitize(article.body, {
