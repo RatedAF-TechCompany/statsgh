@@ -71,6 +71,9 @@ const Home = () => {
         >
           <Menu size={24} className="text-foreground" />
         </button>
+        <h1 className="font-serif text-lg font-semibold text-foreground">
+          StatsGH
+        </h1>
         <button 
           onClick={() => navigate('/auth')}
           className="p-2 -mr-2 hover:opacity-70 transition-opacity"
