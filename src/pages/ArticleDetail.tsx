@@ -254,8 +254,8 @@ const ArticleDetail = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="max-w-3xl mx-auto px-5 py-12 text-center">
-          <h2 className="text-2xl font-serif font-bold mb-4">Article not found</h2>
-          <p className="text-muted-foreground mb-6">
+          <h2 className="text-2xl font-serif font-bold text-ft-maroon mb-4">Article not found</h2>
+          <p className="text-ft-maroon mb-6">
             The article you're looking for doesn't exist or has been removed.
           </p>
           <Button onClick={() => navigate("/")} variant="outline">
@@ -324,15 +324,15 @@ const ArticleDetail = () => {
           Back
         </Button>
 
-        <div className="text-sm font-bold text-accent uppercase mb-2">
+        <div className="text-sm font-bold text-ft-maroon uppercase mb-2">
           {article.section}
         </div>
 
-        <h1 className="font-serif text-3xl font-bold mb-4 leading-tight">
+        <h1 className="font-serif text-3xl font-bold text-ft-maroon mb-4 leading-tight">
           {article.title}
         </h1>
 
-        <div className="flex items-center gap-4 text-xs text-muted-text mb-6">
+        <div className="flex items-center gap-4 text-xs text-ft-maroon mb-6">
           <span>By {article.author_name}</span>
           <span>•</span>
           <span>{publishedDate}</span>
@@ -367,11 +367,11 @@ const ArticleDetail = () => {
         )}
 
         <div
-          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed"
+          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-ft-maroon"
           style={{
             fontSize: "16px",
             lineHeight: "1.6",
-            color: "hsl(var(--foreground))",
+            color: "hsl(var(--ft-maroon))",
           }}
           dangerouslySetInnerHTML={{ 
             __html: DOMPurify.sanitize(article.body, {
