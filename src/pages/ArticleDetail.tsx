@@ -318,7 +318,7 @@ const ArticleDetail = () => {
           variant="ghost"
           size="sm"
           onClick={() => navigate(-1)}
-          className="mb-4"
+          className="mb-4 transition-all duration-200 hover:translate-x-[-4px]"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -345,6 +345,7 @@ const ArticleDetail = () => {
             variant="outline"
             size="sm"
             onClick={() => toggleBookmark.mutate()}
+            className="transition-all duration-200 hover:scale-105"
           >
             <Bookmark
               className="h-4 w-4 mr-2"
@@ -352,7 +353,12 @@ const ArticleDetail = () => {
             />
             {isBookmarked ? "Saved" : "Save"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleShare}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleShare}
+            className="transition-all duration-200 hover:scale-105"
+          >
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
@@ -367,7 +373,7 @@ const ArticleDetail = () => {
         )}
 
         <div
-          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-ft-maroon"
+          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-ft-maroon [&_a]:text-ft-maroon [&_a]:underline [&_a]:transition-opacity [&_a]:duration-200 hover:[&_a]:opacity-70"
           style={{
             fontSize: "16px",
             lineHeight: "1.6",
