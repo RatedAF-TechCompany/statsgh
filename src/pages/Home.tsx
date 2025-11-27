@@ -1,10 +1,9 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Header } from "@/components/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
-import { format } from "date-fns";
+import { Menu, User } from "lucide-react";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -59,96 +58,103 @@ const Home = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const allArticles = articlesData?.pages.flatMap((page) => page) || [];
+  const [leadStory, ...headlines] = allArticles;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {/* Simplified Mobile Header */}
+      <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-background sticky top-0 z-10">
+        <button 
+          onClick={() => navigate('/dashboard')}
+          className="p-2 -ml-2 hover:opacity-70 transition-opacity"
+          aria-label="Menu"
+        >
+          <Menu size={24} className="text-foreground" />
+        </button>
+        <button 
+          onClick={() => navigate('/auth')}
+          className="p-2 -mr-2 hover:opacity-70 transition-opacity"
+          aria-label="User account"
+        >
+          <User size={22} className="text-foreground" />
+        </button>
+      </header>
 
-      <main className="max-w-[1120px] mx-auto px-8 py-8">
-        {/* Section Title */}
-        <div className="mb-8">
-          <h2 className="font-serif text-[22px] font-medium tracking-[0.04em]">
-            Stats News
-          </h2>
-        </div>
-
+      <main className="max-w-3xl mx-auto">
         {isLoading ? (
-          <div className="space-y-6">
+          <div className="px-4">
+            {/* Lead Story Skeleton */}
+            <div className="py-3 pb-6">
+              <Skeleton className="w-full aspect-video mb-3" />
+              <Skeleton className="h-7 w-full mb-2" />
+              <Skeleton className="h-7 w-3/4 mb-3" />
+              <Skeleton className="h-5 w-full mb-1" />
+              <Skeleton className="h-5 w-full mb-1" />
+              <Skeleton className="h-5 w-2/3" />
+            </div>
+            
+            {/* Headlines Skeleton */}
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex gap-8 py-5 border-b border-border">
-                <div className="w-40">
-                  <Skeleton className="h-4 w-24 mb-6" />
-                  <Skeleton className="h-[135px] w-[240px]" />
-                </div>
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-32 mb-2" />
-                  <Skeleton className="h-6 w-full mb-2" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
+              <div key={i} className="py-4 border-t border-border">
+                <Skeleton className="h-6 w-full mb-2" />
+                <Skeleton className="h-6 w-4/5" />
               </div>
             ))}
           </div>
         ) : (
           <>
-            <div className="space-y-0">
-              {allArticles.map((article) => (
+            {/* Lead Story */}
+            {leadStory && (
+              <article 
+                className="px-4 py-3 pb-6 cursor-pointer"
+                onClick={() => navigate(`/article/${leadStory.slug}`)}
+              >
+                {leadStory.hero_image_url && (
+                  <img
+                    src={leadStory.hero_image_url}
+                    alt={leadStory.title}
+                    className="w-full aspect-video object-cover mb-3"
+                  />
+                )}
+                <h1 className="font-serif text-[22px] leading-[28px] font-medium text-foreground mb-2">
+                  {leadStory.title}
+                </h1>
+                {leadStory.summary && (
+                  <p className="font-sans text-[14px] leading-[20px] text-muted-foreground line-clamp-3">
+                    {leadStory.summary}
+                  </p>
+                )}
+              </article>
+            )}
+
+            {/* Headlines List */}
+            <div className="px-4">
+              {headlines.map((article) => (
                 <article
                   key={article.id}
-                  className="flex gap-8 py-5 border-b border-border cursor-pointer hover:opacity-80 transition-opacity"
+                  className="py-4 border-t border-border cursor-pointer hover:opacity-70 transition-opacity"
                   onClick={() => navigate(`/article/${article.slug}`)}
                 >
-                  {/* Left Column: Date + Image */}
-                  <div className="w-40 flex-shrink-0">
-                    <time className="block font-sans text-[11px] font-normal tracking-[0.18em] uppercase text-muted-foreground mb-6">
-                      {article.published_at
-                        ? format(new Date(article.published_at), "MMMM d yyyy")
-                        : ""}
-                    </time>
-                    {article.hero_image_url && (
-                      <img
-                        src={article.hero_image_url}
-                        alt={article.title}
-                        className="w-[240px] h-[135px] object-cover"
-                      />
-                    )}
-                  </div>
-
-                  {/* Right Column: Category + Title + Excerpt */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-sans text-[12px] font-semibold tracking-[0.18em] text-[#C70033] mb-1">
-                      {article.section}
-                    </div>
-                    <h3 className="font-serif text-[18px] font-medium leading-[1.25] text-foreground mb-1.5 hover:underline">
-                      {article.title}
-                    </h3>
-                    <p className="font-sans text-[13px] leading-[1.4] text-muted-foreground line-clamp-3">
-                      {article.summary}
-                    </p>
-                  </div>
+                  <h2 className="font-serif text-[17px] leading-[23px] font-medium text-foreground">
+                    {article.title}
+                  </h2>
                 </article>
               ))}
             </div>
 
             {/* Infinite scroll trigger */}
-            <div ref={observerTarget} className="py-8">
+            <div ref={observerTarget} className="px-4 py-8">
               {isFetchingNextPage ? (
-                <div className="space-y-6">
+                <div>
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex gap-8 py-5 border-b border-border">
-                      <div className="w-40">
-                        <Skeleton className="h-4 w-24 mb-6" />
-                        <Skeleton className="h-[135px] w-[240px]" />
-                      </div>
-                      <div className="flex-1">
-                        <Skeleton className="h-4 w-32 mb-2" />
-                        <Skeleton className="h-6 w-full mb-2" />
-                        <Skeleton className="h-16 w-full" />
-                      </div>
+                    <div key={i} className="py-4 border-t border-border">
+                      <Skeleton className="h-6 w-full mb-2" />
+                      <Skeleton className="h-6 w-4/5" />
                     </div>
                   ))}
                 </div>
               ) : !hasNextPage ? (
-                <p className="text-center text-muted-foreground text-sm font-sans">
+                <p className="text-center text-muted-foreground text-sm font-sans py-4 border-t border-border">
                   No more stories
                 </p>
               ) : null}
