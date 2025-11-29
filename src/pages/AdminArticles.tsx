@@ -3,15 +3,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit, PlusCircle, CheckSquare, Square } from "lucide-react";
+import { Trash2, Edit, PlusCircle, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { logAuditEvent } from "@/lib/audit";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { SITE_NAVIGATION, CATEGORY_MAPPING } from "@/lib/navigation";
 
 const AdminArticles = () => {
@@ -21,6 +22,9 @@ const AdminArticles = () => {
   const [bulkAction, setBulkAction] = useState<"category" | "status" | null>(null);
   const [bulkValue, setBulkValue] = useState<string>("");
   const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -52,7 +56,7 @@ const AdminArticles = () => {
     }
   }, [session, isLoadingAuth, navigate]);
 
-  const { data: articles, isLoading } = useQuery({
+  const { data: allArticles, isLoading } = useQuery({
     queryKey: ["admin-articles"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,6 +67,42 @@ const AdminArticles = () => {
       return data;
     },
   });
+
+  // Filter articles based on search and filters
+  const articles = useMemo(() => {
+    if (!allArticles) return [];
+    
+    return allArticles.filter(article => {
+      // Search filter
+      const matchesSearch = searchQuery === "" || 
+        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        article.summary.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Category filter
+      const matchesCategory = filterCategory === "all" || 
+        article.section === filterCategory;
+      
+      // Status filter
+      const matchesStatus = filterStatus === "all" || 
+        (filterStatus === "published" && article.is_published) ||
+        (filterStatus === "draft" && !article.is_published);
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [allArticles, searchQuery, filterCategory, filterStatus]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedArticles([]);
+  }, [searchQuery, filterCategory, filterStatus]);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterCategory("all");
+    setFilterStatus("all");
+  };
+
+  const hasActiveFilters = searchQuery !== "" || filterCategory !== "all" || filterStatus !== "all";
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -135,7 +175,7 @@ const AdminArticles = () => {
   });
 
   const toggleSelectAll = () => {
-    if (selectedArticles.length === articles?.length) {
+    if (selectedArticles.length === articles?.length && articles?.length > 0) {
       setSelectedArticles([]);
     } else {
       setSelectedArticles(articles?.map(a => a.id) || []);
@@ -170,12 +210,75 @@ const AdminArticles = () => {
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <h1 className="font-serif text-3xl font-bold">Manage Articles</h1>
           <Button onClick={() => navigate("/admin/articles/new")}>
             <PlusCircle className="h-4 w-4 mr-2" />
             New Article
           </Button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search articles by title or content..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Category Filter */}
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {SITE_NAVIGATION.categories
+                  .filter(item => item.type === 'category')
+                  .map((item) => (
+                    <SelectItem key={item.slug} value={item.slug}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Active Filters Indicator */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">
+                Showing {articles?.length || 0} of {allArticles?.length || 0} articles
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="h-7 px-2 text-xs"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear filters
+              </Button>
+            </div>
+          )}
         </div>
 
         {selectedArticles.length > 0 && (
