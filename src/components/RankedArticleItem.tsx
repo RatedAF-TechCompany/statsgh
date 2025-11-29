@@ -57,7 +57,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
           </p>
         )}
         {article.published_at && (
-          <p className="font-sans text-[13px] text-ft-maroon mb-4">
+          <p className="font-sans text-[13px] text-black mb-4">
             <span className="font-semibold">{categoryLabel}</span>
             <span className="mx-1.5">•</span>
             <span>{getTimeAgo(article.published_at)}</span>
@@ -79,7 +79,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
             {article.title}
           </h3>
           {article.published_at && (
-            <p className="font-sans text-[13px] text-ft-maroon">
+            <p className="font-sans text-[13px] text-black">
               <span className="font-semibold">{categoryLabel}</span>
               <span className="mx-1.5">•</span>
               <span>{getTimeAgo(article.published_at)}</span>
