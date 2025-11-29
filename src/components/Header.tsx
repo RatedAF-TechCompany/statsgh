@@ -25,15 +25,15 @@ export const Header = () => {
     },
   });
 
-  const { data: isAdmin } = useQuery({
-    queryKey: ["isAdmin", session?.user?.id],
+  const { data: hasDashboardAccess } = useQuery({
+    queryKey: ["hasDashboardAccess", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return false;
       const { data } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", session.user.id)
-        .eq("role", "admin")
+        .in("role", ["admin", "editor"])
         .maybeSingle();
       return !!data;
     },
@@ -137,7 +137,7 @@ export const Header = () => {
         <div className="flex items-center gap-2">
           {session ? (
             <>
-              {isAdmin && (
+              {hasDashboardAccess && (
                 <Button
                   variant="ghost"
                   size="icon"

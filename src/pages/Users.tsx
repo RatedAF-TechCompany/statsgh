@@ -34,7 +34,7 @@ const Users = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "editor" | "contributor" | "viewer">("contributor");
+  const [inviteRole] = useState<"editor">("editor");
   const [inviteNote, setInviteNote] = useState("");
   const [generatedInvite, setGeneratedInvite] = useState<{token: string; link: string} | null>(null);
 
@@ -176,7 +176,7 @@ const Users = () => {
     setInviteDialogOpen(false);
     setInviteEmail("");
     setInviteFullName("");
-    setInviteRole("contributor");
+    
     setInviteNote("");
     setGeneratedInvite(null);
   };
@@ -335,23 +335,10 @@ const Users = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="role">Role *</Label>
-                  <Select value={inviteRole} onValueChange={(value: any) => setInviteRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                      <SelectItem value="contributor">Contributor</SelectItem>
-                      <SelectItem value="editor">Editor</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Role</Label>
+                  <Input value="Editor" disabled className="mt-2" />
                   <p className="text-xs text-muted-foreground mt-1">
-                    {inviteRole === "admin" && "Can do everything, including managing users"}
-                    {inviteRole === "editor" && "Can create, edit, publish and delete articles"}
-                    {inviteRole === "contributor" && "Can create and edit their own drafts"}
-                    {inviteRole === "viewer" && "Can only view articles in all statuses"}
+                    Editors can create, edit, publish and delete articles
                   </p>
                 </div>
                 <div>
