@@ -79,3 +79,35 @@
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
   }
 }
+
+@layer components {
+  /* Pen-style number highlighting in article content */
+  .prose .number-highlight {
+    position: relative;
+    display: inline-block;
+    padding: 0.1em 0.3em;
+    margin: 0 0.1em;
+    background: hsl(334 60% 96%); /* Very faint maroon tint */
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px hsla(334, 100%, 30%, 0.15);
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .prose .number-highlight::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0.95);
+    width: 100%;
+    height: 1px;
+    background: hsla(334, 100%, 30%, 0.3);
+    border-radius: 50%;
+  }
+  
+  .prose .number-highlight:hover {
+    background: hsl(334 60% 94%);
+    box-shadow: 0 0 0 1.5px hsla(334, 100%, 30%, 0.25);
+  }
+}

@@ -256,9 +256,19 @@ const ArticleDetail = () => {
   }
 
   const sanitizedBody = DOMPurify.sanitize(article.body, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'img'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'img', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'style']
   });
+
+  // Highlight numbers in the article body with a subtle pen-style effect
+  const highlightNumbers = (html: string) => {
+    return html.replace(
+      /\b(\d+(?:[.,]\d+)*(?:\s*%|°C|°F|km|m|kg|g|bn|mn|tn|\$|£|€|¢|GH₵)?)\b/g,
+      '<span class="number-highlight">$1</span>'
+    );
+  };
+
+  const bodyWithHighlightedNumbers = highlightNumbers(sanitizedBody);
 
   return (
     <div className="min-h-screen bg-background">
@@ -325,7 +335,7 @@ const ArticleDetail = () => {
 
           <div 
             className="prose prose-lg max-w-none mb-8 text-foreground"
-            dangerouslySetInnerHTML={{ __html: sanitizedBody }}
+            dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
 
           {article.video_url && (
