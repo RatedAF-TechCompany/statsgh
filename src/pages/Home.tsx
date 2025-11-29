@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Menu, User } from "lucide-react";
+import { Menu, User, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SITE_NAVIGATION } from "@/lib/navigation";
 
@@ -112,13 +112,22 @@ const Home = () => {
         <h1 className="font-serif text-lg font-semibold text-ft-maroon">
           StatsGH
         </h1>
-        <button 
-          onClick={() => navigate('/auth')}
-          className="p-2 -mr-2 hover:opacity-70 transition-opacity"
-          aria-label="User account"
-        >
-          <User size={22} className="text-ft-maroon" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => navigate('/search')}
+            className="p-2 hover:opacity-70 transition-opacity"
+            aria-label="Search"
+          >
+            <Search size={22} className="text-ft-maroon" />
+          </button>
+          <button 
+            onClick={() => navigate('/auth')}
+            className="p-2 -mr-2 hover:opacity-70 transition-opacity"
+            aria-label="User account"
+          >
+            <User size={22} className="text-ft-maroon" />
+          </button>
+        </div>
       </header>
 
       <main className="max-w-3xl mx-auto">

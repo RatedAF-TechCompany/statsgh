@@ -19,6 +19,7 @@ import Analytics from "./pages/Analytics";
 import Users from "./pages/Users";
 import SiteSettings from "./pages/SiteSettings";
 import VerifyComment from "./pages/VerifyComment";
+import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/article/:slug" element={<ArticleDetail />} />
           <Route path="/verify-comment" element={<VerifyComment />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/saved" element={<Saved />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/dashboard" element={<Dashboard />} />
