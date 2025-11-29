@@ -50,11 +50,30 @@ const Auth = () => {
     }
   }, [invitation]);
 
+  const { data: userRole } = useQuery({
+    queryKey: ["userRole", session?.user?.id],
+    queryFn: async () => {
+      if (!session?.user?.id) return null;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      return data?.role || null;
+    },
+    enabled: !!session?.user?.id,
+  });
+
   useEffect(() => {
-    if (session) {
-      navigate("/");
+    if (session && userRole) {
+      // Redirect based on role
+      if (userRole === "admin" || userRole === "editor") {
+        navigate("/dashboard");
+      } else {
+        navigate("/");
+      }
     }
-  }, [session, navigate]);
+  }, [session, userRole, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +99,22 @@ const Auth = () => {
             actionType: "LOGIN",
             description: "User logged in",
           });
-        }
 
-        toast.success("Logged in successfully!");
-        navigate("/");
+          // Check user role and redirect accordingly
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+
+          toast.success("Logged in successfully!");
+          
+          if (roleData?.role === "admin" || roleData?.role === "editor") {
+            navigate("/dashboard");
+          } else {
+            navigate("/");
+          }
+        }
       } else if (invitation) {
         // Accept invitation and create account
         const { data, error } = await supabase.auth.signUp({
@@ -133,7 +164,13 @@ const Auth = () => {
           });
 
           toast.success("Account created successfully!");
-          navigate("/");
+          
+          // Redirect based on assigned role
+          if (invitation.role === "admin" || invitation.role === "editor") {
+            navigate("/dashboard");
+          } else {
+            navigate("/");
+          }
         }
       } else {
         const { error } = await supabase.auth.signUp({
