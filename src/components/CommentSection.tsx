@@ -44,8 +44,7 @@ export function CommentSection({ articleId }: Props) {
 
   return (
     <section className="mt-8 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Comments</h2>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={toggleComposer}
