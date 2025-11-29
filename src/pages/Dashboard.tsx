@@ -87,15 +87,31 @@ const Dashboard = () => {
     }
   }, [session, isLoadingAuth, navigate]);
 
-  // Redirect if not admin
+  const { data: userRole } = useQuery({
+    queryKey: ["userRole", session?.user?.id],
+    queryFn: async () => {
+      if (!session?.user?.id) return null;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      return data?.role || null;
+    },
+    enabled: !!session?.user?.id,
+  });
+
+  const hasAccess = userRole === "admin" || userRole === "editor";
+
+  // Redirect if not admin or editor
   useEffect(() => {
-    if (!isLoadingAuth && !isAdmin && session) {
-      toast.error("Access denied. Admin privileges required.");
+    if (!isLoadingAuth && session && userRole && !hasAccess) {
+      toast.error("Access denied. Admin or Editor privileges required.");
       navigate("/");
     }
-  }, [isAdmin, isLoadingAuth, session, navigate]);
+  }, [hasAccess, isLoadingAuth, session, userRole, navigate]);
 
-  if (!session || isLoadingAuth || !isAdmin) {
+  if (!session || isLoadingAuth || !hasAccess) {
     return null;
   }
 
