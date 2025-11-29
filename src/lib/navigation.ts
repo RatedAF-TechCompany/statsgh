@@ -3,16 +3,20 @@ export const SITE_NAVIGATION = {
   categories: [
     { label: "Top Stories", slug: "top-stories", type: "category" as const },
     { label: "Economy & Inflation", slug: "economy-inflation", type: "category" as const },
-    { label: "Public Finance & Debt", slug: "public-finance-debt", type: "category" as const },
-    { label: "Markets & Banking", slug: "markets-banking", type: "category" as const },
-    { label: "Business & Corporates", slug: "business", type: "category" as const },
-    { label: "Trade & Investment", slug: "trade-investment", type: "category" as const },
-    { label: "Energy & Infrastructure", slug: "energy-infra", type: "category" as const },
-    { label: "Households, Jobs & Wages", slug: "households-jobs", type: "category" as const },
-    { label: "Regions & Cities", slug: "regions-cities", type: "category" as const },
-    { label: "DataLab / Charts", slug: "datalab", type: "category" as const },
-    { label: "Opinion & Columns", slug: "opinion-columns", type: "category" as const },
-    { label: "Explainers & Guides", slug: "explainers-guides", type: "category" as const },
+    { label: "Public Revenue & Spending", slug: "public-finance", type: "category" as const },
+    { label: "Jobs, Salaries & Labour Market", slug: "labour-salaries", type: "category" as const },
+    { label: "Agriculture & Food Systems", slug: "agriculture-food", type: "category" as const },
+    { label: "Energy & Natural Resources", slug: "energy-resources", type: "category" as const },
+    { label: "Trade, Markets & Investment", slug: "trade-investment", type: "category" as const },
+    { label: "Health & Social Indicators", slug: "health-data", type: "category" as const },
+    { label: "Education & Human Capital", slug: "education", type: "category" as const },
+    { label: "Transport, Housing & Infrastructure", slug: "infrastructure-transport", type: "category" as const },
+    { label: "Crime, Security & Governance", slug: "security-governance", type: "category" as const },
+    { label: "Technology & Innovation", slug: "technology-innovation", type: "category" as const },
+    { label: "Environment & Climate Data", slug: "environment-climate", type: "category" as const },
+    { label: "Population & Demographics", slug: "population", type: "category" as const },
+    { label: "Business Benchmarks", slug: "business", type: "category" as const },
+    { label: "Charts & Explainers", slug: "charts-explainers", type: "category" as const },
     { label: "GhanaCrimes", slug: "ghanacrimes", type: "external" as const, url: "https://ghanacrimes.com" }
   ]
 };
@@ -20,17 +24,21 @@ export const SITE_NAVIGATION = {
 export const CATEGORY_MAPPING = {
   "top-stories": "Top Stories",
   "economy-inflation": "Economy & Inflation",
-  "public-finance-debt": "Public Finance & Debt",
-  "markets-banking": "Markets & Banking",
-  "energy-infra": "Energy & Infrastructure",
-  "business": "Business & Corporates",
-  "households-jobs": "Households, Jobs & Wages",
-  "trade-investment": "Trade & Investment",
-  "policy-governance": "Policy & Governance",
-  "datalab": "DataLab / Charts",
-  "regions-cities": "Regions & Cities",
-  "opinion-columns": "Opinion & Columns",
-  "explainers-guides": "Explainers & Guides"
+  "public-finance": "Public Revenue & Spending",
+  "labour-salaries": "Jobs, Salaries & Labour Market",
+  "agriculture-food": "Agriculture & Food Systems",
+  "energy-resources": "Energy & Natural Resources",
+  "trade-investment": "Trade, Markets & Investment",
+  "health-data": "Health & Social Indicators",
+  "education": "Education & Human Capital",
+  "infrastructure-transport": "Transport, Housing & Infrastructure",
+  "security-governance": "Crime, Security & Governance",
+  "technology-innovation": "Technology & Innovation",
+  "environment-climate": "Environment & Climate Data",
+  "population": "Population & Demographics",
+  "business": "Business Benchmarks",
+  "charts-explainers": "Charts & Explainers",
+  "ghanacrimes": "GhanaCrimes"
 } as const;
 
 export type CategorySlug = keyof typeof CATEGORY_MAPPING;

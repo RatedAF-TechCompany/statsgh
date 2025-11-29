@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { CommentsList } from "@/components/CommentsList";
 import { CommentForm } from "@/components/CommentForm";
 
 const ArticleDetail = () => {
-  const { slug } = useParams();
+  const { slug, categorySlug } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyToId, setReplyToId] = useState<string | null>(null);
@@ -27,7 +27,7 @@ const ArticleDetail = () => {
   });
 
   const { data: article, isLoading, error } = useQuery({
-    queryKey: ["article", slug],
+    queryKey: ["article", slug, categorySlug],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("articles")
@@ -51,6 +51,17 @@ const ArticleDetail = () => {
       return data;
     },
   });
+
+  // Handle redirects for legacy URLs and mismatched category slugs
+  useEffect(() => {
+    if (article) {
+      // If coming from legacy /article/:slug URL or wrong category slug
+      if (!categorySlug || categorySlug !== article.category_slug) {
+        // 301 redirect to new URL structure
+        navigate(`/${article.category_slug}/${article.slug}`, { replace: true });
+      }
+    }
+  }, [article, categorySlug, slug, navigate]);
 
   const { data: isBookmarked } = useQuery({
     queryKey: ["bookmark", article?.id, session?.user?.id],
@@ -98,137 +109,121 @@ const ArticleDetail = () => {
   // Update document head with meta tags - MUST be before early returns
   React.useEffect(() => {
     if (article) {
-      // Set page title
-      document.title = `${article.title} | StatsGH`;
+      const canonicalUrl = `https://statsgh.com/${article.category_slug}/${article.slug}`;
+      const baseUrl = "https://statsgh.com";
       
-      // Determine absolute image URL - ensure it's a full URL
-      let imageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
-      if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `https://statsgh.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      // Helper to make URLs absolute
+      const makeAbsoluteUrl = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        if (url.startsWith('/')) return `${baseUrl}${url}`;
+        return `${baseUrl}/${url}`;
+      };
+
+      const absoluteImageUrl = makeAbsoluteUrl(article.hero_image_url);
+      const absoluteVideoUrl = makeAbsoluteUrl(article.video_url);
+      const absoluteAudioUrl = makeAbsoluteUrl(article.audio_url);
+
+      // Update page title
+      document.title = `${article.title} - StatsGH`;
+      
+      // Update or create canonical link
+      let canonicalLink = document.querySelector('link[rel="canonical"]');
+      if (!canonicalLink) {
+        canonicalLink = document.createElement('link');
+        canonicalLink.setAttribute('rel', 'canonical');
+        document.head.appendChild(canonicalLink);
       }
-      
-      // Add/update canonical link
-      let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
-      if (!canonical) {
-        canonical = document.createElement('link');
-        canonical.rel = 'canonical';
-        document.head.appendChild(canonical);
+      canonicalLink.setAttribute('href', canonicalUrl);
+
+      // Update or create meta description
+      let metaDescription = document.querySelector('meta[name="description"]');
+      if (!metaDescription) {
+        metaDescription = document.createElement('meta');
+        metaDescription.setAttribute('name', 'description');
+        document.head.appendChild(metaDescription);
       }
-      canonical.href = `https://statsgh.com/article/${article.slug}`;
-      
-      // Add/update meta description
-      let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
-      if (!metaDesc) {
-        metaDesc = document.createElement('meta');
-        metaDesc.name = 'description';
-        document.head.appendChild(metaDesc);
-      }
-      metaDesc.content = article.summary || article.subtitle || 'Latest Ghana news from StatsGH';
-      
-      // Add/update OG tags - these will override homepage tags
+      metaDescription.setAttribute('content', article.seo_description || article.summary);
+
+      // Update or create Open Graph meta tags
       const ogTags = [
-        { property: 'og:type', content: 'article' },
-        { property: 'og:url', content: `https://statsgh.com/article/${article.slug}` },
         { property: 'og:title', content: article.title },
-        { property: 'og:description', content: article.summary || article.subtitle || 'Latest Ghana news from StatsGH' },
-        { property: 'og:image', content: imageUrl },
+        { property: 'og:description', content: article.seo_description || article.summary },
+        { property: 'og:type', content: 'article' },
+        { property: 'og:url', content: canonicalUrl },
         { property: 'og:site_name', content: 'StatsGH' },
-        { property: 'article:published_time', content: article.published_at },
-        { property: 'article:modified_time', content: article.updated_at },
+        ...(absoluteImageUrl ? [
+          { property: 'og:image', content: absoluteImageUrl },
+          { property: 'og:image:width', content: '1200' },
+          { property: 'og:image:height', content: '630' }
+        ] : []),
+        ...(absoluteVideoUrl ? [{ property: 'og:video', content: absoluteVideoUrl }] : []),
+        ...(absoluteAudioUrl ? [{ property: 'og:audio', content: absoluteAudioUrl }] : []),
+        { property: 'article:published_time', content: article.published_at || '' },
+        { property: 'article:modified_time', content: article.updated_at || '' },
         { property: 'article:author', content: article.author_name },
+        { property: 'article:section', content: article.section },
       ];
-      
-      // Add video OG tags if video_url exists
-      if (article.video_url) {
-        let videoUrl = article.video_url;
-        // Ensure full URL
-        if (videoUrl && !videoUrl.startsWith('http')) {
-          videoUrl = `https://statsgh.com${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`;
-        }
-        
-        ogTags.push(
-          { property: 'og:video', content: videoUrl },
-          { property: 'og:video:secure_url', content: videoUrl },
-          { property: 'og:video:type', content: 'text/html' }
-        );
-      }
-      
-      // Add audio OG tags if audio_url exists
-      if (article.audio_url) {
-        let audioUrl = article.audio_url;
-        // Ensure full URL
-        if (audioUrl && !audioUrl.startsWith('http')) {
-          audioUrl = `https://statsgh.com${audioUrl.startsWith('/') ? '' : '/'}${audioUrl}`;
-        }
-        
-        ogTags.push(
-          { property: 'og:audio', content: audioUrl },
-          { property: 'og:audio:secure_url', content: audioUrl },
-          { property: 'og:audio:type', content: 'audio/mpeg' }
-        );
-      }
-      
+
       ogTags.forEach(({ property, content }) => {
         if (!content) return;
-        let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
-        if (!tag) {
-          tag = document.createElement('meta');
-          tag.setAttribute('property', property);
-          document.head.appendChild(tag);
+        let metaTag = document.querySelector(`meta[property="${property}"]`);
+        if (!metaTag) {
+          metaTag = document.createElement('meta');
+          metaTag.setAttribute('property', property);
+          document.head.appendChild(metaTag);
         }
-        tag.content = content;
+        metaTag.setAttribute('content', content);
       });
-      
-      // Add/update Twitter card tags - these will override homepage tags
+
+      // Update or create Twitter Card meta tags
       const twitterTags = [
-        { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:site', content: '@StatsGH' },
+        { name: 'twitter:card', content: absoluteVideoUrl ? 'player' : (absoluteImageUrl ? 'summary_large_image' : 'summary') },
         { name: 'twitter:title', content: article.title },
-        { name: 'twitter:description', content: article.summary || article.subtitle || 'Ghana news explained with data' },
-        { name: 'twitter:image', content: imageUrl },
+        { name: 'twitter:description', content: article.seo_description || article.summary },
+        ...(absoluteImageUrl ? [{ name: 'twitter:image', content: absoluteImageUrl }] : []),
+        ...(absoluteVideoUrl ? [{ name: 'twitter:player', content: absoluteVideoUrl }] : []),
       ];
-      
-      // Add video player card if video exists
-      if (article.video_url) {
-        twitterTags[0] = { name: 'twitter:card', content: 'player' };
-        let videoUrl = article.video_url;
-        if (videoUrl && !videoUrl.startsWith('http')) {
-          videoUrl = `https://statsgh.com${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`;
-        }
-        twitterTags.push(
-          { name: 'twitter:player', content: videoUrl },
-          { name: 'twitter:player:width', content: '1280' },
-          { name: 'twitter:player:height', content: '720' }
-        );
-      }
-      
+
       twitterTags.forEach(({ name, content }) => {
         if (!content) return;
-        let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
-        if (!tag) {
-          tag = document.createElement('meta');
-          tag.name = name;
-          document.head.appendChild(tag);
+        let metaTag = document.querySelector(`meta[name="${name}"]`);
+        if (!metaTag) {
+          metaTag = document.createElement('meta');
+          metaTag.setAttribute('name', name);
+          document.head.appendChild(metaTag);
         }
-        tag.content = content;
+        metaTag.setAttribute('content', content);
       });
+
+      // Cleanup function to reset document title when component unmounts
+      return () => {
+        document.title = 'StatsGH';
+      };
     }
-    
-    // Cleanup function to restore homepage meta tags when leaving article
-    return () => {
-      document.title = 'StatsGH – Ghana\'s Premier News Source';
-    };
   }, [article]);
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    const url = `https://statsgh.com/${article?.category_slug}/${article?.slug}`;
+    
     if (navigator.share) {
-      navigator.share({
-        title: article?.title,
-        url: window.location.href,
-      });
+      try {
+        await navigator.share({
+          title: article?.title,
+          text: article?.summary,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+      }
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard");
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied to clipboard");
+      } catch (err) {
+        toast.error("Failed to copy link");
+      }
     }
   };
 
@@ -236,14 +231,11 @@ const ArticleDetail = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="max-w-3xl mx-auto px-5 py-6">
-          <Skeleton className="h-4 w-24 mb-4" />
-          <Skeleton className="h-10 w-full mb-4" />
-          <Skeleton className="h-4 w-full mb-2" />
-          <Skeleton className="h-64 w-full mb-6" />
-          <Skeleton className="h-4 w-full mb-2" />
-          <Skeleton className="h-4 w-full mb-2" />
-          <Skeleton className="h-4 w-3/4" />
+        <main className="max-w-3xl mx-auto px-4 py-8">
+          <Skeleton className="h-10 w-3/4 mb-4" />
+          <Skeleton className="h-6 w-1/2 mb-8" />
+          <Skeleton className="h-96 w-full mb-8" />
+          <Skeleton className="h-40 w-full" />
         </main>
       </div>
     );
@@ -253,150 +245,128 @@ const ArticleDetail = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="max-w-3xl mx-auto px-5 py-12 text-center">
-          <h2 className="text-2xl font-serif font-bold text-ft-maroon mb-4">Article not found</h2>
-          <p className="text-ft-maroon mb-6">
-            The article you're looking for doesn't exist or has been removed.
-          </p>
-          <Button onClick={() => navigate("/")} variant="outline">
-            Go Home
-          </Button>
+        <main className="max-w-3xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="font-serif text-2xl font-bold mb-4">Article not found</h1>
+            <Button onClick={() => navigate("/")}>Go to Home</Button>
+          </div>
         </main>
       </div>
     );
   }
 
-  const publishedDate = new Date(article.published_at).toLocaleDateString(
-    "en-US",
-    { year: "numeric", month: "long", day: "numeric" }
-  );
-
-  // Prepare absolute image URL for structured data
-  let absoluteImageUrl = article.hero_image_url || 'https://statsgh.com/social/statsgh-og-1200x630.png';
-  if (absoluteImageUrl && !absoluteImageUrl.startsWith('http')) {
-    absoluteImageUrl = `https://statsgh.com${absoluteImageUrl.startsWith('/') ? '' : '/'}${absoluteImageUrl}`;
-  }
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "NewsArticle",
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": `https://statsgh.com/article/${article.slug}`
-    },
-    "headline": article.title,
-    "description": article.summary || article.subtitle || 'Latest Ghana news from StatsGH',
-    "image": [absoluteImageUrl],
-    "datePublished": article.published_at,
-    "dateModified": article.updated_at || article.published_at,
-    "author": {
-      "@type": "Organization",
-      "name": "StatsGH"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "StatsGH",
-      "url": "https://statsgh.com",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://statsgh.com/social/statsgh-og-1200x630.png"
-      }
-    },
-    "isAccessibleForFree": "true"
-  };
+  const sanitizedBody = DOMPurify.sanitize(article.body, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'img'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class']
+  });
 
   return (
     <div className="min-h-screen bg-background">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
       <Header />
 
-      <main className="max-w-3xl mx-auto px-5 py-6">
+      <main className="max-w-3xl mx-auto px-4 py-6">
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => navigate(-1)}
-          className="mb-4 transition-all duration-200 hover:translate-x-[-4px]"
+          className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
 
-        <div className="text-sm font-bold text-ft-maroon uppercase mb-2">
-          {article.section}
-        </div>
+        <article>
+          <div className="mb-2 text-sm font-bold text-ft-maroon uppercase">
+            {article.section}
+          </div>
 
-        <h1 className="font-serif text-3xl font-bold text-ft-maroon mb-4 leading-tight">
-          {article.title}
-        </h1>
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-ft-maroon">
+            {article.title}
+          </h1>
 
-        <div className="flex items-center gap-4 text-xs text-ft-maroon mb-6">
-          <span>By {article.author_name}</span>
-          <span>•</span>
-          <span>{publishedDate}</span>
-          <span>•</span>
-          <span>5 min read</span>
-        </div>
+          {article.subtitle && (
+            <p className="text-xl text-ft-maroon mb-4 font-serif">
+              {article.subtitle}
+            </p>
+          )}
 
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toggleBookmark.mutate()}
-            className="transition-all duration-200 hover:scale-105"
-          >
-            <Bookmark
-              className="h-4 w-4 mr-2"
-              fill={isBookmarked ? "currentColor" : "none"}
+          <div className="flex items-center justify-between mb-6 text-sm text-ft-maroon">
+            <div>
+              <span className="font-medium">{article.author_name}</span>
+              {article.published_at && (
+                <span className="ml-2">
+                  {new Date(article.published_at).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleBookmark.mutate()}
+              >
+                <Bookmark
+                  className="h-4 w-4"
+                  fill={isBookmarked ? "currentColor" : "none"}
+                />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleShare}>
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {article.hero_image_url && (
+            <img
+              src={article.hero_image_url}
+              alt={article.title}
+              className="w-full aspect-video object-cover mb-6"
             />
-            {isBookmarked ? "Saved" : "Save"}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleShare}
-            className="transition-all duration-200 hover:scale-105"
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        </div>
+          )}
 
-        {article.hero_image_url && (
-          <img
-            src={article.hero_image_url}
-            alt={article.title}
-            className="w-full mb-6"
+          <div 
+            className="prose prose-lg max-w-none mb-8 text-foreground"
+            dangerouslySetInnerHTML={{ __html: sanitizedBody }}
           />
-        )}
 
-        <div
-          className="prose prose-lg max-w-none [&_p]:mb-4 [&_p]:leading-relaxed text-foreground [&_a]:text-ft-maroon [&_a]:underline [&_a]:transition-opacity [&_a]:duration-200 hover:[&_a]:opacity-70"
-          style={{
-            fontSize: "16px",
-            lineHeight: "1.6",
-            color: "hsl(var(--foreground))",
-          }}
-          dangerouslySetInnerHTML={{ 
-            __html: DOMPurify.sanitize(article.body, {
-              ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre'],
-              ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel']
-            })
-          }}
-        />
+          {article.video_url && (
+            <div className="mb-8">
+              <h3 className="font-serif text-xl font-bold mb-3 text-ft-maroon">Video</h3>
+              <div className="aspect-video">
+                <iframe
+                  src={article.video_url}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+
+          {article.audio_url && (
+            <div className="mb-8">
+              <h3 className="font-serif text-xl font-bold mb-3 text-ft-maroon">Audio</h3>
+              <audio controls className="w-full">
+                <source src={article.audio_url} type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+        </article>
 
         {/* Comments Section */}
-        <div className="mt-12 pt-8 border-t border-border">
+        <div className="mt-12 border-t border-border pt-8">
+          <h2 className="font-serif text-2xl font-bold mb-6 text-ft-maroon">Comments</h2>
+          
+          {/* Comments List */}
           <CommentsList 
-            articleId={article.id}
-            onReply={(commentId, author) => {
+            articleId={article.id} 
+            onReply={(commentId, authorName) => {
               setReplyToId(commentId);
-              setReplyToAuthor(author);
+              setReplyToAuthor(authorName);
             }}
           />
-          
+
+          {/* Comment Form */}
           <div className="mt-8">
             <CommentForm 
               articleId={article.id}
@@ -407,14 +377,46 @@ const ArticleDetail = () => {
                 setReplyToAuthor(null);
               }}
               onCommentSubmitted={() => {
-                queryClient.invalidateQueries({ queryKey: ["comments", article.id] });
                 setReplyToId(null);
                 setReplyToAuthor(null);
+                queryClient.invalidateQueries({ queryKey: ["comments", article.id] });
               }}
             />
           </div>
         </div>
       </main>
+
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": article.title,
+            "description": article.seo_description || article.summary,
+            "image": article.hero_image_url ? `https://statsgh.com${article.hero_image_url.startsWith('/') ? article.hero_image_url : `/${article.hero_image_url}`}` : undefined,
+            "datePublished": article.published_at,
+            "dateModified": article.updated_at,
+            "author": {
+              "@type": "Person",
+              "name": article.author_name
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "StatsGH",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://statsgh.com/social/statsgh-og-1200x630.png"
+              }
+            },
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://statsgh.com/${article.category_slug}/${article.slug}`
+            }
+          })
+        }}
+      />
     </div>
   );
 };

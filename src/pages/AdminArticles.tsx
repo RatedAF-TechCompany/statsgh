@@ -95,7 +95,15 @@ const AdminArticles = () => {
 
   const bulkUpdate = useMutation({
     mutationFn: async ({ field, value }: { field: string; value: string }) => {
-      const updates: any = { [field]: value };
+      const updates: any = {};
+      
+      // If updating category, update both section and category_slug
+      if (field === "section") {
+        updates.section = value;
+        updates.category_slug = value;
+      } else {
+        updates[field] = value;
+      }
       
       for (const articleId of selectedArticles) {
         const { error } = await supabase

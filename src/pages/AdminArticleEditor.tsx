@@ -221,6 +221,7 @@ const AdminArticleEditor = () => {
         subtitle,
         slug,
         section,
+        category_slug: section, // Use section as category_slug
         category_id: categoryId || null,
         summary,
         body,
@@ -310,7 +311,7 @@ const AdminArticleEditor = () => {
           {article && (
             <Button
               variant="outline"
-              onClick={() => window.open(`/article/${article.slug}`, '_blank')}
+              onClick={() => window.open(`/${article.category_slug}/${article.slug}`, '_blank')}
             >
               <Eye className="h-4 w-4 mr-2" />
               Preview
@@ -418,7 +419,7 @@ const AdminArticleEditor = () => {
                   placeholder="article-slug"
                 />
                 <p className="text-xs text-muted-foreground">
-                  URL: /article/{slug || "your-slug"}
+                  URL: /{section || "category"}/{slug || "your-slug"}
                 </p>
               </div>
 

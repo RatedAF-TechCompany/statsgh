@@ -9,6 +9,9 @@ import { SITE_NAVIGATION } from "@/lib/navigation";
 
 const ARTICLES_PER_PAGE = 20;
 
+// Top Stories category slug
+const TOP_STORIES_SLUG = "top-stories";
+
 const Home = () => {
   const navigate = useNavigate();
   const observerTarget = useRef(null);
@@ -28,7 +31,7 @@ const Home = () => {
 
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, section, summary, hero_image_url, published_at")
+        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range(from, to);
@@ -97,7 +100,7 @@ const Home = () => {
                   <button
                     key={item.slug}
                     onClick={() => {
-                      navigate(`/category/${item.slug}`);
+                      navigate(`/${item.slug}`);
                       setMenuOpen(false);
                     }}
                     className="px-3 py-2 text-ft-maroon hover:bg-muted rounded-md transition-colors text-left"
@@ -157,7 +160,7 @@ const Home = () => {
             {leadStory && (
               <article 
                 className="px-4 py-3 pb-6 cursor-pointer"
-                onClick={() => navigate(`/article/${leadStory.slug}`)}
+                onClick={() => navigate(`/${leadStory.category_slug}/${leadStory.slug}`)}
               >
                 {leadStory.hero_image_url && (
                   <img
@@ -183,7 +186,7 @@ const Home = () => {
                 <article
                   key={article.id}
                   className="py-4 border-t border-border cursor-pointer hover:opacity-70 transition-opacity"
-                  onClick={() => navigate(`/article/${article.slug}`)}
+                  onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
                 >
                   <h2 className="font-serif text-[17px] leading-[23px] font-medium text-ft-maroon">
                     {article.title}

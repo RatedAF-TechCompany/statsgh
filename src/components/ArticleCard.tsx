@@ -10,6 +10,7 @@ interface ArticleCardProps {
     id: string;
     title: string;
     slug: string;
+    category_slug: string;
     section: string;
     summary: string;
     hero_image_url: string | null;
@@ -89,7 +90,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
       <div className="flex-1 min-w-0">
         <div
           className="cursor-pointer"
-          onClick={() => navigate(`/article/${article.slug}`)}
+          onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
         >
           <div className="text-sm font-bold text-accent uppercase mb-1">
             {article.section}
@@ -107,7 +108,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
         {article.hero_image_url && (
           <div
             className="w-[120px] h-[80px] bg-muted flex-shrink-0 cursor-pointer overflow-hidden"
-            onClick={() => navigate(`/article/${article.slug}`)}
+            onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
           >
             <img
               src={article.hero_image_url}
