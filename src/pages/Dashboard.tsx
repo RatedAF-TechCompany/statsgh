@@ -87,7 +87,15 @@ const Dashboard = () => {
     }
   }, [session, isLoadingAuth, navigate]);
 
-  if (!session || isLoadingAuth) {
+  // Redirect if not admin
+  useEffect(() => {
+    if (!isLoadingAuth && !isAdmin && session) {
+      toast.error("Access denied. Admin privileges required.");
+      navigate("/");
+    }
+  }, [isAdmin, isLoadingAuth, session, navigate]);
+
+  if (!session || isLoadingAuth || !isAdmin) {
     return null;
   }
 
