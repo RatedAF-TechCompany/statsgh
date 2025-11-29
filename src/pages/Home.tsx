@@ -128,8 +128,8 @@ const Home = () => {
                   key={article.id}
                   article={article}
                   rank={index}
-                  isHero={false}
-                  showImage={(index + 1) % 5 === 0}
+                  isHero={index === 0}
+                  showImage={index > 0 && (index % 5 === 0)}
                 />
               ))}
             </div>

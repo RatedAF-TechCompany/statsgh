@@ -48,12 +48,19 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
             className="w-full aspect-video object-cover mb-3"
           />
         )}
-        <h2 className="font-serif text-xl font-medium leading-[1.3] text-foreground mb-1.5">
+        <h2 className="font-serif text-xl font-medium leading-[1.3] text-[#7A0034] mb-1.5">
           {article.title}
         </h2>
         {article.summary && (
-          <p className="font-serif text-sm leading-5 text-muted-foreground mb-4">
+          <p className="font-serif text-sm leading-5 text-muted-foreground mb-2">
             {article.summary}
+          </p>
+        )}
+        {article.published_at && (
+          <p className="font-sans text-[13px] text-ft-maroon mb-4">
+            <span className="font-semibold">{categoryLabel}</span>
+            <span className="mx-1.5">•</span>
+            <span>{getTimeAgo(article.published_at)}</span>
           </p>
         )}
         <div className="border-t border-border" />
