@@ -2,14 +2,17 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, User } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SITE_NAVIGATION } from "@/lib/navigation";
 
 const ARTICLES_PER_PAGE = 20;
 
 const Home = () => {
   const navigate = useNavigate();
   const observerTarget = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const {
     data: articlesData,
@@ -64,13 +67,48 @@ const Home = () => {
     <div className="min-h-screen bg-background">
       {/* Simplified Mobile Header */}
       <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-background sticky top-0 z-10">
-        <button 
-          onClick={() => navigate('/dashboard')}
-          className="p-2 -ml-2 hover:opacity-70 transition-opacity"
-          aria-label="Menu"
-        >
-          <Menu size={24} className="text-ft-maroon" />
-        </button>
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetTrigger asChild>
+            <button 
+              className="p-2 -ml-2 hover:opacity-70 transition-opacity"
+              aria-label="Menu"
+            >
+              <Menu size={24} className="text-ft-maroon" />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[300px]">
+            <SheetHeader>
+              <SheetTitle className="text-ft-maroon font-serif">Navigation</SheetTitle>
+            </SheetHeader>
+            <nav className="mt-6 flex flex-col gap-1">
+              {SITE_NAVIGATION.categories.map((item) => (
+                item.type === "external" ? (
+                  <a
+                    key={item.slug}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 text-ft-maroon hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <button
+                    key={item.slug}
+                    onClick={() => {
+                      navigate(`/category/${item.slug}`);
+                      setMenuOpen(false);
+                    }}
+                    className="px-3 py-2 text-ft-maroon hover:bg-muted rounded-md transition-colors text-left"
+                  >
+                    {item.label}
+                  </button>
+                )
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
         <h1 className="font-serif text-lg font-semibold text-ft-maroon">
           StatsGH
         </h1>
