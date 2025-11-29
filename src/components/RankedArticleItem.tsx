@@ -7,6 +7,7 @@ interface RankedArticleItemProps {
     summary: string;
     section: string;
     slug: string;
+    category_slug: string;
     hero_image_url?: string | null;
     published_at?: string | null;
   };
@@ -31,7 +32,7 @@ export const RankedArticleItem = ({ article, rank, isHero }: RankedArticleItemPr
     return (
       <div 
         className="pb-4 cursor-pointer hover:opacity-90 transition-opacity"
-        onClick={() => navigate(`/article/${article.slug}`)}
+        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
       >
         {article.hero_image_url && (
           <img 
@@ -56,7 +57,7 @@ export const RankedArticleItem = ({ article, rank, isHero }: RankedArticleItemPr
   return (
     <div 
       className="py-4 cursor-pointer hover:opacity-90 transition-opacity border-b border-border"
-      onClick={() => navigate(`/article/${article.slug}`)}
+      onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
       <h3 className="font-serif text-lg font-medium leading-6 text-foreground mb-1">
         {article.title}

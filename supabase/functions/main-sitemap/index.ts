@@ -16,38 +16,56 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get articles from last 72 hours
-    const seventyTwoHoursAgo = new Date();
-    seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
-
+    // Get all published articles
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('slug, category_slug, title, published_at, updated_at')
+      .select('slug, category_slug, updated_at, published_at')
       .eq('is_published', true)
-      .gte('published_at', seventyTwoHoursAgo.toISOString())
-      .order('published_at', { ascending: false })
-      .limit(1000);
+      .order('published_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching articles:', error);
       throw error;
     }
 
-    // Build Google News sitemap XML
+    // Define category pages
+    const categories = [
+      'top-stories',
+      'economy-inflation',
+      'public-finance',
+      'labour-salaries',
+      'agriculture-food',
+      'energy-resources',
+      'trade-investment',
+      'health-data',
+      'education',
+      'infrastructure-transport',
+      'security-governance',
+      'technology-innovation',
+      'environment-climate',
+      'population',
+      'business',
+      'charts-explainers',
+    ];
+
+    // Build main sitemap XML
     const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://statsgh.com/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+  </url>
+${categories.map(cat => `  <url>
+    <loc>https://statsgh.com/${cat}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('\n')}
 ${articles?.map(article => `  <url>
     <loc>https://statsgh.com/${article.category_slug}/${article.slug}</loc>
-    <news:news>
-      <news:publication>
-        <news:name>StatsGH</news:name>
-        <news:language>en</news:language>
-      </news:publication>
-      <news:publication_date>${article.published_at}</news:publication_date>
-      <news:title>${escapeXml(article.title)}</news:title>
-    </news:news>
-    <lastmod>${article.updated_at}</lastmod>
+    <lastmod>${article.updated_at || article.published_at}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>`).join('\n') ?? ''}
 </urlset>`;
 
@@ -59,9 +77,9 @@ ${articles?.map(article => `  <url>
       },
     });
   } catch (error) {
-    console.error('Error generating news sitemap:', error);
+    console.error('Error generating main sitemap:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate news sitemap' }),
+      JSON.stringify({ error: 'Failed to generate main sitemap' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -69,12 +87,3 @@ ${articles?.map(article => `  <url>
     );
   }
 });
-
-function escapeXml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}

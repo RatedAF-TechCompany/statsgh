@@ -110,6 +110,7 @@ export type Database = {
           author_name: string
           body: string
           category_id: string | null
+          category_slug: string
           created_at: string
           hero_image_url: string | null
           id: string
@@ -133,6 +134,7 @@ export type Database = {
           author_name: string
           body: string
           category_id?: string | null
+          category_slug: string
           created_at?: string
           hero_image_url?: string | null
           id?: string
@@ -156,6 +158,7 @@ export type Database = {
           author_name?: string
           body?: string
           category_id?: string | null
+          category_slug?: string
           created_at?: string
           hero_image_url?: string | null
           id?: string

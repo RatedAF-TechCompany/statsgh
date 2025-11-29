@@ -27,9 +27,9 @@ const Category = () => {
 
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, section, summary, hero_image_url, published_at")
+        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
-        .eq("section", slug)
+        .eq("category_slug", slug)
         .order("published_at", { ascending: false })
         .range(from, to);
 

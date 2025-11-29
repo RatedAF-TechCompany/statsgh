@@ -38,6 +38,7 @@ const Saved = () => {
             id,
             title,
             slug,
+            category_slug,
             section,
             summary,
             hero_image_url

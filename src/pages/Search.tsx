@@ -10,6 +10,7 @@ interface Article {
   id: string;
   title: string;
   slug: string;
+  category_slug: string;
   summary: string;
   hero_image_url: string | null;
   published_at: string;
@@ -45,7 +46,7 @@ const Search = () => {
     try {
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, summary, hero_image_url, published_at, section")
+        .select("id, title, slug, category_slug, summary, hero_image_url, published_at, section")
         .eq("is_published", true)
         .or(`title.ilike.%${query}%,summary.ilike.%${query}%,body.ilike.%${query}%`)
         .order("published_at", { ascending: false })
@@ -114,7 +115,7 @@ const Search = () => {
                   <article
                     key={article.id}
                     className="py-4 border-t border-border cursor-pointer hover:opacity-70 transition-opacity"
-                    onClick={() => navigate(`/article/${article.slug}`)}
+                    onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
                   >
                     <div className="flex gap-3">
                       {article.hero_image_url && (

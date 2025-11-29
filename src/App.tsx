@@ -32,8 +32,6 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/category/:slug" element={<Category />} />
-          <Route path="/article/:slug" element={<ArticleDetail />} />
           <Route path="/verify-comment" element={<VerifyComment />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/search" element={<Search />} />
@@ -49,6 +47,13 @@ const App = () => (
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/audit-log" element={<AuditLog />} />
           <Route path="/admin/settings" element={<SiteSettings />} />
+          {/* New URL structure: /:categorySlug/:articleSlug */}
+          <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
+          {/* Legacy redirects */}
+          <Route path="/article/:slug" element={<ArticleDetail />} />
+          <Route path="/category/:slug" element={<Category />} />
+          {/* Category pages */}
+          <Route path="/:categorySlug" element={<Category />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
