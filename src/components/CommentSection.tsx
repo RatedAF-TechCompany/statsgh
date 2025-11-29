@@ -10,6 +10,8 @@ export function CommentSection({ articleId }: Props) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [body, setBody] = useState("");
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null);
 
   function toggleComposer() {
     setComposerOpen((v) => !v);
@@ -24,6 +26,20 @@ export function CommentSection({ articleId }: Props) {
     setAuthOpen(false);
     setBody("");
     setComposerOpen(false);
+    setReplyToId(null);
+    setReplyToAuthor(null);
+  }
+
+  function handleReply(commentId: string, authorName: string) {
+    setReplyToId(commentId);
+    setReplyToAuthor(authorName);
+    setBody("");
+    setComposerOpen(true);
+  }
+
+  function handleCancelReply() {
+    setReplyToId(null);
+    setReplyToAuthor(null);
   }
 
   return (
@@ -41,9 +57,20 @@ export function CommentSection({ articleId }: Props) {
 
       {composerOpen && (
         <div className="rounded-sm border border-black/25 bg-[#f0e3cf] p-3 text-sm shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
-          <p className="mb-2 text-[11px] uppercase tracking-wide text-black/70">
-            Leave a comment
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-wide text-black/70">
+              {replyToId ? `Reply to ${replyToAuthor}` : "Leave a comment"}
+            </p>
+            {replyToId && (
+              <button
+                type="button"
+                onClick={handleCancelReply}
+                className="text-[10px] text-black/60 hover:text-black"
+              >
+                Cancel reply
+              </button>
+            )}
+          </div>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -71,12 +98,14 @@ export function CommentSection({ articleId }: Props) {
         </div>
       )}
 
-      <CommentsList articleId={articleId} />
+      <CommentsList articleId={articleId} onReply={handleReply} />
 
       {authOpen && (
         <CommentAuthModal
           articleId={articleId}
           commentBody={body}
+          parentId={replyToId}
+          replyToAuthor={replyToAuthor}
           onDone={handleCommentPosted}
           onCancel={() => setAuthOpen(false)}
         />

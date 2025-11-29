@@ -7,6 +7,7 @@ import { useState } from "react";
 
 interface CommentsListProps {
   articleId: string;
+  onReply?: (commentId: string, commentAuthor: string) => void;
 }
 
 interface Comment {
@@ -22,7 +23,7 @@ interface Comment {
   parent_id: string | null;
 }
 
-export const CommentsList = ({ articleId }: CommentsListProps) => {
+export const CommentsList = ({ articleId, onReply }: CommentsListProps) => {
   const { data: comments, isLoading } = useQuery({
     queryKey: ["comments", articleId],
     queryFn: async () => {
@@ -80,9 +81,19 @@ export const CommentsList = ({ articleId }: CommentsListProps) => {
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
             </span>
           </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap mb-2">
             {comment.body}
           </p>
+          {onReply && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7 px-2"
+              onClick={() => onReply(comment.id, comment.name || "Anonymous")}
+            >
+              Reply
+            </Button>
+          )}
         </div>
         
         {replies.length > 0 && (
