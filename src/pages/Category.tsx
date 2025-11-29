@@ -1,28 +1,26 @@
 import { useParams } from "react-router-dom";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
+import { Button } from "@/components/ui/button";
 
-const ARTICLES_PER_PAGE = 20;
+const ARTICLES_PER_PAGE = 10;
 
 const Category = () => {
   const { slug } = useParams();
-  const observerTarget = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    data: articlesData,
     isLoading,
-  } = useInfiniteQuery({
-    queryKey: ["category-articles", slug],
-    queryFn: async ({ pageParam = 0 }) => {
-      const from = pageParam * ARTICLES_PER_PAGE;
+  } = useQuery({
+    queryKey: ["category-articles", slug, currentPage],
+    queryFn: async () => {
+      const from = (currentPage - 1) * ARTICLES_PER_PAGE;
       const to = from + ARTICLES_PER_PAGE - 1;
 
       const { data, error } = await supabase
@@ -36,32 +34,11 @@ const Category = () => {
       if (error) throw error;
       return data;
     },
-    getNextPageParam: (lastPage, pages) => {
-      if (lastPage.length < ARTICLES_PER_PAGE) return undefined;
-      return pages.length;
-    },
-    initialPageParam: 0,
     enabled: !!slug,
   });
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const articles = data?.pages.flatMap((page) => page) || [];
+  const articles = articlesData || [];
+  const hasNextPage = articles.length === ARTICLES_PER_PAGE;
   const categoryLabel = slug ? CATEGORY_MAPPING[slug as keyof typeof CATEGORY_MAPPING] : "";
 
   return (
@@ -78,10 +55,10 @@ const Category = () => {
 
           {isLoading ? (
             <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="space-y-2 py-4">
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-16 w-full" />
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="py-3 border-b border-border">
+                  <Skeleton className="h-6 w-full mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
                 </div>
               ))}
             </div>
@@ -93,25 +70,36 @@ const Category = () => {
                   article={article}
                   rank={index}
                   isHero={false}
+                  showImage={(index + 1) % 5 === 0}
                 />
               ))}
 
-              <div ref={observerTarget} className="py-4">
-                {isFetchingNextPage ? (
-                  <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="space-y-2 py-4">
-                        <Skeleton className="h-6 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                      </div>
-                    ))}
-                  </div>
-                ) : !hasNextPage ? (
-                  <p className="text-center text-muted-foreground text-sm">
-                    No more stories
-                  </p>
-                ) : null}
-              </div>
+              {(currentPage > 1 || hasNextPage) && (
+                <div className="py-6 flex justify-center gap-3">
+                  {currentPage > 1 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage(currentPage - 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  {hasNextPage && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentPage(currentPage + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                    >
+                      Next
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <p className="text-center py-6 text-muted-foreground text-sm">
