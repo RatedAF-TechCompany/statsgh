@@ -226,6 +226,7 @@ const AdminArticleEditor = () => {
         summary,
         body,
         author_name: authorName,
+        author_id: session?.user?.id || null,
         hero_image_url: heroImageUrl || null,
         video_url: videoUrl || null,
         audio_url: audioUrl || null,

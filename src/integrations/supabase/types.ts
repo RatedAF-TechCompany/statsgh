@@ -107,6 +107,7 @@ export type Database = {
       articles: {
         Row: {
           audio_url: string | null
+          author_id: string | null
           author_name: string
           body: string
           category_id: string | null
@@ -131,6 +132,7 @@ export type Database = {
         }
         Insert: {
           audio_url?: string | null
+          author_id?: string | null
           author_name: string
           body: string
           category_id?: string | null
@@ -155,6 +157,7 @@ export type Database = {
         }
         Update: {
           audio_url?: string | null
+          author_id?: string | null
           author_name?: string
           body?: string
           category_id?: string | null
@@ -621,7 +624,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "editor" | "contributor"
+      app_role: "admin" | "user" | "editor" | "contributor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -749,7 +752,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "editor", "contributor"],
+      app_role: ["admin", "user", "editor", "contributor", "viewer"],
     },
   },
 } as const
