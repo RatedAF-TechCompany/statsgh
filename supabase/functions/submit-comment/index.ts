@@ -49,12 +49,15 @@ const handler = async (req: Request): Promise<Response> => {
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Use "Reader" as default if name is empty
+    const safeName = name && name.trim().length > 0 ? name : "Reader";
+
     // Insert comment
     const { data: comment, error: insertError } = await supabase
       .from("comments")
       .insert({
         article_id: articleId,
-        name: name || "Anonymous",
+        name: safeName,
         email,
         body,
         parent_id: parentId || null,

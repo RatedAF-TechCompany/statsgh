@@ -8,15 +8,12 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
-import { CommentsList } from "@/components/CommentsList";
-import { CommentForm } from "@/components/CommentForm";
+import { CommentSection } from "@/components/CommentSection";
 
 const ArticleDetail = () => {
   const { articleSlug: slug, categorySlug } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [replyToId, setReplyToId] = useState<string | null>(null);
-  const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null);
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -365,34 +362,7 @@ const ArticleDetail = () => {
 
         {/* Comments Section */}
         <div className="mt-12 border-t border-border pt-8">
-          <h2 className="font-serif text-2xl font-bold mb-6 text-ft-maroon">Comments</h2>
-          
-          {/* Comments List */}
-          <CommentsList 
-            articleId={article.id} 
-            onReply={(commentId, authorName) => {
-              setReplyToId(commentId);
-              setReplyToAuthor(authorName);
-            }}
-          />
-
-          {/* Comment Form */}
-          <div className="mt-8">
-            <CommentForm 
-              articleId={article.id}
-              replyToId={replyToId}
-              replyToAuthor={replyToAuthor}
-              onCancelReply={() => {
-                setReplyToId(null);
-                setReplyToAuthor(null);
-              }}
-              onCommentSubmitted={() => {
-                setReplyToId(null);
-                setReplyToAuthor(null);
-                queryClient.invalidateQueries({ queryKey: ["comments", article.id] });
-              }}
-            />
-          </div>
+          <CommentSection articleId={article.id} />
         </div>
       </main>
 
