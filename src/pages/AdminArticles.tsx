@@ -259,7 +259,7 @@ const AdminArticles = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => navigate(`/admin/articles/${article.id}/edit`)}
+                      onClick={() => navigate(`/admin/articles/${article.id}`)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
