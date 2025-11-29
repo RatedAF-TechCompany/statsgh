@@ -12,7 +12,7 @@ import { CommentsList } from "@/components/CommentsList";
 import { CommentForm } from "@/components/CommentForm";
 
 const ArticleDetail = () => {
-  const { slug, categorySlug } = useParams();
+  const { articleSlug: slug, categorySlug } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyToId, setReplyToId] = useState<string | null>(null);
