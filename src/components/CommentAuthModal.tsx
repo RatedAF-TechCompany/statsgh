@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 type Props = {
   articleId: string;
   commentBody: string;
+  parentId?: string | null;
+  replyToAuthor?: string | null;
   onDone: () => void;
   onCancel: () => void;
 };
@@ -13,6 +15,8 @@ type Step = "details" | "code";
 export function CommentAuthModal({
   articleId,
   commentBody,
+  parentId,
+  replyToAuthor,
   onDone,
   onCancel,
 }: Props) {
@@ -39,7 +43,7 @@ export function CommentAuthModal({
           name: name.trim() || "Reader",
           email: email.trim(),
           body: commentBody,
-          parentId: null,
+          parentId: parentId || null,
         },
       });
 
@@ -81,10 +85,10 @@ export function CommentAuthModal({
         {step === "details" && (
           <>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide">
-              Comment verification
+              {parentId ? `Reply to ${replyToAuthor}` : "Comment verification"}
             </div>
             <p className="mb-3 text-xs text-black/80">
-              Enter your email and optional name. We will send a verification link to confirm your comment.
+              Enter your email and optional name. We will send a verification link to confirm your {parentId ? "reply" : "comment"}.
             </p>
             <div className="space-y-2">
               <input
