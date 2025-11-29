@@ -34,7 +34,7 @@ const Users = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "editor" | "contributor">("contributor");
+  const [inviteRole, setInviteRole] = useState<"admin" | "editor" | "contributor" | "viewer">("contributor");
   const [inviteNote, setInviteNote] = useState("");
   const [generatedInvite, setGeneratedInvite] = useState<{token: string; link: string} | null>(null);
 
@@ -341,6 +341,7 @@ const Users = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
                       <SelectItem value="contributor">Contributor</SelectItem>
                       <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
@@ -350,6 +351,7 @@ const Users = () => {
                     {inviteRole === "admin" && "Can do everything, including managing users"}
                     {inviteRole === "editor" && "Can create, edit, publish and delete articles"}
                     {inviteRole === "contributor" && "Can create and edit their own drafts"}
+                    {inviteRole === "viewer" && "Can only view articles in all statuses"}
                   </p>
                 </div>
                 <div>
