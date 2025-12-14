@@ -130,7 +130,10 @@ export const Header = () => {
           onClick={() => navigate("/")}
           className="cursor-pointer hover:opacity-90 transition-opacity absolute left-1/2 -translate-x-1/2"
         >
-          <img src={statsghLogo} alt="StatsGH" className="h-8" />
+          <div className="flex items-center gap-2">
+            <img src={statsghLogo} alt="StatsGH" className="h-8" />
+            <span className="font-serif text-[20px] font-medium tracking-[0.06em]">StatsGH</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

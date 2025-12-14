@@ -90,7 +90,10 @@ const Home = () => {
             </nav>
           </SheetContent>
         </Sheet>
-        <img src={statsghLogo} alt="StatsGH" className="h-8" />
+        <div className="flex items-center gap-2">
+          <img src={statsghLogo} alt="StatsGH" className="h-8" />
+          <span className="font-serif text-lg font-semibold text-ft-maroon">StatsGH</span>
+        </div>
         <div className="flex items-center gap-1">
           <button 
             onClick={() => navigate('/search')}
