@@ -1,4 +1,5 @@
 import { Menu, User, LogOut, ExternalLink, LayoutDashboard, Search } from "lucide-react";
+import statsghLogo from "@/assets/statsgh-logo.png";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -129,9 +130,7 @@ export const Header = () => {
           onClick={() => navigate("/")}
           className="cursor-pointer hover:opacity-90 transition-opacity absolute left-1/2 -translate-x-1/2"
         >
-          <h1 className="font-serif text-[20px] font-medium tracking-[0.06em]">
-            StatsGH
-          </h1>
+          <img src={statsghLogo} alt="StatsGH" className="h-8" />
         </div>
 
         <div className="flex items-center gap-2">

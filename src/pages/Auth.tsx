@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { logAuditEvent } from "@/lib/audit";
+import statsghLogo from "@/assets/statsgh-logo.png";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -196,7 +197,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-serif text-4xl font-semibold mb-2">StatsGH</h1>
+          <img src={statsghLogo} alt="StatsGH" className="h-12 mx-auto mb-2" />
           <p className="text-muted-foreground">
             {invitation
               ? `Accept Invitation - ${invitation.role}`

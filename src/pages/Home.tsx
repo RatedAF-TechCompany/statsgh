@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SITE_NAVIGATION } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
+import statsghLogo from "@/assets/statsgh-logo.png";
 
 const ARTICLES_PER_PAGE = 10;
 
@@ -89,9 +90,7 @@ const Home = () => {
             </nav>
           </SheetContent>
         </Sheet>
-        <h1 className="font-serif text-lg font-semibold text-ft-maroon">
-          StatsGH
-        </h1>
+        <img src={statsghLogo} alt="StatsGH" className="h-8" />
         <div className="flex items-center gap-1">
           <button 
             onClick={() => navigate('/search')}
