@@ -90,9 +90,9 @@ const Home = () => {
             </nav>
           </SheetContent>
         </Sheet>
-        <div className="flex items-center gap-2">
-          <img src={statsghLogo} alt="StatsGH" className="h-8" />
-          <span className="font-serif text-lg font-semibold text-ft-maroon">StatsGH</span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <img src={statsghLogo} alt="StatsGH" className="h-6 sm:h-8" />
+          <span className="font-serif text-base sm:text-lg font-semibold text-ft-maroon">StatsGH</span>
         </div>
         <div className="flex items-center gap-1">
           <button 
