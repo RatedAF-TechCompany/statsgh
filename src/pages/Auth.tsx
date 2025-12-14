@@ -197,9 +197,9 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <img src={statsghLogo} alt="StatsGH" className="h-12" />
-            <span className="font-serif text-4xl font-semibold">StatsGH</span>
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+            <img src={statsghLogo} alt="StatsGH" className="h-10 sm:h-12" />
+            <span className="font-serif text-2xl sm:text-3xl md:text-4xl font-semibold">StatsGH</span>
           </div>
           <p className="text-muted-foreground">
             {invitation
