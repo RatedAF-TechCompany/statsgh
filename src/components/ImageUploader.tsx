@@ -9,9 +9,72 @@ interface ImageUploaderProps {
   onUploadComplete: (url: string) => void;
   currentImage?: string;
   onRemove?: () => void;
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
 }
 
-export const ImageUploader = ({ onUploadComplete, currentImage, onRemove }: ImageUploaderProps) => {
+const MAX_IMAGE_WIDTH = 1920;
+const MAX_IMAGE_HEIGHT = 1080;
+const DEFAULT_QUALITY = 0.85;
+
+const optimizeImage = (
+  file: File,
+  maxWidth: number,
+  maxHeight: number,
+  quality: number
+): Promise<{ blob: Blob; width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      let { width, height } = img;
+
+      // Calculate new dimensions while maintaining aspect ratio
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve({ blob, width, height });
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+export const ImageUploader = ({ 
+  onUploadComplete, 
+  currentImage, 
+  onRemove,
+  maxWidth = MAX_IMAGE_WIDTH,
+  maxHeight = MAX_IMAGE_HEIGHT,
+  quality = DEFAULT_QUALITY
+}: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,13 +84,17 @@ export const ImageUploader = ({ onUploadComplete, currentImage, onRemove }: Imag
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      // Optimize the image
+      const { blob } = await optimizeImage(file, maxWidth, maxHeight, quality);
+
+      const fileName = `${Math.random()}.jpg`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('media')
-        .upload(filePath, file);
+        .upload(filePath, blob, {
+          contentType: 'image/jpeg',
+        });
 
       if (uploadError) {
         throw uploadError;
@@ -42,8 +109,8 @@ export const ImageUploader = ({ onUploadComplete, currentImage, onRemove }: Imag
       await supabase.from('media').insert({
         filename: file.name,
         url: data.publicUrl,
-        size: file.size,
-        mime_type: file.type,
+        size: blob.size,
+        mime_type: 'image/jpeg',
         uploaded_by: session.session?.user.id,
       });
 
