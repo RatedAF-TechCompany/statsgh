@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.news-sitemap]
 verify_jwt = false
+
+[functions.generate-article-fields]
+verify_jwt = false

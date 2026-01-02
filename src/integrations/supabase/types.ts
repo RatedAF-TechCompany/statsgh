@@ -115,6 +115,8 @@ export type Database = {
           created_at: string
           hero_image_url: string | null
           id: string
+          instagram_comment: string | null
+          instagram_compressed: string | null
           is_most_read: boolean
           is_published: boolean
           published_at: string | null
@@ -127,6 +129,7 @@ export type Database = {
           summary: string
           tags: string[] | null
           title: string
+          twitter_post: string | null
           updated_at: string
           video_url: string | null
         }
@@ -140,6 +143,8 @@ export type Database = {
           created_at?: string
           hero_image_url?: string | null
           id?: string
+          instagram_comment?: string | null
+          instagram_compressed?: string | null
           is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
@@ -152,6 +157,7 @@ export type Database = {
           summary: string
           tags?: string[] | null
           title: string
+          twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
         }
@@ -165,6 +171,8 @@ export type Database = {
           created_at?: string
           hero_image_url?: string | null
           id?: string
+          instagram_comment?: string | null
+          instagram_compressed?: string | null
           is_most_read?: boolean
           is_published?: boolean
           published_at?: string | null
@@ -177,6 +185,7 @@ export type Database = {
           summary?: string
           tags?: string[] | null
           title?: string
+          twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
         }

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Eye } from "lucide-react";
+import { ArrowLeft, Save, Eye, Wand2, Loader2 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
 import { logAuditEvent } from "@/lib/audit";
@@ -63,6 +63,12 @@ const AdminArticleEditor = () => {
   const [isMostRead, setIsMostRead] = useState(false);
   const [loading, setLoading] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // New social media fields
+  const [twitterPost, setTwitterPost] = useState("");
+  const [instagramComment, setInstagramComment] = useState("");
+  const [instagramCompressed, setInstagramCompressed] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -136,6 +142,10 @@ const AdminArticleEditor = () => {
       setScheduledAt(article.scheduled_at || "");
       setIsPublished(article.is_published);
       setIsMostRead(article.is_most_read || false);
+      // Load social media fields
+      setTwitterPost((article as any).twitter_post || "");
+      setInstagramComment((article as any).instagram_comment || "");
+      setInstagramCompressed((article as any).instagram_compressed || "");
     }
   }, [article]);
 
@@ -191,6 +201,57 @@ const AdminArticleEditor = () => {
     }
   }, [title, isEditing]);
 
+  // Auto-generate all fields from article body
+  const handleAutoGenerate = async () => {
+    if (!body || body.trim() === '') {
+      toast.error("Please enter article body first");
+      return;
+    }
+
+    // Check if body is just a single dot (special rule)
+    const removeUrls = body.trim() === '.';
+
+    setIsGenerating(true);
+    
+    try {
+      const response = await supabase.functions.invoke('generate-article-fields', {
+        body: { 
+          articleBody: body,
+          removeUrls 
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate fields');
+      }
+
+      const fields = response.data;
+
+      // Apply all generated fields
+      if (fields.headline) setTitle(fields.headline);
+      if (fields.subtitle) setSubtitle(fields.subtitle);
+      if (fields.summary) setSummary(fields.summary);
+      if (fields.slug) setSlug(fields.slug);
+      if (fields.author) setAuthorName(fields.author);
+      if (fields.section) setSection(fields.section);
+      if (fields.tags) setTags(fields.tags);
+      if (fields.seo_description) setSeoDescription(fields.seo_description);
+      if (fields.twitter_post) setTwitterPost(fields.twitter_post);
+      if (fields.instagram_comment) setInstagramComment(fields.instagram_comment);
+      if (fields.instagram_compressed) setInstagramCompressed(fields.instagram_compressed);
+
+      // Set hero image placeholder
+      setHeroImageUrl("");
+      
+      toast.success("Article fields generated successfully");
+    } catch (error) {
+      console.error('Auto-generate error:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate fields");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const saveArticle = useMutation({
     mutationFn: async () => {
       // Validate input data
@@ -237,6 +298,9 @@ const AdminArticleEditor = () => {
         is_published: status === "published",
         is_most_read: isMostRead,
         published_at: status === "published" ? new Date().toISOString() : null,
+        twitter_post: twitterPost || null,
+        instagram_comment: instagramComment || null,
+        instagram_compressed: instagramCompressed || null,
       };
 
       if (isEditing) {
@@ -309,15 +373,29 @@ const AdminArticleEditor = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Articles
           </Button>
-          {article && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => window.open(`/${article.category_slug}/${article.slug}`, '_blank')}
+              onClick={handleAutoGenerate}
+              disabled={isGenerating || !body}
             >
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4 mr-2" />
+              )}
+              {isGenerating ? "Generating..." : "Auto-Generate Fields"}
             </Button>
-          )}
+            {article && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(`/${article.category_slug}/${article.slug}`, '_blank')}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            )}
+          </div>
         </div>
 
         <h1 className="font-serif text-3xl font-bold mb-8">
@@ -328,13 +406,25 @@ const AdminArticleEditor = () => {
           <div className="lg:col-span-2 space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="body">Article Body *</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Paste your article body first, then click "Auto-Generate Fields" to fill all other fields automatically.
+                </p>
+                <RichTextEditor
+                  content={body}
+                  onChange={setBody}
+                  placeholder="Paste your article content here, then click Auto-Generate..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="title">Headline *</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  placeholder="Article title"
+                  placeholder="Article headline (auto-generated)"
                 />
               </div>
 
@@ -344,24 +434,26 @@ const AdminArticleEditor = () => {
                   id="subtitle"
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
-                  placeholder="Short subtitle"
+                  placeholder="Short subtitle (auto-generated)"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="summary">Summary *</Label>
+                <Label htmlFor="summary">Summary * <span className="text-xs text-muted-foreground">(max 400 chars)</span></Label>
                 <Textarea
                   id="summary"
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   required
-                  placeholder="Brief summary of the article"
+                  placeholder="Brief summary of the article (auto-generated)"
                   rows={3}
+                  maxLength={400}
                 />
+                <p className="text-xs text-muted-foreground">{summary.length}/400 characters</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="hero-image">Hero Image</Label>
+                <Label htmlFor="hero-image">Hero Image <span className="text-xs text-muted-foreground">(placeholder: attachment_0)</span></Label>
                 <ImageUploader
                   onUploadComplete={(url) => setHeroImageUrl(url)}
                   currentImage={heroImageUrl}
@@ -394,15 +486,6 @@ const AdminArticleEditor = () => {
                   Adds audio player to social media previews
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="body">Article Body *</Label>
-                <RichTextEditor
-                  content={body}
-                  onChange={setBody}
-                  placeholder="Write your article content here..."
-                />
-              </div>
             </form>
           </div>
 
@@ -417,7 +500,7 @@ const AdminArticleEditor = () => {
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   required
-                  placeholder="article-slug"
+                  placeholder="article-slug (auto-generated)"
                 />
                 <p className="text-xs text-muted-foreground">
                   URL: /{section || "category"}/{slug || "your-slug"}
@@ -431,15 +514,15 @@ const AdminArticleEditor = () => {
                   value={authorName}
                   onChange={(e) => setAuthorName(e.target.value)}
                   required
-                  placeholder="John Doe"
+                  placeholder="StatsGH (auto-generated)"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="section">Category *</Label>
+                <Label htmlFor="section">Section *</Label>
                 <Select value={section} onValueChange={setSection} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder="Select section (auto-generated)" />
                   </SelectTrigger>
                   <SelectContent>
                     {SITE_NAVIGATION.categories
@@ -475,18 +558,57 @@ const AdminArticleEditor = () => {
                   id="tags"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
-                  placeholder="economy, markets, tech"
+                  placeholder="economy, markets, tech (auto-generated)"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="seo">SEO Description</Label>
+                <Label htmlFor="seo">SEO Description <span className="text-xs text-muted-foreground">(max 155 chars)</span></Label>
                 <Textarea
                   id="seo"
                   value={seoDescription}
                   onChange={(e) => setSeoDescription(e.target.value)}
-                  placeholder="Meta description for SEO"
+                  placeholder="Meta description for SEO (auto-generated)"
                   rows={2}
+                  maxLength={155}
+                />
+                <p className="text-xs text-muted-foreground">{seoDescription.length}/155 characters</p>
+              </div>
+            </div>
+
+            <div className="p-4 border border-border rounded-md space-y-4">
+              <h3 className="font-semibold">Social Media</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="twitter">Twitter Post</Label>
+                <Textarea
+                  id="twitter"
+                  value={twitterPost}
+                  onChange={(e) => setTwitterPost(e.target.value)}
+                  placeholder="Short factual post for Twitter (auto-generated)"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instagram-comment">Instagram Comment</Label>
+                <Input
+                  id="instagram-comment"
+                  value={instagramComment}
+                  onChange={(e) => setInstagramComment(e.target.value)}
+                  placeholder="See full article link in bio."
+                  readOnly
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instagram-compressed">Instagram Compressed Text</Label>
+                <Textarea
+                  id="instagram-compressed"
+                  value={instagramCompressed}
+                  onChange={(e) => setInstagramCompressed(e.target.value)}
+                  placeholder="Compressed text for Instagram (auto-generated)"
+                  rows={3}
                 />
               </div>
             </div>
@@ -498,7 +620,7 @@ const AdminArticleEditor = () => {
                 <Label htmlFor="status">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     {statuses.map((s) => (
@@ -528,20 +650,24 @@ const AdminArticleEditor = () => {
                   checked={isMostRead}
                   onCheckedChange={setIsMostRead}
                 />
-                <Label htmlFor="most-read">Featured Article</Label>
+                <Label htmlFor="most-read">Mark as Most Read</Label>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Button type="submit" disabled={loading} onClick={handleSubmit} className="w-full">
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex-1"
+              >
                 <Save className="h-4 w-4 mr-2" />
-                {loading ? "Saving..." : isEditing ? "Update Article" : "Create Article"}
+                {loading ? "Saving..." : "Save Article"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate("/admin/articles")}
-                className="w-full"
               >
                 Cancel
               </Button>
