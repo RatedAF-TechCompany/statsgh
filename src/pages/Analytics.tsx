@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect } from "react";
 import { ArrowLeft, Eye, TrendingUp } from "lucide-react";
-import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const Analytics = () => {
@@ -35,42 +34,70 @@ const Analytics = () => {
     enabled: !!session?.user?.id,
   });
 
+  const { data: totalViews } = useQuery({
+    queryKey: ["total-views"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("article_views")
+        .select("*", { count: "exact", head: true });
+
+      if (error) {
+        console.error("Error fetching total views:", error);
+        return 0;
+      }
+
+      return count || 0;
+    },
+    enabled: !!session?.user?.id && isAdmin === true,
+  });
+
   const { data: topArticles } = useQuery({
     queryKey: ["top-articles"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("article_views")
-        .select("article_id, articles(title)")
-        .limit(10);
+        .select("article_id, articles(title)");
 
-      if (!data) return [];
+      if (error) {
+        console.error("Error fetching top articles:", error);
+        return [];
+      }
+
+      if (!data || data.length === 0) return [];
 
       // Count views per article
-      const viewCounts = data.reduce((acc: any, view: any) => {
+      const viewCounts = data.reduce((acc: Record<string, { title: string; views: number }>, view: any) => {
+        const articleId = view.article_id;
         const title = view.articles?.title || "Unknown";
-        acc[title] = (acc[title] || 0) + 1;
+        if (!acc[articleId]) {
+          acc[articleId] = { title, views: 0 };
+        }
+        acc[articleId].views += 1;
         return acc;
       }, {});
 
-      return Object.entries(viewCounts)
-        .map(([title, views]) => ({ title, views }))
-        .sort((a: any, b: any) => b.views - a.views)
+      return Object.values(viewCounts)
+        .sort((a, b) => b.views - a.views)
         .slice(0, 5);
     },
-    enabled: !!session?.user?.id,
+    enabled: !!session?.user?.id && isAdmin === true,
   });
 
   const { data: deviceBreakdown } = useQuery({
     queryKey: ["device-breakdown"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("article_views")
-        .select("device_type")
-        .limit(1000);
+        .select("device_type");
 
-      if (!data) return [];
+      if (error) {
+        console.error("Error fetching device breakdown:", error);
+        return [];
+      }
 
-      const breakdown = data.reduce((acc: any, view) => {
+      if (!data || data.length === 0) return [];
+
+      const breakdown = data.reduce((acc: Record<string, number>, view) => {
         const device = view.device_type || "Unknown";
         acc[device] = (acc[device] || 0) + 1;
         return acc;
@@ -78,7 +105,7 @@ const Analytics = () => {
 
       return Object.entries(breakdown).map(([device, count]) => ({ device, count }));
     },
-    enabled: !!session?.user?.id,
+    enabled: !!session?.user?.id && isAdmin === true,
   });
 
   // Redirect to login if not authenticated
@@ -105,6 +132,19 @@ const Analytics = () => {
           <h1 className="font-serif text-3xl font-bold">Analytics</h1>
         </div>
 
+        {/* Total Views Summary */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Total Article Views
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{totalViews?.toLocaleString() || 0}</p>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <Card>
             <CardHeader>
@@ -116,7 +156,7 @@ const Analytics = () => {
             <CardContent>
               {topArticles && topArticles.length > 0 ? (
                 <div className="space-y-4">
-                  {topArticles.map((article: any, index: number) => (
+                  {topArticles.map((article, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm truncate flex-1">{article.title}</span>
                       <span className="text-sm font-semibold ml-4">{article.views} views</span>
