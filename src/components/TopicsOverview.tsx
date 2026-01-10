@@ -290,23 +290,24 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
                 const topicColor = TOPIC_COLORS[topic.topicSlug];
                 return (
                   <h3
-                    className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 group/topic w-fit"
+                    className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 w-fit transition-colors duration-200"
                     onClick={() => navigate(`/topics/${topic.topicSlug}`)}
+                    onMouseEnter={(e) => {
+                      if (topicColor) {
+                        e.currentTarget.style.color = topicColor;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '';
+                    }}
                   >
                     {TopicIcon && (
                       <TopicIcon 
                         size={20} 
-                        className="flex-shrink-0 transition-colors duration-200"
-                        style={{ color: 'hsl(var(--primary) / 0.8)' }}
-                        onMouseEnter={(e) => {
-                          if (topicColor) e.currentTarget.style.color = topicColor;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = 'hsl(var(--primary) / 0.8)';
-                        }}
+                        className="flex-shrink-0"
                       />
                     )}
-                    <span className="group-hover/topic:underline">{topic.topicTitle}</span>
+                    <span className="hover:underline">{topic.topicTitle}</span>
                   </h3>
                 );
               })()}
