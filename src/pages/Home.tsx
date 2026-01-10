@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Menu, User, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SITE_NAVIGATION } from "@/lib/navigation";
@@ -21,26 +21,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [topicsVisible, setTopicsVisible] = useState(false);
   const topicsSectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTopicsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (topicsSectionRef.current) {
-      observer.observe(topicsSectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const {
     data: articlesData,
@@ -192,12 +173,10 @@ const Home = () => {
         )}
       </main>
 
-      {/* Topics Overview Section */}
+      {/* Topics Overview Section - Always visible */}
       <div 
         ref={topicsSectionRef}
-        className={`max-w-3xl mx-auto px-4 my-8 transition-all duration-700 ease-out ${
-          topicsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-        }`}
+        className="max-w-3xl mx-auto px-4 my-8"
       >
         <div className="border-t border-border pt-8 mb-6 flex items-start justify-between">
           <div>
