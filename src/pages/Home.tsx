@@ -117,11 +117,6 @@ const Home = () => {
       {/* Ghana Data Highlights Section */}
       <GhanaDataHighlights />
 
-      {/* Topics Overview Section */}
-      <div className="max-w-3xl mx-auto px-4 mb-8">
-        <TopicsOverview showHeader={true} />
-      </div>
-
       <main className="max-w-3xl mx-auto">
         {isLoading ? (
           <div className="px-4">
@@ -176,6 +171,11 @@ const Home = () => {
           </>
         )}
       </main>
+
+      {/* Topics Overview Section */}
+      <div className="max-w-3xl mx-auto px-4 my-8">
+        <TopicsOverview showHeader={true} />
+      </div>
     </div>
   );
 };
