@@ -1,5 +1,13 @@
 export const SITE_NAVIGATION = {
   name: "StatsGH",
+  defaultCountry: "Ghana",
+  primary: [
+    { label: "Topics", href: "/topics" },
+    { label: "Data", href: "/data" },
+    { label: "News", href: "/news" },
+    { label: "Dashboards", href: "/dashboards" },
+    { label: "Sources", href: "/sources" },
+  ],
   categories: [
     { label: "Top Stories", slug: "top-stories", type: "category" as const },
     { label: "Economy & Inflation", slug: "economy-inflation", type: "category" as const },
