@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bookmark, Share2, ArrowLeft, TrendingUp, Database, ExternalLink } from "lucide-react";
+import { ListenButton } from "@/components/ListenButton";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect } from "react";
@@ -345,6 +346,10 @@ const ArticleDetail = () => {
               )}
             </div>
             <div className="flex gap-2">
+              <ListenButton 
+                title={article.title} 
+                content={article.body} 
+              />
               <Button
                 variant="ghost"
                 size="sm"
