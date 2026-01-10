@@ -282,7 +282,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             return (
             <article 
               key={topic.topicSlug} 
-              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md border-l-3 pl-4"
+              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] border-l-3 pl-4"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
                 animationFillMode: 'forwards',
