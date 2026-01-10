@@ -205,11 +205,11 @@ const Topics = () => {
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Page Header */}
         <header className="mb-10">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-3">
-            All Topics
+          <h1 className="font-serif text-2xl md:text-3xl font-semibold text-foreground mb-2">
+            All our topics
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Ghana data, research, and writing — topic by topic.
+          <p className="text-muted-foreground">
+            All our data, research, and writing — topic by topic.
           </p>
         </header>
 
@@ -218,44 +218,43 @@ const Topics = () => {
           <div className="space-y-8">
             {[...Array(6)].map((_, i) => (
               <div key={i}>
-                <Skeleton className="h-7 w-48 mb-3" />
+                <Skeleton className="h-6 w-48 mb-3" />
                 <Skeleton className="h-5 w-full max-w-xl" />
               </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {TOPICS_CONFIG.map((topic) => (
-              <article key={topic.topicSlug} className="border-b border-border pb-6 last:border-0">
+              <article key={topic.topicSlug} className="border-b border-border/60 pb-5 last:border-0">
                 <h2
-                  className="font-serif text-xl md:text-2xl font-semibold text-foreground mb-2 cursor-pointer hover:text-primary transition-colors"
+                  className="font-serif text-lg md:text-xl text-[#2c5282] hover:underline cursor-pointer mb-2"
                   onClick={() => navigate(`/topics/${topic.topicSlug}`)}
                 >
                   {topic.topicTitle}
                 </h2>
-                <nav className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+                <div className="leading-relaxed">
                   {topic.indicatorLinks.map((link, index) => {
                     const exists = existingIndicators?.has(link.indicatorSlug);
                     return (
-                      <span key={link.indicatorSlug} className="inline-flex items-center">
+                      <span key={link.indicatorSlug} className="inline">
+                        {index > 0 && (
+                          <span className="text-muted-foreground mx-1.5">•</span>
+                        )}
                         <button
                           onClick={() => handleIndicatorClick(link.indicatorSlug, !!exists)}
                           className={`${
                             exists
-                              ? "text-primary hover:underline cursor-pointer"
-                              : "text-muted-foreground cursor-default"
-                          } transition-colors`}
-                          disabled={!exists}
+                              ? "text-[#2c5282] hover:underline cursor-pointer"
+                              : "text-foreground/80"
+                          } text-sm transition-colors`}
                         >
                           {link.label}
                         </button>
-                        {index < topic.indicatorLinks.length - 1 && (
-                          <span className="text-muted-foreground mx-1.5">·</span>
-                        )}
                       </span>
                     );
                   })}
-                </nav>
+                </div>
               </article>
             ))}
           </div>
