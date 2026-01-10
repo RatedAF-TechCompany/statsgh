@@ -282,7 +282,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             return (
             <article 
               key={topic.topicSlug} 
-              className="group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer"
+              className="group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
                 animationFillMode: 'forwards',
@@ -290,8 +290,14 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
                 borderLeftWidth: '3px',
                 borderLeftStyle: 'solid'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.borderLeftWidth = '5px'}
-              onMouseLeave={(e) => e.currentTarget.style.borderLeftWidth = '3px'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderLeftWidth = '5px';
+                e.currentTarget.style.boxShadow = `0 4px 20px -4px ${topicColor || 'hsl(var(--primary))'}40`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderLeftWidth = '3px';
+                e.currentTarget.style.boxShadow = '';
+              }}
               onClick={(e) => {
                 const article = e.currentTarget;
                 const rect = article.getBoundingClientRect();
