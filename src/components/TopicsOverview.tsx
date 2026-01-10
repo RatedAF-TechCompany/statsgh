@@ -222,30 +222,6 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
   const [visibleTopics, setVisibleTopics] = useState<Set<string>>(new Set());
   const topicRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Intersection Observer for scroll-reveal animations
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const topicSlug = entry.target.getAttribute('data-topic-slug');
-            if (topicSlug) {
-              setVisibleTopics((prev) => new Set(prev).add(topicSlug));
-              observer.unobserve(entry.target);
-            }
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    topicRefs.current.forEach((element) => {
-      observer.observe(element);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
   // Fetch existing indicators to check which links should be active
   const { data: existingIndicators, isLoading } = useQuery({
     queryKey: ["all-indicator-slugs"],
@@ -257,6 +233,38 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
       return new Set(data?.map((i) => i.slug) || []);
     },
   });
+
+  // Intersection Observer for scroll-reveal animations
+  useEffect(() => {
+    // Only set up observer after loading is complete and refs are populated
+    if (isLoading) return;
+    
+    // Small delay to ensure refs are populated after render
+    const timeoutId = setTimeout(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const topicSlug = entry.target.getAttribute('data-topic-slug');
+              if (topicSlug) {
+                setVisibleTopics((prev) => new Set(prev).add(topicSlug));
+                observer.unobserve(entry.target);
+              }
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '50px 0px 0px 0px' }
+      );
+
+      topicRefs.current.forEach((element) => {
+        observer.observe(element);
+      });
+
+      return () => observer.disconnect();
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoading]);
 
   const handleIndicatorClick = (slug: string, exists: boolean) => {
     if (exists) {
