@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -219,6 +219,32 @@ interface TopicsOverviewProps {
 const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: TopicsOverviewProps) => {
   const navigate = useNavigate();
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [visibleTopics, setVisibleTopics] = useState<Set<string>>(new Set());
+  const topicRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  // Intersection Observer for scroll-reveal animations
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const topicSlug = entry.target.getAttribute('data-topic-slug');
+            if (topicSlug) {
+              setVisibleTopics((prev) => new Set(prev).add(topicSlug));
+              observer.unobserve(entry.target);
+            }
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    topicRefs.current.forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Fetch existing indicators to check which links should be active
   const { data: existingIndicators, isLoading } = useQuery({
@@ -281,11 +307,18 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             const TopicIcon = TOPIC_ICONS[topic.topicSlug];
             return (
             <article 
-              key={topic.topicSlug} 
-              className="group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer"
+              key={topic.topicSlug}
+              ref={(el) => {
+                if (el) topicRefs.current.set(topic.topicSlug, el);
+              }}
+              data-topic-slug={topic.topicSlug}
+              className={`group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-500 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer ${
+                visibleTopics.has(topic.topicSlug) 
+                  ? 'opacity-100 translate-y-0' 
+                  : 'opacity-0 translate-y-6'
+              }`}
               style={{ 
-                animationDelay: `${topicIndex * 75}ms`,
-                animationFillMode: 'forwards',
+                transitionDelay: visibleTopics.has(topic.topicSlug) ? `${topicIndex * 75}ms` : '0ms',
                 borderLeftColor: topicColor || 'hsl(var(--primary))',
                 borderLeftWidth: '3px',
                 borderLeftStyle: 'solid'
