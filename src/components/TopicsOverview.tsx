@@ -35,6 +35,21 @@ const TOPIC_ICONS: Record<string, LucideIcon> = {
   "governance-and-elections": Vote,
 };
 
+// Map topic slugs to theme colors (for hover effects)
+const TOPIC_COLORS: Record<string, string> = {
+  "population-and-demographic-change": "#6366f1", // indigo
+  "health": "#ef4444", // red
+  "energy-and-environment": "#f59e0b", // amber
+  "food-and-agriculture": "#22c55e", // green
+  "poverty-and-economic-development": "#3b82f6", // blue
+  "finance-prices-and-public-debt": "#8b5cf6", // violet
+  "trade-and-external-sector": "#06b6d4", // cyan
+  "jobs-and-wages": "#f97316", // orange
+  "education-and-knowledge": "#a855f7", // purple
+  "living-conditions-and-wellbeing": "#14b8a6", // teal
+  "governance-and-elections": "#ec4899", // pink
+};
+
 // Topic configuration from the site spec
 const TOPICS_CONFIG = [
   {
@@ -272,13 +287,26 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             >
               {(() => {
                 const TopicIcon = TOPIC_ICONS[topic.topicSlug];
+                const topicColor = TOPIC_COLORS[topic.topicSlug];
                 return (
                   <h3
-                    className="font-serif text-lg md:text-xl text-primary hover:underline cursor-pointer mb-1.5 flex items-center gap-2"
+                    className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 group/topic w-fit"
                     onClick={() => navigate(`/topics/${topic.topicSlug}`)}
                   >
-                    {TopicIcon && <TopicIcon size={20} className="text-primary/80 flex-shrink-0" />}
-                    {topic.topicTitle}
+                    {TopicIcon && (
+                      <TopicIcon 
+                        size={20} 
+                        className="flex-shrink-0 transition-colors duration-200"
+                        style={{ color: 'hsl(var(--primary) / 0.8)' }}
+                        onMouseEnter={(e) => {
+                          if (topicColor) e.currentTarget.style.color = topicColor;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'hsl(var(--primary) / 0.8)';
+                        }}
+                      />
+                    )}
+                    <span className="group-hover/topic:underline">{topic.topicTitle}</span>
                   </h3>
                 );
               })()}
