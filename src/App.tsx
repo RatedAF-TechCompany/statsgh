@@ -21,6 +21,10 @@ import SiteSettings from "./pages/SiteSettings";
 import VerifyComment from "./pages/VerifyComment";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
+import DataIndicators from "./pages/DataIndicators";
+import IndicatorDetail from "./pages/IndicatorDetail";
+import TopicDashboard from "./pages/TopicDashboard";
+import AdminDataManager from "./pages/AdminDataManager";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +51,11 @@ const App = () => (
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/audit-log" element={<AuditLog />} />
           <Route path="/admin/settings" element={<SiteSettings />} />
+          <Route path="/admin/data" element={<AdminDataManager />} />
+          {/* Data platform routes */}
+          <Route path="/data" element={<DataIndicators />} />
+          <Route path="/data/:slug" element={<IndicatorDetail />} />
+          <Route path="/topics/:slug" element={<TopicDashboard />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}

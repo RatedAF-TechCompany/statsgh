@@ -14,6 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      article_indicators: {
+        Row: {
+          article_id: string
+          cited_date: string | null
+          cited_geography_id: string | null
+          cited_value: number | null
+          context_note: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          indicator_id: string
+        }
+        Insert: {
+          article_id: string
+          cited_date?: string | null
+          cited_geography_id?: string | null
+          cited_value?: number | null
+          context_note?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          indicator_id: string
+        }
+        Update: {
+          article_id?: string
+          cited_date?: string | null
+          cited_geography_id?: string | null
+          cited_value?: number | null
+          context_note?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          indicator_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_indicators_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "article_indicators_cited_geography_id_fkey"
+            columns: ["cited_geography_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "article_indicators_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "indicators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      article_sources: {
+        Row: {
+          article_id: string
+          citation_text: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          source_id: string
+        }
+        Insert: {
+          article_id: string
+          citation_text?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          source_id: string
+        }
+        Update: {
+          article_id?: string
+          citation_text?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_sources_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "article_sources_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       article_versions: {
         Row: {
           article_id: string | null
@@ -376,6 +476,605 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_imports: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          dataset_id: string | null
+          error_log: Json | null
+          filename: string
+          id: string
+          imported_by: string | null
+          indicator_id: string | null
+          rows_failed: number | null
+          rows_imported: number | null
+          rows_total: number | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error_log?: Json | null
+          filename: string
+          id?: string
+          imported_by?: string | null
+          indicator_id?: string | null
+          rows_failed?: number | null
+          rows_imported?: number | null
+          rows_total?: number | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          error_log?: Json | null
+          filename?: string
+          id?: string
+          imported_by?: string | null
+          indicator_id?: string | null
+          rows_failed?: number | null
+          rows_imported?: number | null
+          rows_total?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_imports_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_imports_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "indicators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_points: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          is_estimate: boolean | null
+          is_provisional: boolean | null
+          series_id: string
+          source_id: string | null
+          source_note: string | null
+          updated_at: string | null
+          value: number
+          value_formatted: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          is_estimate?: boolean | null
+          is_provisional?: boolean | null
+          series_id: string
+          source_id?: string | null
+          source_note?: string | null
+          updated_at?: string | null
+          value: number
+          value_formatted?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          is_estimate?: boolean | null
+          is_provisional?: boolean | null
+          series_id?: string
+          source_id?: string | null
+          source_note?: string | null
+          updated_at?: string | null
+          value?: number
+          value_formatted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_points_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "data_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_points_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_series: {
+        Row: {
+          breakdown_type: string | null
+          breakdown_value: string | null
+          created_at: string | null
+          dataset_id: string | null
+          geography_id: string
+          id: string
+          indicator_id: string
+          is_primary: boolean | null
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          breakdown_type?: string | null
+          breakdown_value?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          geography_id: string
+          id?: string
+          indicator_id: string
+          is_primary?: boolean | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          breakdown_type?: string | null
+          breakdown_value?: string | null
+          created_at?: string | null
+          dataset_id?: string | null
+          geography_id?: string
+          id?: string
+          indicator_id?: string
+          is_primary?: boolean | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_series_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_series_geography_id_fkey"
+            columns: ["geography_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_series_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "indicators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_sources: {
+        Row: {
+          country_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_ghana_source: boolean | null
+          logo_url: string | null
+          name: string
+          reliability_notes: string | null
+          short_name: string | null
+          source_type: string | null
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          country_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_ghana_source?: boolean | null
+          logo_url?: string | null
+          name: string
+          reliability_notes?: string | null
+          short_name?: string | null
+          source_type?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          country_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_ghana_source?: boolean | null
+          logo_url?: string | null
+          name?: string
+          reliability_notes?: string | null
+          short_name?: string | null
+          source_type?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_sources_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_topics: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          icon: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_topics_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "data_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datasets: {
+        Row: {
+          coverage_end: string | null
+          coverage_start: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_ghana_dataset: boolean | null
+          last_updated_at: string | null
+          license: string | null
+          name: string
+          slug: string
+          source_document: string | null
+          source_id: string
+          source_url: string | null
+          update_frequency: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          coverage_end?: string | null
+          coverage_start?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_ghana_dataset?: boolean | null
+          last_updated_at?: string | null
+          license?: string | null
+          name: string
+          slug: string
+          source_document?: string | null
+          source_id: string
+          source_url?: string | null
+          update_frequency?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          coverage_end?: string | null
+          coverage_start?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_ghana_dataset?: boolean | null
+          last_updated_at?: string | null
+          license?: string | null
+          name?: string
+          slug?: string
+          source_document?: string | null
+          source_id?: string
+          source_url?: string | null
+          update_frequency?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datasets_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "data_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geographies: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_ghana: boolean | null
+          iso_alpha2: string | null
+          iso_alpha3: string | null
+          name: string
+          parent_id: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_ghana?: boolean | null
+          iso_alpha2?: string | null
+          iso_alpha3?: string | null
+          name: string
+          parent_id?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_ghana?: boolean | null
+          iso_alpha2?: string | null
+          iso_alpha3?: string | null
+          name?: string
+          parent_id?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geographies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geography_set_members: {
+        Row: {
+          geography_id: string
+          geography_set_id: string
+          id: string
+          sort_order: number | null
+        }
+        Insert: {
+          geography_id: string
+          geography_set_id: string
+          id?: string
+          sort_order?: number | null
+        }
+        Update: {
+          geography_id?: string
+          geography_set_id?: string
+          id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geography_set_members_geography_id_fkey"
+            columns: ["geography_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geography_set_members_geography_set_id_fkey"
+            columns: ["geography_set_id"]
+            isOneToOne: false
+            referencedRelation: "geography_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geography_sets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
+      ghana_series_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          series_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          series_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          series_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghana_series_tags_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "data_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicator_topics: {
+        Row: {
+          id: string
+          indicator_id: string
+          is_primary: boolean | null
+          topic_id: string
+        }
+        Insert: {
+          id?: string
+          indicator_id: string
+          is_primary?: boolean | null
+          topic_id: string
+        }
+        Update: {
+          id?: string
+          indicator_id?: string
+          is_primary?: boolean | null
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicator_topics_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "indicators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indicator_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "data_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicators: {
+        Row: {
+          caveats: string | null
+          chart_type: string | null
+          created_at: string | null
+          decimal_places: number | null
+          default_geography_id: string | null
+          definition: string | null
+          description: string | null
+          frequency: string | null
+          id: string
+          is_ghana_core: boolean | null
+          methodology: string | null
+          name: string
+          priority_tier: string | null
+          short_name: string | null
+          show_change: boolean | null
+          slug: string
+          topic_id: string | null
+          unit: string
+          unit_display: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          caveats?: string | null
+          chart_type?: string | null
+          created_at?: string | null
+          decimal_places?: number | null
+          default_geography_id?: string | null
+          definition?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_ghana_core?: boolean | null
+          methodology?: string | null
+          name: string
+          priority_tier?: string | null
+          short_name?: string | null
+          show_change?: boolean | null
+          slug: string
+          topic_id?: string | null
+          unit: string
+          unit_display?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          caveats?: string | null
+          chart_type?: string | null
+          created_at?: string | null
+          decimal_places?: number | null
+          default_geography_id?: string | null
+          definition?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_ghana_core?: boolean | null
+          methodology?: string | null
+          name?: string
+          priority_tier?: string | null
+          short_name?: string | null
+          show_change?: boolean | null
+          slug?: string
+          topic_id?: string | null
+          unit?: string
+          unit_display?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicators_default_geography_id_fkey"
+            columns: ["default_geography_id"]
+            isOneToOne: false
+            referencedRelation: "geographies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indicators_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "data_topics"
             referencedColumns: ["id"]
           },
         ]
