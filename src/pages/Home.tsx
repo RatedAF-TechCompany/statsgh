@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { SITE_NAVIGATION } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
+import GhanaDataHighlights from "@/components/GhanaDataHighlights";
 import statsghLogo from "@/assets/statsgh-logo.png";
 
 const ARTICLES_PER_PAGE = 10;
@@ -111,6 +112,9 @@ const Home = () => {
           </button>
         </div>
       </header>
+
+      {/* Ghana Data Highlights Section */}
+      <GhanaDataHighlights />
 
       <main className="max-w-3xl mx-auto">
         {isLoading ? (
