@@ -9,6 +9,7 @@ import { SITE_NAVIGATION } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
 import GhanaDataHighlights from "@/components/GhanaDataHighlights";
+import TopicsOverview from "@/components/TopicsOverview";
 import statsghLogo from "@/assets/statsgh-logo.png";
 
 const ARTICLES_PER_PAGE = 10;
@@ -115,6 +116,11 @@ const Home = () => {
 
       {/* Ghana Data Highlights Section */}
       <GhanaDataHighlights />
+
+      {/* Topics Overview Section */}
+      <div className="max-w-3xl mx-auto px-4 mb-8">
+        <TopicsOverview showHeader={true} />
+      </div>
 
       <main className="max-w-3xl mx-auto">
         {isLoading ? (
