@@ -292,11 +292,38 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
       )}
 
       {isLoading ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {[...Array(6)].map((_, i) => (
-            <div key={i}>
-              <Skeleton className="h-6 w-48 mb-3" />
-              <Skeleton className="h-5 w-full max-w-xl" />
+            <div 
+              key={i} 
+              className="relative overflow-hidden border-b border-border/50 pb-4 last:border-0 -mx-3 px-3 py-3 rounded-lg pl-4"
+              style={{ 
+                borderLeftColor: 'hsl(var(--muted))',
+                borderLeftWidth: '3px',
+                borderLeftStyle: 'solid',
+                animationDelay: `${i * 100}ms`
+              }}
+            >
+              {/* Topic title skeleton with icon */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="relative overflow-hidden h-5 w-5 rounded bg-muted">
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" />
+                </div>
+                <div className="relative overflow-hidden h-6 w-48 rounded bg-muted">
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" style={{ animationDelay: `${i * 50}ms` }} />
+                </div>
+              </div>
+              {/* Indicator links skeleton */}
+              <div className="flex flex-wrap gap-2">
+                {[...Array(5)].map((_, j) => (
+                  <div key={j} className="relative overflow-hidden h-4 rounded bg-muted" style={{ width: `${60 + Math.random() * 40}px` }}>
+                    <div 
+                      className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" 
+                      style={{ animationDelay: `${(i * 50) + (j * 75)}ms` }} 
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
