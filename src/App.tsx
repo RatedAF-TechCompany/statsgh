@@ -26,6 +26,10 @@ import IndicatorDetail from "./pages/IndicatorDetail";
 import TopicDashboard from "./pages/TopicDashboard";
 import AdminDataManager from "./pages/AdminDataManager";
 import GhanaFinanceDashboard from "./pages/GhanaFinanceDashboard";
+import Topics from "./pages/Topics";
+import News from "./pages/News";
+import Dashboards from "./pages/Dashboards";
+import Sources from "./pages/Sources";
 
 const queryClient = new QueryClient();
 
@@ -53,11 +57,15 @@ const App = () => (
           <Route path="/admin/audit-log" element={<AuditLog />} />
           <Route path="/admin/settings" element={<SiteSettings />} />
           <Route path="/admin/data" element={<AdminDataManager />} />
-          {/* Data platform routes */}
+          {/* Primary navigation pages */}
+          <Route path="/topics" element={<Topics />} />
+          <Route path="/topics/:slug" element={<TopicDashboard />} />
           <Route path="/data" element={<DataIndicators />} />
           <Route path="/data/:slug" element={<IndicatorDetail />} />
-          <Route path="/topics/:slug" element={<TopicDashboard />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/dashboards/finance" element={<GhanaFinanceDashboard />} />
+          <Route path="/sources" element={<Sources />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}
