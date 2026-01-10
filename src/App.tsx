@@ -25,6 +25,7 @@ import DataIndicators from "./pages/DataIndicators";
 import IndicatorDetail from "./pages/IndicatorDetail";
 import TopicDashboard from "./pages/TopicDashboard";
 import AdminDataManager from "./pages/AdminDataManager";
+import GhanaFinanceDashboard from "./pages/GhanaFinanceDashboard";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="/data" element={<DataIndicators />} />
           <Route path="/data/:slug" element={<IndicatorDetail />} />
           <Route path="/topics/:slug" element={<TopicDashboard />} />
+          <Route path="/dashboards/finance" element={<GhanaFinanceDashboard />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}
