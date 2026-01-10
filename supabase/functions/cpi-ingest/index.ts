@@ -8,45 +8,6 @@ const corsHeaders = {
 
 const INDICATOR_SLUG = "cpi-inflation-yoy";
 
-// PxWeb configuration for CPI inflation
-const CPI_PXWEB_CONFIG = {
-  baseUrl: "https://statsbank.statsghana.gov.gh/api/v1/en/",
-  tablePath: "Macroeconomic%20Indicators/Prices%20and%20Inflation/cpi.px",
-  dimensions: {
-    time: "Month",
-    indicator: "Indicator",
-    geography: "Region",
-    product: "Product",
-    source: "Source",
-  },
-  fixedSelections: {
-    Indicator: ["Year-on-year inflation (%)"],
-    Region: ["Ghana"],
-    Product: ["All products"],
-    Source: ["All sources"],
-  },
-  geographyMapping: {
-    Ghana: { name: "Ghana", type: "national" },
-  },
-};
-
-interface PxWebVariable {
-  code: string;
-  text: string;
-  values: string[];
-  valueTexts: string[];
-}
-
-interface PxWebMetadata {
-  title: string;
-  variables: PxWebVariable[];
-}
-
-interface PxWebDataResponse {
-  columns: { code: string; text: string; type: string }[];
-  data: { key: string[]; values: string[] }[];
-}
-
 // Parse month format (2024M01) to ISO date (2024-01-01)
 function parseMonth(monthStr: string): string {
   const match = monthStr.match(/^(\d{4})M(\d{2})$/);
@@ -54,98 +15,9 @@ function parseMonth(monthStr: string): string {
   return `${match[1]}-${match[2]}-01`;
 }
 
-// Fetch data from PxWeb API
-async function fetchCPIData(latestOnly: boolean = false): Promise<{
-  data: { date: string; value: number | null }[];
-  timeRange: { earliest: string; latest: string } | null;
-}> {
-  const url = `${CPI_PXWEB_CONFIG.baseUrl}${CPI_PXWEB_CONFIG.tablePath}`;
-  
-  // First, fetch metadata to get available time periods
-  console.log(`Fetching metadata from: ${url}`);
-  const metaResponse = await fetch(url);
-  if (!metaResponse.ok) {
-    throw new Error(`Failed to fetch metadata: ${metaResponse.status}`);
-  }
-  
-  const metadata: PxWebMetadata = await metaResponse.json();
-  const timeVariable = metadata.variables.find(v => v.code === "Month");
-  if (!timeVariable) {
-    throw new Error("Could not find Month variable in metadata");
-  }
-  
-  const timeValues = latestOnly ? [timeVariable.values[0]] : timeVariable.values;
-  
-  // Build query
-  const query = metadata.variables.map(variable => {
-    let values: string[];
-    
-    if (variable.code === "Month") {
-      values = timeValues;
-    } else if (CPI_PXWEB_CONFIG.fixedSelections[variable.code as keyof typeof CPI_PXWEB_CONFIG.fixedSelections]) {
-      values = CPI_PXWEB_CONFIG.fixedSelections[variable.code as keyof typeof CPI_PXWEB_CONFIG.fixedSelections];
-    } else {
-      values = [variable.values[0]];
-    }
-    
-    return {
-      code: variable.code,
-      selection: { filter: "item", values },
-    };
-  });
-  
-  console.log(`Querying ${timeValues.length} time periods`);
-  
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query,
-      response: { format: "json" },
-    }),
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to query data: ${response.status} - ${errorText}`);
-  }
-  
-  const result: PxWebDataResponse = await response.json();
-  console.log(`Received ${result.data.length} data rows`);
-  
-  // Parse and normalize data
-  const parsed: { date: string; value: number | null }[] = [];
-  
-  for (const row of result.data) {
-    const monthStr = row.key[0]; // Month is first column
-    const rawValue = row.values[0];
-    
-    let value: number | null = null;
-    if (rawValue && rawValue !== ".." && rawValue !== "-") {
-      const num = parseFloat(rawValue);
-      if (!isNaN(num)) value = num;
-    }
-    
-    try {
-      parsed.push({
-        date: parseMonth(monthStr),
-        value,
-      });
-    } catch (e) {
-      console.warn(`Skipping invalid date: ${monthStr}`);
-    }
-  }
-  
-  // Sort by date ascending
-  parsed.sort((a, b) => a.date.localeCompare(b.date));
-  
-  return {
-    data: parsed,
-    timeRange: parsed.length > 0 ? {
-      earliest: parsed[0].date,
-      latest: parsed[parsed.length - 1].date,
-    } : null,
-  };
+interface CPIDataPoint {
+  date: string;
+  value: number;
 }
 
 serve(async (req) => {
@@ -161,19 +33,23 @@ serve(async (req) => {
   
   try {
     const body = await req.json();
-    const { action } = body as { action: "backfill" | "refresh" };
+    const { action, rawData } = body as { 
+      action: "processData";
+      rawData: { key: string[]; values: string[] }[];
+    };
     
-    console.log(`CPI Ingest: Action=${action}`);
+    if (action !== "processData" || !rawData || !Array.isArray(rawData)) {
+      throw new Error("Invalid request: expected action='processData' with rawData array");
+    }
     
-    const isBackfill = action === "backfill";
-    const runType = isBackfill ? "backfill" : "scheduled";
+    console.log(`CPI Ingest: Processing ${rawData.length} data rows from client`);
     
     // Create ingestion run record
     const { data: runData, error: runError } = await supabase
       .from("ingestion_runs")
       .insert({
         indicator_slug: INDICATOR_SLUG,
-        run_type: runType,
+        run_type: "backfill",
         status: "running",
       })
       .select()
@@ -185,14 +61,43 @@ serve(async (req) => {
       ingestionRunId = runData.id;
     }
     
-    // Fetch data from PxWeb
-    const { data: cpiData, timeRange } = await fetchCPIData(!isBackfill);
+    // Parse raw PxWeb data
+    const cpiData: CPIDataPoint[] = [];
     
-    if (cpiData.length === 0) {
-      throw new Error("No data returned from PxWeb API");
+    for (const row of rawData) {
+      const monthStr = row.key[0]; // Month is first dimension
+      const rawValue = row.values[0];
+      
+      if (!rawValue || rawValue === ".." || rawValue === "-" || rawValue === "...") {
+        continue;
+      }
+      
+      const value = parseFloat(rawValue);
+      if (isNaN(value)) continue;
+      
+      try {
+        cpiData.push({
+          date: parseMonth(monthStr),
+          value,
+        });
+      } catch (e) {
+        console.warn(`Skipping invalid date: ${monthStr}`);
+      }
     }
     
-    console.log(`Fetched ${cpiData.length} data points, range: ${timeRange?.earliest} to ${timeRange?.latest}`);
+    // Sort by date ascending
+    cpiData.sort((a, b) => a.date.localeCompare(b.date));
+    
+    console.log(`Parsed ${cpiData.length} valid data points`);
+    
+    if (cpiData.length === 0) {
+      throw new Error("No valid data points found in provided data");
+    }
+    
+    const timeRange = {
+      earliest: cpiData[0].date,
+      latest: cpiData[cpiData.length - 1].date,
+    };
     
     // Get or create the indicator
     const { data: existingIndicator } = await supabase
@@ -232,7 +137,7 @@ serve(async (req) => {
     }
     
     // Get Ghana geography
-    const { data: ghanaGeo, error: geoError } = await supabase
+    const { data: ghanaGeo } = await supabase
       .from("geographies")
       .select("id")
       .eq("code", "GH")
@@ -288,7 +193,7 @@ serve(async (req) => {
           breakdown_type: "national",
           source_id: gssSource?.id,
           external_key: JSON.stringify({
-            table: CPI_PXWEB_CONFIG.tablePath,
+            table: "Macroeconomic Indicators/Prices and Inflation/cpi.px",
             indicator: "Year-on-year inflation (%)",
             region: "Ghana",
             product: "All products",
@@ -302,18 +207,16 @@ serve(async (req) => {
     }
     
     // Prepare data points for upsert
-    const dataPoints = cpiData
-      .filter(dp => dp.value !== null)
-      .map(dp => ({
-        series_id: series!.id,
-        date: dp.date,
-        value: dp.value,
-        source_id: gssSource?.id,
-        value_formatted: `${dp.value!.toFixed(1)}%`,
-        revision_note: isBackfill ? "Historical backfill from GSS StatsBank" : null,
-      }));
+    const dataPoints = cpiData.map(dp => ({
+      series_id: series!.id,
+      date: dp.date,
+      value: dp.value,
+      source_id: gssSource?.id,
+      value_formatted: `${dp.value.toFixed(1)}%`,
+      revision_note: "Historical backfill from GSS StatsBank",
+    }));
     
-    console.log(`Upserting ${dataPoints.length} valid data points...`);
+    console.log(`Upserting ${dataPoints.length} data points...`);
     
     // Get existing data points to track updates vs inserts
     const { data: existingPoints } = await supabase
@@ -367,9 +270,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `CPI ${action} completed successfully`,
+        message: "CPI backfill completed successfully",
         stats: {
-          totalFetched: cpiData.length,
+          totalProcessed: cpiData.length,
           rowsInserted,
           rowsUpdated,
           timeRange,

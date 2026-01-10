@@ -894,6 +894,18 @@ const DataImporter = ({ indicators, sources }: { indicators: any[]; sources: any
   );
 };
 
+// PxWeb configuration for CPI
+const CPI_PXWEB_CONFIG = {
+  baseUrl: "https://statsbank.statsghana.gov.gh/api/v1/en/",
+  tablePath: "Macroeconomic%20Indicators/Prices%20and%20Inflation/cpi.px",
+  fixedSelections: {
+    Indicator: ["Year-on-year inflation (%)"],
+    Region: ["Ghana"],
+    Product: ["All products"],
+    Source: ["All sources"],
+  },
+};
+
 // Data Pipelines Manager Component
 const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
   const queryClient = useQueryClient();
@@ -902,6 +914,7 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
   const [csvData, setCsvData] = useState("");
   const [selectedSource, setSelectedSource] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState("");
 
   // Fetch ingestion runs
   const { data: ingestionRuns, isLoading: runsLoading } = useQuery({
@@ -917,11 +930,76 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
     },
   });
 
+  // Fetch data from PxWeb client-side (browser) to bypass server IP blocking
+  const fetchPxWebData = async (latestOnly: boolean = false) => {
+    const url = `${CPI_PXWEB_CONFIG.baseUrl}${CPI_PXWEB_CONFIG.tablePath}`;
+    
+    setBackfillStatus("Fetching metadata from Ghana StatsBank...");
+    
+    // First, fetch metadata
+    const metaResponse = await fetch(url);
+    if (!metaResponse.ok) {
+      throw new Error(`Failed to fetch metadata: ${metaResponse.status}`);
+    }
+    
+    const metadata = await metaResponse.json();
+    const timeVariable = metadata.variables.find((v: any) => v.code === "Month");
+    if (!timeVariable) {
+      throw new Error("Could not find Month variable in metadata");
+    }
+    
+    const timeValues = latestOnly ? [timeVariable.values[0]] : timeVariable.values;
+    
+    setBackfillStatus(`Fetching ${timeValues.length} months of data...`);
+    
+    // Build query
+    const query = metadata.variables.map((variable: any) => {
+      let values: string[];
+      
+      if (variable.code === "Month") {
+        values = timeValues;
+      } else if (CPI_PXWEB_CONFIG.fixedSelections[variable.code as keyof typeof CPI_PXWEB_CONFIG.fixedSelections]) {
+        values = CPI_PXWEB_CONFIG.fixedSelections[variable.code as keyof typeof CPI_PXWEB_CONFIG.fixedSelections];
+      } else {
+        values = [variable.values[0]];
+      }
+      
+      return {
+        code: variable.code,
+        selection: { filter: "item", values },
+      };
+    });
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        response: { format: "json" },
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to query data: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    return result.data;
+  };
+
   const handleBackfill = async () => {
     setIsBackfilling(true);
+    setBackfillStatus("Starting backfill...");
     try {
+      // Fetch data from browser (bypasses server IP blocking)
+      const rawData = await fetchPxWebData(false);
+      
+      setBackfillStatus(`Processing ${rawData.length} data points...`);
+      
+      // Send to edge function for processing
       const response = await supabase.functions.invoke("cpi-ingest", {
-        body: { action: "backfill" },
+        body: { action: "processData", rawData },
       });
       
       if (response.error) throw response.error;
@@ -930,11 +1008,13 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
       if (result.success) {
         toast.success(`Backfill complete: ${result.stats.rowsInserted} inserted, ${result.stats.rowsUpdated} updated`);
         queryClient.invalidateQueries({ queryKey: ["ingestion-runs"] });
+        setBackfillStatus("");
       } else {
         throw new Error(result.error);
       }
     } catch (error: any) {
       toast.error(`Backfill failed: ${error.message}`);
+      setBackfillStatus("");
     } finally {
       setIsBackfilling(false);
     }
@@ -942,9 +1022,16 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setBackfillStatus("Fetching latest data...");
     try {
+      // Fetch only latest month from browser
+      const rawData = await fetchPxWebData(true);
+      
+      setBackfillStatus("Processing latest data point...");
+      
+      // Send to edge function for processing
       const response = await supabase.functions.invoke("cpi-ingest", {
-        body: { action: "refresh" },
+        body: { action: "processData", rawData },
       });
       
       if (response.error) throw response.error;
@@ -953,11 +1040,13 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
       if (result.success) {
         toast.success(`Refresh complete: ${result.stats.rowsInserted} new, ${result.stats.rowsUpdated} updated`);
         queryClient.invalidateQueries({ queryKey: ["ingestion-runs"] });
+        setBackfillStatus("");
       } else {
         throw new Error(result.error);
       }
     } catch (error: any) {
       toast.error(`Refresh failed: ${error.message}`);
+      setBackfillStatus("");
     } finally {
       setIsRefreshing(false);
     }
@@ -1083,15 +1172,21 @@ const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
           </p>
           
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleBackfill} disabled={isBackfilling}>
+            <Button onClick={handleBackfill} disabled={isBackfilling || isRefreshing}>
               {isBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <History className="h-4 w-4 mr-2" />}
               {isBackfilling ? "Backfilling..." : "Backfill History"}
             </Button>
-            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing || isBackfilling}>
               {isRefreshing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               {isRefreshing ? "Refreshing..." : "Refresh Latest"}
             </Button>
           </div>
+          
+          {backfillStatus && (
+            <div className="bg-muted p-3 rounded-md text-sm">
+              <span className="font-medium">Status:</span> {backfillStatus}
+            </div>
+          )}
 
           {/* Manual CSV Upload Fallback */}
           <div className="border-t pt-4 mt-4">
