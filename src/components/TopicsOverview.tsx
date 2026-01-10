@@ -261,8 +261,15 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
         </div>
       ) : (
         <div className="space-y-5">
-          {displayTopics.map((topic) => (
-            <article key={topic.topicSlug} className="border-b border-border/50 pb-4 last:border-0">
+          {displayTopics.map((topic, topicIndex) => (
+            <article 
+              key={topic.topicSlug} 
+              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0"
+              style={{ 
+                animationDelay: `${topicIndex * 75}ms`,
+                animationFillMode: 'forwards'
+              }}
+            >
               {(() => {
                 const TopicIcon = TOPIC_ICONS[topic.topicSlug];
                 return (
