@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Eye, Wand2, Loader2 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
+import { ArticleIndicatorLinker } from "@/components/ArticleIndicatorLinker";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_NAVIGATION } from "@/lib/navigation";
 import { z } from "zod";
@@ -612,6 +613,11 @@ const AdminArticleEditor = () => {
                 />
               </div>
             </div>
+
+            {/* Data Citations - Indicator & Source Linking */}
+            <ArticleIndicatorLinker 
+              articleId={isEditing ? id! : null}
+            />
 
             <div className="p-4 border border-border rounded-md space-y-4">
               <h3 className="font-semibold">Publishing</h3>

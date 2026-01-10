@@ -1,9 +1,11 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Bookmark, Share2, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Bookmark, Share2, ArrowLeft, TrendingUp, Database, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect } from "react";
@@ -47,6 +49,43 @@ const ArticleDetail = () => {
       
       return data;
     },
+  });
+
+  // Fetch linked indicators
+  const { data: linkedIndicators } = useQuery({
+    queryKey: ["article-indicators-display", article?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("article_indicators")
+        .select(`
+          id, cited_value, cited_date, context_note,
+          indicator:indicators(id, name, slug, unit),
+          geography:geographies(id, name, code)
+        `)
+        .eq("article_id", article!.id)
+        .order("display_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!article?.id,
+  });
+
+  // Fetch linked sources
+  const { data: linkedSources } = useQuery({
+    queryKey: ["article-sources-display", article?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("article_sources")
+        .select(`
+          id, citation_text,
+          source:data_sources(id, name, short_name, website_url)
+        `)
+        .eq("article_id", article!.id)
+        .order("display_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!article?.id,
   });
 
   // Handle redirects for legacy URLs and mismatched category slugs
@@ -359,6 +398,98 @@ const ArticleDetail = () => {
             </div>
           )}
         </article>
+
+        {/* Data Citations Section */}
+        {((linkedIndicators && linkedIndicators.length > 0) || (linkedSources && linkedSources.length > 0)) && (
+          <div className="mt-8 p-6 bg-muted/30 rounded-lg border">
+            <h3 className="font-serif text-xl font-bold mb-4 flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Data Used in This Story
+            </h3>
+            
+            {linkedIndicators && linkedIndicators.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Indicators Cited
+                </h4>
+                <div className="space-y-2">
+                  {linkedIndicators.map((item: any) => (
+                    <div 
+                      key={item.id}
+                      className="flex items-center justify-between p-3 bg-background rounded border"
+                    >
+                      <div>
+                        <Link 
+                          to={`/data/${item.indicator?.slug}`}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
+                          {item.indicator?.name}
+                        </Link>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {item.cited_value !== null && (
+                            <span className="font-mono mr-2">
+                              {item.cited_value.toLocaleString()} {item.indicator?.unit}
+                            </span>
+                          )}
+                          {item.cited_date && (
+                            <span>• {new Date(item.cited_date).toLocaleDateString("en-GB", { 
+                              month: "short", 
+                              year: "numeric" 
+                            })}</span>
+                          )}
+                          {item.geography && (
+                            <span> • {item.geography.name}</span>
+                          )}
+                          {item.context_note && (
+                            <span className="text-xs ml-2">({item.context_note})</span>
+                          )}
+                        </div>
+                      </div>
+                      <Link to={`/data/${item.indicator?.slug}`}>
+                        <Button size="sm" variant="ghost">
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {linkedSources && linkedSources.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3">
+                  Data Sources
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {linkedSources.map((item: any) => (
+                    <Badge 
+                      key={item.id} 
+                      variant="outline" 
+                      className="py-1.5 px-3 cursor-pointer hover:bg-muted"
+                      onClick={() => {
+                        if (item.source?.website_url) {
+                          window.open(item.source.website_url, "_blank");
+                        }
+                      }}
+                    >
+                      {item.source?.short_name || item.source?.name}
+                      {item.citation_text && (
+                        <span className="text-muted-foreground ml-1">
+                          – {item.citation_text}
+                        </span>
+                      )}
+                      {item.source?.website_url && (
+                        <ExternalLink className="h-3 w-3 ml-1" />
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Comments Section */}
         <div className="mt-12 border-t border-border pt-8">
