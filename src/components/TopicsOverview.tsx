@@ -235,7 +235,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics }: TopicsOverviewProps) =
                         onClick={() => handleIndicatorClick(link.indicatorSlug, !!exists)}
                         className={`${
                           exists
-                            ? "text-primary hover:underline cursor-pointer"
+                            ? "text-primary cursor-pointer relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[1px] after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left"
                             : "text-foreground/70"
                         } text-sm transition-colors`}
                       >
