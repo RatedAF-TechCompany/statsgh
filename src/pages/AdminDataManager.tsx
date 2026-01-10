@@ -41,6 +41,11 @@ import {
   TrendingUp,
   Trash2,
   Edit,
+  RefreshCw,
+  Loader2,
+  History,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -131,7 +136,7 @@ const AdminDataManager = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="indicators" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               Indicators
@@ -147,6 +152,10 @@ const AdminDataManager = () => {
             <TabsTrigger value="import" className="gap-2">
               <Upload className="h-4 w-4" />
               Import Data
+            </TabsTrigger>
+            <TabsTrigger value="pipelines" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Data Pipelines
             </TabsTrigger>
           </TabsList>
 
@@ -172,6 +181,11 @@ const AdminDataManager = () => {
           {/* Import Tab */}
           <TabsContent value="import">
             <DataImporter indicators={indicators || []} sources={sources || []} />
+          </TabsContent>
+
+          {/* Data Pipelines Tab */}
+          <TabsContent value="pipelines">
+            <DataPipelinesManager sources={sources || []} />
           </TabsContent>
         </Tabs>
       </main>
@@ -874,6 +888,300 @@ const DataImporter = ({ indicators, sources }: { indicators: any[]; sources: any
             <Upload className="h-4 w-4 mr-2" />
             {isImporting ? "Importing..." : "Import Data"}
           </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Data Pipelines Manager Component
+const DataPipelinesManager = ({ sources }: { sources: any[] }) => {
+  const queryClient = useQueryClient();
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [csvData, setCsvData] = useState("");
+  const [selectedSource, setSelectedSource] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch ingestion runs
+  const { data: ingestionRuns, isLoading: runsLoading } = useQuery({
+    queryKey: ["ingestion-runs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ingestion_runs")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    try {
+      const response = await supabase.functions.invoke("cpi-ingest", {
+        body: { action: "backfill" },
+      });
+      
+      if (response.error) throw response.error;
+      
+      const result = response.data;
+      if (result.success) {
+        toast.success(`Backfill complete: ${result.stats.rowsInserted} inserted, ${result.stats.rowsUpdated} updated`);
+        queryClient.invalidateQueries({ queryKey: ["ingestion-runs"] });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast.error(`Backfill failed: ${error.message}`);
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await supabase.functions.invoke("cpi-ingest", {
+        body: { action: "refresh" },
+      });
+      
+      if (response.error) throw response.error;
+      
+      const result = response.data;
+      if (result.success) {
+        toast.success(`Refresh complete: ${result.stats.rowsInserted} new, ${result.stats.rowsUpdated} updated`);
+        queryClient.invalidateQueries({ queryKey: ["ingestion-runs"] });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast.error(`Refresh failed: ${error.message}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleManualUpload = async () => {
+    if (!csvData.trim()) {
+      toast.error("Please paste CSV data");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Parse CSV
+      const lines = csvData.trim().split("\n");
+      const hasHeader = lines[0].toLowerCase().includes("date");
+      const dataLines = hasHeader ? lines.slice(1) : lines;
+
+      // Get CPI indicator
+      const { data: indicator } = await supabase
+        .from("indicators")
+        .select("id")
+        .eq("slug", "cpi-inflation-yoy")
+        .single();
+
+      if (!indicator) {
+        throw new Error("CPI indicator not found. Run backfill first.");
+      }
+
+      // Get Ghana geography
+      const { data: ghanaGeo } = await supabase
+        .from("geographies")
+        .select("id")
+        .eq("code", "GH")
+        .single();
+
+      if (!ghanaGeo) throw new Error("Ghana geography not found");
+
+      // Get or create series
+      let { data: series } = await supabase
+        .from("data_series")
+        .select("id")
+        .eq("indicator_id", indicator.id)
+        .eq("geography_id", ghanaGeo.id)
+        .eq("is_primary", true)
+        .single();
+
+      if (!series) {
+        const { data: newSeries, error: seriesError } = await supabase
+          .from("data_series")
+          .insert({
+            indicator_id: indicator.id,
+            geography_id: ghanaGeo.id,
+            is_primary: true,
+            breakdown_type: "national",
+          })
+          .select()
+          .single();
+        if (seriesError) throw seriesError;
+        series = newSeries;
+      }
+
+      // Parse data points
+      const dataPoints = dataLines.map((line) => {
+        const [dateStr, valueStr] = line.split(",").map((s) => s.trim());
+        // Normalize date to YYYY-MM-01
+        let normalizedDate = dateStr;
+        if (dateStr.match(/^\d{4}-\d{2}$/)) {
+          normalizedDate = `${dateStr}-01`;
+        }
+        return {
+          series_id: series!.id,
+          date: normalizedDate,
+          value: parseFloat(valueStr),
+          source_id: selectedSource || null,
+          revision_note: "Manual upload fallback",
+        };
+      }).filter((dp) => !isNaN(dp.value) && dp.date);
+
+      if (dataPoints.length === 0) throw new Error("No valid data points");
+
+      // Create ingestion run
+      await supabase.from("ingestion_runs").insert({
+        indicator_slug: "cpi-inflation-yoy",
+        run_type: "manual",
+        status: "success",
+        rows_inserted: dataPoints.length,
+        finished_at: new Date().toISOString(),
+      });
+
+      // Upsert data
+      const { error: upsertError } = await supabase
+        .from("data_points")
+        .upsert(dataPoints, { onConflict: "series_id,date" });
+
+      if (upsertError) throw upsertError;
+
+      toast.success(`Uploaded ${dataPoints.length} data points`);
+      setCsvData("");
+      queryClient.invalidateQueries({ queryKey: ["ingestion-runs"] });
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Data Pipelines</h2>
+
+      {/* CPI Inflation Pipeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            CPI Inflation (Year-on-Year)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Data sourced from Ghana Statistical Service StatsBank (PxWeb API).
+          </p>
+          
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleBackfill} disabled={isBackfilling}>
+              {isBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <History className="h-4 w-4 mr-2" />}
+              {isBackfilling ? "Backfilling..." : "Backfill History"}
+            </Button>
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+              {isRefreshing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              {isRefreshing ? "Refreshing..." : "Refresh Latest"}
+            </Button>
+          </div>
+
+          {/* Manual CSV Upload Fallback */}
+          <div className="border-t pt-4 mt-4">
+            <h4 className="font-medium mb-2">Manual CSV Upload (Fallback)</h4>
+            <p className="text-xs text-muted-foreground mb-2">
+              Use this if the API is unavailable. Format: date,value (one per line)
+            </p>
+            <div className="space-y-2">
+              <Select value={selectedSource} onValueChange={setSelectedSource}>
+                <SelectTrigger className="w-full max-w-xs">
+                  <SelectValue placeholder="Select source (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sources.map((src) => (
+                    <SelectItem key={src.id} value={src.id}>{src.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Textarea
+                value={csvData}
+                onChange={(e) => setCsvData(e.target.value)}
+                placeholder="2024-01,23.5
+2024-02,22.8
+2024-03,21.1"
+                rows={5}
+                className="font-mono text-sm"
+              />
+              <Button variant="secondary" onClick={handleManualUpload} disabled={isUploading || !csvData.trim()}>
+                <Upload className="h-4 w-4 mr-2" />
+                {isUploading ? "Uploading..." : "Upload CSV"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Ingestion Runs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Ingestion Runs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {runsLoading ? (
+            <p className="text-muted-foreground">Loading...</p>
+          ) : ingestionRuns && ingestionRuns.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Indicator</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Rows</TableHead>
+                  <TableHead>Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ingestionRuns.map((run: any) => (
+                  <TableRow key={run.id}>
+                    <TableCell className="font-medium">{run.indicator_slug}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{run.run_type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {run.status === "success" ? (
+                        <span className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" /> Success
+                        </span>
+                      ) : run.status === "failed" ? (
+                        <span className="flex items-center gap-1 text-destructive">
+                          <XCircle className="h-4 w-4" /> Failed
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Running
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {run.rows_inserted || 0} / {run.rows_updated || 0}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(run.started_at).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-muted-foreground">No ingestion runs yet.</p>
+          )}
         </CardContent>
       </Card>
     </div>

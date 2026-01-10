@@ -547,6 +547,7 @@ export type Database = {
           id: string
           is_estimate: boolean | null
           is_provisional: boolean | null
+          revision_note: string | null
           series_id: string
           source_id: string | null
           source_note: string | null
@@ -560,6 +561,7 @@ export type Database = {
           id?: string
           is_estimate?: boolean | null
           is_provisional?: boolean | null
+          revision_note?: string | null
           series_id: string
           source_id?: string | null
           source_note?: string | null
@@ -573,6 +575,7 @@ export type Database = {
           id?: string
           is_estimate?: boolean | null
           is_provisional?: boolean | null
+          revision_note?: string | null
           series_id?: string
           source_id?: string | null
           source_note?: string | null
@@ -603,11 +606,13 @@ export type Database = {
           breakdown_value: string | null
           created_at: string | null
           dataset_id: string | null
+          external_key: string | null
           geography_id: string
           id: string
           indicator_id: string
           is_primary: boolean | null
           name: string | null
+          source_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -615,11 +620,13 @@ export type Database = {
           breakdown_value?: string | null
           created_at?: string | null
           dataset_id?: string | null
+          external_key?: string | null
           geography_id: string
           id?: string
           indicator_id: string
           is_primary?: boolean | null
           name?: string | null
+          source_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -627,11 +634,13 @@ export type Database = {
           breakdown_value?: string | null
           created_at?: string | null
           dataset_id?: string | null
+          external_key?: string | null
           geography_id?: string
           id?: string
           indicator_id?: string
           is_primary?: boolean | null
           name?: string | null
+          source_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1078,6 +1087,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ingestion_runs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          indicator_slug: string
+          rows_inserted: number | null
+          rows_updated: number | null
+          run_type: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          indicator_slug: string
+          rows_inserted?: number | null
+          rows_updated?: number | null
+          run_type: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          indicator_slug?: string
+          rows_inserted?: number | null
+          rows_updated?: number | null
+          run_type?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
       }
       media: {
         Row: {
