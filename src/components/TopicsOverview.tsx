@@ -3,7 +3,37 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  Users, 
+  Heart, 
+  Zap, 
+  Wheat, 
+  TrendingUp, 
+  DollarSign, 
+  Ship, 
+  Briefcase, 
+  GraduationCap, 
+  Home, 
+  Vote,
+  LucideIcon
+} from "lucide-react";
+
+// Map topic slugs to icons
+const TOPIC_ICONS: Record<string, LucideIcon> = {
+  "population-and-demographic-change": Users,
+  "health": Heart,
+  "energy-and-environment": Zap,
+  "food-and-agriculture": Wheat,
+  "poverty-and-economic-development": TrendingUp,
+  "finance-prices-and-public-debt": DollarSign,
+  "trade-and-external-sector": Ship,
+  "jobs-and-wages": Briefcase,
+  "education-and-knowledge": GraduationCap,
+  "living-conditions-and-wellbeing": Home,
+  "governance-and-elections": Vote,
+};
 
 // Topic configuration from the site spec
 const TOPICS_CONFIG = [
@@ -233,12 +263,18 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
         <div className="space-y-5">
           {displayTopics.map((topic) => (
             <article key={topic.topicSlug} className="border-b border-border/50 pb-4 last:border-0">
-              <h3
-                className="font-serif text-lg md:text-xl text-primary hover:underline cursor-pointer mb-1.5"
-                onClick={() => navigate(`/topics/${topic.topicSlug}`)}
-              >
-                {topic.topicTitle}
-              </h3>
+              {(() => {
+                const TopicIcon = TOPIC_ICONS[topic.topicSlug];
+                return (
+                  <h3
+                    className="font-serif text-lg md:text-xl text-primary hover:underline cursor-pointer mb-1.5 flex items-center gap-2"
+                    onClick={() => navigate(`/topics/${topic.topicSlug}`)}
+                  >
+                    {TopicIcon && <TopicIcon size={20} className="text-primary/80 flex-shrink-0" />}
+                    {topic.topicTitle}
+                  </h3>
+                );
+              })()}
               <div className="leading-relaxed">
                 {(() => {
                   const isExpanded = expandedTopics.has(topic.topicSlug);
