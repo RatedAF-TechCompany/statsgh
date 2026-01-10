@@ -279,7 +279,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
           {displayTopics.map((topic, topicIndex) => (
             <article 
               key={topic.topicSlug} 
-              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0"
+              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-colors duration-200 hover:bg-muted/50"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
                 animationFillMode: 'forwards'
