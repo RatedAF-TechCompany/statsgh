@@ -276,18 +276,21 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
         </div>
       ) : (
         <div className="space-y-5">
-          {displayTopics.map((topic, topicIndex) => (
+          {displayTopics.map((topic, topicIndex) => {
+            const topicColor = TOPIC_COLORS[topic.topicSlug];
+            const TopicIcon = TOPIC_ICONS[topic.topicSlug];
+            return (
             <article 
               key={topic.topicSlug} 
-              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-colors duration-200 hover:bg-muted/50"
+              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-colors duration-200 hover:bg-muted/50 border-l-3 pl-4"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
-                animationFillMode: 'forwards'
+                animationFillMode: 'forwards',
+                borderLeftColor: topicColor || 'hsl(var(--primary))',
+                borderLeftWidth: '3px'
               }}
             >
               {(() => {
-                const TopicIcon = TOPIC_ICONS[topic.topicSlug];
-                const topicColor = TOPIC_COLORS[topic.topicSlug];
                 return (
                   <h3
                     className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 w-fit transition-colors duration-200"
@@ -362,7 +365,8 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
                 })()}
               </div>
             </article>
-          ))}
+          );
+          })}
         </div>
       )}
 
