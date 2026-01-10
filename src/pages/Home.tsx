@@ -174,7 +174,11 @@ const Home = () => {
 
       {/* Topics Overview Section */}
       <div className="max-w-3xl mx-auto px-4 my-8">
-        <TopicsOverview showHeader={true} />
+        <div className="border-t border-border pt-8 mb-6">
+          <h2 className="font-serif text-xl font-semibold text-foreground mb-1">Explore by Topic</h2>
+          <p className="text-sm text-muted-foreground">Browse our data and research organized by subject area</p>
+        </div>
+        <TopicsOverview showHeader={false} />
       </div>
     </div>
   );
