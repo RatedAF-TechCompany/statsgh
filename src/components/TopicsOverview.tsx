@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 // Topic configuration from the site spec
 const TOPICS_CONFIG = [
@@ -166,10 +168,12 @@ export { TOPICS_CONFIG };
 interface TopicsOverviewProps {
   showHeader?: boolean;
   maxTopics?: number;
+  limitIndicators?: number;
 }
 
-const TopicsOverview = ({ showHeader = true, maxTopics }: TopicsOverviewProps) => {
+const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: TopicsOverviewProps) => {
   const navigate = useNavigate();
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
   // Fetch existing indicators to check which links should be active
   const { data: existingIndicators, isLoading } = useQuery({
@@ -187,6 +191,18 @@ const TopicsOverview = ({ showHeader = true, maxTopics }: TopicsOverviewProps) =
     if (exists) {
       navigate(`/data/${slug}`);
     }
+  };
+
+  const toggleTopicExpanded = (topicSlug: string) => {
+    setExpandedTopics((prev) => {
+      const next = new Set(prev);
+      if (next.has(topicSlug)) {
+        next.delete(topicSlug);
+      } else {
+        next.add(topicSlug);
+      }
+      return next;
+    });
   };
 
   const displayTopics = maxTopics ? TOPICS_CONFIG.slice(0, maxTopics) : TOPICS_CONFIG;
@@ -224,26 +240,54 @@ const TopicsOverview = ({ showHeader = true, maxTopics }: TopicsOverviewProps) =
                 {topic.topicTitle}
               </h3>
               <div className="leading-relaxed">
-                {topic.indicatorLinks.map((link, index) => {
-                  const exists = existingIndicators?.has(link.indicatorSlug);
+                {(() => {
+                  const isExpanded = expandedTopics.has(topic.topicSlug);
+                  const indicators = limitIndicators && !isExpanded 
+                    ? topic.indicatorLinks.slice(0, limitIndicators) 
+                    : topic.indicatorLinks;
+                  const hasMore = limitIndicators && topic.indicatorLinks.length > limitIndicators;
+
                   return (
-                    <span key={link.indicatorSlug} className="inline">
-                      {index > 0 && (
-                        <span className="text-muted-foreground mx-1.5">•</span>
+                    <>
+                      {indicators.map((link, index) => {
+                        const exists = existingIndicators?.has(link.indicatorSlug);
+                        return (
+                          <span key={link.indicatorSlug} className="inline">
+                            {index > 0 && (
+                              <span className="text-muted-foreground mx-1.5">•</span>
+                            )}
+                            <button
+                              onClick={() => handleIndicatorClick(link.indicatorSlug, !!exists)}
+                              className={`${
+                                exists
+                                  ? "text-primary cursor-pointer relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[1px] after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left"
+                                  : "text-foreground/70"
+                              } text-sm transition-colors`}
+                            >
+                              {link.label}
+                            </button>
+                          </span>
+                        );
+                      })}
+                      {hasMore && (
+                        <button
+                          onClick={() => toggleTopicExpanded(topic.topicSlug)}
+                          className="inline-flex items-center gap-0.5 text-sm text-muted-foreground hover:text-primary transition-colors ml-2"
+                        >
+                          {isExpanded ? (
+                            <>
+                              less <ChevronUp size={14} />
+                            </>
+                          ) : (
+                            <>
+                              +{topic.indicatorLinks.length - limitIndicators} more <ChevronDown size={14} />
+                            </>
+                          )}
+                        </button>
                       )}
-                      <button
-                        onClick={() => handleIndicatorClick(link.indicatorSlug, !!exists)}
-                        className={`${
-                          exists
-                            ? "text-primary cursor-pointer relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[1px] after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left"
-                            : "text-foreground/70"
-                        } text-sm transition-colors`}
-                      >
-                        {link.label}
-                      </button>
-                    </span>
+                    </>
                   );
-                })}
+                })()}
               </div>
             </article>
           ))}

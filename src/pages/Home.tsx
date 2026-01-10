@@ -213,7 +213,7 @@ const Home = () => {
             View all →
           </Button>
         </div>
-        <TopicsOverview showHeader={false} />
+        <TopicsOverview showHeader={false} limitIndicators={5} />
       </div>
     </div>
   );
