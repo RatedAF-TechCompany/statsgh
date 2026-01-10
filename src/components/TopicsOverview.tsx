@@ -282,13 +282,16 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             return (
             <article 
               key={topic.topicSlug} 
-              className="border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] border-l-3 pl-4"
+              className="group border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] pl-4"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
                 animationFillMode: 'forwards',
                 borderLeftColor: topicColor || 'hsl(var(--primary))',
-                borderLeftWidth: '3px'
+                borderLeftWidth: '3px',
+                borderLeftStyle: 'solid'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.borderLeftWidth = '5px'}
+              onMouseLeave={(e) => e.currentTarget.style.borderLeftWidth = '3px'}
             >
               {(() => {
                 return (
