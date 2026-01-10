@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -282,7 +282,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             return (
             <article 
               key={topic.topicSlug} 
-              className="group border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer"
+              className="group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 animate-fade-in opacity-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-muted/50 hover:shadow-md hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer"
               style={{ 
                 animationDelay: `${topicIndex * 75}ms`,
                 animationFillMode: 'forwards',
@@ -292,6 +292,25 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
               }}
               onMouseEnter={(e) => e.currentTarget.style.borderLeftWidth = '5px'}
               onMouseLeave={(e) => e.currentTarget.style.borderLeftWidth = '3px'}
+              onClick={(e) => {
+                const article = e.currentTarget;
+                const rect = article.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const ripple = document.createElement('span');
+                ripple.className = 'absolute rounded-full pointer-events-none animate-[ripple_0.6s_ease-out_forwards]';
+                ripple.style.cssText = `
+                  left: ${x}px;
+                  top: ${y}px;
+                  width: 0;
+                  height: 0;
+                  background: ${topicColor || 'hsl(var(--primary))'}20;
+                  transform: translate(-50%, -50%);
+                `;
+                article.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+              }}
             >
               {(() => {
                 return (
