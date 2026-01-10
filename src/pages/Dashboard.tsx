@@ -18,6 +18,7 @@ import {
   Tag,
   BarChart3,
   ScrollText,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -203,6 +204,18 @@ const Dashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Organize content by category
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate("/admin/data")}>
+            <CardHeader>
+              <Database className="h-8 w-8 mb-2 text-accent" />
+              <CardTitle>Data Manager</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Ghana indicators, sources, and datasets
               </p>
             </CardContent>
           </Card>
