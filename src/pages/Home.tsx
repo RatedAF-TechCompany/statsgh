@@ -34,7 +34,7 @@ const Home = () => {
 
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, category_slug, section, summary, body, hero_image_url, published_at")
+        .select("id, title, slug, category_slug, section, summary, word_count, hero_image_url, published_at")
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range(from, to);
