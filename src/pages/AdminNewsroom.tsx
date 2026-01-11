@@ -17,9 +17,11 @@ import {
   AlertCircle,
   RefreshCw,
   FileText,
-  ExternalLink
+  ExternalLink,
+  ImageIcon
 } from "lucide-react";
 import { format } from "date-fns";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 type NewsroomRun = {
   id: string;
@@ -41,6 +43,14 @@ type NewsroomArticle = {
   generated_article_id: string | null;
   image_style: string | null;
   created_at: string;
+};
+
+type GeneratedArticle = {
+  id: string;
+  title: string;
+  hero_image_url: string | null;
+  slug: string;
+  section: string;
 };
 
 export default function AdminNewsroom() {
@@ -89,7 +99,7 @@ export default function AdminNewsroom() {
     refetchInterval: 10000, // Refetch every 10 seconds to see running status
   });
 
-  // Fetch articles for selected run
+  // Fetch articles for selected run with generated article data
   const { data: runArticles } = useQuery({
     queryKey: ["newsroom-articles", selectedRunId],
     queryFn: async () => {
@@ -103,6 +113,30 @@ export default function AdminNewsroom() {
       return data as NewsroomArticle[];
     },
     enabled: !!selectedRunId && !!isAdmin,
+  });
+
+  // Fetch generated articles with images for completed newsroom articles
+  const generatedArticleIds = runArticles
+    ?.filter(a => a.generated_article_id)
+    .map(a => a.generated_article_id) || [];
+
+  const { data: generatedArticles } = useQuery({
+    queryKey: ["generated-articles", generatedArticleIds],
+    queryFn: async () => {
+      if (generatedArticleIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("articles")
+        .select("id, title, hero_image_url, slug, section")
+        .in("id", generatedArticleIds);
+      if (error) throw error;
+      // Return as a map for easy lookup
+      const articleMap: Record<string, GeneratedArticle> = {};
+      data?.forEach(article => {
+        articleMap[article.id] = article as GeneratedArticle;
+      });
+      return articleMap;
+    },
+    enabled: generatedArticleIds.length > 0,
   });
 
   // Trigger manual scan
@@ -281,41 +315,86 @@ export default function AdminNewsroom() {
                     <p>Select a scan from the list to view details</p>
                   </div>
                 ) : runArticles && runArticles.length > 0 ? (
-                  <div className="space-y-3">
-                    {runArticles.map((article) => (
-                      <div
-                        key={article.id}
-                        className="border rounded-lg p-3 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getArticleStatusBadge(article.processing_status)}
-                              <span className="text-xs text-muted-foreground">
-                                {article.source_name}
-                              </span>
+                  <div className="space-y-4">
+                    {runArticles.map((article) => {
+                      const generatedArticle = article.generated_article_id 
+                        ? generatedArticles?.[article.generated_article_id] 
+                        : null;
+                      
+                      return (
+                        <div
+                          key={article.id}
+                          className="border rounded-lg overflow-hidden hover:bg-muted/30 transition-colors"
+                        >
+                          {/* Image Preview */}
+                          {generatedArticle?.hero_image_url && (
+                            <div className="relative bg-muted">
+                              <AspectRatio ratio={16 / 9}>
+                                <img
+                                  src={generatedArticle.hero_image_url}
+                                  alt={`Editorial illustration for ${generatedArticle.title}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </AspectRatio>
+                              {article.image_style && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className="absolute bottom-2 left-2 text-xs bg-black/60 text-white border-0"
+                                >
+                                  {article.image_style}
+                                </Badge>
+                              )}
                             </div>
-                            <h4 className="font-medium text-sm line-clamp-2">
-                              {article.original_headline}
-                            </h4>
-                            {article.image_style && (
-                              <span className="text-xs text-muted-foreground">
-                                Image style: {article.image_style}
-                              </span>
-                            )}
-                          </div>
-                          {article.generated_article_id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/admin/articles/${article.generated_article_id}`)}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
                           )}
+                          
+                          {/* No image placeholder */}
+                          {article.processing_status === 'completed' && !generatedArticle?.hero_image_url && (
+                            <div className="bg-muted/50 p-4 flex items-center justify-center">
+                              <div className="text-center text-muted-foreground">
+                                <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                                <span className="text-xs">No image generated</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Article Info */}
+                          <div className="p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  {getArticleStatusBadge(article.processing_status)}
+                                  <span className="text-xs text-muted-foreground">
+                                    {article.source_name}
+                                  </span>
+                                </div>
+                                <h4 className="font-medium text-sm line-clamp-2">
+                                  {generatedArticle?.title || article.original_headline}
+                                </h4>
+                                {generatedArticle?.section && (
+                                  <span className="text-xs text-muted-foreground mt-1 inline-block">
+                                    Section: {generatedArticle.section}
+                                  </span>
+                                )}
+                              </div>
+                              {article.generated_article_id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/articles/${article.generated_article_id}`)}
+                                  className="shrink-0"
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
