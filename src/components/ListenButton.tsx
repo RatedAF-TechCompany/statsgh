@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, Pause, Square } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,9 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
   const [isPaused, setIsPaused] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const [speed, setSpeed] = useState(1);
+  const [progress, setProgress] = useState(0);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const textLengthRef = useRef(0);
 
   // Strip HTML tags and get clean text
   const getCleanText = useCallback(() => {
@@ -47,8 +50,10 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
 
   const startSpeech = useCallback((rate: number) => {
     window.speechSynthesis.cancel();
+    setProgress(0);
 
     const text = getCleanText();
+    textLengthRef.current = text.length;
     const utterance = new SpeechSynthesisUtterance(text);
     utteranceRef.current = utterance;
 
@@ -73,6 +78,7 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     utterance.onend = () => {
       setIsPlaying(false);
       setIsPaused(false);
+      setProgress(100);
     };
 
     utterance.onerror = (event) => {
@@ -81,6 +87,15 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
       }
       setIsPlaying(false);
       setIsPaused(false);
+      setProgress(0);
+    };
+
+    // Track progress using boundary events
+    utterance.onboundary = (event) => {
+      if (textLengthRef.current > 0) {
+        const percent = Math.min(100, (event.charIndex / textLengthRef.current) * 100);
+        setProgress(percent);
+      }
     };
 
     window.speechSynthesis.speak(utterance);
@@ -112,6 +127,7 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     window.speechSynthesis.cancel();
     setIsPlaying(false);
     setIsPaused(false);
+    setProgress(0);
   };
 
   const handleSpeedChange = (newSpeed: number) => {
@@ -126,64 +142,76 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     return null;
   }
 
-  return (
-    <div className={`inline-flex items-center gap-1 ${className || ""}`}>
-      {!isPlaying && !isPaused && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePlay}
-          className="gap-2"
-        >
-          <Volume2 className="h-4 w-4" />
-          <span className="hidden sm:inline">Listen</span>
-        </Button>
-      )}
+  const isActive = isPlaying || isPaused;
 
-      {(isPlaying || isPaused) && (
-        <>
+  return (
+    <div className={`inline-flex flex-col gap-1.5 ${className || ""}`}>
+      <div className="inline-flex items-center gap-1">
+        {!isActive && (
           <Button
             variant="outline"
             size="sm"
-            onClick={isPaused ? handlePlay : handlePause}
+            onClick={handlePlay}
             className="gap-2"
           >
-            {isPaused ? (
-              <>
-                <Volume2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Resume</span>
-              </>
-            ) : (
-              <>
-                <Pause className="h-4 w-4" />
-                <span className="hidden sm:inline">Pause</span>
-              </>
-            )}
+            <Volume2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Listen</span>
           </Button>
+        )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="px-2 text-xs font-medium">
-                {speed}x
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {SPEED_OPTIONS.map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  onClick={() => handleSpeedChange(s)}
-                  className={speed === s ? "bg-accent" : ""}
-                >
-                  {s}x
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {isActive && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isPaused ? handlePlay : handlePause}
+              className="gap-2"
+            >
+              {isPaused ? (
+                <>
+                  <Volume2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Resume</span>
+                </>
+              ) : (
+                <>
+                  <Pause className="h-4 w-4" />
+                  <span className="hidden sm:inline">Pause</span>
+                </>
+              )}
+            </Button>
 
-          <Button variant="ghost" size="sm" onClick={handleStop}>
-            <Square className="h-4 w-4" />
-          </Button>
-        </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="px-2 text-xs font-medium">
+                  {speed}x
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {SPEED_OPTIONS.map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    onClick={() => handleSpeedChange(s)}
+                    className={speed === s ? "bg-accent" : ""}
+                  >
+                    {s}x
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="ghost" size="sm" onClick={handleStop}>
+              <Square className="h-4 w-4" />
+            </Button>
+
+            <span className="text-xs text-muted-foreground ml-1 min-w-[3ch]">
+              {Math.round(progress)}%
+            </span>
+          </>
+        )}
+      </div>
+
+      {isActive && (
+        <Progress value={progress} className="h-1 w-full" />
       )}
     </div>
   );
