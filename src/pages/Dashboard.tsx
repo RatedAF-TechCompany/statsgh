@@ -19,6 +19,7 @@ import {
   BarChart3,
   ScrollText,
   Database,
+  Newspaper,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -216,6 +217,18 @@ const Dashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Ghana indicators, sources, and datasets
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-ft-maroon/30" onClick={() => navigate("/admin/newsroom")}>
+            <CardHeader>
+              <Newspaper className="h-8 w-8 mb-2 text-ft-maroon" />
+              <CardTitle>Newsroom</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Auto-scan Ghana news and generate articles
               </p>
             </CardContent>
           </Card>

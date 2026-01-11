@@ -25,6 +25,7 @@ import DataIndicators from "./pages/DataIndicators";
 import IndicatorDetail from "./pages/IndicatorDetail";
 import TopicDashboard from "./pages/TopicDashboard";
 import AdminDataManager from "./pages/AdminDataManager";
+import AdminNewsroom from "./pages/AdminNewsroom";
 import GhanaFinanceDashboard from "./pages/GhanaFinanceDashboard";
 import Topics from "./pages/Topics";
 import News from "./pages/News";
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/admin/audit-log" element={<AuditLog />} />
           <Route path="/admin/settings" element={<SiteSettings />} />
           <Route path="/admin/data" element={<AdminDataManager />} />
+          <Route path="/admin/newsroom" element={<AdminNewsroom />} />
           {/* Primary navigation pages */}
           <Route path="/topics" element={<Topics />} />
           <Route path="/topics/:slug" element={<TopicDashboard />} />

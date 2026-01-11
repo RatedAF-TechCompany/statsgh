@@ -1181,6 +1181,120 @@ export type Database = {
           },
         ]
       }
+      newsroom_articles: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          generated_article_id: string | null
+          id: string
+          image_style: string | null
+          original_headline: string
+          original_summary: string | null
+          processing_status: string
+          published_at: string | null
+          run_id: string | null
+          source_name: string
+          source_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          generated_article_id?: string | null
+          id?: string
+          image_style?: string | null
+          original_headline: string
+          original_summary?: string | null
+          processing_status?: string
+          published_at?: string | null
+          run_id?: string | null
+          source_name: string
+          source_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          generated_article_id?: string | null
+          id?: string
+          image_style?: string | null
+          original_headline?: string
+          original_summary?: string | null
+          processing_status?: string
+          published_at?: string | null
+          run_id?: string | null
+          source_name?: string
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "newsroom_articles_generated_article_id_fkey"
+            columns: ["generated_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsroom_articles_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "newsroom_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      newsroom_runs: {
+        Row: {
+          articles_created: number | null
+          articles_found: number | null
+          completed_at: string | null
+          created_by: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          started_at: string
+          status: string
+          trigger_type: string
+        }
+        Insert: {
+          articles_created?: number | null
+          articles_found?: number | null
+          completed_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          trigger_type: string
+        }
+        Update: {
+          articles_created?: number | null
+          articles_found?: number | null
+          completed_at?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "newsroom_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "author_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsroom_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
