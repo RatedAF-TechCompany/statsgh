@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +76,8 @@ FIELD-SPECIFIC RULES:
 
 12. tags: Short keywords from the article including places, institutions, indicators, and key figures. Array of strings.
 
+13. image_prompt: A short, specific description for generating an editorial illustration. Focus on the key visual metaphor that represents the story. Max 50 words.
+
 RESPONSE FORMAT:
 Return ONLY valid JSON with these exact keys:
 {
@@ -89,15 +92,104 @@ Return ONLY valid JSON with these exact keys:
   "slug": "string",
   "author": "StatsGH",
   "section": "category-slug",
-  "tags": ["tag1", "tag2", "tag3"]
+  "tags": ["tag1", "tag2", "tag3"],
+  "image_prompt": "string (visual metaphor for the story)"
 }`;
 
-const IMAGE_PROMPTS: Record<string, string> = {
-  'investigative-collage': 'Gritty split-frame investigative editorial collage, newspaper clippings, data overlays, Ghana business theme, no text, no logos, 16:9 aspect ratio, neutral serious tone, metaphor-driven',
-  'ink-watercolour': 'Minimalist hand-drawn ink and watercolor illustration, Ghana business editorial, simple elegant lines, muted earth tones, no text, no logos, 16:9 aspect ratio, serious professional',
-  'newspaper-ink': 'Classic newspaper editorial ink illustration, crosshatching technique, Ghana economy theme, vintage press style, no text, no logos, 16:9 aspect ratio, dignified factual',
-  'policy-illustration': 'Clean conceptual policy illustration, abstract geometric shapes, Ghana finance and governance theme, professional minimal, no text, no logos, 16:9 aspect ratio, neutral analytical'
+const IMAGE_STYLE_PROMPTS: Record<string, string> = {
+  'investigative-collage': 'Gritty split-frame investigative editorial collage style, newspaper clippings aesthetic, data overlays, Ghana Africa theme, no text no words no letters, no logos, 16:9 wide aspect ratio, neutral serious tone, metaphor-driven visual',
+  'ink-watercolour': 'Minimalist hand-drawn ink and watercolor illustration style, editorial art, simple elegant flowing lines, muted earth tones and ochre, no text no words no letters, no logos, 16:9 wide aspect ratio, serious professional mood',
+  'newspaper-ink': 'Classic newspaper editorial ink illustration style, detailed crosshatching technique, vintage press aesthetic, no text no words no letters, no logos, 16:9 wide aspect ratio, dignified factual tone',
+  'policy-illustration': 'Clean conceptual policy illustration style, abstract geometric shapes, professional minimal design, no text no words no letters, no logos, 16:9 wide aspect ratio, neutral analytical mood'
 };
+
+// Generate editorial image using Nano banana model
+async function generateEditorialImage(
+  headline: string,
+  imagePrompt: string,
+  imageStyle: string,
+  LOVABLE_API_KEY: string
+): Promise<string | null> {
+  try {
+    const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle] || IMAGE_STYLE_PROMPTS['policy-illustration'];
+    const fullPrompt = `${stylePrompt}. Subject: ${imagePrompt}. Context: ${headline}`;
+
+    console.log(`Generating image with style: ${imageStyle}`);
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: fullPrompt
+          }
+        ],
+        modalities: ['image', 'text']
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Image generation failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!imageUrl) {
+      console.error('No image in response');
+      return null;
+    }
+
+    return imageUrl;
+  } catch (error) {
+    console.error('Image generation error:', error);
+    return null;
+  }
+}
+
+// Upload base64 image to Supabase storage
+async function uploadImageToStorage(
+  supabase: any,
+  base64Data: string,
+  articleSlug: string
+): Promise<string | null> {
+  try {
+    // Extract base64 content (remove data:image/png;base64, prefix)
+    const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const imageBytes = decode(base64Content);
+
+    const fileName = `newsroom/${articleSlug}-${Date.now()}.png`;
+
+    const { data, error } = await supabase.storage
+      .from('media')
+      .upload(fileName, imageBytes, {
+        contentType: 'image/png',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Storage upload error:', error);
+      return null;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('media')
+      .getPublicUrl(fileName);
+
+    return urlData?.publicUrl || null;
+  } catch (error) {
+    console.error('Upload error:', error);
+    return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -414,6 +506,25 @@ Published: ${newsItem.published_time}`
           slug = `${slug}-${Date.now()}`;
         }
 
+        // Generate editorial image
+        let heroImageUrl: string | null = null;
+        const imagePrompt = generatedArticle.image_prompt || generatedArticle.headline;
+        
+        console.log(`Generating editorial image for: ${slug}`);
+        const base64Image = await generateEditorialImage(
+          generatedArticle.headline,
+          imagePrompt,
+          currentImageStyle,
+          LOVABLE_API_KEY
+        );
+
+        if (base64Image) {
+          heroImageUrl = await uploadImageToStorage(supabase, base64Image, slug);
+          if (heroImageUrl) {
+            console.log(`Image uploaded: ${heroImageUrl}`);
+          }
+        }
+
         // Insert the article as draft
         const { data: article, error: articleError } = await supabase
           .from('articles')
@@ -431,6 +542,7 @@ Published: ${newsItem.published_time}`
             instagram_comment: generatedArticle.instagram_comment,
             instagram_compressed: generatedArticle.instagram_compressed,
             tags: Array.isArray(generatedArticle.tags) ? generatedArticle.tags : [],
+            hero_image_url: heroImageUrl,
             is_published: false,
             status: 'draft'
           })
@@ -459,7 +571,7 @@ Published: ${newsItem.published_time}`
           .eq('id', newsroomArticle.id);
 
         articlesCreated++;
-        console.log(`Created article: ${article.title}`);
+        console.log(`Created article with image: ${article.title}`);
 
       } catch (itemError) {
         console.error('Error processing news item:', itemError);
