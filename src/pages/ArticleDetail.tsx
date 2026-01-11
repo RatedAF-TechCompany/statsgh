@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bookmark, Share2, ArrowLeft, TrendingUp, Database, ExternalLink } from "lucide-react";
 import { ListenButton } from "@/components/ListenButton";
+import { ReadingTime } from "@/components/ReadingTime";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect } from "react";
@@ -336,14 +337,17 @@ const ArticleDetail = () => {
             </p>
           )}
 
-          <div className="flex items-center justify-between mb-6 text-sm text-ft-maroon">
-            <div>
-              <span className="font-medium">{article.author_name}</span>
-              {article.published_at && (
-                <span className="ml-2">
-                  {new Date(article.published_at).toLocaleDateString()}
-                </span>
-              )}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 text-sm text-ft-maroon">
+            <div className="flex flex-col gap-1">
+              <div>
+                <span className="font-medium">{article.author_name}</span>
+                {article.published_at && (
+                  <span className="ml-2">
+                    {new Date(article.published_at).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              <ReadingTime content={article.body} />
             </div>
             <div className="flex gap-2">
               <ListenButton 
