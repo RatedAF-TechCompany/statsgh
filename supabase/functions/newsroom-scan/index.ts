@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,51 +104,36 @@ const IMAGE_STYLE_PROMPTS: Record<string, string> = {
   'policy-illustration': 'Clean conceptual policy illustration style, abstract geometric shapes, professional minimal design, no text no words no letters, no logos, 16:9 wide aspect ratio, neutral analytical mood'
 };
 
-// Generate editorial image using Nano banana model
+// Generate editorial image using OpenAI DALL-E 3
 async function generateEditorialImage(
   headline: string,
   imagePrompt: string,
   imageStyle: string,
-  LOVABLE_API_KEY: string
+  openai: OpenAI
 ): Promise<string | null> {
   try {
     const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle] || IMAGE_STYLE_PROMPTS['policy-illustration'];
     const fullPrompt = `${stylePrompt}. Subject: ${imagePrompt}. Context: ${headline}`;
 
-    console.log(`Generating image with style: ${imageStyle}`);
+    console.log(`Generating image with DALL-E 3, style: ${imageStyle}`);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: fullPrompt
-          }
-        ],
-        modalities: ['image', 'text']
-      }),
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: fullPrompt,
+      n: 1,
+      size: "1792x1024",
+      quality: "standard",
+      style: "vivid",
+      response_format: "b64_json"
     });
 
-    if (!response.ok) {
-      console.error('Image generation failed:', response.status);
+    const base64Data = response.data?.[0]?.b64_json;
+    if (!base64Data) {
+      console.error('No image data in response');
       return null;
     }
 
-    const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      console.error('No image in response');
-      return null;
-    }
-
-    return imageUrl;
+    return `data:image/png;base64,${base64Data}`;
   } catch (error) {
     console.error('Image generation error:', error);
     return null;
@@ -201,15 +187,16 @@ serve(async (req) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
+    if (!OPENAI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Create a new run record
@@ -233,23 +220,14 @@ serve(async (req) => {
 
     console.log(`Started newsroom run: ${run.id}`);
 
-    // Search for Ghana business news from all sources
-    const searchQuery = NEWS_SOURCES.map(s => `site:${s.domain}`).join(' OR ') + ' Ghana business news';
-    
-    // Use Lovable AI to search for recent news
-    const searchResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { 
-            role: 'system', 
-            content: `You are a news aggregator. Search for the latest Ghana business news from these sources: ${NEWS_SOURCES.map(s => s.name).join(', ')}. 
-            
+    // Search for Ghana business news using GPT-4o with web browsing
+    const searchResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: 'system', 
+          content: `You are a news aggregator. Find the latest Ghana business news from these sources: ${NEWS_SOURCES.map(s => s.name).join(', ')}. 
+
 Only include articles published within the last 5 hours. For each article found, extract:
 - source_name: The publication name
 - headline: The article headline
@@ -267,63 +245,16 @@ Return ONLY valid JSON array:
     "published_time": "ISO timestamp or relative time"
   }
 ]`
-          },
-          { 
-            role: 'user', 
-            content: `Find the latest Ghana business news published in the last 5 hours. Today's date is ${new Date().toISOString().split('T')[0]}. Current time is ${new Date().toISOString()}.`
-          }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "web_search",
-            description: "Search the web for recent news articles",
-            parameters: {
-              type: "object",
-              properties: {
-                query: { type: "string", description: "Search query" }
-              },
-              required: ["query"]
-            }
-          }
-        }]
-      }),
+        },
+        { 
+          role: 'user', 
+          content: `Find the latest Ghana business news published in the last 5 hours. Today's date is ${new Date().toISOString().split('T')[0]}. Current time is ${new Date().toISOString()}.`
+        }
+      ],
+      max_tokens: 4000
     });
 
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error('Search failed:', searchResponse.status, errorText);
-      
-      await supabase
-        .from('newsroom_runs')
-        .update({ 
-          status: 'failed', 
-          completed_at: new Date().toISOString(),
-          error_message: `Search failed: ${searchResponse.status}`
-        })
-        .eq('id', run.id);
-
-      if (searchResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (searchResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: 'Failed to search for news' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const searchData = await searchResponse.json();
-    const searchContent = searchData.choices?.[0]?.message?.content || '[]';
+    const searchContent = searchResponse.choices?.[0]?.message?.content || '[]';
     
     let newsItems: Array<{source_name: string; headline: string; summary: string; published_time: string}> = [];
     try {
@@ -414,44 +345,25 @@ Return ONLY valid JSON array:
           continue;
         }
 
-        // Generate full article using AI
-        const articleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-3-flash-preview',
-            messages: [
-              { role: 'system', content: ARTICLE_SYSTEM_PROMPT },
-              { 
-                role: 'user', 
-                content: `Generate a complete StatsGH article from this source news:
+        // Generate full article using OpenAI
+        const articleResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: 'system', content: ARTICLE_SYSTEM_PROMPT },
+            { 
+              role: 'user', 
+              content: `Generate a complete StatsGH article from this source news:
 
 Source: ${newsItem.source_name}
 Headline: ${newsItem.headline}
 Summary: ${newsItem.summary}
 Published: ${newsItem.published_time}`
-              }
-            ],
-          }),
+            }
+          ],
+          max_tokens: 4000
         });
 
-        if (!articleResponse.ok) {
-          console.error('Article generation failed:', articleResponse.status);
-          await supabase
-            .from('newsroom_articles')
-            .update({ 
-              processing_status: 'failed',
-              error_message: `Generation failed: ${articleResponse.status}`
-            })
-            .eq('id', newsroomArticle.id);
-          continue;
-        }
-
-        const articleData = await articleResponse.json();
-        const articleContent = articleData.choices?.[0]?.message?.content;
+        const articleContent = articleResponse.choices?.[0]?.message?.content;
 
         if (!articleContent) {
           await supabase
@@ -506,7 +418,7 @@ Published: ${newsItem.published_time}`
           slug = `${slug}-${Date.now()}`;
         }
 
-        // Generate editorial image
+        // Generate editorial image with DALL-E 3
         let heroImageUrl: string | null = null;
         const imagePrompt = generatedArticle.image_prompt || generatedArticle.headline;
         
@@ -515,7 +427,7 @@ Published: ${newsItem.published_time}`
           generatedArticle.headline,
           imagePrompt,
           currentImageStyle,
-          LOVABLE_API_KEY
+          openai
         );
 
         if (base64Image) {
