@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.cpi-ingest]
 verify_jwt = false
+
+[functions.newsroom-scan]
+verify_jwt = false
+
+[functions.newsroom-scheduled]
+verify_jwt = false
