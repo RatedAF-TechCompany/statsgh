@@ -48,6 +48,35 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     };
   }, []);
 
+  // Keyboard shortcuts when audio is active
+  useEffect(() => {
+    if (!isPlaying && !isPaused) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (isPlaying) {
+          handlePause();
+        } else if (isPaused) {
+          window.speechSynthesis.resume();
+          setIsPaused(false);
+          setIsPlaying(true);
+        }
+      } else if (e.code === "Escape") {
+        e.preventDefault();
+        handleStop();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, isPaused]);
+
   const startSpeech = useCallback((rate: number) => {
     window.speechSynthesis.cancel();
     setProgress(0);
