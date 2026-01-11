@@ -48,16 +48,16 @@ export function CommentSection({ articleId }: Props) {
         <button
           type="button"
           onClick={toggleComposer}
-          className="rounded-sm border border-black/30 bg-white px-3 py-1.5 text-xs font-semibold tracking-wide uppercase"
+          className="rounded-sm border-2 border-ft-maroon bg-ft-maroon px-4 py-2 text-xs font-bold tracking-wider uppercase text-white hover:bg-ft-maroon/90 transition-colors"
         >
-          Comment
+          Leave Comment
         </button>
       </div>
 
       {composerOpen && (
-        <div className="rounded-sm border border-black/25 bg-[#f0e3cf] p-3 text-sm shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-wide text-black/70">
+        <div className="rounded-sm border-2 border-ft-maroon/40 bg-[#fdf6ed] p-4 text-sm shadow-md">
+          <div className="mb-3 flex items-center justify-between border-b border-ft-maroon/20 pb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-ft-maroon">
               {replyToId ? `Reply to ${replyToAuthor}` : "Leave a comment"}
             </p>
             {replyToId && (
@@ -74,14 +74,14 @@ export function CommentSection({ articleId }: Props) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
-            className="w-full resize-none rounded-sm border border-black/20 bg-white px-2 py-1 text-sm leading-snug outline-none"
+            className="w-full resize-none rounded-sm border-2 border-ft-maroon/30 bg-white px-3 py-2 text-sm leading-relaxed outline-none focus:border-ft-maroon/60 transition-colors"
             placeholder="Share your view on this story"
           />
-          <div className="mt-2 flex items-center justify-end gap-2">
+          <div className="mt-3 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setComposerOpen(false)}
-              className="text-xs text-black/70"
+              className="text-xs font-medium text-ft-maroon/70 hover:text-ft-maroon transition-colors"
             >
               Cancel
             </button>
@@ -89,9 +89,9 @@ export function CommentSection({ articleId }: Props) {
               type="button"
               onClick={handlePostClick}
               disabled={!body.trim()}
-              className="rounded-sm bg-ft-maroon px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
+              className="rounded-sm bg-ft-maroon px-4 py-2 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-40 hover:bg-ft-maroon/90 transition-colors"
             >
-              Post comment
+              Post Comment
             </button>
           </div>
         </div>
