@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { getWordCount, formatTime } from "@/components/ReadingTime";
+import { formatTime } from "@/components/ReadingTime";
 import { Clock } from "lucide-react";
 const News = () => {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ const News = () => {
     queryFn: async () => {
       let query = supabase
         .from("articles")
-        .select("id, title, slug, summary, body, hero_image_url, published_at, category_slug, author_name, tags", { count: "exact" })
+        .select("id, title, slug, summary, word_count, hero_image_url, published_at, category_slug, author_name, tags", { count: "exact" })
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -147,12 +147,12 @@ const News = () => {
                         <time>{format(new Date(article.published_at), "MMM d, yyyy")}</time>
                       </>
                     )}
-                    {article.body && (
+                    {article.word_count && (
                       <>
                         <span>·</span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {formatTime(getWordCount(article.body) / 238)} read
+                          {formatTime(article.word_count / 238)} read
                         </span>
                       </>
                     )}

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
-import { getWordCount, formatTime } from "@/components/ReadingTime";
+import { formatTime } from "@/components/ReadingTime";
 
 interface RankedArticleItemProps {
   article: {
@@ -13,7 +13,7 @@ interface RankedArticleItemProps {
     category_slug: string;
     hero_image_url?: string | null;
     published_at?: string | null;
-    body?: string | null;
+    word_count?: number | null;
   };
   rank: number;
   isHero?: boolean;
@@ -37,7 +37,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
   };
 
   const categoryLabel = CATEGORY_MAPPING[article.category_slug as keyof typeof CATEGORY_MAPPING] || article.category_slug;
-  const readingTime = article.body ? formatTime(getWordCount(article.body) / 238) : null;
+  const readingTime = article.word_count ? formatTime(article.word_count / 238) : null;
 
   if (isHero) {
     return (

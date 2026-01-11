@@ -232,6 +232,7 @@ export type Database = {
           twitter_post: string | null
           updated_at: string
           video_url: string | null
+          word_count: number | null
         }
         Insert: {
           audio_url?: string | null
@@ -260,6 +261,7 @@ export type Database = {
           twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
+          word_count?: number | null
         }
         Update: {
           audio_url?: string | null
@@ -288,6 +290,7 @@ export type Database = {
           twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
+          word_count?: number | null
         }
         Relationships: [
           {

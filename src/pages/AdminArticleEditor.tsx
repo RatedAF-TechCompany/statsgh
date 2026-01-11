@@ -22,6 +22,7 @@ import { ImageUploader } from "@/components/ImageUploader";
 import { ArticleIndicatorLinker } from "@/components/ArticleIndicatorLinker";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_NAVIGATION } from "@/lib/navigation";
+import { getWordCount } from "@/components/ReadingTime";
 import { z } from "zod";
 
 const statuses = ["draft", "review", "scheduled", "published"];
@@ -277,6 +278,7 @@ const AdminArticleEditor = () => {
       }
 
       const tagsArray = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+      const wordCount = body ? getWordCount(body) : null;
       
       const articleData = {
         title,
@@ -287,6 +289,7 @@ const AdminArticleEditor = () => {
         category_id: categoryId || null,
         summary,
         body,
+        word_count: wordCount,
         author_name: authorName,
         author_id: session?.user?.id || null,
         hero_image_url: heroImageUrl || null,
