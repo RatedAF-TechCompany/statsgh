@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { CommentSection } from "@/components/CommentSection";
+import { RelatedArticles } from "@/components/RelatedArticles";
 
 const ArticleDetail = () => {
   const { articleSlug: slug, categorySlug } = useParams();
@@ -499,6 +500,14 @@ const ArticleDetail = () => {
             )}
           </div>
         )}
+
+        {/* Related Articles */}
+        <RelatedArticles
+          articleId={article.id}
+          tags={article.tags}
+          categorySlug={article.category_slug}
+          maxItems={6}
+        />
 
         {/* Comments Section */}
         <div className="mt-12 border-t border-border pt-8">
