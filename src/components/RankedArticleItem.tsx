@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
+import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
+import { getWordCount, formatTime } from "@/components/ReadingTime";
 
 interface RankedArticleItemProps {
   article: {
@@ -11,6 +13,7 @@ interface RankedArticleItemProps {
     category_slug: string;
     hero_image_url?: string | null;
     published_at?: string | null;
+    body?: string | null;
   };
   rank: number;
   isHero?: boolean;
@@ -34,6 +37,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
   };
 
   const categoryLabel = CATEGORY_MAPPING[article.category_slug as keyof typeof CATEGORY_MAPPING] || article.category_slug;
+  const readingTime = article.body ? formatTime(getWordCount(article.body) / 238) : null;
 
   if (isHero) {
     return (
@@ -56,13 +60,24 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
             {article.summary}
           </p>
         )}
-        {article.published_at && (
-          <p className="font-sans text-[13px] text-black mb-4">
-            <span className="font-semibold">{categoryLabel}</span>
-            <span className="mx-1.5">•</span>
-            <span>{getTimeAgo(article.published_at)}</span>
-          </p>
-        )}
+        <p className="font-sans text-[13px] text-black mb-4 flex items-center flex-wrap gap-x-1.5">
+          <span className="font-semibold">{categoryLabel}</span>
+          {article.published_at && (
+            <>
+              <span>•</span>
+              <span>{getTimeAgo(article.published_at)}</span>
+            </>
+          )}
+          {readingTime && (
+            <>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {readingTime} read
+              </span>
+            </>
+          )}
+        </p>
         <div className="border-t border-border" />
       </div>
     );
@@ -78,13 +93,24 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
           <h3 className="font-serif text-[17px] leading-[23px] font-medium text-ft-maroon mb-1">
             {article.title}
           </h3>
-          {article.published_at && (
-            <p className="font-sans text-[13px] text-black">
-              <span className="font-semibold">{categoryLabel}</span>
-              <span className="mx-1.5">•</span>
-              <span>{getTimeAgo(article.published_at)}</span>
-            </p>
-          )}
+          <p className="font-sans text-[13px] text-black flex items-center flex-wrap gap-x-1.5">
+            <span className="font-semibold">{categoryLabel}</span>
+            {article.published_at && (
+              <>
+                <span>•</span>
+                <span>{getTimeAgo(article.published_at)}</span>
+              </>
+            )}
+            {readingTime && (
+              <>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {readingTime} read
+                </span>
+              </>
+            )}
+          </p>
         </div>
         {showImage && article.hero_image_url && (
           <img 
