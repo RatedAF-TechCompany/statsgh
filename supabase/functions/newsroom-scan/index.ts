@@ -21,12 +21,11 @@ const NEWS_SOURCES = [
   { name: "Business Day Ghana", domain: "businessdayghana.com" },
 ];
 
-// Image styles to rotate through
+// Editorial image styles to rotate through (3 styles currently, more to be added)
 const IMAGE_STYLES = [
-  'investigative-collage',
-  'ink-watercolour', 
-  'newspaper-ink',
-  'policy-illustration'
+  'conceptual-hard-news',
+  'gritty-collage',
+  'editorial-cartoon'
 ];
 
 // Valid category slugs
@@ -99,10 +98,11 @@ Return ONLY valid JSON with these exact keys:
 }`;
 
 const IMAGE_STYLE_PROMPTS: Record<string, string> = {
-  'investigative-collage': 'Gritty split-frame investigative editorial collage style, newspaper clippings aesthetic, data overlays, Ghana Africa theme, no text no words no letters, no logos, 16:9 wide aspect ratio, neutral serious tone, metaphor-driven visual',
-  'ink-watercolour': 'Minimalist hand-drawn ink and watercolor illustration style, editorial art, simple elegant flowing lines, muted earth tones and ochre, no text no words no letters, no logos, 16:9 wide aspect ratio, serious professional mood',
-  'newspaper-ink': 'Classic newspaper editorial ink illustration style, detailed crosshatching technique, vintage press aesthetic, no text no words no letters, no logos, 16:9 wide aspect ratio, dignified factual tone',
-  'policy-illustration': 'Clean conceptual policy illustration style, abstract geometric shapes, professional minimal design, no text no words no letters, no logos, 16:9 wide aspect ratio, neutral analytical mood'
+  'conceptual-hard-news': `Clean high-impact conceptual editorial illustration. Single central composition with balanced symmetry. Strong negative space and clear silhouette readable at small sizes. Smooth digital illustration with controlled subtle shading. Muted grey, off-white, black palette with ONE accent color only if meaningful. Generic illustrative people with neutral calm expressions if needed. Oversized or simplified objects for visual metaphor (money, coins, documents, clocks, buildings). Soft even lighting, low contrast. 16:9 aspect ratio. No text, no logos, no flags, no charts. Serious analytical neutral tone.`,
+  
+  'gritty-collage': `Gritty newspaper-style split-frame collage. Vertical split layout. LEFT PANEL: Black and white or near monochrome, tight cropped close-up, heavy grain, crushed blacks, high contrast, anonymous documentary feel. RIGHT PANEL: Red duotone or red wash treatment, wider context showing environment or collective impact, details readable under red overlay. Heavy halftone and rough print texture throughout. Infrastructure, tools, crowds, idle assets, empty spaces, blocked movement as subjects. Generic obscured figures only, no identifiable individuals. No logos, flags, or badges. 16:9 aspect ratio. Neutral observational tone.`,
+  
+  'editorial-cartoon': `Classic newspaper editorial cartoon style. Hand-drawn black ink lines on off-white newsprint texture background. High contrast between black ink and background. Primary palette: black and off-white. Maximum 2 accent colors (red or muted earth tones) used very sparingly and symbolically. One clear dominant visual metaphor. Balanced dynamic layout with clean negative space. Allowed symbols: documents, locks, chains, ships, factories, money, maps, broken links, idle machinery. Generic or symbolic figures only with expressions of tension, uncertainty, or concern. No gradients, no digital gloss, no realism. 16:9 aspect ratio. No text, labels, or logos. Serious critical analytical tone.`
 };
 
 // Generate editorial image using OpenAI DALL-E 3
