@@ -455,8 +455,8 @@ Published: ${newsItem.published_time}`
             instagram_compressed: generatedArticle.instagram_compressed,
             tags: Array.isArray(generatedArticle.tags) ? generatedArticle.tags : [],
             hero_image_url: heroImageUrl,
-            is_published: false,
-            status: 'draft'
+            is_published: true,
+            status: 'published'
           })
           .select()
           .single();
