@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import OpenAI from "https://esm.sh/openai@4.20.1";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -552,9 +553,67 @@ Published: ${newsItem.published_time}`
       })
       .eq('id', run.id);
 
+    // Send email notification to admins if articles were created
+    if (articlesCreated > 0) {
+      const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+      if (RESEND_API_KEY) {
+        try {
+          const resend = new Resend(RESEND_API_KEY);
+          
+          // Get admin emails from user_roles
+          const { data: adminRoles } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .in('role', ['admin', 'editor']);
+          
+          if (adminRoles && adminRoles.length > 0) {
+            const { data: adminProfiles } = await supabase
+              .from('profiles')
+              .select('email')
+              .in('id', adminRoles.map(r => r.user_id));
+            
+            const adminEmails = adminProfiles?.map(p => p.email).filter(Boolean) || [];
+            
+            if (adminEmails.length > 0) {
+              const siteUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '') || 'https://statsgh.com';
+              
+              await resend.emails.send({
+                from: 'StatsGH Newsroom <noreply@statsgh.com>',
+                to: adminEmails,
+                subject: `📰 ${articlesCreated} New Article${articlesCreated > 1 ? 's' : ''} Auto-Published`,
+                html: `
+                  <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1a1a1a;">StatsGH Automated Newsroom</h2>
+                    <p style="color: #333; font-size: 16px;">
+                      The newsroom system has automatically published <strong>${articlesCreated} new article${articlesCreated > 1 ? 's' : ''}</strong>.
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                      Trigger: ${triggerType === 'scheduled' ? 'Scheduled scan' : 'Manual scan'}<br>
+                      Sources scanned: ${newsItems.length}<br>
+                      Run ID: ${run.id}
+                    </p>
+                    <a href="https://statsgh.com/admin/newsroom" 
+                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
+                      View in Newsroom Dashboard
+                    </a>
+                    <p style="color: #999; font-size: 12px; margin-top: 24px;">
+                      This is an automated notification from StatsGH Newsroom.
+                    </p>
+                  </div>
+                `,
+              });
+              console.log(`Notification email sent to ${adminEmails.length} admin(s)`);
+            }
+          }
+        } catch (emailError) {
+          console.error('Failed to send notification email:', emailError);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
-        message: `Newsroom scan complete. Created ${articlesCreated} draft articles.`,
+        message: `Newsroom scan complete. Published ${articlesCreated} articles.`,
         run_id: run.id,
         articles_found: newsItems.length,
         articles_created: articlesCreated
