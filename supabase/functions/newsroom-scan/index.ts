@@ -301,16 +301,68 @@ Return ONLY valid JSON array:
 
     for (const newsItem of newsItems) {
       try {
-        // Check for duplicates based on headline similarity
-        const { data: existing } = await supabase
+        // Check for duplicates in newsroom_articles (same headline from any source)
+        const headlineKeywords = newsItem.headline.substring(0, 50);
+        const { data: existingNewsroom } = await supabase
           .from('newsroom_articles')
           .select('id')
-          .ilike('original_headline', `%${newsItem.headline.substring(0, 50)}%`)
+          .ilike('original_headline', `%${headlineKeywords}%`)
           .limit(1);
 
-        if (existing && existing.length > 0) {
-          console.log(`Skipping duplicate: ${newsItem.headline}`);
+        if (existingNewsroom && existingNewsroom.length > 0) {
+          console.log(`Skipping duplicate (newsroom): ${newsItem.headline}`);
           
+          await supabase
+            .from('newsroom_articles')
+            .insert({
+              run_id: run.id,
+              source_name: newsItem.source_name,
+              original_headline: newsItem.headline,
+              original_summary: newsItem.summary,
+              processing_status: 'duplicate'
+            });
+          continue;
+        }
+
+        // Also check published articles for similar content (different sources covering same story)
+        // Extract key terms from headline for broader matching
+        const keyTerms = newsItem.headline
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '')
+          .split(' ')
+          .filter(word => word.length > 4)
+          .slice(0, 3);
+        
+        let isDuplicateContent = false;
+        for (const term of keyTerms) {
+          const { data: existingArticles } = await supabase
+            .from('articles')
+            .select('id, title')
+            .ilike('title', `%${term}%`)
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+            .limit(5);
+          
+          if (existingArticles && existingArticles.length > 0) {
+            // Check if any existing article covers similar topic
+            for (const existingArt of existingArticles) {
+              const existingTerms = existingArt.title
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .split(' ')
+                .filter((w: string) => w.length > 4);
+              
+              const matchCount = keyTerms.filter(t => existingTerms.includes(t)).length;
+              if (matchCount >= 2) {
+                isDuplicateContent = true;
+                console.log(`Skipping similar content: "${newsItem.headline}" matches "${existingArt.title}"`);
+                break;
+              }
+            }
+          }
+          if (isDuplicateContent) break;
+        }
+
+        if (isDuplicateContent) {
           await supabase
             .from('newsroom_articles')
             .insert({
