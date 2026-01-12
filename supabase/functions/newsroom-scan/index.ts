@@ -221,35 +221,85 @@ serve(async (req) => {
 
     console.log(`Started newsroom run: ${run.id}`);
 
+    // STRICT CONTENT FILTER: Only accept headlines with numeric/statistical indicators
+    const NUMERIC_PATTERNS = [
+      /GH[S¢C]/i,                           // Ghana Cedi (GHS, GH¢, GHC)
+      /\$\d/,                                // Dollar amounts
+      /\d+\s*(billion|million|trillion)/i,   // Large amounts
+      /\d+(\.\d+)?%/,                        // Percentages
+      /\d+(\.\d+)?\s*percent/i,              // Percent spelled out
+      /\b\d+(\.\d+)?\s*(rate|rates)/i,       // Rates
+      /\binterest\s*rate/i,                  // Interest rate
+      /\binflation\s*rate/i,                 // Inflation rate
+      /\bexchange\s*rate/i,                  // Exchange rate
+      /\bgdp\b/i,                            // GDP mentions
+      /\b\d+[-\s]?(year|month|day|hour)/i,   // Time periods with numbers
+      /\b\d+\s*(banks?|firms?|companies)/i,  // Counts of entities
+      /\b\d+[-\s]?point/i,                   // Basis points, percentage points
+      /\bquota\s*of\s*\d/i,                  // Quotas with numbers
+      /\btarget\s*of\s*\d/i,                 // Targets with numbers
+      /\bcap\s*of\s*\d/i,                    // Caps with numbers
+      /\blimit\s*of\s*\d/i,                  // Limits with numbers
+      /\b24[-\s]?hour\s*economy/i,           // 24-hour economy policy
+      /\b\d+[-\s]?year\s*(plan|strategy)/i,  // Multi-year plans
+    ];
+
+    function hasStatisticalIndicator(headline: string): boolean {
+      return NUMERIC_PATTERNS.some(pattern => pattern.test(headline));
+    }
+
     // Search for Ghana business news using GPT-4o with web browsing
     const searchResponse = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         { 
           role: 'system', 
-          content: `You are a news aggregator. Find the latest Ghana business news from these sources: ${NEWS_SOURCES.map(s => s.name).join(', ')}. 
+          content: `You are an automated statistical news scanner and filter for Ghana business and economic news.
 
-Only include articles published within the last 5 hours. For each article found, extract:
-- source_name: The publication name
-- headline: The article headline
-- summary: A brief summary (2-3 sentences)
-- published_time: Approximate publication time
+SCAN SCOPE - Only scan these major Ghana business and economy news sources:
+${NEWS_SOURCES.map(s => `- ${s.name}`).join('\n')}
 
-If no articles were published in the last 5 hours, return an empty array.
+TIME FILTER (STRICT):
+- Only consider articles published within the last 5 hours from now.
+- Ignore and discard any article older than 5 hours, even if important.
 
-Return ONLY valid JSON array:
+CONTENT FILTER (STRICT):
+- ONLY accept articles whose HEADLINE contains at least one clear numeric or statistical indicator tied to business, markets, policy, or the economy.
+- Accepted numeric signals include:
+  * Currency figures (GHS amounts, dollars, billions, millions)
+  * Percentages (%)
+  * Rates (interest rate, inflation rate, exchange rate)
+  * Targets or quotas with numbers
+  * Counts or limits (number of banks, firms, years, hours, days)
+  * Policy frameworks with numeric structure (e.g. 24-hour economy, 5-year plan)
+
+REJECT automatically if:
+- The headline contains no numbers
+- The number is purely ordinal without economic meaning (e.g. conference edition only)
+- The story is political, social, or regulatory without quantified data
+- The headline is descriptive or opinion-based without statistics
+
+DELIVERABLE FORMAT:
+For each qualifying article, provide:
+- source_name: The exact publication name
+- headline: The EXACT headline as published (do not rephrase)
+- source_url: Direct link to the article (if available, otherwise null)
+- published_time: Published date and time as shown on the source
+
+Return ONLY valid JSON array. If no articles meet all filters, return an empty array [].
+
 [
   {
     "source_name": "string",
-    "headline": "string", 
-    "summary": "string",
-    "published_time": "ISO timestamp or relative time"
+    "headline": "string (exact as published)", 
+    "source_url": "string or null",
+    "published_time": "string"
   }
 ]`
         },
         { 
           role: 'user', 
-          content: `Find the latest Ghana business news published in the last 5 hours. Today's date is ${new Date().toISOString().split('T')[0]}. Current time is ${new Date().toISOString()}.`
+          content: `Scan for Ghana business news with statistical/numeric indicators published in the last 5 hours. Current datetime: ${new Date().toISOString()}`
         }
       ],
       max_tokens: 4000
@@ -257,17 +307,28 @@ Return ONLY valid JSON array:
 
     const searchContent = searchResponse.choices?.[0]?.message?.content || '[]';
     
-    let newsItems: Array<{source_name: string; headline: string; summary: string; published_time: string}> = [];
+    let rawNewsItems: Array<{source_name: string; headline: string; source_url?: string; published_time: string}> = [];
     try {
       const jsonMatch = searchContent.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        newsItems = JSON.parse(jsonMatch[0]);
+        rawNewsItems = JSON.parse(jsonMatch[0]);
       }
     } catch (e) {
       console.error('Failed to parse news items:', e);
     }
 
-    console.log(`Found ${newsItems.length} news items`);
+    console.log(`GPT found ${rawNewsItems.length} potential news items`);
+
+    // Apply strict numeric filter on our end to double-check
+    const newsItems = rawNewsItems.filter(item => {
+      const hasStats = hasStatisticalIndicator(item.headline);
+      if (!hasStats) {
+        console.log(`Filtered out (no stats): ${item.headline}`);
+      }
+      return hasStats;
+    });
+
+    console.log(`After statistical filter: ${newsItems.length} qualifying items`);
 
     if (newsItems.length === 0) {
       await supabase
@@ -276,7 +337,8 @@ Return ONLY valid JSON array:
           status: 'no_news', 
           completed_at: new Date().toISOString(),
           articles_found: 0,
-          articles_created: 0
+          articles_created: 0,
+          metadata: { message: 'No qualifying Ghana business news published in the last 5 hours.' }
         })
         .eq('id', run.id);
 
@@ -284,6 +346,7 @@ Return ONLY valid JSON array:
         JSON.stringify({ 
           message: 'No qualifying Ghana business news published in the last 5 hours.',
           run_id: run.id,
+          articles_found: 0,
           articles_created: 0
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -319,7 +382,8 @@ Return ONLY valid JSON array:
               run_id: run.id,
               source_name: newsItem.source_name,
               original_headline: newsItem.headline,
-              original_summary: newsItem.summary,
+              original_summary: null,
+              source_url: newsItem.source_url || null,
               processing_status: 'duplicate'
             });
           continue;
@@ -370,7 +434,8 @@ Return ONLY valid JSON array:
               run_id: run.id,
               source_name: newsItem.source_name,
               original_headline: newsItem.headline,
-              original_summary: newsItem.summary,
+              original_summary: null,
+              source_url: newsItem.source_url || null,
               processing_status: 'duplicate'
             });
           continue;
@@ -386,7 +451,8 @@ Return ONLY valid JSON array:
             run_id: run.id,
             source_name: newsItem.source_name,
             original_headline: newsItem.headline,
-            original_summary: newsItem.summary,
+            original_summary: null,
+            source_url: newsItem.source_url || null,
             processing_status: 'processing',
             image_style: currentImageStyle
           })
@@ -409,7 +475,7 @@ Return ONLY valid JSON array:
 
 Source: ${newsItem.source_name}
 Headline: ${newsItem.headline}
-Summary: ${newsItem.summary}
+Source URL: ${newsItem.source_url || 'Not available'}
 Published: ${newsItem.published_time}`
             }
           ],
