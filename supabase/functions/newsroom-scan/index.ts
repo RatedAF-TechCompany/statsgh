@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,6 +156,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+    
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    
+    const openai = new OpenAI({ apiKey: openaiApiKey });
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -441,25 +447,16 @@ published_at: ${newsItem.published_at}
 
 Return ONLY valid JSON.`;
 
-        const articleResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: [
-              { role: "system", content: "Return only valid JSON. No markdown." },
-              { role: "user", content: businessArticlePrompt },
-            ],
-          }),
+        const articleCompletion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          max_tokens: 2000,
+          messages: [
+            { role: "system", content: "Return only valid JSON. No markdown." },
+            { role: "user", content: businessArticlePrompt },
+          ],
         });
 
-        if (!articleResponse.ok) throw new Error(`Article generation failed: ${articleResponse.status}`);
-
-        const articleData = await articleResponse.json();
-        const articleContent = articleData.choices?.[0]?.message?.content || "{}";
+        const articleContent = articleCompletion.choices?.[0]?.message?.content || "{}";
 
         let articleJson: any;
         try {
