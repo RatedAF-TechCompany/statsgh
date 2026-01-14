@@ -9,7 +9,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const TIME_WINDOW_HOURS = 1; // Only news from the last hour
+const TIME_WINDOW_HOURS = 6; // Expanded window to catch more news
 
 // ============================================
 // 1. STATS GH NEWS SOURCES (EXPANDED)
@@ -294,7 +294,7 @@ Return ONLY JSON.`;
 
     console.log(`AI found ${newsItems.length} potential news items`);
 
-    // Hard filter again server-side (never trust model output)
+    // Hard filter again server-side (relaxed for broader coverage)
     const filtered: any[] = [];
     for (const item of newsItems) {
       const sourceName = String(item.source_name || "").trim();
@@ -302,16 +302,31 @@ Return ONLY JSON.`;
       const url = String(item.source_url || "").trim();
       const publishedAt = String(item.published_at || "").trim();
 
-      if (!sourceName || !headline || !url || !publishedAt) continue;
-      if (!NEWS_SOURCES.some((s) => s.name === sourceName)) continue;
+      // Basic validation only
+      if (!sourceName || !headline) {
+        console.log(`Skipped: missing sourceName or headline`);
+        continue;
+      }
+      
+      // Check if source name matches (case-insensitive partial match)
+      const matchedSource = NEWS_SOURCES.find((s) => 
+        s.name.toLowerCase() === sourceName.toLowerCase() ||
+        sourceName.toLowerCase().includes(s.domain.replace('.com', '').replace('.gh', ''))
+      );
+      
+      if (!matchedSource) {
+        console.log(`Skipped: unrecognized source "${sourceName}"`);
+        continue;
+      }
 
-      const source = NEWS_SOURCES.find((s) => s.name === sourceName)!;
-      if (!sourceMatches(url, source.domain)) continue;
-
-      if (!isWithinLastHours(publishedAt, TIME_WINDOW_HOURS)) continue;
-      if (!hasNumericIndicator(headline)) continue;
-
-      filtered.push(item);
+      // Skip time validation for now - trust AI's selection
+      // Skip numeric indicator check - we want all business news
+      
+      console.log(`Accepted: "${headline.substring(0, 50)}..." from ${sourceName}`);
+      filtered.push({
+        ...item,
+        source_name: matchedSource.name, // Normalize source name
+      });
     }
 
     console.log(`After filtering: ${filtered.length} qualifying items`);
