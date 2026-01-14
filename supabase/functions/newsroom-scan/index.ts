@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,11 +10,6 @@ const corsHeaders = {
 };
 
 const TIME_WINDOW_HOURS = 12; // 12-hour window for comprehensive coverage
-
-// Lovable AI Gateway configuration
-const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const NEWS_MODEL = "openai/gpt-5.2"; // Latest OpenAI model for comprehensive search
-const IMAGE_MODEL = "google/gemini-3-pro-image-preview"; // For image generation
 
 // ============================================
 // 1. STATS GH NEWS SOURCES (COMPREHENSIVE)
@@ -145,45 +141,6 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-// ============================================
-// 5. LOVABLE AI GATEWAY HELPER
-// ============================================
-async function callLovableAI(
-  apiKey: string,
-  messages: { role: string; content: string }[],
-  model: string = NEWS_MODEL,
-  maxTokens: number = 4000
-): Promise<string> {
-  // OpenAI models use max_completion_tokens, Gemini uses max_tokens
-  const isOpenAI = model.startsWith("openai/");
-  const tokenParam = isOpenAI ? "max_completion_tokens" : "max_tokens";
-  
-  const requestBody: any = {
-    model,
-    messages,
-    temperature: 0.7,
-  };
-  requestBody[tokenParam] = maxTokens;
-  
-  const response = await fetch(LOVABLE_AI_GATEWAY, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Lovable AI error (${response.status}):`, errorText);
-    throw new Error(`AI gateway error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || "";
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -191,13 +148,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    // Use Lovable AI Gateway (auto-configured)
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
-    
-    // Keep OpenAI for image generation (DALL-E)
+    // Use OpenAI API directly with gpt-4o
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    
+    const openai = new OpenAI({ apiKey: openaiApiKey });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get("Authorization");
@@ -228,20 +183,19 @@ serve(async (req) => {
     console.log(`Started newsroom run: ${run.id}`);
 
     // ============================================
-    // 6. COMPREHENSIVE WEB SEARCH PROMPT (GPT-5.2)
+    // 5. COMPREHENSIVE WEB SEARCH PROMPT (GPT-4o)
     // ============================================
-    const currentDate = new Date().toISOString().split('T')[0];
     const currentTime = new Date().toISOString();
     
     const sourcesList = NEWS_SOURCES.map((s) => `${s.name} (${s.domain})`).join(", ");
     
-    const searchPrompt = `You are StatsGH's comprehensive BUSINESS and ECONOMIC news scanner with real-time web search capabilities.
+    const searchPrompt = `You are StatsGH's comprehensive BUSINESS and ECONOMIC news scanner.
 
 CURRENT DATE/TIME: ${currentTime}
 SCAN WINDOW: Last ${TIME_WINDOW_HOURS} hours
 
 YOUR MISSION:
-Conduct a thorough search across the internet for the LATEST Ghana business, economic, and financial news. Search comprehensively across:
+Search for the LATEST Ghana business, economic, and financial news from these sources:
 
 PRIMARY SOURCES TO SCAN:
 ${sourcesList}
@@ -269,7 +223,7 @@ EDITORIAL STANDARDS (Daily Mail accessibility + Financial Times accuracy):
 - Be precise with numbers and attributions
 - Include context for why the story matters
 
-Return a valid JSON array of 10 to 20 items. Each item MUST include:
+Return a valid JSON array of 5 to 15 items. Each item MUST include:
 {
   "source_name": "Exact source name from list above",
   "original_headline": "The actual headline as published",
@@ -286,17 +240,19 @@ CRITICAL: Only include stories you can verify were published within the time win
 
 Return ONLY valid JSON array, no markdown, no explanation.`;
 
-    console.log("Calling GPT-5.2 for comprehensive web search...");
+    console.log("Calling OpenAI GPT-4o for news search...");
     
-    const newsContent = await callLovableAI(
-      lovableApiKey,
-      [
-        { role: "system", content: "You are a professional news researcher with comprehensive web search capabilities. Return only valid JSON arrays. No markdown formatting." },
+    const newsResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are a professional news researcher. Return only valid JSON arrays. No markdown formatting." },
         { role: "user", content: searchPrompt },
       ],
-      NEWS_MODEL,
-      4000
-    );
+      max_tokens: 4000,
+      temperature: 0.7,
+    });
+
+    const newsContent = newsResponse.choices[0]?.message?.content || "";
 
     let newsItems: any[] = [];
     try {
@@ -362,13 +318,13 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
-        metadata: { search_model: NEWS_MODEL, time_window: TIME_WINDOW_HOURS }
+        metadata: { model: "gpt-4o", time_window: TIME_WINDOW_HOURS }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
         success: true,
         run_id: run.id,
-        message: "No qualifying items found in web search",
+        message: "No qualifying items found in search",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -416,7 +372,7 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
-        metadata: { search_model: NEWS_MODEL, message: "All items were duplicates" }
+        metadata: { model: "gpt-4o", message: "All items were duplicates" }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
@@ -455,7 +411,7 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
     }).eq("id", run.id);
 
     // ============================================
-    // 7. PROCESS EACH ITEM INTO A STATSGH ARTICLE
+    // 6. PROCESS EACH ITEM INTO A STATSGH ARTICLE
     // ============================================
     let articlesCreated = 0;
 
@@ -480,7 +436,7 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
         }
 
         // ============================================
-        // 8. ARTICLE GENERATION (GPT-5.2)
+        // 7. ARTICLE GENERATION (GPT-4o)
         // ============================================
         const businessArticlePrompt = `You are the StatsGH automated newsroom editor. Your editorial standard combines Daily Mail accessibility with Financial Times accuracy.
 
@@ -530,15 +486,17 @@ OUTPUT (valid JSON only):
 
 Return ONLY valid JSON.`;
 
-        const articleContent = await callLovableAI(
-          lovableApiKey,
-          [
+        const articleResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
             { role: "system", content: "You are a professional business journalist. Return only valid JSON. No markdown formatting." },
             { role: "user", content: businessArticlePrompt },
           ],
-          NEWS_MODEL,
-          3000
-        );
+          max_tokens: 3000,
+          temperature: 0.7,
+        });
+
+        const articleContent = articleResponse.choices[0]?.message?.content || "";
 
         let articleJson: any;
         try {
@@ -566,7 +524,7 @@ Return ONLY valid JSON.`;
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // 9. IMAGE GENERATION (DALL-E or Lovable AI)
+        // 8. IMAGE GENERATION (DALL-E 3)
         // ============================================
         const imageStyle = getRandomImageStyle();
         const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle];
@@ -575,52 +533,43 @@ Return ONLY valid JSON.`;
 
         let heroImageUrl: string | null = null;
 
-        // Try DALL-E first if OpenAI key available, otherwise use placeholder
-        if (openaiApiKey) {
-          try {
-            console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
-            
-            // Import OpenAI dynamically
-            const OpenAI = (await import("https://esm.sh/openai@4.20.1")).default;
-            const openai = new OpenAI({ apiKey: openaiApiKey });
-            
-            const imageGenResponse = await openai.images.generate({
-              model: "dall-e-3",
-              prompt: imagePrompt,
-              n: 1,
-              size: "1792x1024",
-              quality: "standard",
-              style: "vivid",
-            });
+        try {
+          console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
+          
+          const imageGenResponse = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: imagePrompt,
+            n: 1,
+            size: "1792x1024",
+            quality: "standard",
+            style: "vivid",
+          });
 
-            const generatedImageUrl = imageGenResponse.data?.[0]?.url;
+          const generatedImageUrl = imageGenResponse.data?.[0]?.url;
 
-            if (generatedImageUrl) {
-              const imageDownload = await fetch(generatedImageUrl);
-              if (imageDownload.ok) {
-                const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
+          if (generatedImageUrl) {
+            const imageDownload = await fetch(generatedImageUrl);
+            if (imageDownload.ok) {
+              const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
 
-                const imagePath = `newsroom/${articleSlug}.png`;
-                const { error: uploadError } = await supabase.storage
+              const imagePath = `newsroom/${articleSlug}.png`;
+              const { error: uploadError } = await supabase.storage
+                .from("media")
+                .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
+
+              if (!uploadError) {
+                const { data: publicUrl } = supabase.storage
                   .from("media")
-                  .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
-
-                if (!uploadError) {
-                  const { data: publicUrl } = supabase.storage
-                    .from("media")
-                    .getPublicUrl(imagePath);
-                  heroImageUrl = publicUrl.publicUrl;
-                  console.log(`Image uploaded: ${heroImageUrl}`);
-                } else {
-                  console.error("Image upload error:", uploadError);
-                }
+                  .getPublicUrl(imagePath);
+                heroImageUrl = publicUrl.publicUrl;
+                console.log(`Image uploaded: ${heroImageUrl}`);
+              } else {
+                console.error("Image upload error:", uploadError);
               }
             }
-          } catch (imgError) {
-            console.error("Image generation error:", imgError);
           }
-        } else {
-          console.log("No OPENAI_API_KEY - skipping image generation");
+        } catch (imgError) {
+          console.error("Image generation error:", imgError);
         }
 
         await supabase.from("newsroom_articles").update({
@@ -644,7 +593,7 @@ Return ONLY valid JSON.`;
         }
 
         // ============================================
-        // 10. SAVE & PUBLISH
+        // 9. SAVE & PUBLISH
         // ============================================
         const { data: newArticle, error: articleError } = await supabase
           .from("articles")
@@ -693,7 +642,7 @@ Return ONLY valid JSON.`;
       status: "completed",
       articles_created: articlesCreated,
       completed_at: new Date().toISOString(),
-      metadata: { search_model: NEWS_MODEL, time_window: TIME_WINDOW_HOURS }
+      metadata: { model: "gpt-4o", time_window: TIME_WINDOW_HOURS }
     }).eq("id", run.id);
 
     // Send email notification to admins if articles were created
@@ -729,7 +678,7 @@ Return ONLY valid JSON.`;
                     </p>
                     <p style="color: #666; font-size: 14px;">
                       Trigger: ${triggerType === "scheduled" ? "Scheduled scan" : "Manual scan"}<br>
-                      AI Model: ${NEWS_MODEL}<br>
+                      AI Model: gpt-4o<br>
                       Sources scanned: ${deduped.length}<br>
                       Run ID: ${run.id}
                     </p>
@@ -755,7 +704,7 @@ Return ONLY valid JSON.`;
     return new Response(JSON.stringify({
       success: true,
       run_id: run.id,
-      model: NEWS_MODEL,
+      model: "gpt-4o",
       articles_found: insertedNews?.length || 0,
       articles_created: articlesCreated,
     }), {
