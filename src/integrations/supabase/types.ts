@@ -1504,6 +1504,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      trigger_newsroom_scan: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user" | "editor" | "contributor" | "viewer"
