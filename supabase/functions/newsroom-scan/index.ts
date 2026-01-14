@@ -9,7 +9,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const TIME_WINDOW_HOURS = 6; // Expanded window to catch more news
+const TIME_WINDOW_HOURS = 10; // 10-hour window for broader news coverage
 
 // ============================================
 // 1. STATS GH NEWS SOURCES (EXPANDED)
