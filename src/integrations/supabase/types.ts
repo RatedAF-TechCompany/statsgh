@@ -213,6 +213,7 @@ export type Database = {
           category_id: string | null
           category_slug: string
           created_at: string
+          dedupe_key: string | null
           hero_image_url: string | null
           id: string
           instagram_comment: string | null
@@ -242,6 +243,7 @@ export type Database = {
           category_id?: string | null
           category_slug: string
           created_at?: string
+          dedupe_key?: string | null
           hero_image_url?: string | null
           id?: string
           instagram_comment?: string | null
@@ -271,6 +273,7 @@ export type Database = {
           category_id?: string | null
           category_slug?: string
           created_at?: string
+          dedupe_key?: string | null
           hero_image_url?: string | null
           id?: string
           instagram_comment?: string | null
@@ -1183,7 +1186,9 @@ export type Database = {
       }
       newsroom_articles: {
         Row: {
+          category_hint: string | null
           created_at: string
+          dedupe_key: string | null
           error_message: string | null
           generated_article_id: string | null
           id: string
@@ -1197,7 +1202,9 @@ export type Database = {
           source_url: string | null
         }
         Insert: {
+          category_hint?: string | null
           created_at?: string
+          dedupe_key?: string | null
           error_message?: string | null
           generated_article_id?: string | null
           id?: string
@@ -1211,7 +1218,9 @@ export type Database = {
           source_url?: string | null
         }
         Update: {
+          category_hint?: string | null
           created_at?: string
+          dedupe_key?: string | null
           error_message?: string | null
           generated_article_id?: string | null
           id?: string
