@@ -9,7 +9,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const TIME_WINDOW_HOURS = 5;
+const TIME_WINDOW_HOURS = 12; // Extended from 5 to catch more news
 
 // ============================================
 // 1. STATS GH PREFERRED BUSINESS NEWS SOURCES
@@ -101,19 +101,49 @@ function sourceMatches(url: string, allowedDomain: string): boolean {
   return host === allowed || host.endsWith("." + allowed);
 }
 
-// Numeric/statistical indicators in headline
+// Numeric/statistical indicators in headline OR key business terms
+// Relaxed filter: accept if headline has numbers OR key business/economic keywords
 function hasNumericIndicator(headline: string): boolean {
-  const h = headline || "";
-  const patterns = [
+  const h = (headline || "").toLowerCase();
+  
+  // Numeric patterns (original strict filter)
+  const numericPatterns = [
     /\b\d+(\.\d+)?\b/,
     /\bGHS\b|\bGH¢\b/i,
     /\bUS\$|\$\b/,
     /\b%/,
     /\bbn\b|\bbillion\b|\bm\b|\bmillion\b|\btrillion\b/i,
-    /\brate\b|\byield\b|\binflation\b|\btarget\b|\bquota\b|\bbudget\b/i,
     /\b202[0-9]\b|\b20[0-9]{2}\b/,
   ];
-  return patterns.some((re) => re.test(h));
+  
+  // Business keywords (relaxed filter for important stories without numbers)
+  const businessKeywords = [
+    /\brate\b|\byield\b|\binflation\b|\btarget\b|\bquota\b|\bbudget\b/i,
+    /\bbank\b|\bbanking\b|\bcentral bank\b|\bbog\b|\bbank of ghana\b/i,
+    /\bgdp\b|\beconomy\b|\beconomic\b|\bgrowth\b|\brecession\b/i,
+    /\bimf\b|\bworld bank\b|\bdebt\b|\bloan\b|\bcredit\b/i,
+    /\bexport\b|\bimport\b|\btrade\b|\btariff\b/i,
+    /\btax\b|\brevenue\b|\bfiscal\b|\bexcise\b|\bduty\b/i,
+    /\bprice\b|\bprices\b|\bcost\b|\bcosts\b|\bfee\b|\bfees\b/i,
+    /\binvestment\b|\binvestor\b|\bforeign direct\b|\bfdi\b/i,
+    /\bstock\b|\bshares\b|\bgse\b|\bexchange\b|\bequity\b/i,
+    /\bcedi\b|\bdollar\b|\bcurrency\b|\bexchange rate\b|\bforex\b/i,
+    /\boil\b|\bgold\b|\bcocoa\b|\bmining\b|\bmineral\b/i,
+    /\bpetrol\b|\bfuel\b|\bdiesel\b|\benergy\b|\bpower\b|\belectricity\b/i,
+    /\bcompany\b|\bcorporate\b|\bbusiness\b|\bfirm\b|\benterprise\b/i,
+    /\bpolicy\b|\bregulation\b|\bregulator\b|\bsec\b|\bnpc\b|\bpurc\b/i,
+    /\bemployment\b|\bjobs\b|\bunemployment\b|\blabour\b|\bwage\b/i,
+    /\btelecoms\b|\bmtn\b|\bvodafone\b|\bairteltigo\b|\bdigital\b/i,
+    /\breal estate\b|\bproperty\b|\bhousing\b|\bconstruction\b/i,
+    /\bagriculture\b|\bfarming\b|\bcrop\b|\bfood\b/i,
+    /\btransport\b|\bport\b|\bshipping\b|\bairline\b|\brailway\b/i,
+  ];
+  
+  // Accept if has numeric indicator OR has business keywords
+  const hasNumber = numericPatterns.some((re) => re.test(h));
+  const hasBusiness = businessKeywords.some((re) => re.test(h));
+  
+  return hasNumber || hasBusiness;
 }
 
 // Build a story fingerprint so the same underlying event is suppressed across sources
@@ -195,21 +225,23 @@ serve(async (req) => {
     const sourcesList = NEWS_SOURCES.map((s) => `${s.name} (${s.domain})`).join(", ");
     const searchPrompt = `You are StatsGH's BUSINESS news scanner.
 
-Scan ONLY these Ghana business sources: ${sourcesList}.
+Scan these Ghana business news sources for recent stories: ${sourcesList}.
 
-Return ONLY business/economy/policy/markets stories that meet ALL conditions:
+Return business, economy, policy, markets, finance, trade, and corporate stories that meet these conditions:
 1) published within the last ${TIME_WINDOW_HOURS} hours (use the source's own published timestamp),
-2) headline contains at least one numeric/statistical indicator such as GHS/GH¢ amounts, US$, %, billion/million, rates, targets, quotas, years, counts,
-3) do NOT repeat the same underlying story (same event/figures/announcement) even if it appears on another source with a slightly different headline.
+2) relates to Ghana's economy, business, policy, markets, finance, banking, trade, commodities, energy, telecoms, or corporate news,
+3) do NOT repeat the same underlying story (same event/announcement) even if it appears on another source with a different headline.
 
-Return ONLY a valid JSON array of 5 to 12 items. Each item MUST include:
+IMPORTANT: Prefer stories with numbers, percentages, or specific figures, but also include significant policy announcements, regulatory changes, major corporate news, or market developments even without specific numbers.
+
+Return a valid JSON array of 8 to 15 items. Each item MUST include:
 - source_name: must be exactly one of: ${NEWS_SOURCES.map((s) => s.name).join(", ")}
 - original_headline: string
 - original_summary: 1 to 2 plain sentences
 - source_url: the exact article URL from that source
 - published_at: ISO 8601 timestamp string
 - category_hint: one of: ${VALID_CATEGORIES.join(", ")}
-- dedupe_hint: short string capturing the key event and figures (e.g. "BoG GH¢7.1bn losses 2022-2024")
+- dedupe_hint: short string capturing the key event and figures (e.g. "BoG policy rate decision Jan 2026")
 
 Do not include any item if you cannot confirm published_at within the last ${TIME_WINDOW_HOURS} hours.
 
