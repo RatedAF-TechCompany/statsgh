@@ -154,8 +154,6 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
     
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
@@ -468,26 +466,22 @@ Return ONLY valid JSON.`;
         try {
           console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
           
-          const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${lovableApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-image-preview",
-              messages: [{ role: "user", content: imagePrompt }],
-              modalities: ["image", "text"],
-            }),
+          const imageGenResponse = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: imagePrompt,
+            n: 1,
+            size: "1792x1024",
+            quality: "standard",
+            style: "vivid",
           });
 
-          if (imageResponse.ok) {
-            const imageData = await imageResponse.json();
-            const base64Image = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          const generatedImageUrl = imageGenResponse.data?.[0]?.url;
 
-            if (base64Image && String(base64Image).startsWith("data:image")) {
-              const base64Data = String(base64Image).split(",")[1];
-              const imageBuffer = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+          if (generatedImageUrl) {
+            // Download the image from OpenAI's temporary URL
+            const imageDownload = await fetch(generatedImageUrl);
+            if (imageDownload.ok) {
+              const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
 
               const imagePath = `newsroom/${articleSlug}.png`;
               const { error: uploadError } = await supabase.storage
