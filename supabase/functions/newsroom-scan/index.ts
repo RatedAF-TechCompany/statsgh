@@ -217,40 +217,16 @@ Do not include any item if you cannot confirm published_at within the last ${TIM
 
 Return ONLY JSON.`;
 
-    const searchResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: "Return only valid JSON. No markdown." },
-          { role: "user", content: searchPrompt },
-        ],
-      }),
+    const searchCompletion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 2000,
+      messages: [
+        { role: "system", content: "Return only valid JSON. No markdown." },
+        { role: "user", content: searchPrompt },
+      ],
     });
 
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      if (searchResponse.status === 429) {
-        await supabase.from("newsroom_runs").update({
-          status: "failed",
-          error_message: "Rate limit exceeded. Please try again later.",
-          completed_at: new Date().toISOString(),
-        }).eq("id", run.id);
-
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI search failed: ${searchResponse.status} ${errorText}`);
-    }
-
-    const searchData = await searchResponse.json();
-    const newsContent = searchData.choices?.[0]?.message?.content || "[]";
+    const newsContent = searchCompletion.choices?.[0]?.message?.content || "[]";
 
     let newsItems: any[] = [];
     try {
