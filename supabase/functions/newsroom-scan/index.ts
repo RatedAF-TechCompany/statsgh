@@ -9,20 +9,39 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const TIME_WINDOW_HOURS = 12; // Extended from 5 to catch more news
+const TIME_WINDOW_HOURS = 1; // Only news from the last hour
 
 // ============================================
-// 1. STATS GH PREFERRED BUSINESS NEWS SOURCES
+// 1. STATS GH NEWS SOURCES (EXPANDED)
 // ============================================
 const NEWS_SOURCES = [
+  // Business/Financial
   { name: "Business and Financial Times", domain: "thebftonline.com" },
   { name: "Ghana Business News", domain: "ghanabusinessnews.com" },
-  { name: "Graphic Business", domain: "graphic.com.gh" },
-  { name: "Citi Newsroom Business", domain: "citinewsroom.com" },
-  { name: "GhanaWeb Business", domain: "ghanaweb.com" },
-  { name: "Modern Ghana Business", domain: "modernghana.com" },
   { name: "BusinessGhana", domain: "businessghana.com" },
-  { name: "Business Day Ghana", domain: "businessdayghana.com" },
+  { name: "The High Street Journal", domain: "thehighstreetjournal.com" },
+  
+  // Major News Portals
+  { name: "GhanaWeb", domain: "ghanaweb.com" },
+  { name: "Graphic Online", domain: "graphic.com.gh" },
+  { name: "MyJoyOnline", domain: "myjoyonline.com" },
+  { name: "Citi Newsroom", domain: "citinewsroom.com" },
+  { name: "Ghana News Agency", domain: "gna.org.gh" },
+  { name: "Ghanaian Times", domain: "ghanaiantimes.com.gh" },
+  { name: "Modern Ghana", domain: "modernghana.com" },
+  { name: "Pulse Ghana", domain: "pulse.com.gh" },
+  { name: "YEN Ghana", domain: "yen.com.gh" },
+  
+  // Radio/Broadcast
+  { name: "Asaase Radio", domain: "asaaseradio.com" },
+  { name: "Peace FM Online", domain: "peacefmonline.com" },
+  { name: "Adom Online", domain: "adomonline.com" },
+  { name: "Starr FM", domain: "starrfm.com.gh" },
+  { name: "3News", domain: "3news.com" },
+  
+  // International
+  { name: "BBC Africa", domain: "bbc.com" },
+  { name: "Reuters", domain: "reuters.com" },
 ];
 
 // ============================================
