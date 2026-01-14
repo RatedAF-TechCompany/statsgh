@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,13 +8,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const TIME_WINDOW_HOURS = 10; // 10-hour window for broader news coverage
+const TIME_WINDOW_HOURS = 12; // 12-hour window for comprehensive coverage
+
+// Lovable AI Gateway configuration
+const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const NEWS_MODEL = "openai/gpt-5.2"; // Latest OpenAI model for comprehensive search
+const IMAGE_MODEL = "google/gemini-3-pro-image-preview"; // For image generation
 
 // ============================================
-// 1. STATS GH NEWS SOURCES (EXPANDED)
+// 1. STATS GH NEWS SOURCES (COMPREHENSIVE)
 // ============================================
 const NEWS_SOURCES = [
-  // Business/Financial
+  // Business/Financial - Primary
   { name: "Business and Financial Times", domain: "thebftonline.com" },
   { name: "Ghana Business News", domain: "ghanabusinessnews.com" },
   { name: "BusinessGhana", domain: "businessghana.com" },
@@ -31,6 +35,7 @@ const NEWS_SOURCES = [
   { name: "Modern Ghana", domain: "modernghana.com" },
   { name: "Pulse Ghana", domain: "pulse.com.gh" },
   { name: "YEN Ghana", domain: "yen.com.gh" },
+  { name: "Daily Graphic", domain: "dailygraphic.com.gh" },
   
   // Radio/Broadcast
   { name: "Asaase Radio", domain: "asaaseradio.com" },
@@ -38,11 +43,21 @@ const NEWS_SOURCES = [
   { name: "Adom Online", domain: "adomonline.com" },
   { name: "Starr FM", domain: "starrfm.com.gh" },
   { name: "3News", domain: "3news.com" },
+  { name: "TV3 Ghana", domain: "tv3network.com" },
   
-  // International
+  // International with Ghana coverage
   { name: "BBC Africa", domain: "bbc.com" },
   { name: "Reuters", domain: "reuters.com" },
-];
+  { name: "Bloomberg Africa", domain: "bloomberg.com" },
+  { name: "Financial Times", domain: "ft.com" },
+  { name: "African Business", domain: "african.business" },
+  { name: "The Africa Report", domain: "theafricareport.com" },
+  
+  // Regional/Government
+  { name: "Bank of Ghana", domain: "bog.gov.gh" },
+  { name: "Ministry of Finance", domain: "mofep.gov.gh" },
+  { name: "Ghana Statistical Service", domain: "statsghana.gov.gh" },
+] as const;
 
 // ============================================
 // 2. BUSINESS CATEGORIES
@@ -88,7 +103,7 @@ function getRandomImageStyle(): string {
 }
 
 // ============================================
-// 4. HELPERS (TIME, URL, NUMERIC HEADLINE, DEDUPE)
+// 4. HELPERS (TIME, URL, DEDUPE)
 // ============================================
 function nowUtc(): Date {
   return new Date();
@@ -96,73 +111,6 @@ function nowUtc(): Date {
 
 function hoursAgo(hours: number): Date {
   return new Date(nowUtc().getTime() - hours * 60 * 60 * 1000);
-}
-
-function isWithinLastHours(dateIso: string, hours: number): boolean {
-  const d = new Date(dateIso);
-  if (Number.isNaN(d.getTime())) return false;
-  return d.getTime() >= hoursAgo(hours).getTime() && d.getTime() <= nowUtc().getTime();
-}
-
-function safeDomainFromUrl(url: string): string | null {
-  try {
-    const u = new URL(url);
-    return u.hostname.replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
-
-function sourceMatches(url: string, allowedDomain: string): boolean {
-  const host = safeDomainFromUrl(url);
-  if (!host) return false;
-  const allowed = allowedDomain.replace(/^www\./, "");
-  return host === allowed || host.endsWith("." + allowed);
-}
-
-// Numeric/statistical indicators in headline OR key business terms
-// Relaxed filter: accept if headline has numbers OR key business/economic keywords
-function hasNumericIndicator(headline: string): boolean {
-  const h = (headline || "").toLowerCase();
-  
-  // Numeric patterns (original strict filter)
-  const numericPatterns = [
-    /\b\d+(\.\d+)?\b/,
-    /\bGHS\b|\bGH¢\b/i,
-    /\bUS\$|\$\b/,
-    /\b%/,
-    /\bbn\b|\bbillion\b|\bm\b|\bmillion\b|\btrillion\b/i,
-    /\b202[0-9]\b|\b20[0-9]{2}\b/,
-  ];
-  
-  // Business keywords (relaxed filter for important stories without numbers)
-  const businessKeywords = [
-    /\brate\b|\byield\b|\binflation\b|\btarget\b|\bquota\b|\bbudget\b/i,
-    /\bbank\b|\bbanking\b|\bcentral bank\b|\bbog\b|\bbank of ghana\b/i,
-    /\bgdp\b|\beconomy\b|\beconomic\b|\bgrowth\b|\brecession\b/i,
-    /\bimf\b|\bworld bank\b|\bdebt\b|\bloan\b|\bcredit\b/i,
-    /\bexport\b|\bimport\b|\btrade\b|\btariff\b/i,
-    /\btax\b|\brevenue\b|\bfiscal\b|\bexcise\b|\bduty\b/i,
-    /\bprice\b|\bprices\b|\bcost\b|\bcosts\b|\bfee\b|\bfees\b/i,
-    /\binvestment\b|\binvestor\b|\bforeign direct\b|\bfdi\b/i,
-    /\bstock\b|\bshares\b|\bgse\b|\bexchange\b|\bequity\b/i,
-    /\bcedi\b|\bdollar\b|\bcurrency\b|\bexchange rate\b|\bforex\b/i,
-    /\boil\b|\bgold\b|\bcocoa\b|\bmining\b|\bmineral\b/i,
-    /\bpetrol\b|\bfuel\b|\bdiesel\b|\benergy\b|\bpower\b|\belectricity\b/i,
-    /\bcompany\b|\bcorporate\b|\bbusiness\b|\bfirm\b|\benterprise\b/i,
-    /\bpolicy\b|\bregulation\b|\bregulator\b|\bsec\b|\bnpc\b|\bpurc\b/i,
-    /\bemployment\b|\bjobs\b|\bunemployment\b|\blabour\b|\bwage\b/i,
-    /\btelecoms\b|\bmtn\b|\bvodafone\b|\bairteltigo\b|\bdigital\b/i,
-    /\breal estate\b|\bproperty\b|\bhousing\b|\bconstruction\b/i,
-    /\bagriculture\b|\bfarming\b|\bcrop\b|\bfood\b/i,
-    /\btransport\b|\bport\b|\bshipping\b|\bairline\b|\brailway\b/i,
-  ];
-  
-  // Accept if has numeric indicator OR has business keywords
-  const hasNumber = numericPatterns.some((re) => re.test(h));
-  const hasBusiness = businessKeywords.some((re) => re.test(h));
-  
-  return hasNumber || hasBusiness;
 }
 
 // Build a story fingerprint so the same underlying event is suppressed across sources
@@ -197,6 +145,45 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+// ============================================
+// 5. LOVABLE AI GATEWAY HELPER
+// ============================================
+async function callLovableAI(
+  apiKey: string,
+  messages: { role: string; content: string }[],
+  model: string = NEWS_MODEL,
+  maxTokens: number = 4000
+): Promise<string> {
+  // OpenAI models use max_completion_tokens, Gemini uses max_tokens
+  const isOpenAI = model.startsWith("openai/");
+  const tokenParam = isOpenAI ? "max_completion_tokens" : "max_tokens";
+  
+  const requestBody: any = {
+    model,
+    messages,
+    temperature: 0.7,
+  };
+  requestBody[tokenParam] = maxTokens;
+  
+  const response = await fetch(LOVABLE_AI_GATEWAY, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Lovable AI error (${response.status}):`, errorText);
+    throw new Error(`AI gateway error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -204,10 +191,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    // Use Lovable AI Gateway (auto-configured)
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
     
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    // Keep OpenAI for image generation (DALL-E)
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -239,43 +228,75 @@ serve(async (req) => {
     console.log(`Started newsroom run: ${run.id}`);
 
     // ============================================
-    // 5. SEARCH PROMPT (STRICT FILTERS)
+    // 6. COMPREHENSIVE WEB SEARCH PROMPT (GPT-5.2)
     // ============================================
+    const currentDate = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toISOString();
+    
     const sourcesList = NEWS_SOURCES.map((s) => `${s.name} (${s.domain})`).join(", ");
-    const searchPrompt = `You are StatsGH's BUSINESS news scanner.
+    
+    const searchPrompt = `You are StatsGH's comprehensive BUSINESS and ECONOMIC news scanner with real-time web search capabilities.
 
-Scan these Ghana business news sources for recent stories: ${sourcesList}.
+CURRENT DATE/TIME: ${currentTime}
+SCAN WINDOW: Last ${TIME_WINDOW_HOURS} hours
 
-Return business, economy, policy, markets, finance, trade, and corporate stories that meet these conditions:
-1) published within the last ${TIME_WINDOW_HOURS} hours (use the source's own published timestamp),
-2) relates to Ghana's economy, business, policy, markets, finance, banking, trade, commodities, energy, telecoms, or corporate news,
-3) do NOT repeat the same underlying story (same event/announcement) even if it appears on another source with a different headline.
+YOUR MISSION:
+Conduct a thorough search across the internet for the LATEST Ghana business, economic, and financial news. Search comprehensively across:
 
-IMPORTANT: Prefer stories with numbers, percentages, or specific figures, but also include significant policy announcements, regulatory changes, major corporate news, or market developments even without specific numbers.
+PRIMARY SOURCES TO SCAN:
+${sourcesList}
 
-Return a valid JSON array of 8 to 15 items. Each item MUST include:
-- source_name: must be exactly one of: ${NEWS_SOURCES.map((s) => s.name).join(", ")}
-- original_headline: string
-- original_summary: 1 to 2 plain sentences
-- source_url: the exact article URL from that source
-- published_at: ISO 8601 timestamp string
-- category_hint: one of: ${VALID_CATEGORIES.join(", ")}
-- dedupe_hint: short string capturing the key event and figures (e.g. "BoG policy rate decision Jan 2026")
+ALSO SEARCH:
+- Government press releases (Bank of Ghana, Ministry of Finance, Ghana Statistical Service)
+- International wire services covering Ghana (Reuters, Bloomberg, AFP)
+- Financial data announcements (IMF, World Bank, African Development Bank)
+- Corporate announcements from major Ghanaian companies
 
-Do not include any item if you cannot confirm published_at within the last ${TIME_WINDOW_HOURS} hours.
+STRICT REQUIREMENTS:
+1. Only return stories published within the last ${TIME_WINDOW_HOURS} hours (since ${hoursAgo(TIME_WINDOW_HOURS).toISOString()})
+2. Focus on BUSINESS, ECONOMY, FINANCE, POLICY, MARKETS, TRADE, BANKING, ENERGY, COMMODITIES
+3. Prioritize stories with:
+   - Specific numbers, percentages, or monetary figures
+   - Official announcements or policy changes
+   - Market movements or economic indicators
+   - Corporate earnings, deals, or major business developments
+4. Do NOT repeat the same underlying story from different sources
+5. Verify information across multiple sources where possible
 
-Return ONLY JSON.`;
+EDITORIAL STANDARDS (Daily Mail accessibility + Financial Times accuracy):
+- Lead with the most newsworthy figure or fact
+- Use plain English that anyone can understand
+- Be precise with numbers and attributions
+- Include context for why the story matters
 
-    const searchCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_tokens: 2000,
-      messages: [
-        { role: "system", content: "Return only valid JSON. No markdown." },
+Return a valid JSON array of 10 to 20 items. Each item MUST include:
+{
+  "source_name": "Exact source name from list above",
+  "original_headline": "The actual headline as published",
+  "original_summary": "2-3 sentence summary with key figures",
+  "source_url": "Full URL to the article",
+  "published_at": "ISO 8601 timestamp",
+  "category_hint": "One of: ${VALID_CATEGORIES.join(", ")}",
+  "key_figures": "Main numbers/percentages in the story",
+  "verification_status": "confirmed" or "single_source",
+  "dedupe_hint": "Short unique identifier for the story event"
+}
+
+CRITICAL: Only include stories you can verify were published within the time window. If unsure about timing, exclude the story.
+
+Return ONLY valid JSON array, no markdown, no explanation.`;
+
+    console.log("Calling GPT-5.2 for comprehensive web search...");
+    
+    const newsContent = await callLovableAI(
+      lovableApiKey,
+      [
+        { role: "system", content: "You are a professional news researcher with comprehensive web search capabilities. Return only valid JSON arrays. No markdown formatting." },
         { role: "user", content: searchPrompt },
       ],
-    });
-
-    const newsContent = searchCompletion.choices?.[0]?.message?.content || "[]";
+      NEWS_MODEL,
+      4000
+    );
 
     let newsItems: any[] = [];
     try {
@@ -285,47 +306,53 @@ Return ONLY JSON.`;
       if (jsonMatch) {
         jsonStr = jsonMatch[1];
       }
+      // Also try to extract JSON array if wrapped in text
+      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        jsonStr = arrayMatch[0];
+      }
       newsItems = JSON.parse(jsonStr);
       if (!Array.isArray(newsItems)) newsItems = [];
-    } catch {
-      console.error("Failed to parse news items:", newsContent);
+    } catch (parseError) {
+      console.error("Failed to parse news items:", newsContent.substring(0, 500));
       newsItems = [];
     }
 
     console.log(`AI found ${newsItems.length} potential news items`);
 
-    // Hard filter again server-side (relaxed for broader coverage)
+    // Filter and validate items
     const filtered: any[] = [];
     for (const item of newsItems) {
       const sourceName = String(item.source_name || "").trim();
       const headline = String(item.original_headline || "").trim();
-      const url = String(item.source_url || "").trim();
-      const publishedAt = String(item.published_at || "").trim();
-
-      // Basic validation only
+      
       if (!sourceName || !headline) {
         console.log(`Skipped: missing sourceName or headline`);
         continue;
       }
       
-      // Check if source name matches (case-insensitive partial match)
+      // Validate source name matches our list (flexible matching)
       const matchedSource = NEWS_SOURCES.find((s) => 
         s.name.toLowerCase() === sourceName.toLowerCase() ||
-        sourceName.toLowerCase().includes(s.domain.replace('.com', '').replace('.gh', ''))
+        sourceName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]) ||
+        sourceName.toLowerCase().includes(s.domain.replace('.com', '').replace('.gh', '').replace('.org', ''))
       );
       
       if (!matchedSource) {
-        console.log(`Skipped: unrecognized source "${sourceName}"`);
-        continue;
+        // Allow international sources that cover Ghana
+        const isInternational = ['bbc', 'reuters', 'bloomberg', 'financial times', 'african business', 'africa report', 'imf', 'world bank'].some(
+          src => sourceName.toLowerCase().includes(src)
+        );
+        if (!isInternational) {
+          console.log(`Skipped: unrecognized source "${sourceName}"`);
+          continue;
+        }
       }
-
-      // Skip time validation for now - trust AI's selection
-      // Skip numeric indicator check - we want all business news
       
-      console.log(`Accepted: "${headline.substring(0, 50)}..." from ${sourceName}`);
+      console.log(`Accepted: "${headline.substring(0, 60)}..." from ${sourceName}`);
       filtered.push({
         ...item,
-        source_name: matchedSource.name, // Normalize source name
+        source_name: matchedSource?.name || sourceName,
       });
     }
 
@@ -335,18 +362,19 @@ Return ONLY JSON.`;
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
+        metadata: { search_model: NEWS_MODEL, time_window: TIME_WINDOW_HOURS }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
         success: true,
         run_id: run.id,
-        message: "No qualifying items",
+        message: "No qualifying items found in web search",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Compute dedupe_key and suppress repeats across runs/sources
+    // Compute dedupe_key and suppress repeats
     const deduped: any[] = [];
     for (const item of filtered) {
       const headline = String(item.original_headline || "");
@@ -354,7 +382,7 @@ Return ONLY JSON.`;
       const keyBase = normalizeForDedupe(`${headline} ${hint}`);
       const dedupeKey = await sha256Hex(keyBase);
 
-      // Check if already notified/processed previously (across all sources)
+      // Check for duplicates in newsroom_articles
       const { data: seen } = await supabase
         .from("newsroom_articles")
         .select("id")
@@ -366,6 +394,7 @@ Return ONLY JSON.`;
         continue;
       }
 
+      // Check for duplicates in published articles
       const { data: seenPublished } = await supabase
         .from("articles")
         .select("id")
@@ -387,6 +416,7 @@ Return ONLY JSON.`;
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
+        metadata: { search_model: NEWS_MODEL, message: "All items were duplicates" }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
@@ -398,7 +428,7 @@ Return ONLY JSON.`;
       });
     }
 
-    // Insert pending
+    // Insert pending records
     const newsRecords = deduped.map((item) => ({
       run_id: run.id,
       source_name: item.source_name,
@@ -425,7 +455,7 @@ Return ONLY JSON.`;
     }).eq("id", run.id);
 
     // ============================================
-    // 6. PROCESS EACH ITEM INTO A STATSGH ARTICLE
+    // 7. PROCESS EACH ITEM INTO A STATSGH ARTICLE
     // ============================================
     let articlesCreated = 0;
 
@@ -449,62 +479,78 @@ Return ONLY JSON.`;
           continue;
         }
 
-        const businessArticlePrompt = `You are the StatsGH automated newsroom editor for BUSINESS and ECONOMIC news.
+        // ============================================
+        // 8. ARTICLE GENERATION (GPT-5.2)
+        // ============================================
+        const businessArticlePrompt = `You are the StatsGH automated newsroom editor. Your editorial standard combines Daily Mail accessibility with Financial Times accuracy.
 
-INPUT FIELDS:
-original_headline, original_summary, source_name, source_url, published_at.
+STYLE GUIDE:
+- Write in plain English that anyone can understand
+- Lead with the most important number or fact
+- Be data-driven and neutral
+- Keep sentences concise and punchy
+- Explain jargon when used
+- Always attribute claims to sources
+- Use active voice
 
-Before writing, do a live verification scan across the web. Use the original source plus at least two other credible outlets or primary documents where available. If a detail cannot be independently verified, mark it as unconfirmed and attribute it to the original outlet.
-
-STRICT WRITING RULES:
-Do not use colons.
-Do not use long dashes.
-Do not use bullet points.
-Do not use emojis or hashtags.
-Do not add links or URLs in the output.
-Use "GHS" (not GHC). Use "%" symbol.
-Keep tone neutral and factual.
-
-OUTPUT JSON KEYS (exact):
-headline (max 80 chars)
-subtitle (one sentence)
-summary (max 400 chars)
-body (4 to 8 HTML <p> paragraphs, no links)
-seo_description (max 155 chars)
-slug (lowercase hyphens)
-section (one of: ${VALID_CATEGORIES.join(", ")})
-tags (array)
-image_prompt (max 50 words, no text overlays, no logos, no identifiable real persons)
-twitter_post (short, factual, no emojis or hashtags)
-instagram_compressed (short headline plus "See full article link in bio.")
+STRICT FORMATTING RULES:
+- Do NOT use colons in headlines
+- Do NOT use long dashes (—)
+- Do NOT use bullet points
+- Do NOT use emojis or hashtags
+- Do NOT add links or URLs in output
+- Use "GHS" for Ghana Cedis (not GHC)
+- Use "%" symbol for percentages
+- Spell out numbers under 10
 
 ORIGINAL NEWS ITEM:
-headline: ${newsItem.original_headline}
-summary: ${newsItem.original_summary}
-source_name: ${newsItem.source_name}
-source_url: ${newsItem.source_url}
-published_at: ${newsItem.published_at}
+Headline: ${newsItem.original_headline}
+Summary: ${newsItem.original_summary}
+Source: ${newsItem.source_name}
+URL: ${newsItem.source_url}
+Published: ${newsItem.published_at}
+
+TASK:
+Transform this into a polished StatsGH article. Expand on the story with context, verify key figures match the original, and ensure accuracy.
+
+OUTPUT (valid JSON only):
+{
+  "headline": "Compelling headline under 80 characters, no colons",
+  "subtitle": "One-sentence expansion of the headline",
+  "summary": "Concise 2-3 sentence summary under 400 characters",
+  "body": "4-8 HTML paragraphs using <p> tags. Include context, explain why this matters, add relevant background. No links.",
+  "seo_description": "SEO meta description under 155 characters",
+  "slug": "url-friendly-slug-lowercase-hyphens",
+  "section": "One of: ${VALID_CATEGORIES.join(", ")}",
+  "tags": ["array", "of", "relevant", "tags"],
+  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
+  "twitter_post": "Short factual tweet, no emojis or hashtags",
+  "instagram_compressed": "Short headline with 'See full article link in bio.'"
+}
 
 Return ONLY valid JSON.`;
 
-        const articleCompletion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          max_tokens: 2000,
-          messages: [
-            { role: "system", content: "Return only valid JSON. No markdown." },
+        const articleContent = await callLovableAI(
+          lovableApiKey,
+          [
+            { role: "system", content: "You are a professional business journalist. Return only valid JSON. No markdown formatting." },
             { role: "user", content: businessArticlePrompt },
           ],
-        });
-
-        const articleContent = articleCompletion.choices?.[0]?.message?.content || "{}";
+          NEWS_MODEL,
+          3000
+        );
 
         let articleJson: any;
         try {
-          // Handle potential markdown code blocks
           let jsonStr = articleContent;
           const jsonMatch = articleContent.match(/```(?:json)?\s*([\s\S]*?)```/);
           if (jsonMatch) {
             jsonStr = jsonMatch[1];
+          }
+          // Extract JSON object
+          const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+          if (objMatch) {
+            jsonStr = objMatch[0];
           }
           articleJson = JSON.parse(jsonStr);
         } catch {
@@ -520,7 +566,7 @@ Return ONLY valid JSON.`;
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // 7. IMAGE GENERATION
+        // 9. IMAGE GENERATION (DALL-E or Lovable AI)
         // ============================================
         const imageStyle = getRandomImageStyle();
         const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle];
@@ -529,44 +575,52 @@ Return ONLY valid JSON.`;
 
         let heroImageUrl: string | null = null;
 
-        try {
-          console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
-          
-          const imageGenResponse = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: imagePrompt,
-            n: 1,
-            size: "1792x1024",
-            quality: "standard",
-            style: "vivid",
-          });
+        // Try DALL-E first if OpenAI key available, otherwise use placeholder
+        if (openaiApiKey) {
+          try {
+            console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
+            
+            // Import OpenAI dynamically
+            const OpenAI = (await import("https://esm.sh/openai@4.20.1")).default;
+            const openai = new OpenAI({ apiKey: openaiApiKey });
+            
+            const imageGenResponse = await openai.images.generate({
+              model: "dall-e-3",
+              prompt: imagePrompt,
+              n: 1,
+              size: "1792x1024",
+              quality: "standard",
+              style: "vivid",
+            });
 
-          const generatedImageUrl = imageGenResponse.data?.[0]?.url;
+            const generatedImageUrl = imageGenResponse.data?.[0]?.url;
 
-          if (generatedImageUrl) {
-            // Download the image from OpenAI's temporary URL
-            const imageDownload = await fetch(generatedImageUrl);
-            if (imageDownload.ok) {
-              const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
+            if (generatedImageUrl) {
+              const imageDownload = await fetch(generatedImageUrl);
+              if (imageDownload.ok) {
+                const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
 
-              const imagePath = `newsroom/${articleSlug}.png`;
-              const { error: uploadError } = await supabase.storage
-                .from("media")
-                .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
-
-              if (!uploadError) {
-                const { data: publicUrl } = supabase.storage
+                const imagePath = `newsroom/${articleSlug}.png`;
+                const { error: uploadError } = await supabase.storage
                   .from("media")
-                  .getPublicUrl(imagePath);
-                heroImageUrl = publicUrl.publicUrl;
-                console.log(`Image uploaded: ${heroImageUrl}`);
-              } else {
-                console.error("Image upload error:", uploadError);
+                  .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
+
+                if (!uploadError) {
+                  const { data: publicUrl } = supabase.storage
+                    .from("media")
+                    .getPublicUrl(imagePath);
+                  heroImageUrl = publicUrl.publicUrl;
+                  console.log(`Image uploaded: ${heroImageUrl}`);
+                } else {
+                  console.error("Image upload error:", uploadError);
+                }
               }
             }
+          } catch (imgError) {
+            console.error("Image generation error:", imgError);
           }
-        } catch (imgError) {
-          console.error("Image generation error:", imgError);
+        } else {
+          console.log("No OPENAI_API_KEY - skipping image generation");
         }
 
         await supabase.from("newsroom_articles").update({
@@ -590,7 +644,7 @@ Return ONLY valid JSON.`;
         }
 
         // ============================================
-        // 8. SAVE & PUBLISH
+        // 10. SAVE & PUBLISH
         // ============================================
         const { data: newArticle, error: articleError } = await supabase
           .from("articles")
@@ -639,6 +693,7 @@ Return ONLY valid JSON.`;
       status: "completed",
       articles_created: articlesCreated,
       completed_at: new Date().toISOString(),
+      metadata: { search_model: NEWS_MODEL, time_window: TIME_WINDOW_HOURS }
     }).eq("id", run.id);
 
     // Send email notification to admins if articles were created
@@ -674,6 +729,7 @@ Return ONLY valid JSON.`;
                     </p>
                     <p style="color: #666; font-size: 14px;">
                       Trigger: ${triggerType === "scheduled" ? "Scheduled scan" : "Manual scan"}<br>
+                      AI Model: ${NEWS_MODEL}<br>
                       Sources scanned: ${deduped.length}<br>
                       Run ID: ${run.id}
                     </p>
@@ -699,6 +755,7 @@ Return ONLY valid JSON.`;
     return new Response(JSON.stringify({
       success: true,
       run_id: run.id,
+      model: NEWS_MODEL,
       articles_found: insertedNews?.length || 0,
       articles_created: articlesCreated,
     }), {
