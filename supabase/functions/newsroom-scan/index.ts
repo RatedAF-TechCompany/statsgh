@@ -500,7 +500,7 @@ serve(async (req) => {
         // ============================================
         // MASTER ARTICLE GENERATION PROMPT
         // ============================================
-        const articlePrompt = `You are the StatsGH automated newsroom editor.
+        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers.
 
 ORIGINAL NEWS ITEM:
 Headline: ${newsItem.original_headline}
@@ -508,6 +508,21 @@ Summary: ${newsItem.original_summary}
 Source: ${newsItem.source_name}
 URL: ${newsItem.source_url}
 Published: ${newsItem.published_at}
+
+ABSOLUTE REQUIREMENT - NUMBERS ARE MANDATORY:
+This is a numbers-crunching website. Articles WITHOUT specific numbers are UNACCEPTABLE.
+
+IF the source story contains numbers (amounts, %, rates, counts):
+- Extract and highlight ALL numbers from the source.
+
+IF the source story lacks numbers (e.g., diplomatic visits, appointments, ceremonies):
+- You MUST add COMPARATIVE CONTEXT DATA from your knowledge:
+  - For country relations: Compare GDP, population, trade volumes, bilateral trade value between Ghana and the other country
+  - For appointments/governance: Include relevant budget figures, department size, historical spending
+  - For international events: Include economic indicators of countries involved
+  - For policy announcements: Include baseline statistics the policy aims to change
+- Example: A VP visiting Guinea should include Ghana vs Guinea GDP ($77B vs $16B), population (33M vs 14M), bilateral trade figures
+- State these as "For context:" to distinguish from source facts
 
 OUTPUT STYLE RULES:
 - Write in simple, plain English that a reader with basic English can understand.
@@ -517,8 +532,10 @@ OUTPUT STYLE RULES:
 - Use GHS for Ghana cedi amounts.
 - Use % for percentages.
 
-DO NOT INVENT FACTS:
-Only use numbers and claims stated in the source story. If a key detail is missing or unclear, state that it was not provided in the report.
+FACT INTEGRITY:
+- Clearly distinguish source facts from contextual data you add.
+- For added context, use phrases like "For context," or "Ghana's economy..."
+- Never present added context as if it came from the source.
 
 ARTICLE STRUCTURE - Generate this exact structure:
 
@@ -529,8 +546,9 @@ ARTICLE:
 - Paragraph 2 adds context in simple terms.
 
 KEY NUMBERS AT A GLANCE:
-- List only numbers that appear in the story.
-- Each line must include a number or %.
+- MINIMUM 3 number lines required. This section CANNOT be empty.
+- If source lacks numbers, add comparative/contextual data.
+- Each line must include a specific number, amount, or %.
 - Keep each line short.
 - Use plain lines with no bullets.
 
@@ -546,7 +564,7 @@ OUTPUT (valid JSON only):
   "subtitle": "One-sentence expansion of the headline",
   "article_intro": "Paragraph 1: what happened and why it matters",
   "article_context": "Paragraph 2: context in simple terms",
-  "key_numbers": ["Array of number lines from the story, e.g. '1.9% average price drop'"],
+  "key_numbers": ["MINIMUM 3 items required - Array of number lines, e.g. 'Ghana GDP: $77 billion', 'Guinea GDP: $16 billion', 'Bilateral trade: $45 million'"],
   "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean in real life",
   "takeaway": "One clear takeaway sentence",
   "tweet": "One sentence with at least one number, no URLs",
@@ -555,7 +573,9 @@ OUTPUT (valid JSON only):
   "slug": "url-friendly-slug-lowercase-hyphens",
   "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
   "tags": ["array", "of", "relevant", "tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
+  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
+  "has_source_numbers": true or false (whether the original source contained numbers),
+  "context_added": true or false (whether you added comparative/contextual data)
 }
 
 Return ONLY valid JSON.`;
@@ -588,10 +608,36 @@ Return ONLY valid JSON.`;
           throw new Error("Failed to parse article JSON");
         }
 
+        // ============================================
+        // VALIDATE NUMBERS REQUIREMENT (EDITORIAL STANDARD)
+        // ============================================
+        const keyNumbers = Array.isArray(articleJson.key_numbers) ? articleJson.key_numbers : [];
+        
+        // Filter out empty entries and entries saying "not provided" or similar
+        const validKeyNumbers = keyNumbers.filter((n: string) => {
+          if (!n || typeof n !== 'string') return false;
+          const lower = n.toLowerCase();
+          if (lower.includes('not provided') || lower.includes('no specific') || lower.includes('not available')) return false;
+          // Must contain at least one digit
+          return /\d/.test(n);
+        });
+
+        if (validKeyNumbers.length < 3) {
+          console.log(`REJECTED: Article "${articleJson.headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `Editorial rejection: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
+          }).eq("id", newsItem.id);
+          continue; // Skip this article
+        }
+
+        console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found`);
+        if (articleJson.context_added) {
+          console.log(`Note: Contextual data was added to enrich this article`);
+        }
+
         // Build the article body in the master prompt structure
-        const keyNumbersHtml = Array.isArray(articleJson.key_numbers) 
-          ? articleJson.key_numbers.map((n: string) => `<p>${n}</p>`).join("\n")
-          : "";
+        const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>${n}</p>`).join("\n");
         
         const articleBody = `
 <p>${articleJson.article_intro || ""}</p>
