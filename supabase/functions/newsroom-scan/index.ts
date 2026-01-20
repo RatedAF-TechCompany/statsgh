@@ -672,6 +672,12 @@ Published: ${newsItem.published_at}
 ABSOLUTE REQUIREMENT - NUMBERS ARE MANDATORY:
 This is a numbers-crunching website. Articles WITHOUT specific numbers are UNACCEPTABLE.
 
+HEADLINE MUST CONTAIN A NUMBER:
+- The headline MUST include at least one number (amount, percentage, count, year, etc.)
+- Examples of GOOD headlines: "Ghana GDP Grows 4.7% in Q3 2025", "BoG Holds Policy Rate at 27%", "Cocoa Exports Hit $2.1 Billion"
+- Examples of BAD headlines: "Government Announces New Policy", "Minister Visits Factory" (no numbers!)
+- If the source story has no numbers for the headline, ADD relevant data: "Ghana's $77B Economy Welcomes Guinea Delegation"
+
 IF the source story contains numbers (amounts, %, rates, counts):
 - Extract and highlight ALL numbers from the source.
 
@@ -683,6 +689,16 @@ IF the source story lacks numbers (e.g., diplomatic visits, appointments, ceremo
   - For policy announcements: Include baseline statistics the policy aims to change
 - Example: A VP visiting Guinea should include Ghana vs Guinea GDP ($77B vs $16B), population (33M vs 14M), bilateral trade figures
 - State these as "For context:" to distinguish from source facts
+
+LANGUAGE RULES - VERY BASIC ENGLISH:
+- Use the simplest words possible. Write for someone learning English.
+- Short sentences only. One idea per sentence.
+- Avoid complex words. Use "buy" not "purchase". Use "help" not "facilitate". Use "start" not "commence".
+- If you must use a technical term (GDP, inflation, policy rate, bilateral), DEFINE IT in brackets immediately after.
+- Example: "The GDP (the total value of goods and services a country produces) grew by 4.7%."
+- Example: "The policy rate (the interest rate the central bank charges other banks) stayed at 27%."
+- Example: "Bilateral trade (buying and selling between two countries) reached $45 million."
+- No jargon. No fancy words. Explain everything simply.
 
 OUTPUT STYLE RULES:
 - Write in simple, plain English that a reader with basic English can understand.
@@ -699,11 +715,11 @@ FACT INTEGRITY:
 
 ARTICLE STRUCTURE - Generate this exact structure:
 
-HEADLINE: One short line, factual, interesting, max 80 characters.
+HEADLINE: One short line with AT LEAST ONE NUMBER, max 80 characters. MUST contain a digit!
 
 ARTICLE:
-- Paragraph 1 explains what happened and why it matters.
-- Paragraph 2 adds context in simple terms.
+- Paragraph 1 explains what happened and why it matters. Use simple words.
+- Paragraph 2 adds context in simple terms. Define any technical terms.
 
 KEY NUMBERS AT A GLANCE:
 - MINIMUM 3 number lines required. This section CANNOT be empty.
@@ -712,7 +728,7 @@ KEY NUMBERS AT A GLANCE:
 - Keep each line short.
 - Use plain lines with no bullets.
 
-Then write 2 to 3 short paragraphs explaining what the numbers mean in real life.
+Then write 2 to 3 short paragraphs explaining what the numbers mean in real life. Use very simple language.
 
 End with one clear takeaway sentence.
 
@@ -720,12 +736,12 @@ TWEET: One sentence only. Must contain at least one number from the story. No UR
 
 OUTPUT (valid JSON only):
 {
-  "headline": "Max 80 characters, factual, no colons",
+  "headline": "Max 80 characters, MUST CONTAIN AT LEAST ONE NUMBER, factual, no colons",
   "subtitle": "One-sentence expansion of the headline",
-  "article_intro": "Paragraph 1: what happened and why it matters",
-  "article_context": "Paragraph 2: context in simple terms",
+  "article_intro": "Paragraph 1: what happened and why it matters (simple English)",
+  "article_context": "Paragraph 2: context in simple terms (define technical words)",
   "key_numbers": ["MINIMUM 3 items required - Array of number lines, e.g. 'Ghana GDP: $77 billion', 'Guinea GDP: $16 billion', 'Bilateral trade: $45 million'"],
-  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean in real life",
+  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean in real life (very simple language)",
   "takeaway": "One clear takeaway sentence",
   "tweet": "One sentence with at least one number, no URLs",
   "source_url": "${newsItem.source_url}",
@@ -769,6 +785,23 @@ Return ONLY valid JSON.`;
         }
 
         // ============================================
+        // VALIDATE HEADLINE HAS NUMBER (MANDATORY)
+        // ============================================
+        const headline = String(articleJson.headline || "");
+        const headlineHasNumber = /\d/.test(headline);
+        
+        if (!headlineHasNumber) {
+          console.log(`REJECTED: Headline "${headline}" has NO NUMBER (numbers in headline are mandatory)`);
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `Editorial rejection: Headline must contain at least one number`,
+          }).eq("id", newsItem.id);
+          continue; // Skip this article
+        }
+        
+        console.log(`Headline validation passed: "${headline}" contains number`);
+
+        // ============================================
         // VALIDATE NUMBERS REQUIREMENT (EDITORIAL STANDARD)
         // ============================================
         const keyNumbers = Array.isArray(articleJson.key_numbers) ? articleJson.key_numbers : [];
@@ -783,7 +816,7 @@ Return ONLY valid JSON.`;
         });
 
         if (validKeyNumbers.length < 3) {
-          console.log(`REJECTED: Article "${articleJson.headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
+          console.log(`REJECTED: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
             error_message: `Editorial rejection: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
