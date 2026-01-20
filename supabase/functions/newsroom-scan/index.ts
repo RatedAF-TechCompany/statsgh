@@ -66,6 +66,26 @@ const CRIME_EXCLUSION_KEYWORDS = [
   "domestic violence", "abuse", "child abuse",
 ] as const;
 
+// Political drama/gossip keywords to EXCLUDE (lacks data substance)
+const POLITICAL_GOSSIP_EXCLUSION_KEYWORDS = [
+  // Political drama without data
+  "warns", "slams", "blasts", "fires back", "claps back", "hits back",
+  "attacks", "accuses", "alleges", "feud", "clash", "rift",
+  "calls out", "calls for resignation", "must resign", "should resign",
+  "responds to", "reacts to", "defends", "denies", "dismisses",
+  "controversy", "controversial", "scandalous", "outrage", "outraged",
+  "absence", "absent", "missing", "whereabouts", "disappeared",
+  // Political speculation
+  "rumour", "rumor", "rumoured", "rumored", "speculation", "speculates",
+  "allegedly", "purported", "unconfirmed", "sources say", "insiders say",
+  // Celebrity/personality focus
+  "spotted", "seen with", "relationship", "dating", "affair",
+  "personal life", "private life", "family drama",
+  // Emotional/opinion pieces
+  "angry", "furious", "livid", "upset", "emotional", "heartbroken",
+  "betrayed", "disappointed", "hurt feelings",
+] as const;
+
 // Statistical/analytical keywords that override crime exclusion
 const CRIME_STATS_OVERRIDE_KEYWORDS = [
   // Direct statistical terms
@@ -80,6 +100,23 @@ const CRIME_STATS_OVERRIDE_KEYWORDS = [
   // Policy/reform context
   "child protection", "protection laws", "policy reform", "law reform",
   "legislative", "parliament", "regulation", "legal reform",
+] as const;
+
+// Data-driven indicators that make content acceptable for StatsGH
+const DATA_SUBSTANCE_KEYWORDS = [
+  // Financial data
+  "ghs", "ghc", "usd", "million", "billion", "trillion", "budget",
+  "revenue", "expenditure", "deficit", "surplus", "gdp", "gnp",
+  // Statistical terms
+  "percent", "%", "rate", "index", "ratio", "average", "median",
+  "growth", "decline", "increase", "decrease", "rose", "fell",
+  "statistics", "data", "figures", "numbers", "metrics",
+  // Economic indicators
+  "inflation", "interest rate", "exchange rate", "unemployment",
+  "trade balance", "import", "export", "investment", "fdi",
+  // Quantitative context
+  "target", "projection", "forecast", "estimate", "quarter", "annual",
+  "year-on-year", "month-on-month", "per capita", "per annum",
 ] as const;
 
 // Default category if GPT returns an invalid slug format
@@ -228,6 +265,36 @@ function isCrimeNews(text: string): boolean {
   
   // Check for crime keywords (excluded)
   return CRIME_EXCLUSION_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
+// Check if text is political gossip/drama without data substance
+function isPoliticalGossip(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  
+  // First check if it has data substance (allowed even if it looks like gossip)
+  const hasDataSubstance = DATA_SUBSTANCE_KEYWORDS.some(keyword => 
+    lowerText.includes(keyword)
+  );
+  
+  // Also check for actual numbers with context
+  const hasSignificantNumbers = /\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:\s*(?:million|billion|percent|%|ghs|usd|ghc))/i.test(text);
+  
+  if (hasDataSubstance || hasSignificantNumbers) {
+    console.log(`Political content ALLOWED - contains data substance`);
+    return false; // Has data substance, not excluded
+  }
+  
+  // Check for political gossip keywords (excluded if no data)
+  const isPoliticalDrama = POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => 
+    lowerText.includes(keyword)
+  );
+  
+  if (isPoliticalDrama) {
+    console.log(`EXCLUDED - political gossip without data substance: "${text.substring(0, 80)}..."`);
+    return true;
+  }
+  
+  return false;
 }
 
 // Check if text contains numbers (required for StatsGH)
@@ -414,6 +481,12 @@ serve(async (req) => {
       // EXCLUDE crime news (unless statistical analysis)
       if (isCrimeNews(fullText)) {
         console.log(`Skipping crime news: ${article.title.substring(0, 50)}...`);
+        return false;
+      }
+
+      // EXCLUDE political gossip/drama without data substance
+      if (isPoliticalGossip(fullText)) {
+        console.log(`Skipping political gossip: ${article.title.substring(0, 50)}...`);
         return false;
       }
 
