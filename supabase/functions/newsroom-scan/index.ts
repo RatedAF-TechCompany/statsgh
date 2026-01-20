@@ -68,10 +68,18 @@ const CRIME_EXCLUSION_KEYWORDS = [
 
 // Statistical/analytical keywords that override crime exclusion
 const CRIME_STATS_OVERRIDE_KEYWORDS = [
+  // Direct statistical terms
   "crime statistics", "crime rate", "crime data", "crime report",
   "annual crime", "crime trends", "crime reduction", "crime increased",
   "police statistics", "criminal justice reform", "crime prevention",
   "security statistics", "law enforcement data",
+  // Analytical context indicators
+  "according to", "unicef", "world bank", "survey", "study", "research",
+  "percent of", "% of", "percentage", "statistics show", "data shows",
+  "report shows", "report indicates", "analysis", "trend",
+  // Policy/reform context
+  "child protection", "protection laws", "policy reform", "law reform",
+  "legislative", "parliament", "regulation", "legal reform",
 ] as const;
 
 // Default category if GPT returns an invalid slug format
@@ -207,7 +215,15 @@ function isCrimeNews(text: string): boolean {
     lowerText.includes(keyword)
   );
   if (isStatisticalAnalysis) {
+    console.log(`Crime content ALLOWED - contains statistical keyword`);
     return false; // Not excluded - it's statistical content
+  }
+  
+  // Also allow if text contains percentage patterns with context (e.g., "90% of children")
+  const hasPercentageWithContext = /\d+%\s+of\s+\w+/i.test(text) || /\d+\s+percent\s+of/i.test(text);
+  if (hasPercentageWithContext) {
+    console.log(`Crime content ALLOWED - contains statistical percentage pattern`);
+    return false; // Statistical percentage pattern detected
   }
   
   // Check for crime keywords (excluded)
