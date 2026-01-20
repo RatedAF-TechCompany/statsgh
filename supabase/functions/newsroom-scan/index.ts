@@ -14,28 +14,16 @@ const corsHeaders = {
 // ============================================
 const TIME_WINDOW_HOURS = 24; // Scan last 24 hours but skip already published articles
 
-// 20 Ghana business news sources
-const NEWS_SOURCES = [
-  { name: "Business and Financial Times", domain: "thebftonline.com" },
-  { name: "Graphic Online", domain: "graphic.com.gh" },
-  { name: "MyJoyOnline", domain: "myjoyonline.com" },
-  { name: "Citi Newsroom", domain: "citinewsroom.com" },
-  { name: "Ghana Business News", domain: "ghanabusinessnews.com" },
-  { name: "BusinessGhana", domain: "businessghana.com" },
-  { name: "Ghana News Agency", domain: "gna.org.gh" },
-  { name: "Peace FM Online", domain: "peacefmonline.com" },
-  { name: "Modern Ghana", domain: "modernghana.com" },
-  { name: "GhanaWeb", domain: "ghanaweb.com" },
-  { name: "Pulse Ghana", domain: "pulse.com.gh" },
-  { name: "Business Day Ghana", domain: "businessdayghana.com" },
-  { name: "Ministry of Finance", domain: "mofep.gov.gh" },
-  { name: "Bank of Ghana", domain: "bog.gov.gh" },
-  { name: "Ghana Stock Exchange", domain: "gse.com.gh" },
-  { name: "Ghana Statistical Service", domain: "gss.gov.gh" },
-  { name: "Energy Ministry", domain: "energymin.gov.gh" },
-  { name: "Ghana Revenue Authority", domain: "gra.gov.gh" },
-  { name: "National Development Planning Commission", domain: "ndpc.gov.gh" },
-  { name: "Cedi Talk", domain: "ceditalk.com" },
+// Ghana business news sources with RSS feeds
+const RSS_SOURCES = [
+  { name: "MyJoyOnline", rss: "https://www.myjoyonline.com/feed/", domain: "myjoyonline.com" },
+  { name: "Citi Newsroom", rss: "https://citinewsroom.com/feed/", domain: "citinewsroom.com" },
+  { name: "Ghana Business News", rss: "https://www.ghanabusinessnews.com/feed/", domain: "ghanabusinessnews.com" },
+  { name: "Modern Ghana", rss: "https://www.modernghana.com/rss/", domain: "modernghana.com" },
+  { name: "GhanaWeb", rss: "https://www.ghanaweb.com/GhanaHomePage/rss/", domain: "ghanaweb.com" },
+  { name: "Graphic Online", rss: "https://www.graphic.com.gh/feed", domain: "graphic.com.gh" },
+  { name: "Peace FM Online", rss: "https://www.peacefmonline.com/rss/", domain: "peacefmonline.com" },
+  { name: "Pulse Ghana", rss: "https://www.pulse.com.gh/rss", domain: "pulse.com.gh" },
 ] as const;
 
 // Business categories for classification
@@ -56,6 +44,26 @@ const VALID_CATEGORIES = [
   "agriculture",
   "mining",
   "real-estate",
+] as const;
+
+// Business keywords to filter relevant articles
+const BUSINESS_KEYWORDS = [
+  "economy", "economic", "gdp", "inflation", "cedi", "ghs", "dollar", "forex", "fx",
+  "bank", "banking", "bog", "interest rate", "mpc", "monetary",
+  "budget", "revenue", "tax", "vat", "gra", "finance", "ministry",
+  "oil", "gas", "energy", "fuel", "petrol", "diesel", "electricity", "ecg",
+  "cocoa", "gold", "mining", "export", "import", "trade",
+  "stock", "gse", "shares", "investment", "investor",
+  "debt", "bond", "treasury", "imf", "world bank",
+  "company", "business", "profit", "loss", "quarter", "annual",
+  "price", "cost", "increase", "decrease", "percent", "%",
+  "billion", "million", "thousand", "ghs", "usd", "cedis",
+  "government", "parliament", "policy", "regulation",
+  "employment", "jobs", "unemployment", "workers",
+  "telecoms", "mtn", "vodafone", "airtel", "mobile money",
+  "agriculture", "farming", "food", "production",
+  "transport", "port", "tema", "shipping", "logistics",
+  "real estate", "property", "housing", "construction",
 ] as const;
 
 // Image styles (rotate between these)
@@ -109,6 +117,100 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+// Check if headline/content is business-related
+function isBusinessRelated(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return BUSINESS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
+// Check if text contains numbers (required for StatsGH)
+function containsNumbers(text: string): boolean {
+  return /\d+/.test(text);
+}
+
+// Parse RSS XML to extract articles
+function parseRssXml(xml: string, sourceName: string): Array<{
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  source_name: string;
+}> {
+  const items: Array<{
+    title: string;
+    link: string;
+    pubDate: string;
+    description: string;
+    source_name: string;
+  }> = [];
+
+  // Simple XML parsing for RSS items
+  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+  let match;
+
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const itemContent = match[1];
+    
+    // Extract title
+    const titleMatch = itemContent.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
+    
+    // Extract link
+    const linkMatch = itemContent.match(/<link[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
+    const link = linkMatch ? linkMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
+    
+    // Extract pubDate
+    const pubDateMatch = itemContent.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
+    const pubDate = pubDateMatch ? pubDateMatch[1].trim() : "";
+    
+    // Extract description
+    const descMatch = itemContent.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+    let description = descMatch ? descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
+    // Strip HTML tags from description
+    description = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    if (title && link) {
+      items.push({
+        title,
+        link,
+        pubDate,
+        description,
+        source_name: sourceName,
+      });
+    }
+  }
+
+  return items;
+}
+
+// Fetch RSS feed with timeout
+async function fetchRssFeed(url: string, timeout = 10000): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'StatsGH-Newsroom/1.0 (RSS Reader)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.log(`RSS fetch failed for ${url}: ${response.status}`);
+      return null;
+    }
+    
+    return await response.text();
+  } catch (error) {
+    console.log(`RSS fetch error for ${url}:`, error instanceof Error ? error.message : "Unknown error");
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -150,139 +252,78 @@ serve(async (req) => {
     console.log(`Started newsroom run: ${run.id}`);
 
     // ============================================
-    // STATSGH MASTER SEARCH PROMPT
+    // FETCH RSS FEEDS FROM ALL SOURCES
     // ============================================
-    const currentTime = new Date().toISOString();
-    const sourcesList = NEWS_SOURCES.map((s) => `${s.name} (${s.domain})`).join("\n");
-    
-    const searchPrompt = `You are the StatsGH automated newsroom scanner for Ghana business news.
+    const cutoffTime = hoursAgo(TIME_WINDOW_HOURS);
+    console.log(`Fetching RSS feeds, cutoff time: ${cutoffTime.toISOString()}`);
 
-CURRENT DATE/TIME: ${currentTime}
-SCAN WINDOW: Last ${TIME_WINDOW_HOURS} hours (since ${hoursAgo(TIME_WINDOW_HOURS).toISOString()})
+    const allArticles: Array<{
+      title: string;
+      link: string;
+      pubDate: string;
+      description: string;
+      source_name: string;
+    }> = [];
 
-SOURCES TO SCAN (business/economy/finance sections):
-${sourcesList}
-
-WHAT COUNTS AS A QUALIFYING STORY:
-Business and economy only. Examples include taxes, VAT, inflation, FX, debt, budget, energy, banking, trade, company performance, jobs, prices, ports, cocoa, gold, oil, telecoms, transport, major public procurement, major regulatory actions.
-
-Prioritise stories that contain at least one clear number such as a GHS amount, USD amount, %, target, date, time period, volume, headcount, rate, or comparison.
-
-DO NOT INVENT FACTS:
-Only use numbers and claims stated in the source story. If a key detail is missing or unclear, note that it was not provided.
-
-DEDUPLICATION RULES:
-Treat the same underlying event as one story, even if multiple sites publish it.
-To detect duplicates, create a DEDUPE KEY using these steps:
-1. Extract the event core as a short phrase: who did what, to what, where, and when.
-2. Extract the top 3 numbers in the story, if any.
-3. Build the key as: event core + primary organisation name + date mentioned or publication date + top numbers
-4. Normalise by lowercasing, removing punctuation, and collapsing spaces.
-
-Return a valid JSON array of 5 to 15 unique qualifying items. Each item MUST include:
-{
-  "source_name": "Exact source name from list",
-  "original_headline": "The actual headline as published",
-  "original_summary": "2-3 sentence summary with key figures. Do not invent facts.",
-  "source_url": "Full URL to the article",
-  "published_at": "ISO 8601 timestamp",
-  "category_hint": "One of: ${VALID_CATEGORIES.join(", ")}",
-  "event_core": "Short phrase: who did what, to what, where, when",
-  "primary_org": "Main organisation involved",
-  "key_numbers": ["Array of top 3 numbers/percentages from the story"],
-  "dedupe_key": "Normalized dedupe key built from above"
-}
-
-CRITICAL RULES:
-- Only include stories published within the last ${TIME_WINDOW_HOURS} hours
-- Only include business/economy stories with at least one clear number
-- Do not repeat the same event from different sources
-- If no qualifying stories exist, return an empty array []
-
-Return ONLY valid JSON array, no markdown, no explanation.`;
-
-    console.log("Calling OpenAI GPT-4o for news search...");
-    
-    const newsResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: "You are a professional news researcher. Return only valid JSON arrays. No markdown formatting." },
-        { role: "user", content: searchPrompt },
-      ],
-      max_tokens: 4000,
-      temperature: 0.5,
+    // Fetch all RSS feeds in parallel
+    const feedPromises = RSS_SOURCES.map(async (source) => {
+      console.log(`Fetching RSS from ${source.name}: ${source.rss}`);
+      const xml = await fetchRssFeed(source.rss);
+      if (xml) {
+        const items = parseRssXml(xml, source.name);
+        console.log(`${source.name}: Found ${items.length} items`);
+        return items;
+      }
+      return [];
     });
 
-    const newsContent = newsResponse.choices[0]?.message?.content || "";
+    const feedResults = await Promise.all(feedPromises);
+    feedResults.forEach(items => allArticles.push(...items));
 
-    let newsItems: any[] = [];
-    try {
-      let jsonStr = newsContent;
-      const jsonMatch = newsContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
-      if (arrayMatch) {
-        jsonStr = arrayMatch[0];
-      }
-      newsItems = JSON.parse(jsonStr);
-      if (!Array.isArray(newsItems)) newsItems = [];
-    } catch (parseError) {
-      console.error("Failed to parse news items:", newsContent.substring(0, 500));
-      newsItems = [];
-    }
+    console.log(`Total RSS items fetched: ${allArticles.length}`);
 
-    console.log(`AI found ${newsItems.length} potential news items`);
-
-    // Filter and validate items
-    const filtered: any[] = [];
-    for (const item of newsItems) {
-      const sourceName = String(item.source_name || "").trim();
-      const headline = String(item.original_headline || "").trim();
-      const keyNumbers = Array.isArray(item.key_numbers) ? item.key_numbers : [];
-      
-      if (!sourceName || !headline) {
-        console.log(`Skipped: missing sourceName or headline`);
-        continue;
-      }
-      
-      // Validate source name matches our list
-      const matchedSource = NEWS_SOURCES.find((s) => 
-        s.name.toLowerCase() === sourceName.toLowerCase() ||
-        sourceName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0]) ||
-        sourceName.toLowerCase().includes(s.domain.replace('.com', '').replace('.gh', '').replace('.org', '').replace('.gov', ''))
-      );
-      
-      if (!matchedSource) {
-        console.log(`Skipped: unrecognized source "${sourceName}"`);
-        continue;
+    // Filter articles by time window and business relevance
+    const qualifyingArticles = allArticles.filter(article => {
+      // Parse publication date
+      let pubDate: Date | null = null;
+      try {
+        pubDate = new Date(article.pubDate);
+        if (isNaN(pubDate.getTime())) pubDate = null;
+      } catch {
+        pubDate = null;
       }
 
-      // Require at least one number
-      if (keyNumbers.length === 0 && !headline.match(/\d+/)) {
-        console.log(`Skipped: no numbers found in "${headline.substring(0, 50)}..."`);
-        continue;
+      // Skip if no valid date or too old
+      if (!pubDate || pubDate < cutoffTime) {
+        return false;
       }
-      
-      console.log(`Accepted: "${headline.substring(0, 60)}..." from ${matchedSource.name}`);
-      filtered.push({
-        ...item,
-        source_name: matchedSource.name,
-      });
-    }
 
-    console.log(`After filtering: ${filtered.length} qualifying items`);
+      // Check if business-related
+      const fullText = `${article.title} ${article.description}`;
+      if (!isBusinessRelated(fullText)) {
+        return false;
+      }
+
+      // Check if contains numbers
+      if (!containsNumbers(fullText)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(`Qualifying business articles: ${qualifyingArticles.length}`);
 
     // ============================================
     // FAILSAFE: No qualifying stories
     // ============================================
-    if (filtered.length === 0) {
+    if (qualifyingArticles.length === 0) {
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
         metadata: { 
-          model: "gpt-4o", 
+          method: "rss-feeds", 
+          sources_checked: RSS_SOURCES.length,
           time_window: TIME_WINDOW_HOURS,
           message: `No new qualifying Ghana business stories in the last ${TIME_WINDOW_HOURS} hours.`
         }
@@ -292,20 +333,17 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
         success: true,
         run_id: run.id,
         message: `No new qualifying Ghana business stories in the last ${TIME_WINDOW_HOURS} hours.`,
+        sources_checked: RSS_SOURCES.length,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Deduplicate using the new key format
-    const deduped: any[] = [];
-    for (const item of filtered) {
-      const eventCore = String(item.event_core || item.original_headline || "");
-      const primaryOrg = String(item.primary_org || "");
-      const dateStr = String(item.published_at || new Date().toISOString()).split("T")[0];
-      const keyNumbers = Array.isArray(item.key_numbers) ? item.key_numbers.map(String) : [];
-      
-      const dedupeKeyRaw = item.dedupe_key || buildDedupeKey(eventCore, primaryOrg, dateStr, keyNumbers);
+    // Deduplicate using headline-based key
+    const deduped: typeof qualifyingArticles = [];
+    for (const article of qualifyingArticles) {
+      const dateStr = new Date(article.pubDate).toISOString().split("T")[0];
+      const dedupeKeyRaw = buildDedupeKey(article.title, article.source_name, dateStr, []);
       const dedupeKeyHash = await sha256Hex(dedupeKeyRaw);
 
       // Check for duplicates in newsroom_articles
@@ -316,7 +354,7 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
         .limit(1);
 
       if (seen && seen.length > 0) {
-        console.log(`Skipping duplicate (newsroom): ${item.original_headline?.substring(0, 50)}...`);
+        console.log(`Skipping duplicate (newsroom): ${article.title.substring(0, 50)}...`);
         continue;
       }
 
@@ -328,13 +366,13 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
         .limit(1);
 
       if (seenPublished && seenPublished.length > 0) {
-        console.log(`Skipping duplicate (articles): ${item.original_headline?.substring(0, 50)}...`);
+        console.log(`Skipping duplicate (articles): ${article.title.substring(0, 50)}...`);
         continue;
       }
 
-      item._dedupe_key = dedupeKeyHash;
-      item._dedupe_key_raw = dedupeKeyRaw;
-      deduped.push(item);
+      (article as any)._dedupe_key = dedupeKeyHash;
+      (article as any)._dedupe_key_raw = dedupeKeyRaw;
+      deduped.push(article);
     }
 
     console.log(`After deduplication: ${deduped.length} new items`);
@@ -343,7 +381,7 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
       await supabase.from("newsroom_runs").update({
         status: "no_news",
         completed_at: new Date().toISOString(),
-        metadata: { model: "gpt-4o", message: "All items were duplicates" }
+        metadata: { method: "rss-feeds", message: "All items were duplicates" }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
@@ -355,15 +393,18 @@ Return ONLY valid JSON array, no markdown, no explanation.`;
       });
     }
 
+    // Limit to max 10 articles per run to avoid timeout
+    const toProcess = deduped.slice(0, 10);
+
     // Insert pending records
-    const newsRecords = deduped.map((item) => ({
+    const newsRecords = toProcess.map((item: any) => ({
       run_id: run.id,
       source_name: item.source_name,
-      original_headline: item.original_headline,
-      original_summary: item.original_summary || "",
-      source_url: item.source_url,
-      published_at: item.published_at,
-      category_hint: item.category_hint || null,
+      original_headline: item.title,
+      original_summary: item.description || "",
+      source_url: item.link,
+      published_at: new Date(item.pubDate).toISOString(),
+      category_hint: null,
       dedupe_key: item._dedupe_key,
       processing_status: "pending",
     }));
@@ -638,7 +679,7 @@ ${keyNumbersHtml}
       status: "completed",
       articles_created: articlesCreated,
       completed_at: new Date().toISOString(),
-      metadata: { model: "gpt-4o", time_window: TIME_WINDOW_HOURS }
+      metadata: { method: "rss-feeds", sources_checked: RSS_SOURCES.length, time_window: TIME_WINDOW_HOURS }
     }).eq("id", run.id);
 
     // Send email notification to admins if articles were created
@@ -673,9 +714,9 @@ ${keyNumbersHtml}
                       The newsroom system has automatically published <strong>${articlesCreated} new article${articlesCreated > 1 ? "s" : ""}</strong>.
                     </p>
                     <p style="color: #666; font-size: 14px;">
-                      Trigger: ${triggerType === "scheduled" ? "Scheduled scan (every 4 hours)" : "Manual scan"}<br>
-                      AI Model: gpt-4o + DALL-E 3<br>
-                      Sources scanned: 20 Ghana business sources<br>
+                      Trigger: ${triggerType === "scheduled" ? "Scheduled scan" : "Manual scan"}<br>
+                      Method: RSS Feed Ingestion<br>
+                      Sources checked: ${RSS_SOURCES.length} Ghana news sources<br>
                       Run ID: ${run.id}
                     </p>
                     <a href="https://statsgh.com/admin/newsroom" 
@@ -700,7 +741,8 @@ ${keyNumbersHtml}
     return new Response(JSON.stringify({
       success: true,
       run_id: run.id,
-      model: "gpt-4o",
+      method: "rss-feeds",
+      sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
       articles_created: articlesCreated,
     }), {
