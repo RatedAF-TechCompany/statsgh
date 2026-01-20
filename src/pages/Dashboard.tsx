@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ManualArticleSubmit } from "@/components/ManualArticleSubmit";
 import { useEffect } from "react";
 import {
   PlusCircle,
@@ -128,6 +129,11 @@ const Dashboard = () => {
             <PlusCircle className="h-4 w-4 mr-2" />
             Create Article
           </Button>
+        </div>
+
+        {/* Quick Publish Section */}
+        <div className="mb-8">
+          <ManualArticleSubmit />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">

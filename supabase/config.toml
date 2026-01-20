@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.newsroom-scheduled]
 verify_jwt = false
+
+[functions.manual-article-submit]
+verify_jwt = false
