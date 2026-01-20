@@ -26,8 +26,8 @@ const RSS_SOURCES = [
   { name: "Pulse Ghana", rss: "https://www.pulse.com.gh/rss", domain: "pulse.com.gh" },
 ] as const;
 
-// Business categories for classification (must match database constraint)
-const VALID_CATEGORIES = [
+// Preferred categories for GPT prompt guidance
+const PREFERRED_CATEGORIES = [
   "top-stories",
   "economy-inflation",
   "public-finance",
@@ -47,8 +47,52 @@ const VALID_CATEGORIES = [
   "ghanacrimes",
 ] as const;
 
-// Default category if GPT returns an invalid one
+// Default category if GPT returns an invalid slug format
 const DEFAULT_CATEGORY = "business";
+
+// Helper to ensure category exists in database, creates if not
+async function ensureCategoryExists(supabase: any, slug: string): Promise<string> {
+  // Validate slug format (lowercase, hyphens only)
+  const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/(^-|-$)/g, "");
+  
+  if (!cleanSlug || cleanSlug.length < 2) {
+    return DEFAULT_CATEGORY;
+  }
+  
+  // Check if category exists
+  const { data: existing } = await supabase
+    .from("categories")
+    .select("slug")
+    .eq("slug", cleanSlug)
+    .limit(1);
+  
+  if (existing && existing.length > 0) {
+    return cleanSlug;
+  }
+  
+  // Create new category
+  const name = cleanSlug
+    .split("-")
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+  
+  const { error } = await supabase
+    .from("categories")
+    .insert({
+      name,
+      slug: cleanSlug,
+      description: `Auto-created category for ${name} articles`,
+      color: "#262626",
+    });
+  
+  if (error) {
+    console.log(`Could not create category ${cleanSlug}, using default: ${error.message}`);
+    return DEFAULT_CATEGORY;
+  }
+  
+  console.log(`Created new category: ${cleanSlug}`);
+  return cleanSlug;
+}
 
 // Business keywords to filter relevant articles
 const BUSINESS_KEYWORDS = [
@@ -507,7 +551,7 @@ OUTPUT (valid JSON only):
   "source_url": "${newsItem.source_url}",
   "seo_description": "SEO meta description under 155 characters",
   "slug": "url-friendly-slug-lowercase-hyphens",
-  "section": "One of: ${VALID_CATEGORIES.join(", ")}",
+  "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
   "tags": ["array", "of", "relevant", "tags"],
   "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
 }
@@ -617,11 +661,8 @@ ${keyNumbersHtml}
           image_style: imageStyle,
         }).eq("id", newsItem.id);
 
-        // Validate section - ensure it matches database constraint
-        let section = articleJson.section || DEFAULT_CATEGORY;
-        if (!VALID_CATEGORIES.includes(section as any)) {
-          section = DEFAULT_CATEGORY;
-        }
+        // Ensure category exists in database (create if new)
+        const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
 
         // Build summary from the intro
         let summary = articleJson.article_intro || articleJson.subtitle || "";
