@@ -26,25 +26,29 @@ const RSS_SOURCES = [
   { name: "Pulse Ghana", rss: "https://www.pulse.com.gh/rss", domain: "pulse.com.gh" },
 ] as const;
 
-// Business categories for classification
+// Business categories for classification (must match database constraint)
 const VALID_CATEGORIES = [
+  "top-stories",
+  "economy-inflation",
   "public-finance",
-  "markets",
-  "banking",
-  "energy",
-  "trade",
-  "tax",
-  "debt",
-  "inflation-prices",
-  "commodities",
-  "companies",
-  "policy",
-  "transport-logistics",
-  "telecoms-digital",
-  "agriculture",
-  "mining",
-  "real-estate",
+  "labour-salaries",
+  "agriculture-food",
+  "energy-resources",
+  "trade-investment",
+  "health-data",
+  "education",
+  "infrastructure-transport",
+  "security-governance",
+  "technology-innovation",
+  "environment-climate",
+  "population",
+  "business",
+  "charts-explainers",
+  "ghanacrimes",
 ] as const;
+
+// Default category if GPT returns an invalid one
+const DEFAULT_CATEGORY = "business";
 
 // Business keywords to filter relevant articles
 const BUSINESS_KEYWORDS = [
@@ -613,10 +617,10 @@ ${keyNumbersHtml}
           image_style: imageStyle,
         }).eq("id", newsItem.id);
 
-        // Validate section
-        let section = articleJson.section || "markets";
+        // Validate section - ensure it matches database constraint
+        let section = articleJson.section || DEFAULT_CATEGORY;
         if (!VALID_CATEGORIES.includes(section as any)) {
-          section = "markets";
+          section = DEFAULT_CATEGORY;
         }
 
         // Build summary from the intro
