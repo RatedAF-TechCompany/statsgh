@@ -17,14 +17,37 @@ const MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function timeout
 
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
+  // Primary business-focused sources
+  { name: "Business Day Ghana", rss: "https://businessdayghana.com/feed/", domain: "businessdayghana.com" },
+  { name: "Ghana Business News", rss: "https://www.ghanabusinessnews.com/feed/", domain: "ghanabusinessnews.com" },
+  { name: "Accra Business News", rss: "https://accrabusinessnews.com/feed/", domain: "accrabusinessnews.com" },
+  { name: "Bizcommunity Ghana", rss: "https://www.bizcommunity.com.gh/rss/", domain: "bizcommunity.com.gh" },
+  { name: "Business & Financial Times", rss: "https://www.thebftonline.com/feed/", domain: "thebftonline.com" },
+  { name: "BusinessGhana", rss: "https://www.businessghana.com/feed/", domain: "businessghana.com" },
+  { name: "Ghana Bank News", rss: "https://www.ghanabanknews.com/feed/", domain: "ghanabanknews.com" },
+  { name: "Ghana Investor", rss: "https://ghanainvestor.com/feed/", domain: "ghanainvestor.com" },
+  { name: "Business-Ghana", rss: "https://www.business-ghana.com/feed/", domain: "business-ghana.com" },
+  
+  // Major portals - business sections
+  { name: "Pulse Ghana Business", rss: "https://www.pulse.com.gh/business/rss", domain: "pulse.com.gh" },
+  { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/feed", domain: "graphic.com.gh" },
+  { name: "GhanaWeb Business", rss: "https://www.ghanaweb.com/GhanaHomePage/business/rss/", domain: "ghanaweb.com" },
+  { name: "ModernGhana Business", rss: "https://www.modernghana.com/news/business/rss/", domain: "modernghana.com" },
+  
+  // General news with business coverage
   { name: "MyJoyOnline", rss: "https://www.myjoyonline.com/feed/", domain: "myjoyonline.com" },
   { name: "Citi Newsroom", rss: "https://citinewsroom.com/feed/", domain: "citinewsroom.com" },
-  { name: "Ghana Business News", rss: "https://www.ghanabusinessnews.com/feed/", domain: "ghanabusinessnews.com" },
-  { name: "Modern Ghana", rss: "https://www.modernghana.com/rss/", domain: "modernghana.com" },
-  { name: "GhanaWeb", rss: "https://www.ghanaweb.com/GhanaHomePage/rss/", domain: "ghanaweb.com" },
-  { name: "Graphic Online", rss: "https://www.graphic.com.gh/feed", domain: "graphic.com.gh" },
-  { name: "Peace FM Online", rss: "https://www.peacefmonline.com/rss/", domain: "peacefmonline.com" },
-  { name: "Pulse Ghana", rss: "https://www.pulse.com.gh/rss", domain: "pulse.com.gh" },
+  { name: "Ghana Daily Press", rss: "https://www.ghanadailypress.com/feed/", domain: "ghanadailypress.com" },
+  { name: "Ghanaian Times", rss: "https://www.ghanaiantimes.com.gh/feed/", domain: "ghanaiantimes.com.gh" },
+  { name: "Ghana News Agency", rss: "https://www.ghananewsagency.org/feed/", domain: "ghananewsagency.org" },
+  { name: "The Highstreetmail", rss: "https://www.highstreetmail.com/feed/", domain: "highstreetmail.com" },
+  { name: "Adom Online", rss: "https://www.adomonline.com/feed/", domain: "adomonline.com" },
+  { name: "YEN Ghana", rss: "https://yen.com.gh/feed/", domain: "yen.com.gh" },
+  { name: "News Ghana", rss: "https://www.newsghana.com.gh/feed/", domain: "newsghana.com.gh" },
+  { name: "Ghana Reporter", rss: "https://ghanareporter.com/feed/", domain: "ghanareporter.com" },
+  { name: "Ghana to Ghana", rss: "https://www.ghanatoghana.com/feed/", domain: "ghanatoghana.com" },
+  { name: "Ghana MMA", rss: "https://www.ghanamma.com/feed/", domain: "ghanamma.com" },
+  { name: "The Ghana Report", rss: "https://www.theghanareport.com/feed/", domain: "theghanareport.com" },
 ] as const;
 
 // Preferred categories for GPT prompt guidance
