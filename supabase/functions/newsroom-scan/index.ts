@@ -660,7 +660,7 @@ serve(async (req) => {
         // ============================================
         // MASTER ARTICLE GENERATION PROMPT
         // ============================================
-        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers.
+        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
 
 ORIGINAL NEWS ITEM:
 Headline: ${newsItem.original_headline}
@@ -669,26 +669,24 @@ Source: ${newsItem.source_name}
 URL: ${newsItem.source_url}
 Published: ${newsItem.published_at}
 
-ABSOLUTE REQUIREMENT - NUMBERS ARE MANDATORY:
-This is a numbers-crunching website. Articles WITHOUT specific numbers are UNACCEPTABLE.
+CRITICAL RULES - READ CAREFULLY:
 
-HEADLINE MUST CONTAIN A NUMBER:
-- The headline MUST include at least one number (amount, percentage, count, year, etc.)
+1. SOURCE MUST CONTAIN NUMBERS:
+- If the source news has NO numbers (amounts, percentages, rates, counts), respond with: {"reject": true, "reason": "Source contains no numbers"}
+- DO NOT make up numbers. DO NOT invent data. DO NOT fabricate statistics.
+- Only use numbers that are IN the source OR well-known Ghana statistics for context.
+
+2. HEADLINE MUST CONTAIN A NUMBER FROM THE SOURCE:
+- The headline MUST include at least one number from the original story.
 - Examples of GOOD headlines: "Ghana GDP Grows 4.7% in Q3 2025", "BoG Holds Policy Rate at 27%", "Cocoa Exports Hit $2.1 Billion"
 - Examples of BAD headlines: "Government Announces New Policy", "Minister Visits Factory" (no numbers!)
-- If the source story has no numbers for the headline, ADD relevant data: "Ghana's $77B Economy Welcomes Guinea Delegation"
 
-IF the source story contains numbers (amounts, %, rates, counts):
-- Extract and highlight ALL numbers from the source.
-
-IF the source story lacks numbers (e.g., diplomatic visits, appointments, ceremonies):
-- You MUST add COMPARATIVE CONTEXT DATA from your knowledge:
-  - For country relations: Compare GDP, population, trade volumes, bilateral trade value between Ghana and the other country
-  - For appointments/governance: Include relevant budget figures, department size, historical spending
-  - For international events: Include economic indicators of countries involved
-  - For policy announcements: Include baseline statistics the policy aims to change
-- Example: A VP visiting Guinea should include Ghana vs Guinea GDP ($77B vs $16B), population (33M vs 14M), bilateral trade figures
-- State these as "For context:" to distinguish from source facts
+3. ADDING GHANA CONTEXT (NOT MAKING UP DATA):
+- After presenting the source facts, you MAY add well-known Ghana statistics for context.
+- Only use REAL, verifiable Ghana statistics you are confident about.
+- Mark context clearly: "For context, Ghana's GDP is approximately $77 billion."
+- If you're not sure about a statistic, DO NOT include it.
+- NEVER invent or estimate numbers. If unsure, leave it out.
 
 LANGUAGE RULES - VERY BASIC ENGLISH:
 - Use the simplest words possible. Write for someone learning English.
@@ -697,7 +695,6 @@ LANGUAGE RULES - VERY BASIC ENGLISH:
 - If you must use a technical term (GDP, inflation, policy rate, bilateral), DEFINE IT in brackets immediately after.
 - Example: "The GDP (the total value of goods and services a country produces) grew by 4.7%."
 - Example: "The policy rate (the interest rate the central bank charges other banks) stayed at 27%."
-- Example: "Bilateral trade (buying and selling between two countries) reached $45 million."
 - No jargon. No fancy words. Explain everything simply.
 
 OUTPUT STYLE RULES:
@@ -708,50 +705,54 @@ OUTPUT STYLE RULES:
 - Use GHS for Ghana cedi amounts.
 - Use % for percentages.
 
-FACT INTEGRITY:
-- Clearly distinguish source facts from contextual data you add.
-- For added context, use phrases like "For context," or "Ghana's economy..."
-- Never present added context as if it came from the source.
+FACT INTEGRITY - ABSOLUTE:
+- NEVER invent, fabricate, or conjure data.
+- Only use numbers from the source article.
+- For Ghana context, only use well-known statistics you are confident about.
+- If the source lacks numbers, REJECT the article. Do not publish without source numbers.
 
-ARTICLE STRUCTURE - Generate this exact structure:
+ARTICLE STRUCTURE (only if source has numbers):
 
-HEADLINE: One short line with AT LEAST ONE NUMBER, max 80 characters. MUST contain a digit!
+HEADLINE: One short line with a NUMBER FROM THE SOURCE, max 80 characters.
 
 ARTICLE:
 - Paragraph 1 explains what happened and why it matters. Use simple words.
 - Paragraph 2 adds context in simple terms. Define any technical terms.
 
 KEY NUMBERS AT A GLANCE:
-- MINIMUM 3 number lines required. This section CANNOT be empty.
-- If source lacks numbers, add comparative/contextual data.
-- Each line must include a specific number, amount, or %.
+- List the key numbers FROM THE SOURCE (minimum 3).
+- You may add 1-2 lines of Ghana context statistics if relevant and you're confident they're accurate.
+- Each line must include a specific number.
 - Keep each line short.
-- Use plain lines with no bullets.
 
 Then write 2 to 3 short paragraphs explaining what the numbers mean in real life. Use very simple language.
 
 End with one clear takeaway sentence.
 
-TWEET: One sentence only. Must contain at least one number from the story. No URLs.
+TWEET: One sentence only. Must contain a number from the story. No URLs.
 
 OUTPUT (valid JSON only):
+
+If source has no numbers, return:
+{"reject": true, "reason": "Source contains no numbers"}
+
+If source has numbers, return:
 {
-  "headline": "Max 80 characters, MUST CONTAIN AT LEAST ONE NUMBER, factual, no colons",
+  "reject": false,
+  "headline": "Max 80 characters, MUST CONTAIN A NUMBER FROM SOURCE, factual, no colons",
   "subtitle": "One-sentence expansion of the headline",
   "article_intro": "Paragraph 1: what happened and why it matters (simple English)",
   "article_context": "Paragraph 2: context in simple terms (define technical words)",
-  "key_numbers": ["MINIMUM 3 items required - Array of number lines, e.g. 'Ghana GDP: $77 billion', 'Guinea GDP: $16 billion', 'Bilateral trade: $45 million'"],
-  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean in real life (very simple language)",
+  "key_numbers": ["Array of number lines FROM THE SOURCE, minimum 3 required"],
+  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean (very simple language)",
   "takeaway": "One clear takeaway sentence",
-  "tweet": "One sentence with at least one number, no URLs",
+  "tweet": "One sentence with a number from the story, no URLs",
   "source_url": "${newsItem.source_url}",
   "seo_description": "SEO meta description under 155 characters",
   "slug": "url-friendly-slug-lowercase-hyphens",
   "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
   "tags": ["array", "of", "relevant", "tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
-  "has_source_numbers": true or false (whether the original source contained numbers),
-  "context_added": true or false (whether you added comparative/contextual data)
+  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
 }
 
 Return ONLY valid JSON.`;
@@ -785,6 +786,19 @@ Return ONLY valid JSON.`;
         }
 
         // ============================================
+        // CHECK IF GPT REJECTED DUE TO NO SOURCE NUMBERS
+        // ============================================
+        if (articleJson.reject === true) {
+          const rejectReason = articleJson.reason || "Source contains no numbers";
+          console.log(`REJECTED BY GPT: "${newsItem.original_headline.substring(0, 50)}..." - ${rejectReason}`);
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `Editorial rejection: ${rejectReason}`,
+          }).eq("id", newsItem.id);
+          continue; // Skip this article
+        }
+
+        // ============================================
         // VALIDATE HEADLINE HAS NUMBER (MANDATORY)
         // ============================================
         const headline = String(articleJson.headline || "");
@@ -794,7 +808,7 @@ Return ONLY valid JSON.`;
           console.log(`REJECTED: Headline "${headline}" has NO NUMBER (numbers in headline are mandatory)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
-            error_message: `Editorial rejection: Headline must contain at least one number`,
+            error_message: `Editorial rejection: Headline must contain at least one number from source`,
           }).eq("id", newsItem.id);
           continue; // Skip this article
         }
@@ -825,9 +839,6 @@ Return ONLY valid JSON.`;
         }
 
         console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found`);
-        if (articleJson.context_added) {
-          console.log(`Note: Contextual data was added to enrich this article`);
-        }
 
         // Build the article body in the master prompt structure
         const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>${n}</p>`).join("\n");
