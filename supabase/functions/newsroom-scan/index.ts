@@ -45,7 +45,33 @@ const PREFERRED_CATEGORIES = [
   "population",
   "business",
   "charts-explainers",
-  "ghanacrimes",
+] as const;
+
+// Crime-related keywords to EXCLUDE (unless statistical analysis)
+const CRIME_EXCLUSION_KEYWORDS = [
+  "murder", "murdered", "killing", "killed", "stabbed", "stabbing",
+  "robbed", "robbery", "armed robbery", "thieves", "thief", "stealing",
+  "rape", "raped", "rapist", "sexual assault", "defilement",
+  "kidnap", "kidnapped", "kidnapping", "abducted", "abduction",
+  "fraud", "scam", "scammer", "419", "sakawa",
+  "arrested", "arrest", "custody", "remanded", "jailed", "prison sentence",
+  "court sentences", "sentenced to", "years imprisonment",
+  "assault", "assaulted", "attacked", "beaten", "beating",
+  "shot dead", "gunned down", "shooting", "gunshots",
+  "manslaughter", "homicide", "crime scene", "criminal",
+  "suspect", "accused", "culprit", "perpetrator",
+  "police arrest", "nabbed", "apprehended",
+  "ritual", "ritualist", "blood money", "human sacrifice",
+  "lynch", "lynched", "mob justice", "vigilante",
+  "domestic violence", "abuse", "child abuse",
+] as const;
+
+// Statistical/analytical keywords that override crime exclusion
+const CRIME_STATS_OVERRIDE_KEYWORDS = [
+  "crime statistics", "crime rate", "crime data", "crime report",
+  "annual crime", "crime trends", "crime reduction", "crime increased",
+  "police statistics", "criminal justice reform", "crime prevention",
+  "security statistics", "law enforcement data",
 ] as const;
 
 // Default category if GPT returns an invalid slug format
@@ -170,6 +196,22 @@ async function sha256Hex(input: string): Promise<string> {
 function isBusinessRelated(text: string): boolean {
   const lowerText = text.toLowerCase();
   return BUSINESS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
+// Check if text is crime news (should be excluded unless statistical)
+function isCrimeNews(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  
+  // First check if it's statistical crime analysis (allowed)
+  const isStatisticalAnalysis = CRIME_STATS_OVERRIDE_KEYWORDS.some(keyword => 
+    lowerText.includes(keyword)
+  );
+  if (isStatisticalAnalysis) {
+    return false; // Not excluded - it's statistical content
+  }
+  
+  // Check for crime keywords (excluded)
+  return CRIME_EXCLUSION_KEYWORDS.some(keyword => lowerText.includes(keyword));
 }
 
 // Check if text contains numbers (required for StatsGH)
@@ -350,6 +392,12 @@ serve(async (req) => {
       // Check if business-related
       const fullText = `${article.title} ${article.description}`;
       if (!isBusinessRelated(fullText)) {
+        return false;
+      }
+
+      // EXCLUDE crime news (unless statistical analysis)
+      if (isCrimeNews(fullText)) {
+        console.log(`Skipping crime news: ${article.title.substring(0, 50)}...`);
         return false;
       }
 
