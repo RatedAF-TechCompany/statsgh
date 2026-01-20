@@ -13,6 +13,7 @@ const corsHeaders = {
 // STATSGH NEWSROOM MASTER CONFIGURATION
 // ============================================
 const TIME_WINDOW_HOURS = 24; // Scan last 24 hours but skip already published articles
+const MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function timeout
 
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
@@ -474,8 +475,9 @@ serve(async (req) => {
     // PROCESS EACH ITEM INTO STATSGH ARTICLE FORMAT
     // ============================================
     let articlesCreated = 0;
+    const itemsToProcess = (insertedNews || []).slice(0, MAX_ARTICLES_PER_RUN);
 
-    for (const newsItem of insertedNews || []) {
+    for (const newsItem of itemsToProcess) {
       try {
         await supabase.from("newsroom_articles").update({
           processing_status: "processing",
@@ -710,6 +712,12 @@ ${keyNumbersHtml}
         }).eq("id", newsItem.id);
 
         articlesCreated++;
+        
+        // Update run progress incrementally to prevent data loss on timeout
+        await supabase.from("newsroom_runs").update({
+          articles_created: articlesCreated,
+        }).eq("id", run.id);
+        
         console.log(`Created article: ${newArticle.title}`);
       } catch (error) {
         console.error("Error processing news item:", error);
