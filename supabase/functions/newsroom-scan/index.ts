@@ -12,7 +12,7 @@ const corsHeaders = {
 // ============================================
 // STATSGH NEWSROOM MASTER CONFIGURATION
 // ============================================
-const TIME_WINDOW_HOURS = 4; // Run every 4 hours
+const TIME_WINDOW_HOURS = 24; // Scan last 24 hours but skip already published articles
 
 // 20 Ghana business news sources
 const NEWS_SOURCES = [
