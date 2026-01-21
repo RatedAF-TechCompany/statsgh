@@ -1,14 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Volume2, Pause, Square } from "lucide-react";
+import { Volume2, Pause, Square, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface ListenButtonProps {
   title: string;
@@ -16,16 +10,13 @@ interface ListenButtonProps {
   className?: string;
 }
 
-const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
-
 export const ListenButton = ({ title, content, className }: ListenButtonProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
-  const [speed, setSpeed] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const textLengthRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   // Strip HTML tags and get clean text
   const getCleanText = useCallback(() => {
@@ -35,15 +26,15 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     return `${title}. ${text}`;
   }, [title, content]);
 
+  // Cleanup audio URL on unmount
   useEffect(() => {
-    if (!("speechSynthesis" in window)) {
-      setIsSupported(false);
-    }
-
-    // Cleanup on unmount
     return () => {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
       }
     };
   }, []);
@@ -53,7 +44,6 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     if (!isPlaying && !isPaused) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -63,9 +53,7 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
         if (isPlaying) {
           handlePause();
         } else if (isPaused) {
-          window.speechSynthesis.resume();
-          setIsPaused(false);
-          setIsPlaying(true);
+          handleResume();
         }
       } else if (e.code === "Escape") {
         e.preventDefault();
@@ -77,101 +65,112 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlaying, isPaused]);
 
-  const startSpeech = useCallback((rate: number) => {
-    window.speechSynthesis.cancel();
+  const handlePlay = async () => {
+    // If we have existing audio that's paused, resume it
+    if (isPaused && audioRef.current) {
+      handleResume();
+      return;
+    }
+
+    setIsLoading(true);
     setProgress(0);
 
-    const text = getCleanText();
-    textLengthRef.current = text.length;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utteranceRef.current = utterance;
+    try {
+      const text = getCleanText();
+      
+      // Call the ElevenLabs TTS edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text }),
+        }
+      );
 
-    // Get available voices and prefer a natural-sounding English voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(
-      (v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Natural"))
-    ) || voices.find((v) => v.lang.startsWith("en-"));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate audio: ${response.status}`);
+      }
 
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
+      // Get the audio blob
+      const audioBlob = await response.blob();
+      
+      // Clean up previous audio URL
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
 
-    utterance.rate = rate;
-    utterance.pitch = 1;
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl;
 
-    utterance.onstart = () => {
-      setIsPlaying(true);
-      setIsPaused(false);
-    };
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-      setProgress(100);
-    };
+      // Track progress
+      audio.addEventListener("timeupdate", () => {
+        if (audio.duration > 0) {
+          setProgress((audio.currentTime / audio.duration) * 100);
+        }
+      });
 
-    utterance.onerror = (event) => {
-      if (event.error !== "canceled") {
+      audio.addEventListener("ended", () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+        setProgress(100);
+      });
+
+      audio.addEventListener("error", (e) => {
+        console.error("Audio playback error:", e);
         toast.error("Error playing audio");
-      }
-      setIsPlaying(false);
-      setIsPaused(false);
-      setProgress(0);
-    };
+        setIsPlaying(false);
+        setIsPaused(false);
+        setIsLoading(false);
+        setProgress(0);
+      });
 
-    // Track progress using boundary events
-    utterance.onboundary = (event) => {
-      if (textLengthRef.current > 0) {
-        const percent = Math.min(100, (event.charIndex / textLengthRef.current) * 100);
-        setProgress(percent);
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }, [getCleanText]);
-
-  const handlePlay = () => {
-    if (!isSupported) {
-      toast.error("Text-to-speech is not supported in your browser");
-      return;
-    }
-
-    if (isPaused) {
-      window.speechSynthesis.resume();
-      setIsPaused(false);
+      await audio.play();
       setIsPlaying(true);
-      return;
+      setIsLoading(false);
+    } catch (error) {
+      console.error("TTS error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate audio");
+      setIsLoading(false);
+      setProgress(0);
     }
-
-    startSpeech(speed);
   };
 
   const handlePause = () => {
-    window.speechSynthesis.pause();
-    setIsPaused(true);
-    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPaused(true);
+      setIsPlaying(false);
+    }
+  };
+
+  const handleResume = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setIsPaused(false);
+      setIsPlaying(true);
+    }
   };
 
   const handleStop = () => {
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setIsPlaying(false);
     setIsPaused(false);
     setProgress(0);
   };
 
-  const handleSpeedChange = (newSpeed: number) => {
-    setSpeed(newSpeed);
-    // If currently playing, restart with new speed
-    if (isPlaying || isPaused) {
-      startSpeech(newSpeed);
-    }
-  };
-
-  if (!isSupported) {
-    return null;
-  }
-
-  const isActive = isPlaying || isPaused;
+  const isActive = isPlaying || isPaused || isLoading;
 
   return (
     <div className={`inline-flex flex-col gap-1.5 ${className || ""}`}>
@@ -188,12 +187,19 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
           </Button>
         )}
 
-        {isActive && (
+        {isLoading && (
+          <Button variant="outline" size="sm" disabled className="gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="hidden sm:inline">Loading...</span>
+          </Button>
+        )}
+
+        {(isPlaying || isPaused) && !isLoading && (
           <>
             <Button
               variant="outline"
               size="sm"
-              onClick={isPaused ? handlePlay : handlePause}
+              onClick={isPaused ? handleResume : handlePause}
               className="gap-2"
             >
               {isPaused ? (
@@ -209,25 +215,6 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
               )}
             </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="px-2 text-xs font-medium">
-                  {speed}x
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center">
-                {SPEED_OPTIONS.map((s) => (
-                  <DropdownMenuItem
-                    key={s}
-                    onClick={() => handleSpeedChange(s)}
-                    className={speed === s ? "bg-accent" : ""}
-                  >
-                    {s}x
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             <Button variant="ghost" size="sm" onClick={handleStop}>
               <Square className="h-4 w-4" />
             </Button>
@@ -239,7 +226,7 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
         )}
       </div>
 
-      {isActive && (
+      {(isPlaying || isPaused) && !isLoading && (
         <Progress value={progress} className="h-1 w-full" />
       )}
     </div>
