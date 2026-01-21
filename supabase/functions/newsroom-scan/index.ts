@@ -209,19 +209,19 @@ const BUSINESS_KEYWORDS = [
   "real estate", "property", "housing", "construction",
 ] as const;
 
-// Image styles (rotate between these)
+// Image styles - prioritizing photorealistic for authentic journalism feel
 const IMAGE_STYLES = [
-  "conceptual-hard-news",
-  "gritty-collage",
-  "editorial-cartoon",
+  "photorealistic-documentary",
+  "photorealistic-business",
+  "photorealistic-infrastructure",
 ] as const;
 
 const IMAGE_STYLE_PROMPTS: Record<string, string> = {
-  "conceptual-hard-news": `Clean high-impact conceptual editorial illustration. Single central composition with balanced symmetry. Strong negative space and clear silhouette readable at small sizes. Smooth digital illustration with controlled subtle shading. Muted grey, off-white, black palette with ONE accent color only if meaningful. Generic illustrative people with neutral calm expressions if needed. Oversized or simplified objects for visual metaphor (money, coins, documents, clocks, buildings). Soft even lighting, low contrast. 16:9 aspect ratio. No text, no logos, no flags, no charts. Serious analytical neutral tone.`,
+  "photorealistic-documentary": `Ultra high resolution photorealistic photograph. Documentary journalism style. Real-world Ghana setting with authentic African context. Natural lighting, candid moment captured. Sharp focus, professional DSLR quality. Real people going about daily activities (workers, traders, farmers, office workers). Genuine expressions and body language. 16:9 aspect ratio. No text overlays, no watermarks. Authentic, unposed, editorial news photography feel.`,
   
-  "gritty-collage": `Gritty newspaper-style split-frame collage. Vertical split layout. LEFT PANEL: Black and white or near monochrome, tight cropped close-up, heavy grain, crushed blacks, high contrast, anonymous documentary feel. RIGHT PANEL: Red duotone or red wash treatment, wider context showing environment or collective impact, details readable under red overlay. Heavy halftone and rough print texture throughout. Infrastructure, tools, crowds, idle assets, empty spaces, blocked movement as subjects. Generic obscured figures only, no identifiable individuals. No logos, flags, or badges. 16:9 aspect ratio. Neutral observational tone.`,
+  "photorealistic-business": `Ultra high resolution photorealistic photograph. Professional business photography in Ghana/West African context. Modern office buildings, banks, business districts, markets, or trading floors. Well-dressed professionals, handshakes, meetings, or working scenes. Clean composition with natural daylight or professional lighting. Sharp corporate photography style. 16:9 aspect ratio. No logos, no text. Authentic African business environment.`,
   
-  "editorial-cartoon": `Classic newspaper editorial cartoon style. Hand-drawn black ink lines on off-white newsprint texture background. High contrast between black ink and background. Primary palette: black and off-white. Maximum 2 accent colors (red or muted earth tones) used very sparingly and symbolically. One clear dominant visual metaphor. Balanced dynamic layout with clean negative space. Allowed symbols: documents, locks, chains, ships, factories, money, maps, broken links, idle machinery. Generic or symbolic figures only with expressions of tension, uncertainty, or concern. No gradients, no digital gloss, no realism. 16:9 aspect ratio. No text, labels, or logos. Serious critical analytical tone.`
+  "photorealistic-infrastructure": `Ultra high resolution photorealistic photograph. Infrastructure and development in Ghana/Africa. Roads, ports, construction sites, power plants, factories, agricultural facilities, or government buildings. Workers in action, machinery, or completed projects. Golden hour or clear daylight. Journalistic documentary style showing progress and development. 16:9 aspect ratio. No text, no logos. Real-world authentic setting.`
 };
 
 function getRandomImageStyle(): string {
@@ -861,49 +861,84 @@ ${keyNumbersHtml}
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // IMAGE GENERATION (DALL-E 3)
+        // IMAGE GENERATION (Lovable AI - Photorealistic)
         // ============================================
         const imageStyle = getRandomImageStyle();
         const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle];
         const aiImagePrompt = String(articleJson.image_prompt || `Ghana business news about ${articleJson.headline}`);
-        const imagePrompt = `${stylePrompt}. ${aiImagePrompt}. Ghana setting.`;
+        const imagePrompt = `${stylePrompt} Subject: ${aiImagePrompt}. Set in Ghana, West Africa.`;
 
         let heroImageUrl: string | null = null;
 
         try {
-          console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
+          console.log(`Generating photorealistic image for: ${articleSlug}, style: ${imageStyle}`);
           
-          const imageGenResponse = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: imagePrompt,
-            n: 1,
-            size: "1792x1024",
-            quality: "standard",
-            style: "vivid",
-          });
+          const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+          
+          if (LOVABLE_API_KEY) {
+            const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-image-preview",
+                messages: [
+                  {
+                    role: "user",
+                    content: imagePrompt,
+                  },
+                ],
+                modalities: ["image", "text"],
+              }),
+            });
 
-          const generatedImageUrl = imageGenResponse.data?.[0]?.url;
+            if (lovableResponse.ok) {
+              const lovableData = await lovableResponse.json();
+              const generatedImage = lovableData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-          if (generatedImageUrl) {
-            const imageDownload = await fetch(generatedImageUrl);
-            if (imageDownload.ok) {
-              const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
+              if (generatedImage && generatedImage.startsWith("data:image")) {
+                // Extract base64 data from data URL
+                const base64Match = generatedImage.match(/^data:image\/(\w+);base64,(.+)$/);
+                
+                if (base64Match) {
+                  const imageFormat = base64Match[1]; // png, jpeg, etc.
+                  const base64Data = base64Match[2];
+                  
+                  // Decode base64 to binary
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
 
-              const imagePath = `newsroom/${articleSlug}.png`;
-              const { error: uploadError } = await supabase.storage
-                .from("media")
-                .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
+                  const imagePath = `newsroom/${articleSlug}.${imageFormat === 'jpeg' ? 'jpg' : imageFormat}`;
+                  const contentType = `image/${imageFormat}`;
+                  
+                  const { error: uploadError } = await supabase.storage
+                    .from("media")
+                    .upload(imagePath, bytes, { contentType, upsert: true });
 
-              if (!uploadError) {
-                const { data: publicUrl } = supabase.storage
-                  .from("media")
-                  .getPublicUrl(imagePath);
-                heroImageUrl = publicUrl.publicUrl;
-                console.log(`Image uploaded: ${heroImageUrl}`);
+                  if (!uploadError) {
+                    const { data: publicUrl } = supabase.storage
+                      .from("media")
+                      .getPublicUrl(imagePath);
+                    heroImageUrl = publicUrl.publicUrl;
+                    console.log(`Photorealistic image uploaded: ${heroImageUrl}`);
+                  } else {
+                    console.error("Image upload error:", uploadError);
+                  }
+                }
               } else {
-                console.error("Image upload error:", uploadError);
+                console.log("No valid image data in Lovable AI response");
               }
+            } else {
+              const errorText = await lovableResponse.text();
+              console.error("Lovable AI image generation failed:", lovableResponse.status, errorText);
             }
+          } else {
+            console.log("LOVABLE_API_KEY not configured, skipping image generation");
           }
         } catch (imgError) {
           console.error("Image generation error:", imgError);
