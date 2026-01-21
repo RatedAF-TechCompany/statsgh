@@ -220,6 +220,7 @@ export type Database = {
           instagram_compressed: string | null
           is_most_read: boolean
           is_published: boolean
+          meta_title: string | null
           published_at: string | null
           scheduled_at: string | null
           section: string
@@ -250,6 +251,7 @@ export type Database = {
           instagram_compressed?: string | null
           is_most_read?: boolean
           is_published?: boolean
+          meta_title?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           section: string
@@ -280,6 +282,7 @@ export type Database = {
           instagram_compressed?: string | null
           is_most_read?: boolean
           is_published?: boolean
+          meta_title?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           section?: string

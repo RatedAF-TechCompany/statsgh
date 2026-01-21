@@ -455,6 +455,7 @@ ${keyNumbersHtml}
         status: "published",
         is_published: true,
         published_at: new Date().toISOString(),
+        meta_title: String(articleJson.headline || "").substring(0, 60),
         seo_description: String(articleJson.seo_description || "").substring(0, 155),
         twitter_post: String(articleJson.tweet || "").substring(0, 280),
       })
