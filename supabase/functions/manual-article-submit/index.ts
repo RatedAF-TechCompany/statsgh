@@ -454,7 +454,7 @@ ${keyNumbersHtml}
         section: categorySlug,
         status: "published",
         is_published: true,
-        meta_title: String(articleJson.headline || "").substring(0, 60),
+        published_at: new Date().toISOString(),
         seo_description: String(articleJson.seo_description || "").substring(0, 155),
         twitter_post: String(articleJson.tweet || "").substring(0, 280),
       })
