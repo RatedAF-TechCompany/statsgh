@@ -209,23 +209,34 @@ const BUSINESS_KEYWORDS = [
   "real estate", "property", "housing", "construction",
 ] as const;
 
-// Image styles - prioritizing photorealistic for authentic journalism feel
-const IMAGE_STYLES = [
-  "photorealistic-documentary",
-  "photorealistic-business",
-  "photorealistic-infrastructure",
-] as const;
-
-const IMAGE_STYLE_PROMPTS: Record<string, string> = {
-  "photorealistic-documentary": `Ultra high resolution photorealistic photograph. Documentary journalism style. Real-world Ghana setting with authentic African context. Natural lighting, candid moment captured. Sharp focus, professional DSLR quality. Real people going about daily activities (workers, traders, farmers, office workers). Genuine expressions and body language. 16:9 aspect ratio. No text overlays, no watermarks. Authentic, unposed, editorial news photography feel.`,
-  
-  "photorealistic-business": `Ultra high resolution photorealistic photograph. Professional business photography in Ghana/West African context. Modern office buildings, banks, business districts, markets, or trading floors. Well-dressed professionals, handshakes, meetings, or working scenes. Clean composition with natural daylight or professional lighting. Sharp corporate photography style. 16:9 aspect ratio. No logos, no text. Authentic African business environment.`,
-  
-  "photorealistic-infrastructure": `Ultra high resolution photorealistic photograph. Infrastructure and development in Ghana/Africa. Roads, ports, construction sites, power plants, factories, agricultural facilities, or government buildings. Workers in action, machinery, or completed projects. Golden hour or clear daylight. Journalistic documentary style showing progress and development. 16:9 aspect ratio. No text, no logos. Real-world authentic setting.`
+// ============================================
+// STOCK PHOTO KEYWORDS BY CATEGORY
+// Uses Unsplash Source for real photography (no API key required)
+// ============================================
+const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
+  "economy-inflation": ["africa,money", "ghana,market", "africa,currency", "africa,shopping"],
+  "public-finance": ["africa,government,building", "africa,parliament", "ghana,office", "africa,meeting"],
+  "labour-salaries": ["africa,workers", "ghana,office", "africa,factory", "africa,employees"],
+  "agriculture-food": ["ghana,farming", "africa,agriculture", "africa,market,food", "ghana,crops"],
+  "energy-resources": ["africa,energy", "ghana,power", "africa,oil", "africa,solar"],
+  "trade-investment": ["africa,port", "ghana,shipping", "africa,business", "africa,trade"],
+  "health-data": ["africa,hospital", "ghana,healthcare", "africa,medical", "africa,clinic"],
+  "education": ["africa,school", "ghana,classroom", "africa,students", "africa,university"],
+  "infrastructure-transport": ["ghana,road", "africa,construction", "africa,bridge", "ghana,transport"],
+  "security-governance": ["africa,government", "ghana,police", "africa,security", "africa,parliament"],
+  "technology-innovation": ["africa,technology", "ghana,computer", "africa,startup", "africa,mobile"],
+  "environment-climate": ["ghana,nature", "africa,environment", "africa,climate", "africa,forest"],
+  "population": ["ghana,city", "africa,people", "africa,urban", "ghana,community"],
+  "business": ["africa,business", "ghana,office", "africa,entrepreneur", "africa,meeting"],
+  "top-stories": ["ghana,city", "africa,news", "ghana,accra", "africa,people"],
+  "charts-explainers": ["africa,data", "africa,office", "africa,computer", "africa,meeting"],
 };
 
-function getRandomImageStyle(): string {
-  return IMAGE_STYLES[Math.floor(Math.random() * IMAGE_STYLES.length)];
+const DEFAULT_PHOTO_KEYWORDS = ["ghana", "africa,business", "africa,city", "africa,people"];
+
+function getPhotoKeywords(category: string): string {
+  const keywords = CATEGORY_PHOTO_KEYWORDS[category] || DEFAULT_PHOTO_KEYWORDS;
+  return keywords[Math.floor(Math.random() * keywords.length)];
 }
 
 // ============================================
@@ -861,95 +872,58 @@ ${keyNumbersHtml}
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // IMAGE GENERATION (Lovable AI - Photorealistic)
+        // STOCK PHOTO FROM UNSPLASH (Real Photography)
         // ============================================
-        const imageStyle = getRandomImageStyle();
-        const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle];
-        const aiImagePrompt = String(articleJson.image_prompt || `Ghana business news about ${articleJson.headline}`);
-        const imagePrompt = `${stylePrompt} Subject: ${aiImagePrompt}. Set in Ghana, West Africa.`;
-
+        const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
+        const photoKeywords = getPhotoKeywords(section);
+        
         let heroImageUrl: string | null = null;
 
         try {
-          console.log(`Generating photorealistic image for: ${articleSlug}, style: ${imageStyle}`);
+          console.log(`Fetching stock photo for: ${articleSlug}, keywords: ${photoKeywords}`);
           
-          const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+          // Unsplash Source provides real photos without API key
+          // Format: source.unsplash.com/{width}x{height}/?{keywords}
+          const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
           
-          if (LOVABLE_API_KEY) {
-            const lovableResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "google/gemini-2.5-flash-image-preview",
-                messages: [
-                  {
-                    role: "user",
-                    content: imagePrompt,
-                  },
-                ],
-                modalities: ["image", "text"],
-              }),
-            });
+          // Fetch the actual image (Unsplash Source redirects to real photo)
+          const imageResponse = await fetch(unsplashSourceUrl, {
+            redirect: "follow",
+          });
+          
+          if (imageResponse.ok) {
+            const imageBlob = await imageResponse.arrayBuffer();
+            const bytes = new Uint8Array(imageBlob);
+            
+            // Determine content type from response headers
+            const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+            const ext = contentType.includes("png") ? "png" : "jpg";
+            
+            const imagePath = `newsroom/${articleSlug}.${ext}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from("media")
+              .upload(imagePath, bytes, { contentType, upsert: true });
 
-            if (lovableResponse.ok) {
-              const lovableData = await lovableResponse.json();
-              const generatedImage = lovableData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-              if (generatedImage && generatedImage.startsWith("data:image")) {
-                // Extract base64 data from data URL
-                const base64Match = generatedImage.match(/^data:image\/(\w+);base64,(.+)$/);
-                
-                if (base64Match) {
-                  const imageFormat = base64Match[1]; // png, jpeg, etc.
-                  const base64Data = base64Match[2];
-                  
-                  // Decode base64 to binary
-                  const binaryString = atob(base64Data);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                  }
-
-                  const imagePath = `newsroom/${articleSlug}.${imageFormat === 'jpeg' ? 'jpg' : imageFormat}`;
-                  const contentType = `image/${imageFormat}`;
-                  
-                  const { error: uploadError } = await supabase.storage
-                    .from("media")
-                    .upload(imagePath, bytes, { contentType, upsert: true });
-
-                  if (!uploadError) {
-                    const { data: publicUrl } = supabase.storage
-                      .from("media")
-                      .getPublicUrl(imagePath);
-                    heroImageUrl = publicUrl.publicUrl;
-                    console.log(`Photorealistic image uploaded: ${heroImageUrl}`);
-                  } else {
-                    console.error("Image upload error:", uploadError);
-                  }
-                }
-              } else {
-                console.log("No valid image data in Lovable AI response");
-              }
+            if (!uploadError) {
+              const { data: publicUrl } = supabase.storage
+                .from("media")
+                .getPublicUrl(imagePath);
+              heroImageUrl = publicUrl.publicUrl;
+              console.log(`Stock photo uploaded: ${heroImageUrl}`);
             } else {
-              const errorText = await lovableResponse.text();
-              console.error("Lovable AI image generation failed:", lovableResponse.status, errorText);
+              console.error("Image upload error:", uploadError);
             }
           } else {
-            console.log("LOVABLE_API_KEY not configured, skipping image generation");
+            console.log(`Unsplash fetch failed: ${imageResponse.status}`);
           }
         } catch (imgError) {
-          console.error("Image generation error:", imgError);
+          console.error("Stock photo fetch error:", imgError);
         }
 
         await supabase.from("newsroom_articles").update({
-          image_style: imageStyle,
+          image_style: photoKeywords,
         }).eq("id", newsItem.id);
-
-        // Ensure category exists in database (create if new)
-        const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
 
         // Build summary from the intro
         let summary = articleJson.article_intro || articleJson.subtitle || "";

@@ -31,23 +31,35 @@ const PREFERRED_CATEGORIES = [
 
 const DEFAULT_CATEGORY = "business";
 
-// Image styles
-const IMAGE_STYLES = [
-  "conceptual-hard-news",
-  "gritty-collage",
-  "editorial-cartoon",
-] as const;
-
-const IMAGE_STYLE_PROMPTS: Record<string, string> = {
-  "conceptual-hard-news": `Clean high-impact conceptual editorial illustration. Single central composition with balanced symmetry. Strong negative space and clear silhouette readable at small sizes. Smooth digital illustration with controlled subtle shading. Muted grey, off-white, black palette with ONE accent color only if meaningful. Generic illustrative people with neutral calm expressions if needed. Oversized or simplified objects for visual metaphor (money, coins, documents, clocks, buildings). Soft even lighting, low contrast. 16:9 aspect ratio. No text, no logos, no flags, no charts. Serious analytical neutral tone.`,
-  
-  "gritty-collage": `Gritty newspaper-style split-frame collage. Vertical split layout. LEFT PANEL: Black and white or near monochrome, tight cropped close-up, heavy grain, crushed blacks, high contrast, anonymous documentary feel. RIGHT PANEL: Red duotone or red wash treatment, wider context showing environment or collective impact, details readable under red overlay. Heavy halftone and rough print texture throughout. Infrastructure, tools, crowds, idle assets, empty spaces, blocked movement as subjects. Generic obscured figures only, no identifiable individuals. No logos, flags, or badges. 16:9 aspect ratio. Neutral observational tone.`,
-  
-  "editorial-cartoon": `Classic newspaper editorial cartoon style. Hand-drawn black ink lines on off-white newsprint texture background. High contrast between black ink and background. Primary palette: black and off-white. Maximum 2 accent colors (red or muted earth tones) used very sparingly and symbolically. One clear dominant visual metaphor. Balanced dynamic layout with clean negative space. Allowed symbols: documents, locks, chains, ships, factories, money, maps, broken links, idle machinery. Generic or symbolic figures only with expressions of tension, uncertainty, or concern. No gradients, no digital gloss, no realism. 16:9 aspect ratio. No text, labels, or logos. Serious critical analytical tone.`
+// ============================================
+// STOCK PHOTO KEYWORDS BY CATEGORY
+// Uses Unsplash Source for real photography (no API key required)
+// ============================================
+const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
+  "economy-inflation": ["africa,money", "ghana,market", "africa,currency", "africa,shopping"],
+  "public-finance": ["africa,government,building", "africa,parliament", "ghana,office", "africa,meeting"],
+  "labour-salaries": ["africa,workers", "ghana,office", "africa,factory", "africa,employees"],
+  "agriculture-food": ["ghana,farming", "africa,agriculture", "africa,market,food", "ghana,crops"],
+  "energy-resources": ["africa,energy", "ghana,power", "africa,oil", "africa,solar"],
+  "trade-investment": ["africa,port", "ghana,shipping", "africa,business", "africa,trade"],
+  "health-data": ["africa,hospital", "ghana,healthcare", "africa,medical", "africa,clinic"],
+  "education": ["africa,school", "ghana,classroom", "africa,students", "africa,university"],
+  "infrastructure-transport": ["ghana,road", "africa,construction", "africa,bridge", "ghana,transport"],
+  "security-governance": ["africa,government", "ghana,police", "africa,security", "africa,parliament"],
+  "technology-innovation": ["africa,technology", "ghana,computer", "africa,startup", "africa,mobile"],
+  "environment-climate": ["ghana,nature", "africa,environment", "africa,climate", "africa,forest"],
+  "population": ["ghana,city", "africa,people", "africa,urban", "ghana,community"],
+  "business": ["africa,business", "ghana,office", "africa,entrepreneur", "africa,meeting"],
+  "top-stories": ["ghana,city", "africa,news", "ghana,accra", "africa,people"],
+  "charts-explainers": ["africa,data", "africa,office", "africa,computer", "africa,meeting"],
+  "ghanacrimes": ["africa,police", "africa,security", "africa,justice", "africa,law"],
 };
 
-function getRandomImageStyle(): string {
-  return IMAGE_STYLES[Math.floor(Math.random() * IMAGE_STYLES.length)];
+const DEFAULT_PHOTO_KEYWORDS = ["ghana", "africa,business", "africa,city", "africa,people"];
+
+function getPhotoKeywords(category: string): string {
+  const keywords = CATEGORY_PHOTO_KEYWORDS[category] || DEFAULT_PHOTO_KEYWORDS;
+  return keywords[Math.floor(Math.random() * keywords.length)];
 }
 
 // Helper to ensure category exists in database
@@ -379,55 +391,51 @@ ${keyNumbersHtml}
 
     const articleSlug = `${slugBase}-${Date.now()}`;
 
-    // Generate image
-    const imageStyle = getRandomImageStyle();
-    const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle];
-    const aiImagePrompt = String(articleJson.image_prompt || `Ghana business news about ${articleJson.headline}`);
-    const imagePrompt = `${stylePrompt}. ${aiImagePrompt}. Ghana setting.`;
-
+    // Ensure category exists first (needed for photo keywords)
+    const categorySlug = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
+    
+    // Get stock photo from Unsplash
+    const photoKeywords = getPhotoKeywords(categorySlug);
     let heroImageUrl: string | null = null;
 
     try {
-      console.log(`Generating image for: ${articleSlug}, style: ${imageStyle}`);
+      console.log(`Fetching stock photo for: ${articleSlug}, keywords: ${photoKeywords}`);
       
-      const imageGenResponse = await openai.images.generate({
-        model: "dall-e-3",
-        prompt: imagePrompt,
-        n: 1,
-        size: "1792x1024",
-        quality: "standard",
-        style: "vivid",
+      // Unsplash Source provides real photos without API key
+      const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
+      
+      const imageResponse = await fetch(unsplashSourceUrl, {
+        redirect: "follow",
       });
+      
+      if (imageResponse.ok) {
+        const imageBlob = await imageResponse.arrayBuffer();
+        const bytes = new Uint8Array(imageBlob);
+        
+        const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+        const ext = contentType.includes("png") ? "png" : "jpg";
+        
+        const imagePath = `newsroom/${articleSlug}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(imagePath, bytes, { contentType, upsert: true });
 
-      const generatedImageUrl = imageGenResponse.data?.[0]?.url;
-
-      if (generatedImageUrl) {
-        const imageDownload = await fetch(generatedImageUrl);
-        if (imageDownload.ok) {
-          const imageBuffer = new Uint8Array(await imageDownload.arrayBuffer());
-
-          const imagePath = `newsroom/${articleSlug}.png`;
-          const { error: uploadError } = await supabase.storage
+        if (!uploadError) {
+          const { data: publicUrl } = supabase.storage
             .from("media")
-            .upload(imagePath, imageBuffer, { contentType: "image/png", upsert: true });
-
-          if (!uploadError) {
-            const { data: publicUrl } = supabase.storage
-              .from("media")
-              .getPublicUrl(imagePath);
-            heroImageUrl = publicUrl.publicUrl;
-            console.log(`Image uploaded: ${heroImageUrl}`);
-          } else {
-            console.error("Image upload error:", uploadError);
-          }
+            .getPublicUrl(imagePath);
+          heroImageUrl = publicUrl.publicUrl;
+          console.log(`Stock photo uploaded: ${heroImageUrl}`);
+        } else {
+          console.error("Image upload error:", uploadError);
         }
+      } else {
+        console.log(`Unsplash fetch failed: ${imageResponse.status}`);
       }
     } catch (imgError) {
-      console.error("Image generation error:", imgError);
+      console.error("Stock photo fetch error:", imgError);
     }
-
-    // Ensure category exists
-    const categorySlug = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
 
     // Get category ID
     const { data: categoryRow } = await supabase
