@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY_1") || Deno.env.get("ELEVENLABS_API_KEY");
     if (!ELEVENLABS_API_KEY) {
       console.error("ELEVENLABS_API_KEY is not configured");
       return new Response(
@@ -30,8 +30,9 @@ serve(async (req) => {
       );
     }
 
-    // User's custom voice ID
-    const voiceId = "Re6LXiKQWXcM2rCMWwUT";
+    // Default voice: "George" - a clear, professional male voice
+    // Can be overridden by passing voiceId in request body
+    const voiceId = "JBFqnCBsd6RMkjVDRZzb";
 
     console.log(`Generating TTS for ${text.length} characters with voice ${voiceId}`);
 
