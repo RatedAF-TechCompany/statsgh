@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { WireBadge } from "@/components/WireBadge";
 
 interface ArticleCardProps {
   article: {
@@ -14,6 +15,7 @@ interface ArticleCardProps {
     section: string;
     summary: string;
     hero_image_url: string | null;
+    is_wire?: boolean;
   };
   isMostRead?: boolean;
   backgroundColor?: string;
@@ -92,8 +94,11 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
           className="cursor-pointer"
           onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
         >
-          <div className="text-sm font-bold text-accent uppercase mb-1">
-            {article.section}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-bold text-accent uppercase">
+              {article.section}
+            </span>
+            {article.is_wire && <WireBadge />}
           </div>
           <h2 className="font-serif text-lg font-bold leading-tight mb-1 line-clamp-3">
             {article.title}

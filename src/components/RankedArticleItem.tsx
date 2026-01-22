@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import { formatTime } from "@/components/ReadingTime";
+import { WireBadge } from "@/components/WireBadge";
 
 interface RankedArticleItemProps {
   article: {
@@ -14,6 +15,7 @@ interface RankedArticleItemProps {
     hero_image_url?: string | null;
     published_at?: string | null;
     word_count?: number | null;
+    is_wire?: boolean;
   };
   rank: number;
   isHero?: boolean;
@@ -62,6 +64,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
         )}
         <p className="font-sans text-[13px] text-black mb-4 flex items-center flex-wrap gap-x-1.5">
           <span className="font-semibold">{categoryLabel}</span>
+          {article.is_wire && <WireBadge className="ml-1" />}
           {article.published_at && (
             <>
               <span>•</span>
@@ -95,6 +98,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
           </h3>
           <p className="font-sans text-[13px] text-black flex items-center flex-wrap gap-x-1.5">
             <span className="font-semibold">{categoryLabel}</span>
+            {article.is_wire && <WireBadge className="ml-1" />}
             {article.published_at && (
               <>
                 <span>•</span>
