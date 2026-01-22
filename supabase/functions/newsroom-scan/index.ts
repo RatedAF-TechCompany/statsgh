@@ -274,6 +274,239 @@ function getPhotoKeywords(category: string): string {
 }
 
 // ============================================
+// IMAGE EXTRACTION FROM SOURCE ARTICLE
+// Priority: 1) Source image, 2) Unsplash, 3) AI-generated
+// ============================================
+async function extractImageFromSourceHtml(html: string, sourceUrl: string): Promise<string | null> {
+  try {
+    // Common patterns for article hero/featured images
+    const patterns = [
+      // Open Graph image (most reliable for featured images)
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+      // Twitter card image
+      /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
+      // Schema.org image
+      /"image"\s*:\s*"([^"]+)"/i,
+      /"thumbnailUrl"\s*:\s*"([^"]+)"/i,
+      // Article featured image patterns
+      /<img[^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image|entry-image)[^"']*["'][^>]+src=["']([^"']+)["']/i,
+      /<img[^>]+src=["']([^"']+)["'][^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image|entry-image)[^"']*["']/i,
+      // First large image in article (data-src for lazy loading)
+      /<img[^>]+data-src=["']([^"']+)["'][^>]+width=["']([4-9]\d{2}|[1-9]\d{3})["']/i,
+      // Figure with img inside (common article pattern)
+      /<figure[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
+    ];
+    
+    let imageUrl: string | null = null;
+    
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match) {
+        // Get the first capture group that looks like a URL
+        const url = match[1] || match[2];
+        if (url && (url.startsWith('http') || url.startsWith('//'))) {
+          imageUrl = url;
+          break;
+        }
+      }
+    }
+    
+    if (!imageUrl) return null;
+    
+    // Handle protocol-relative URLs
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
+    }
+    
+    // Handle relative URLs
+    if (imageUrl.startsWith('/')) {
+      try {
+        const urlObj = new URL(sourceUrl);
+        imageUrl = `${urlObj.origin}${imageUrl}`;
+      } catch {
+        return null;
+      }
+    }
+    
+    // Validate it's actually an image URL
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const isImageUrl = imageExtensions.some(ext => 
+      imageUrl!.toLowerCase().includes(ext)
+    ) || imageUrl.includes('/image') || imageUrl.includes('img');
+    
+    if (!isImageUrl) return null;
+    
+    // Skip small images (likely icons/logos) based on URL patterns
+    const skipPatterns = ['logo', 'icon', 'avatar', 'sprite', 'thumb', '100x', '50x', '32x', '16x'];
+    if (skipPatterns.some(p => imageUrl!.toLowerCase().includes(p))) {
+      return null;
+    }
+    
+    console.log(`Found source image: ${imageUrl}`);
+    return imageUrl;
+  } catch (error) {
+    console.log(`Image extraction error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+// Fetch and upload an image from URL to Supabase storage
+async function fetchAndUploadImage(
+  imageUrl: string, 
+  supabase: any, 
+  articleSlug: string
+): Promise<string | null> {
+  try {
+    console.log(`Fetching image from: ${imageUrl}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(imageUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'StatsGH-Newsroom/1.0 (Image Fetcher)',
+        'Accept': 'image/*',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.log(`Image fetch failed: ${response.status}`);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) {
+      console.log(`Not an image: ${contentType}`);
+      return null;
+    }
+    
+    const imageBlob = await response.arrayBuffer();
+    const bytes = new Uint8Array(imageBlob);
+    
+    // Check minimum size (at least 10KB to filter out placeholders)
+    if (bytes.length < 10000) {
+      console.log(`Image too small (${bytes.length} bytes), skipping`);
+      return null;
+    }
+    
+    const ext = contentType.includes('png') ? 'png' : 
+                contentType.includes('webp') ? 'webp' : 'jpg';
+    
+    const imagePath = `newsroom/${articleSlug}.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(imagePath, bytes, { contentType, upsert: true });
+    
+    if (uploadError) {
+      console.error('Image upload error:', uploadError);
+      return null;
+    }
+    
+    const { data: publicUrl } = supabase.storage
+      .from('media')
+      .getPublicUrl(imagePath);
+    
+    console.log(`Source image uploaded: ${publicUrl.publicUrl}`);
+    return publicUrl.publicUrl;
+  } catch (error) {
+    console.log(`Image fetch/upload error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+// Generate AI image as last resort using Lovable AI (Gemini)
+async function generateAiImage(
+  prompt: string,
+  supabase: any,
+  articleSlug: string
+): Promise<string | null> {
+  try {
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.log('LOVABLE_API_KEY not configured, skipping AI image');
+      return null;
+    }
+    
+    console.log(`Generating AI image for: ${articleSlug}`);
+    
+    // Use Gemini image generation through Lovable AI gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a photorealistic, professional editorial photograph for a news article. 
+Style: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.
+Subject: ${prompt}
+Requirements: No text, no logos, no watermarks, no faces that look AI-generated. 
+The image should look like it was taken by a professional photojournalist in Ghana or Africa.`
+          }
+        ],
+        modalities: ['image', 'text']
+      })
+    });
+    
+    if (!response.ok) {
+      console.log(`AI image generation failed: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!imageData || !imageData.startsWith('data:image')) {
+      console.log('No valid image in AI response');
+      return null;
+    }
+    
+    // Extract base64 data
+    const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!base64Match) {
+      console.log('Could not parse AI image data');
+      return null;
+    }
+    
+    const [, format, base64Data] = base64Match;
+    const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    const ext = format === 'png' ? 'png' : 'jpg';
+    const contentType = `image/${format === 'png' ? 'png' : 'jpeg'}`;
+    const imagePath = `newsroom/${articleSlug}-ai.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(imagePath, bytes, { contentType, upsert: true });
+    
+    if (uploadError) {
+      console.error('AI image upload error:', uploadError);
+      return null;
+    }
+    
+    const { data: publicUrl } = supabase.storage
+      .from('media')
+      .getPublicUrl(imagePath);
+    
+    console.log(`AI image generated and uploaded: ${publicUrl.publicUrl}`);
+    return publicUrl.publicUrl;
+  } catch (error) {
+    console.log(`AI image error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+// ============================================
 // HELPERS
 // ============================================
 function nowUtc(): Date {
@@ -1415,57 +1648,118 @@ ${keyNumbersHtml}
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // STOCK PHOTO FROM UNSPLASH (Real Photography)
+        // IMAGE PRIORITY: 1) Source Article, 2) Unsplash, 3) AI-Generated
+        // Every article MUST have a bold, high-quality image
         // ============================================
         const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
         const photoKeywords = getPhotoKeywords(section);
         
         let heroImageUrl: string | null = null;
+        let imageSource = "none";
 
-        try {
-          console.log(`Fetching stock photo for: ${articleSlug}, keywords: ${photoKeywords}`);
+        // PRIORITY 1: Try to extract image from the source article page
+        if (newsItem.source_url) {
+          console.log(`Image priority 1: Fetching source page for images: ${newsItem.source_url}`);
           
-          // Unsplash Source provides real photos without API key
-          // Format: source.unsplash.com/{width}x{height}/?{keywords}
-          const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
-          
-          // Fetch the actual image (Unsplash Source redirects to real photo)
-          const imageResponse = await fetch(unsplashSourceUrl, {
-            redirect: "follow",
-          });
-          
-          if (imageResponse.ok) {
-            const imageBlob = await imageResponse.arrayBuffer();
-            const bytes = new Uint8Array(imageBlob);
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 12000);
             
-            // Determine content type from response headers
-            const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-            const ext = contentType.includes("png") ? "png" : "jpg";
+            const sourceResponse = await fetch(newsItem.source_url, {
+              signal: controller.signal,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              },
+            });
             
-            const imagePath = `newsroom/${articleSlug}.${ext}`;
+            clearTimeout(timeoutId);
             
-            const { error: uploadError } = await supabase.storage
-              .from("media")
-              .upload(imagePath, bytes, { contentType, upsert: true });
-
-            if (!uploadError) {
-              const { data: publicUrl } = supabase.storage
-                .from("media")
-                .getPublicUrl(imagePath);
-              heroImageUrl = publicUrl.publicUrl;
-              console.log(`Stock photo uploaded: ${heroImageUrl}`);
-            } else {
-              console.error("Image upload error:", uploadError);
+            if (sourceResponse.ok) {
+              const sourceHtml = await sourceResponse.text();
+              const sourceImageUrl = await extractImageFromSourceHtml(sourceHtml, newsItem.source_url);
+              
+              if (sourceImageUrl) {
+                heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, articleSlug);
+                if (heroImageUrl) {
+                  imageSource = "source";
+                  console.log(`✓ Using source article image: ${heroImageUrl}`);
+                }
+              }
             }
-          } else {
-            console.log(`Unsplash fetch failed: ${imageResponse.status}`);
+          } catch (sourceErr) {
+            console.log(`Source page fetch error: ${sourceErr instanceof Error ? sourceErr.message : 'Unknown'}`);
           }
-        } catch (imgError) {
-          console.error("Stock photo fetch error:", imgError);
+        }
+
+        // PRIORITY 2: Unsplash stock photos (if no source image)
+        if (!heroImageUrl) {
+          console.log(`Image priority 2: Fetching Unsplash stock photo, keywords: ${photoKeywords}`);
+          
+          try {
+            const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
+            
+            const imageResponse = await fetch(unsplashSourceUrl, {
+              redirect: "follow",
+            });
+            
+            if (imageResponse.ok) {
+              const imageBlob = await imageResponse.arrayBuffer();
+              const bytes = new Uint8Array(imageBlob);
+              
+              // Check minimum size
+              if (bytes.length >= 10000) {
+                const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+                const ext = contentType.includes("png") ? "png" : "jpg";
+                
+                const imagePath = `newsroom/${articleSlug}-stock.${ext}`;
+                
+                const { error: uploadError } = await supabase.storage
+                  .from("media")
+                  .upload(imagePath, bytes, { contentType, upsert: true });
+
+                if (!uploadError) {
+                  const { data: publicUrl } = supabase.storage
+                    .from("media")
+                    .getPublicUrl(imagePath);
+                  heroImageUrl = publicUrl.publicUrl;
+                  imageSource = "unsplash";
+                  console.log(`✓ Using Unsplash stock photo: ${heroImageUrl}`);
+                }
+              } else {
+                console.log(`Unsplash image too small (${bytes.length} bytes)`);
+              }
+            } else {
+              console.log(`Unsplash fetch failed: ${imageResponse.status}`);
+            }
+          } catch (imgError) {
+            console.error("Unsplash fetch error:", imgError);
+          }
+        }
+
+        // PRIORITY 3: AI-generated image as last resort
+        if (!heroImageUrl) {
+          console.log(`Image priority 3: Generating AI image...`);
+          
+          const imagePrompt = articleJson.image_prompt || 
+            `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
+          
+          heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
+          if (heroImageUrl) {
+            imageSource = "ai-generated";
+            console.log(`✓ Using AI-generated image: ${heroImageUrl}`);
+          }
+        }
+
+        // Log final image status
+        if (heroImageUrl) {
+          console.log(`✓ Article image set (${imageSource}): ${articleSlug}`);
+        } else {
+          console.log(`⚠ No image available for: ${articleSlug}`);
         }
 
         await supabase.from("newsroom_articles").update({
-          image_style: photoKeywords,
+          image_style: `${imageSource}:${photoKeywords}`,
         }).eq("id", newsItem.id);
 
         // Build summary from the intro
