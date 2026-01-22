@@ -1342,6 +1342,7 @@ ${keyNumbersHtml}
             published_at: new Date().toISOString(),
             status: "published",
             dedupe_key: newsItem.dedupe_key,
+            is_wire: isFastPublishItem, // Mark fast-publish articles as wire content
           })
           .select()
           .single();
