@@ -245,13 +245,32 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { input } = body;
+    const { input, scheduled_at } = body;
     
     if (!input || typeof input !== "string" || input.trim().length < 20) {
       return new Response(JSON.stringify({ error: "Please provide article content (URL or text, minimum 20 characters)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    
+    // Validate scheduled_at if provided
+    let scheduledDateTime: Date | null = null;
+    if (scheduled_at) {
+      scheduledDateTime = new Date(scheduled_at);
+      if (isNaN(scheduledDateTime.getTime())) {
+        return new Response(JSON.stringify({ error: "Invalid scheduled date format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (scheduledDateTime <= new Date()) {
+        return new Response(JSON.stringify({ error: "Scheduled time must be in the future" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log(`Article scheduled for: ${scheduledDateTime.toISOString()}`);
     }
 
     const inputTrimmed = input.trim();
@@ -434,6 +453,9 @@ Return ONLY valid JSON.`;
 
     const categoryId = categoryRow?.id || null;
 
+    // Determine if this is a scheduled or immediate publish
+    const isScheduled = scheduledDateTime !== null;
+    
     // Insert article
     const { data: newArticle, error: insertError } = await supabase
       .from("articles")
@@ -448,9 +470,10 @@ Return ONLY valid JSON.`;
         author_id: user.id,
         author_name: "StatsGH Newsroom",
         section: categorySlug,
-        status: "published",
-        is_published: true,
-        published_at: new Date().toISOString(),
+        status: isScheduled ? "scheduled" : "published",
+        is_published: !isScheduled,
+        published_at: isScheduled ? null : new Date().toISOString(),
+        scheduled_at: isScheduled && scheduledDateTime ? scheduledDateTime.toISOString() : null,
         meta_title: String(articleJson.headline || "").substring(0, 60),
         seo_description: String(articleJson.seo_description || "").substring(0, 155),
         twitter_post: String(articleJson.tweet || "").substring(0, 280),
@@ -466,7 +489,7 @@ Return ONLY valid JSON.`;
       });
     }
 
-    console.log(`Article published: ${newArticle.id} - ${newArticle.title}`);
+    console.log(`Article ${isScheduled ? 'scheduled' : 'published'}: ${newArticle.id} - ${newArticle.title}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -477,6 +500,8 @@ Return ONLY valid JSON.`;
         category: categorySlug,
         url: `/${categorySlug}/${newArticle.slug}`,
       },
+      scheduled: isScheduled,
+      scheduled_at: isScheduled && scheduledDateTime ? scheduledDateTime.toISOString() : null,
       context_added: articleJson.context_added || false,
       tweet: articleJson.tweet,
     }), {
