@@ -14,6 +14,7 @@ const REJECTION_CODE_LABELS: Record<string, { label: string; color: string }> = 
   OUTSIDE_TIME_WINDOW: { label: "Too Old", color: "bg-gray-100 text-gray-700" },
   PUBDATE_PARSE_FAILED: { label: "Bad Date", color: "bg-orange-100 text-orange-700" },
   NOT_BUSINESS: { label: "Not Business", color: "bg-blue-100 text-blue-700" },
+  NOT_GHANA_RELEVANT: { label: "Not Ghana", color: "bg-rose-100 text-rose-700" },
   CRIME_FILTER: { label: "Crime", color: "bg-red-100 text-red-700" },
   POLITICAL_GOSSIP: { label: "Gossip", color: "bg-purple-100 text-purple-700" },
   NO_NUMBERS_IN_RSS: { label: "No Numbers (RSS)", color: "bg-amber-100 text-amber-700" },
