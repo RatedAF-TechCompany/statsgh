@@ -957,13 +957,22 @@ async function updateSourceHealth(
     const now = new Date().toISOString();
     
     if (success) {
+      // First get current count to increment
+      const { data: current } = await supabase
+        .from("newsroom_sources")
+        .select("total_items_seen")
+        .eq("name", sourceName)
+        .single();
+      
+      const currentCount = current?.total_items_seen || 0;
+      
       await supabase
         .from("newsroom_sources")
         .update({
           last_success_at: now,
           last_item_at: itemCount > 0 ? now : undefined,
           consecutive_errors: 0,
-          total_items_seen: supabase.raw(`total_items_seen + ${itemCount}`),
+          total_items_seen: currentCount + itemCount,
           updated_at: now,
         })
         .eq("name", sourceName);
