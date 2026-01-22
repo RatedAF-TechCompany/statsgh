@@ -2,8 +2,8 @@ name: Newsroom Scheduled Scan
 
 on:
   schedule:
-    # Run every 4 hours at minute 15
-    - cron: '15 */4 * * *'
+    # Run every 2 hours at minute 15
+    - cron: '15 */2 * * *'
   workflow_dispatch: # Allow manual trigger from GitHub Actions UI
 
 jobs:
