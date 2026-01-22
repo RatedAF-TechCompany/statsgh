@@ -133,9 +133,18 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
         setProgress(0);
       });
 
-      await audio.play();
-      setIsPlaying(true);
-      setIsLoading(false);
+      try {
+        await audio.play();
+        setIsPlaying(true);
+        setIsLoading(false);
+      } catch (playError) {
+        console.error("Audio play error:", playError);
+        // This error usually happens due to browser autoplay policies
+        toast.error("Unable to play audio. Please click the button again.");
+        setIsLoading(false);
+        setProgress(0);
+        return;
+      }
     } catch (error) {
       console.error("TTS error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate audio");
@@ -152,11 +161,16 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     }
   };
 
-  const handleResume = () => {
+  const handleResume = async () => {
     if (audioRef.current) {
-      audioRef.current.play();
-      setIsPaused(false);
-      setIsPlaying(true);
+      try {
+        await audioRef.current.play();
+        setIsPaused(false);
+        setIsPlaying(true);
+      } catch (error) {
+        console.error("Resume playback error:", error);
+        toast.error("Unable to resume playback. Please try again.");
+      }
     }
   };
 
