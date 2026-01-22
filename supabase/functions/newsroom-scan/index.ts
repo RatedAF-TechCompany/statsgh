@@ -1161,46 +1161,21 @@ serve(async (req) => {
         // ============================================
         const isFastPublishItem = isFastPublishSource(newsItem.source_name);
 
-        const articlePrompt = isFastPublishItem
-          ? `You are the StatsGH automated newsroom editor.
+        // ============================================
+        // MASTER RULE: SOURCE MUST HAVE NUMBERS
+        // This applies to ALL sources including fast-publish
+        // ============================================
+        const sourceNumbers = originalItem._numbersFound || [];
+        if (sourceNumbers.length === 0 || !containsNumbers(originalItem._fullText)) {
+          console.log(`MASTER RULE REJECTION: "${newsItem.original_headline.substring(0, 50)}..." - Source has NO NUMBERS`);
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `Master rule: Source contains no numbers - not StatsGH material`,
+          }).eq("id", newsItem.id);
+          continue;
+        }
 
-ORIGINAL NEWS ITEM:
-Headline: ${newsItem.original_headline}
-Summary: ${newsItem.original_summary}
-Source: ${newsItem.source_name}
-URL: ${newsItem.source_url}
-Published: ${newsItem.published_at}
-
-ADDITIONAL CONTEXT (may be thin):
-${originalItem._fullText.substring(0, 2000)}
-
-RULES:
-1. Do NOT invent facts. Do NOT fabricate numbers.
-2. If the source contains numbers, you may include them. If it contains none, write the story without forcing numbers.
-3. Very Basic English. Short sentences. Define any technical terms in brackets.
-4. No emojis. No hashtags. No URLs inside the article body.
-
-OUTPUT JSON (valid JSON only):
-{
-  "reject": false,
-  "headline": "Max 90 characters, factual, no colons",
-  "subtitle": "One sentence",
-  "article_intro": "1 short paragraph",
-  "article_context": "1 short paragraph",
-  "key_numbers": ["Optional: up to 3 lines. Only include if real numbers exist."],
-  "numbers_explanation": "Optional: 1-2 short paragraphs. If no numbers, explain impact plainly.",
-  "takeaway": "One sentence takeaway",
-  "tweet": "One sentence. No URLs.",
-  "source_url": "${newsItem.source_url}",
-  "seo_description": "SEO meta description under 155 characters",
-  "slug": "url-friendly-slug-lowercase-hyphens",
-  "section": "business",
-  "tags": ["array", "of", "tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
-}
-
-Return ONLY valid JSON.`
-          : `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
+        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
 
 ORIGINAL NEWS ITEM:
 Headline: ${newsItem.original_headline}
@@ -1221,10 +1196,12 @@ CRITICAL RULES - READ CAREFULLY:
 - DO NOT make up numbers. DO NOT invent data. DO NOT fabricate statistics.
 - Only use numbers that are IN the source OR well-known Ghana statistics for context.
 
-2. HEADLINE MUST CONTAIN A NUMBER FROM THE SOURCE:
+2. *** MASTER RULE: HEADLINE MUST CONTAIN A NUMBER *** (NO EXCEPTIONS):
 - The headline MUST include at least one number from the original story.
-- Examples of GOOD headlines: "Ghana GDP Grows 4.7% in Q3 2025", "BoG Holds Policy Rate at 27%", "Cocoa Exports Hit $2.1 Billion"
+- This is the #1 rule of StatsGH. No number in headline = no publish.
+- Examples of GOOD headlines: "Ghana GDP Grows 4.7% in Q3 2025", "BoG Holds Policy Rate at 27%", "Cocoa Exports Hit $2.1 Billion", "Poverty Drops to 21.9%"
 - Examples of BAD headlines: "Government Announces New Policy", "Minister Visits Factory" (no numbers!)
+- If you cannot create a headline with a number from the source, reject the article.
 
 3. ADDING GHANA CONTEXT (NOT MAKING UP DATA):
 - After presenting the source facts, you MAY add well-known Ghana statistics for context.
@@ -1258,7 +1235,7 @@ FACT INTEGRITY - ABSOLUTE:
 
 ARTICLE STRUCTURE (only if source has numbers):
 
-HEADLINE: One short line with a NUMBER FROM THE SOURCE, max 80 characters.
+HEADLINE: One short line with a NUMBER FROM THE SOURCE, max 80 characters. THIS IS MANDATORY.
 
 ARTICLE:
 - Paragraph 1 explains what happened and why it matters. Use simple words.
@@ -1278,13 +1255,13 @@ TWEET: One sentence only. Must contain a number from the story. No URLs.
 
 OUTPUT (valid JSON only):
 
-If source has no numbers, return:
-{"reject": true, "reason": "Source contains no numbers"}
+If source has no numbers OR you cannot create a headline with a number, return:
+{"reject": true, "reason": "Explain why"}
 
 If source has numbers, return:
 {
   "reject": false,
-  "headline": "Max 80 characters, MUST CONTAIN A NUMBER FROM SOURCE, factual, no colons",
+  "headline": "Max 80 characters, MUST CONTAIN A NUMBER FROM SOURCE (mandatory), factual, no colons",
   "subtitle": "One-sentence expansion of the headline",
   "article_intro": "Paragraph 1: what happened and why it matters (simple English)",
   "article_context": "Paragraph 2: context in simple terms (define technical words)",
@@ -1361,8 +1338,9 @@ Return ONLY valid JSON.`;
 
         // ============================================
         // CHECK IF GPT REJECTED DUE TO NO SOURCE NUMBERS
+        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
         // ============================================
-        if (!isFastPublishItem && articleJson.reject === true) {
+        if (articleJson.reject === true) {
           const rejectReason = articleJson.reason || "Source contains no numbers";
           console.log(`REJECTED BY GPT: "${newsItem.original_headline.substring(0, 50)}..." - ${rejectReason}`);
           await supabase.from("newsroom_articles").update({
@@ -1373,24 +1351,26 @@ Return ONLY valid JSON.`;
         }
 
         // ============================================
-        // VALIDATE HEADLINE HAS NUMBER (MANDATORY)
+        // MASTER RULE: HEADLINE MUST HAVE A NUMBER
+        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
         // ============================================
         const headline = String(articleJson.headline || "");
         const headlineHasNumber = /\d/.test(headline);
         
-        if (!isFastPublishItem && !headlineHasNumber) {
-          console.log(`REJECTED: Headline "${headline}" has NO NUMBER (numbers in headline are mandatory)`);
+        if (!headlineHasNumber) {
+          console.log(`MASTER RULE REJECTION: Headline "${headline}" has NO NUMBER - not StatsGH material`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
-            error_message: `Editorial rejection: Headline must contain at least one number from source`,
+            error_message: `Master rule: Headlines must contain at least one number - this is StatsGH's core identity`,
           }).eq("id", newsItem.id);
           continue; // Skip this article
         }
         
-        console.log(`Headline validation passed: "${headline}" contains number`);
+        console.log(`MASTER RULE PASSED: Headline "${headline}" contains number ✓`);
 
         // ============================================
-        // VALIDATE NUMBERS REQUIREMENT (EDITORIAL STANDARD)
+        // VALIDATE KEY NUMBERS (MINIMUM 3 REQUIRED)
+        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
         // ============================================
         const keyNumbers = Array.isArray(articleJson.key_numbers) ? articleJson.key_numbers : [];
         
@@ -1403,35 +1383,27 @@ Return ONLY valid JSON.`;
           return /\d/.test(n);
         });
 
-        if (!isFastPublishItem && validKeyNumbers.length < 3) {
-          console.log(`REJECTED: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
+        if (validKeyNumbers.length < 3) {
+          console.log(`MASTER RULE REJECTION: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
-            error_message: `Editorial rejection: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
+            error_message: `Master rule: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
           }).eq("id", newsItem.id);
           continue; // Skip this article
         }
 
-        console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found`);
+        console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found ✓`);
 
-        // Build the article body in the master prompt structure
-        const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>${n}</p>`).join("\n");
+        // Build the article body with Key Numbers section prominently displayed
+        const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>• ${n}</p>`).join("\n");
 
-        const articleBody = isFastPublishItem
-          ? `
+        const articleBody = `
 <p>${articleJson.article_intro || ""}</p>
 <p>${articleJson.article_context || ""}</p>
-${validKeyNumbers.length > 0 ? `<h3>Key Numbers at a Glance</h3>\n${keyNumbersHtml}` : ""}
-${articleJson.numbers_explanation ? `<p>${articleJson.numbers_explanation}</p>` : ""}
-<p><strong>${articleJson.takeaway || ""}</strong></p>
-`.trim()
-          : `
-<p>${articleJson.article_intro || ""}</p>
-<p>${articleJson.article_context || ""}</p>
-<h3>Key Numbers at a Glance</h3>
+<h3>📊 Key Numbers at a Glance</h3>
 ${keyNumbersHtml}
 <p>${articleJson.numbers_explanation || ""}</p>
-<p><strong>${articleJson.takeaway || ""}</strong></p>
+<p><strong>Takeaway:</strong> ${articleJson.takeaway || ""}</p>
 `.trim();
 
         const slugBase = String(articleJson.slug || articleJson.headline || "article")
