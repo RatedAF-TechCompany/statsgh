@@ -299,77 +299,48 @@ serve(async (req) => {
 
 ORIGINAL NEWS ITEM:
 Headline: ${articleSource.headline}
-Content: ${articleSource.content.substring(0, 8000)}
+Content: ${articleSource.content.substring(0, 12000)}
 ${articleSource.sourceUrl ? `Source URL: ${articleSource.sourceUrl}` : "Source: Manual submission"}
 
-ABSOLUTE REQUIREMENT - NUMBERS ARE MANDATORY:
+CRITICAL INSTRUCTION - PRESERVE FULL CONTENT:
+If the source contains a LISTING, RANKING, or ENUMERATED content (e.g., "Top 10...", "Best...", numbered items):
+- You MUST preserve ALL items from the list with their details and prices/numbers.
+- Do NOT summarize or condense the list. The listing IS the article.
+- Format each list item as a separate section with heading.
+
+NUMBERS ARE MANDATORY:
 This is a numbers-crunching website. Articles WITHOUT specific numbers are UNACCEPTABLE.
 
-IF the source story contains numbers (amounts, %, rates, counts):
-- Extract and highlight ALL numbers from the source.
+IF the source story contains numbers (amounts, %, rates, counts, prices):
+- Extract and preserve ALL numbers from the source.
 
-IF the source story lacks numbers (e.g., diplomatic visits, appointments, ceremonies):
-- You MUST add COMPARATIVE CONTEXT DATA from your knowledge:
-  - For country relations: Compare GDP, population, trade volumes, bilateral trade value between Ghana and the other country
-  - For appointments/governance: Include relevant budget figures, department size, historical spending
-  - For international events: Include economic indicators of countries involved
-  - For policy announcements: Include baseline statistics the policy aims to change
-- Example: A VP visiting Guinea should include Ghana vs Guinea GDP ($77B vs $16B), population (33M vs 14M), bilateral trade figures
-- State these as "For context:" to distinguish from source facts
+IF the source story lacks numbers:
+- Add COMPARATIVE CONTEXT DATA from your knowledge.
 
 OUTPUT STYLE RULES:
-- Write in simple, plain English that a reader with basic English can understand.
+- Write in simple, plain English.
 - Short sentences. Clear subject and verb. Neutral tone.
-- No emojis. No hashtags. No long dashes. No bullet symbols.
+- No emojis. No hashtags. No long dashes.
 - Do not include any URLs inside the article body or tweet.
 - Use GHS for Ghana cedi amounts.
 - Use % for percentages.
-
-FACT INTEGRITY:
-- Clearly distinguish source facts from contextual data you add.
-- For added context, use phrases like "For context," or "Ghana's economy..."
-- Never present added context as if it came from the source.
-
-ARTICLE STRUCTURE - Generate this exact structure:
-
-HEADLINE: One short line, factual, interesting, max 80 characters.
-
-ARTICLE:
-- Paragraph 1 explains what happened and why it matters.
-- Paragraph 2 adds context in simple terms.
-
-KEY NUMBERS AT A GLANCE:
-- MINIMUM 3 number lines required. This section CANNOT be empty.
-- If source lacks numbers, add comparative/contextual data.
-- Each line must include a specific number, amount, or %.
-- Keep each line short.
-- Use plain lines with no bullets.
-
-Then write 2 to 3 short paragraphs explaining what the numbers mean in real life.
-
-End with one clear takeaway sentence.
-
-TWEET: One sentence only. Must contain at least one number from the story. No URLs.
 
 OUTPUT (valid JSON only):
 {
   "headline": "Max 80 characters, factual, no colons",
   "subtitle": "One-sentence expansion of the headline",
-  "article_intro": "Paragraph 1: what happened and why it matters",
-  "article_context": "Paragraph 2: context in simple terms",
-  "key_numbers": ["MINIMUM 3 items required - Array of number lines"],
-  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean in real life",
-  "takeaway": "One clear takeaway sentence",
+  "article_body_html": "FULL HTML article body. For lists/rankings, preserve ALL items as <h3> headings with <p> descriptions. Include an intro paragraph, then ALL list items with their details, then a conclusion. Use <h3> for item titles, <p> for details. MUST include ALL items from the source.",
   "tweet": "One sentence with at least one number, no URLs",
   "source_url": "${articleSource.sourceUrl || ""}",
   "seo_description": "SEO meta description under 155 characters",
   "slug": "url-friendly-slug-lowercase-hyphens",
   "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
   "tags": ["array", "of", "relevant", "tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
-  "has_source_numbers": true or false,
-  "context_added": true or false
+  "image_prompt": "Visual description for editorial illustration, max 50 words",
+  "key_numbers_count": number of distinct numbers/prices in the article (for validation)
 }
+
+IMPORTANT: The "article_body_html" field must contain the COMPLETE article with ALL content from the source. For listings, this means ALL 10 items if there are 10, ALL prices, ALL details. Do not summarize.
 
 Return ONLY valid JSON.`;
 
@@ -405,37 +376,26 @@ Return ONLY valid JSON.`;
     }
 
     // Validate numbers requirement
-    const keyNumbers = Array.isArray(articleJson.key_numbers) ? articleJson.key_numbers : [];
-    const validKeyNumbers = keyNumbers.filter((n: string) => {
-      if (!n || typeof n !== 'string') return false;
-      const lower = n.toLowerCase();
-      if (lower.includes('not provided') || lower.includes('no specific') || lower.includes('not available')) return false;
-      return /\d/.test(n);
-    });
-
-    if (validKeyNumbers.length < 3) {
+    const keyNumbersCount = Number(articleJson.key_numbers_count) || 0;
+    
+    // Check article body for numbers as backup validation
+    const bodyText = String(articleJson.article_body_html || "");
+    const numbersInBody = (bodyText.match(/\d[\d,\.]*\d|\d/g) || []).length;
+    
+    if (keyNumbersCount < 3 && numbersInBody < 3) {
       return new Response(JSON.stringify({ 
-        error: `Editorial rejection: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
-        details: "The source content doesn't have enough numerical data and GPT couldn't add sufficient context."
+        error: `Editorial rejection: Only ${Math.max(keyNumbersCount, numbersInBody)} numbers found (minimum 3 required for StatsGH)`,
+        details: "The source content doesn't have enough numerical data."
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found`);
+    console.log(`Numbers validation passed: ${Math.max(keyNumbersCount, numbersInBody)} numbers found`);
 
-    // Build article body
-    const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>${n}</p>`).join("\n");
-    
-    const articleBody = `
-<p>${articleJson.article_intro || ""}</p>
-<p>${articleJson.article_context || ""}</p>
-<h3>Key Numbers at a Glance</h3>
-${keyNumbersHtml}
-<p>${articleJson.numbers_explanation || ""}</p>
-<p><strong>${articleJson.takeaway || ""}</strong></p>
-`.trim();
+    // Use the full article body HTML from GPT
+    const articleBody = String(articleJson.article_body_html || "").trim();
 
     const slugBase = String(articleJson.slug || articleJson.headline || "article")
       .toLowerCase()
