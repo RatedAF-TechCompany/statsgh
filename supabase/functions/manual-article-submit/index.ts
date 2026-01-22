@@ -254,9 +254,57 @@ serve(async (req) => {
       });
     }
     
-    // Validate scheduled_at if provided
+    // Handle scheduling: "auto" for system-picked time, ISO string for manual, null for immediate
     let scheduledDateTime: Date | null = null;
-    if (scheduled_at) {
+    const isAutoSchedule = scheduled_at === "auto";
+    
+    if (isAutoSchedule) {
+      // Auto-schedule: pick next optimal slot
+      // Strategy: stagger articles throughout the day at peak engagement times
+      const now = new Date();
+      const peakHours = [7, 9, 12, 15, 18, 20]; // Morning, mid-morning, lunch, afternoon, evening, night
+      
+      // Find articles scheduled for today to avoid conflicts
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+      
+      const { data: scheduledToday } = await supabase
+        .from("articles")
+        .select("scheduled_at")
+        .gte("scheduled_at", todayStart.toISOString())
+        .lte("scheduled_at", todayEnd.toISOString())
+        .not("scheduled_at", "is", null);
+      
+      const takenHours = new Set(
+        (scheduledToday || [])
+          .map(a => new Date(a.scheduled_at!).getHours())
+      );
+      
+      // Find next available peak hour
+      const currentHour = now.getHours();
+      let selectedDate = new Date(now);
+      let foundSlot = false;
+      
+      // Check today's remaining peak hours
+      for (const hour of peakHours) {
+        if (hour > currentHour && !takenHours.has(hour)) {
+          selectedDate.setHours(hour, 0, 0, 0);
+          foundSlot = true;
+          break;
+        }
+      }
+      
+      // If no slot today, schedule for tomorrow's first peak hour
+      if (!foundSlot) {
+        selectedDate.setDate(selectedDate.getDate() + 1);
+        selectedDate.setHours(peakHours[0], 0, 0, 0);
+      }
+      
+      scheduledDateTime = selectedDate;
+      console.log(`Auto-scheduled for: ${scheduledDateTime.toISOString()}`);
+    } else if (scheduled_at) {
       scheduledDateTime = new Date(scheduled_at);
       if (isNaN(scheduledDateTime.getTime())) {
         return new Response(JSON.stringify({ error: "Invalid scheduled date format" }), {
@@ -270,7 +318,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      console.log(`Article scheduled for: ${scheduledDateTime.toISOString()}`);
+      console.log(`Manually scheduled for: ${scheduledDateTime.toISOString()}`);
     }
 
     const inputTrimmed = input.trim();

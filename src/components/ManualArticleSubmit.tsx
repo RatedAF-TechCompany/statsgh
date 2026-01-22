@@ -14,10 +14,12 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+type ScheduleMode = "immediate" | "manual" | "auto";
+
 export const ManualArticleSubmit = () => {
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("immediate");
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [result, setResult] = useState<{
@@ -31,7 +33,10 @@ export const ManualArticleSubmit = () => {
   const navigate = useNavigate();
 
   const getScheduledDateTime = (): string | null => {
-    if (!scheduleEnabled || !scheduledDate) return null;
+    if (scheduleMode === "immediate") return null;
+    if (scheduleMode === "auto") return "auto"; // Special marker for auto-scheduling
+    
+    if (!scheduledDate) return null;
     
     const [hours, minutes] = scheduledTime.split(":").map(Number);
     const dateTime = new Date(scheduledDate);
@@ -51,8 +56,8 @@ export const ManualArticleSubmit = () => {
       return;
     }
 
-    // Validate scheduled time if enabled
-    if (scheduleEnabled) {
+    // Validate scheduled time if manual mode
+    if (scheduleMode === "manual") {
       if (!scheduledDate) {
         toast.error("Please select a date for scheduling");
         return;
@@ -107,7 +112,7 @@ export const ManualArticleSubmit = () => {
       }
       
       setInput("");
-      setScheduleEnabled(false);
+      setScheduleMode("immediate");
       setScheduledDate(undefined);
       setScheduledTime("09:00");
     } catch (error) {
@@ -147,24 +152,53 @@ export const ManualArticleSubmit = () => {
           disabled={isSubmitting}
         />
 
-        {/* Schedule Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="schedule-toggle" className="text-sm font-medium cursor-pointer">
-              Schedule for later
-            </Label>
+        {/* Schedule Options */}
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Publishing</Label>
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              type="button"
+              variant={scheduleMode === "immediate" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setScheduleMode("immediate")}
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              <Send className="h-3 w-3 mr-1" />
+              Now
+            </Button>
+            <Button
+              type="button"
+              variant={scheduleMode === "auto" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setScheduleMode("auto")}
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Auto
+            </Button>
+            <Button
+              type="button"
+              variant={scheduleMode === "manual" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setScheduleMode("manual")}
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              <CalendarIcon className="h-3 w-3 mr-1" />
+              Pick Time
+            </Button>
           </div>
-          <Switch
-            id="schedule-toggle"
-            checked={scheduleEnabled}
-            onCheckedChange={setScheduleEnabled}
-            disabled={isSubmitting}
-          />
+          {scheduleMode === "auto" && (
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              System will auto-schedule to publish at an optimal time (staggers articles throughout the day).
+            </p>
+          )}
         </div>
 
-        {/* Schedule Date/Time Picker */}
-        {scheduleEnabled && (
+        {/* Manual Schedule Date/Time Picker */}
+        {scheduleMode === "manual" && (
           <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/30">
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Date</Label>
@@ -217,10 +251,15 @@ export const ManualArticleSubmit = () => {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...
               </>
-            ) : scheduleEnabled ? (
+            ) : scheduleMode === "manual" ? (
+              <>
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Schedule Article
+              </>
+            ) : scheduleMode === "auto" ? (
               <>
                 <Clock className="h-4 w-4 mr-2" />
-                Schedule Article
+                Auto-Schedule & Publish
               </>
             ) : (
               <>
