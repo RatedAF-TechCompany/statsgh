@@ -28,7 +28,20 @@ function collapseImmediateWordRepeats(input: string): string {
 // STATSGH NEWSROOM MASTER CONFIGURATION
 // ============================================
 const TIME_WINDOW_HOURS = 24; // Scan last 24 hours but skip already published articles
-const MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function timeout
+const DEFAULT_MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function timeout
+
+// "Fast publish" outlets: publish items from these sources even if they don't satisfy
+// the normal newsroom filtering rules (business/crime/gossip/numbers).
+// We still keep: time window + dedupe + source attribution + no fabrication.
+const FAST_PUBLISH_DOMAINS = new Set<string>([
+  "businessdayghana.com",
+  "ghanabusinessnews.com",
+  "accrabusinessnews.com",
+  "bizcommunity.com.gh",
+  "pulse.com.gh",
+  "citinewsroom.com",
+  "graphic.com.gh",
+]);
 
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
@@ -624,6 +637,17 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const triggerType = body.trigger_type || body.triggerType || "manual";
+    const perSourceLimit = Number(body.perSourceLimit ?? body.per_source_limit ?? 5);
+    const isBackfill = triggerType === "fast_publish_backfill";
+    const maxArticlesPerRun = Number(body.maxArticlesPerRun ?? body.max_articles_per_run ?? DEFAULT_MAX_ARTICLES_PER_RUN);
+
+    const sourceNameToDomain = new Map<string, string>();
+    for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
+
+    const isFastPublishSource = (sourceName: string): boolean => {
+      const domain = sourceNameToDomain.get(sourceName);
+      return domain ? FAST_PUBLISH_DOMAINS.has(domain) : false;
+    };
 
     const { data: run, error: runError } = await supabase
       .from("newsroom_runs")
@@ -656,7 +680,11 @@ serve(async (req) => {
     }> = [];
 
     // Fetch all RSS feeds in parallel with health tracking
-    const feedPromises = RSS_SOURCES.map(async (source) => {
+    const sourcesToFetch = isBackfill
+      ? RSS_SOURCES.filter((s) => FAST_PUBLISH_DOMAINS.has(s.domain))
+      : RSS_SOURCES;
+
+    const feedPromises = sourcesToFetch.map(async (source) => {
       console.log(`Fetching RSS from ${source.name}: ${source.rss}`);
       const xml = await fetchRssFeed(source.rss);
       if (xml) {
@@ -691,7 +719,19 @@ serve(async (req) => {
       _dedupeKeyRaw: string;
     }> = [];
 
+    // Enforce per-source quota (used for backfill: e.g., 5 per outlet)
+    const perSourceCounts = new Map<string, number>();
+
     for (const article of allArticles) {
+      const isFast = isFastPublishSource(article.source_name);
+      if (isBackfill && !isFast) continue;
+
+      if (isBackfill) {
+        const current = perSourceCounts.get(article.source_name) ?? 0;
+        if (current >= perSourceLimit) continue;
+        perSourceCounts.set(article.source_name, current + 1);
+      }
+
       // Parse publication date
       let pubDate: Date | null = null;
       try {
@@ -716,33 +756,33 @@ serve(async (req) => {
         continue;
       }
 
-      // Check if business-related
+      // Check if business-related (skipped for fast-publish sources)
       const rssText = `${article.title} ${article.description}`;
-      if (!isBusinessRelated(rssText)) {
+      if (!isFast && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
           "No business keywords found in headline/summary", { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check crime filter
-      if (isCrimeNews(rssText)) {
+      // Check crime filter (skipped for fast-publish sources)
+      if (!isFast && isCrimeNews(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_FILTER,
           "Contains crime keywords without statistical context", { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check political gossip filter
-      if (isPoliticalGossip(rssText)) {
+      // Check political gossip filter (skipped for fast-publish sources)
+      if (!isFast && isPoliticalGossip(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICAL_GOSSIP,
           "Political drama/gossip without data substance", { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check if RSS has numbers - if not, fetch full page
+      // Check if RSS has numbers - if not, fetch full page (skipped for fast-publish sources)
       let fullText = rssText;
       let numbersFound = extractNumbers(rssText);
-      
-      if (!containsNumbers(rssText)) {
+
+      if (!isFast && !containsNumbers(rssText)) {
         console.log(`RSS has no numbers, fetching full page: ${article.link}`);
         const pageText = await fetchFullPageText(article.link);
         
@@ -851,8 +891,14 @@ serve(async (req) => {
       });
     }
 
-    // Limit to max 10 articles per run to avoid timeout
-    const toProcess = qualifyingArticles.slice(0, 10);
+    // Limit number of queued items to avoid timeouts.
+    // For backfill, we queue up to (perSourceLimit * number of fast sources), but still only
+    // process maxArticlesPerRun items in this invocation.
+    const queueCap = isBackfill
+      ? Math.min(qualifyingArticles.length, Math.max(1, perSourceLimit) * sourcesToFetch.length)
+      : Math.min(qualifyingArticles.length, 10);
+
+    const toProcess = qualifyingArticles.slice(0, queueCap);
 
     // Insert pending records
     const newsRecords = toProcess.map((item) => ({
@@ -897,7 +943,7 @@ serve(async (req) => {
     // PROCESS EACH ITEM INTO STATSGH ARTICLE FORMAT
     // ============================================
     let articlesCreated = 0;
-    const itemsToProcess = (insertedNews || []).slice(0, MAX_ARTICLES_PER_RUN);
+    const itemsToProcess = (insertedNews || []).slice(0, maxArticlesPerRun);
 
     for (let idx = 0; idx < itemsToProcess.length; idx++) {
       const newsItem = itemsToProcess[idx];
@@ -925,7 +971,48 @@ serve(async (req) => {
         // ============================================
         // MASTER ARTICLE GENERATION PROMPT
         // ============================================
-        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
+        const isFastPublishItem = isFastPublishSource(newsItem.source_name);
+
+        const articlePrompt = isFastPublishItem
+          ? `You are the StatsGH automated newsroom editor.
+
+ORIGINAL NEWS ITEM:
+Headline: ${newsItem.original_headline}
+Summary: ${newsItem.original_summary}
+Source: ${newsItem.source_name}
+URL: ${newsItem.source_url}
+Published: ${newsItem.published_at}
+
+ADDITIONAL CONTEXT (may be thin):
+${originalItem._fullText.substring(0, 2000)}
+
+RULES:
+1. Do NOT invent facts. Do NOT fabricate numbers.
+2. If the source contains numbers, you may include them. If it contains none, write the story without forcing numbers.
+3. Very Basic English. Short sentences. Define any technical terms in brackets.
+4. No emojis. No hashtags. No URLs inside the article body.
+
+OUTPUT JSON (valid JSON only):
+{
+  "reject": false,
+  "headline": "Max 90 characters, factual, no colons",
+  "subtitle": "One sentence",
+  "article_intro": "1 short paragraph",
+  "article_context": "1 short paragraph",
+  "key_numbers": ["Optional: up to 3 lines. Only include if real numbers exist."],
+  "numbers_explanation": "Optional: 1-2 short paragraphs. If no numbers, explain impact plainly.",
+  "takeaway": "One sentence takeaway",
+  "tweet": "One sentence. No URLs.",
+  "source_url": "${newsItem.source_url}",
+  "seo_description": "SEO meta description under 155 characters",
+  "slug": "url-friendly-slug-lowercase-hyphens",
+  "section": "business",
+  "tags": ["array", "of", "tags"],
+  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
+}
+
+Return ONLY valid JSON.`
+          : `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
 
 ORIGINAL NEWS ITEM:
 Headline: ${newsItem.original_headline}
@@ -1087,7 +1174,7 @@ Return ONLY valid JSON.`;
         // ============================================
         // CHECK IF GPT REJECTED DUE TO NO SOURCE NUMBERS
         // ============================================
-        if (articleJson.reject === true) {
+        if (!isFastPublishItem && articleJson.reject === true) {
           const rejectReason = articleJson.reason || "Source contains no numbers";
           console.log(`REJECTED BY GPT: "${newsItem.original_headline.substring(0, 50)}..." - ${rejectReason}`);
           await supabase.from("newsroom_articles").update({
@@ -1103,7 +1190,7 @@ Return ONLY valid JSON.`;
         const headline = String(articleJson.headline || "");
         const headlineHasNumber = /\d/.test(headline);
         
-        if (!headlineHasNumber) {
+        if (!isFastPublishItem && !headlineHasNumber) {
           console.log(`REJECTED: Headline "${headline}" has NO NUMBER (numbers in headline are mandatory)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
@@ -1128,7 +1215,7 @@ Return ONLY valid JSON.`;
           return /\d/.test(n);
         });
 
-        if (validKeyNumbers.length < 3) {
+        if (!isFastPublishItem && validKeyNumbers.length < 3) {
           console.log(`REJECTED: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
@@ -1141,8 +1228,16 @@ Return ONLY valid JSON.`;
 
         // Build the article body in the master prompt structure
         const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>${n}</p>`).join("\n");
-        
-        const articleBody = `
+
+        const articleBody = isFastPublishItem
+          ? `
+<p>${articleJson.article_intro || ""}</p>
+<p>${articleJson.article_context || ""}</p>
+${validKeyNumbers.length > 0 ? `<h3>Key Numbers at a Glance</h3>\n${keyNumbersHtml}` : ""}
+${articleJson.numbers_explanation ? `<p>${articleJson.numbers_explanation}</p>` : ""}
+<p><strong>${articleJson.takeaway || ""}</strong></p>
+`.trim()
+          : `
 <p>${articleJson.article_intro || ""}</p>
 <p>${articleJson.article_context || ""}</p>
 <h3>Key Numbers at a Glance</h3>

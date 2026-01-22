@@ -170,6 +170,40 @@ export default function AdminNewsroom() {
     },
   });
 
+  // Fast publish backfill: publish recent items from the selected business outlets, bypassing most filters
+  const fastBackfillMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("newsroom-scan", {
+        body: {
+          triggerType: "fast_publish_backfill",
+          perSourceLimit: 5,
+          // Keep per-run work bounded to reduce timeouts; user can run again if needed.
+          maxArticlesPerRun: 10,
+          userId: session?.user?.id,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Fast Publish Backfill Started",
+        description: data.message || "Backfill run started. Articles will appear as they are processed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["newsroom-runs"] });
+      if (data.run_id) {
+        setSelectedRunId(data.run_id);
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Backfill Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "running":
@@ -225,23 +259,43 @@ export default function AdminNewsroom() {
               Scan Ghana business news sources and auto-generate articles
             </p>
           </div>
-          <Button
-            onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending}
-            className="bg-ft-maroon hover:bg-ft-maroon/90"
-          >
-            {scanMutation.isPending ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Scanning...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Run Manual Scan
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => fastBackfillMutation.mutate()}
+              disabled={fastBackfillMutation.isPending}
+              variant="outline"
+            >
+              {fastBackfillMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Backfilling...
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4 mr-2" />
+                  Fast Publish Backfill
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => scanMutation.mutate()}
+              disabled={scanMutation.isPending}
+              className="bg-ft-maroon hover:bg-ft-maroon/90"
+            >
+              {scanMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Run Manual Scan
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
