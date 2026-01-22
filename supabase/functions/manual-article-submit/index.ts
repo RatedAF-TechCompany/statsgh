@@ -260,45 +260,80 @@ serve(async (req) => {
     
     if (isAutoSchedule) {
       // Auto-schedule: pick next optimal slot
-      // Strategy: stagger articles throughout the day at peak engagement times
+      // Rules:
+      // 1. Max 4 auto-scheduled articles per day
+      // 2. No duplicate time slots
+      // 3. If day is full (4 articles), skip next day and schedule for day after
       const now = new Date();
-      const peakHours = [7, 9, 12, 15, 18, 20]; // Morning, mid-morning, lunch, afternoon, evening, night
+      const peakHours = [7, 9, 12, 15, 18, 20]; // 6 peak hours, but max 4 per day
+      const MAX_PER_DAY = 4;
       
-      // Find articles scheduled for today to avoid conflicts
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(now);
-      todayEnd.setHours(23, 59, 59, 999);
+      // Helper to get scheduled articles for a specific day
+      const getScheduledForDay = async (date: Date) => {
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        const { data } = await supabase
+          .from("articles")
+          .select("scheduled_at")
+          .gte("scheduled_at", dayStart.toISOString())
+          .lte("scheduled_at", dayEnd.toISOString())
+          .not("scheduled_at", "is", null);
+        
+        return data || [];
+      };
       
-      const { data: scheduledToday } = await supabase
-        .from("articles")
-        .select("scheduled_at")
-        .gte("scheduled_at", todayStart.toISOString())
-        .lte("scheduled_at", todayEnd.toISOString())
-        .not("scheduled_at", "is", null);
+      // Helper to find next available slot on a given day
+      const findSlotOnDay = (date: Date, scheduledArticles: any[], afterHour: number = -1): Date | null => {
+        if (scheduledArticles.length >= MAX_PER_DAY) {
+          return null; // Day is full
+        }
+        
+        const takenHours = new Set(
+          scheduledArticles.map(a => new Date(a.scheduled_at!).getHours())
+        );
+        
+        for (const hour of peakHours) {
+          if (hour > afterHour && !takenHours.has(hour)) {
+            const slot = new Date(date);
+            slot.setHours(hour, 0, 0, 0);
+            return slot;
+          }
+        }
+        
+        return null; // No available slots
+      };
       
-      const takenHours = new Set(
-        (scheduledToday || [])
-          .map(a => new Date(a.scheduled_at!).getHours())
-      );
-      
-      // Find next available peak hour
+      let selectedDate: Date | null = null;
+      let daysChecked = 0;
+      let currentCheckDate = new Date(now);
       const currentHour = now.getHours();
-      let selectedDate = new Date(now);
-      let foundSlot = false;
       
-      // Check today's remaining peak hours
-      for (const hour of peakHours) {
-        if (hour > currentHour && !takenHours.has(hour)) {
-          selectedDate.setHours(hour, 0, 0, 0);
-          foundSlot = true;
-          break;
+      while (!selectedDate && daysChecked < 14) { // Check up to 2 weeks ahead
+        const scheduledForDay = await getScheduledForDay(currentCheckDate);
+        
+        // For today, only consider hours after current time
+        const afterHour = daysChecked === 0 ? currentHour : -1;
+        
+        const slot = findSlotOnDay(currentCheckDate, scheduledForDay, afterHour);
+        
+        if (slot) {
+          selectedDate = slot;
+        } else {
+          // Day is full or no slots available
+          // Skip to day after next (leave a gap)
+          daysChecked++;
+          currentCheckDate.setDate(currentCheckDate.getDate() + 2); // Skip a day
+          daysChecked++; // Count the skipped day too
         }
       }
       
-      // If no slot today, schedule for tomorrow's first peak hour
-      if (!foundSlot) {
-        selectedDate.setDate(selectedDate.getDate() + 1);
+      // Fallback: if somehow no slot found, schedule for 2 weeks from now
+      if (!selectedDate) {
+        selectedDate = new Date(now);
+        selectedDate.setDate(selectedDate.getDate() + 14);
         selectedDate.setHours(peakHours[0], 0, 0, 0);
       }
       
