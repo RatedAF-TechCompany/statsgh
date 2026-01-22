@@ -1,31 +1,20 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { formatTime } from "@/components/ReadingTime";
-import { Clock, Zap } from "lucide-react";
-import { WireBadge } from "@/components/WireBadge";
+import { Clock } from "lucide-react";
 
 const News = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
-
-  // Get the active tab from URL or default to "all"
-  const activeTab = searchParams.get("tab") || "all";
-
-  const handleTabChange = (tab: string) => {
-    setSearchParams({ tab });
-    setPage(1);
-  };
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -40,24 +29,16 @@ const News = () => {
     },
   });
 
-  // Fetch articles based on tab
+  // Fetch articles
   const { data: articlesData, isLoading } = useQuery({
-    queryKey: ["news-articles", selectedCategory, page, activeTab],
+    queryKey: ["news-articles", selectedCategory, page],
     queryFn: async () => {
       let query = supabase
         .from("articles")
-        .select("id, title, slug, summary, word_count, hero_image_url, published_at, category_slug, author_name, tags, is_wire", { count: "exact" })
+        .select("id, title, slug, summary, word_count, hero_image_url, published_at, category_slug, author_name, tags", { count: "exact" })
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
-
-      // Filter by tab
-      if (activeTab === "wire") {
-        query = query.eq("is_wire", true);
-      } else if (activeTab === "vetted") {
-        query = query.eq("is_wire", false);
-      }
-      // "all" shows everything
 
       if (selectedCategory) {
         query = query.eq("category_slug", selectedCategory);
@@ -66,20 +47,6 @@ const News = () => {
       const { data, error, count } = await query;
       if (error) throw error;
       return { articles: data || [], total: count || 0 };
-    },
-  });
-
-  // Count wire articles for the badge
-  const { data: wireCount } = useQuery({
-    queryKey: ["wire-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("articles")
-        .select("id", { count: "exact", head: true })
-        .eq("is_published", true)
-        .eq("is_wire", true);
-      if (error) throw error;
-      return count || 0;
     },
   });
 
@@ -101,38 +68,6 @@ const News = () => {
           </p>
         </header>
 
-        {/* Tabs for All / Wire / Vetted */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="mb-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="all">All News</TabsTrigger>
-            <TabsTrigger value="wire" className="flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5" />
-              Wire
-              {wireCount && wireCount > 0 && (
-                <span className="ml-1 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-full font-medium">
-                  {wireCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="vetted">StatsGH Vetted</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Wire explainer when on wire tab */}
-        {activeTab === "wire" && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <Zap className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-amber-800 mb-1">Wire Content</h3>
-                <p className="text-sm text-amber-700">
-                  Wire articles are sourced from trusted Ghana news outlets and published with minimal editorial processing. 
-                  They may not include the data-focused analysis found in StatsGH Vetted stories.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Category Filters */}
         <div className="flex flex-wrap gap-2 mb-8">
@@ -176,11 +111,7 @@ const News = () => {
         ) : articles.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-muted-foreground text-lg">
-              {activeTab === "wire" 
-                ? "No wire articles found." 
-                : activeTab === "vetted" 
-                  ? "No vetted articles found." 
-                  : "No articles found."}
+              No articles found.
             </p>
           </div>
         ) : (
@@ -199,20 +130,12 @@ const News = () => {
                         alt={article.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      {article.is_wire && (
-                        <div className="absolute top-2 left-2">
-                          <WireBadge />
-                        </div>
-                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge variant="outline" className="text-xs capitalize">
                       {article.category_slug?.replace(/-/g, " ")}
                     </Badge>
-                    {article.is_wire && !article.hero_image_url && (
-                      <WireBadge />
-                    )}
                   </div>
                   <h2 className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
                     {article.title}

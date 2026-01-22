@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { WireBadge } from "@/components/WireBadge";
 
 interface ArticleCardProps {
   article: {
@@ -98,7 +97,6 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
             <span className="text-sm font-bold text-accent uppercase">
               {article.section}
             </span>
-            {article.is_wire && <WireBadge />}
           </div>
           <h2 className="font-serif text-lg font-bold leading-tight mb-1 line-clamp-3">
             {article.title}
