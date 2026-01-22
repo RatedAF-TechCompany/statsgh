@@ -31,35 +31,89 @@ const PREFERRED_CATEGORIES = [
 
 const DEFAULT_CATEGORY = "business";
 
-// ============================================
-// STOCK PHOTO KEYWORDS BY CATEGORY
-// Uses Unsplash Source for real photography (no API key required)
-// ============================================
-const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
-  "economy-inflation": ["africa,money", "ghana,market", "africa,currency", "africa,shopping"],
-  "public-finance": ["africa,government,building", "africa,parliament", "ghana,office", "africa,meeting"],
-  "labour-salaries": ["africa,workers", "ghana,office", "africa,factory", "africa,employees"],
-  "agriculture-food": ["ghana,farming", "africa,agriculture", "africa,market,food", "ghana,crops"],
-  "energy-resources": ["africa,energy", "ghana,power", "africa,oil", "africa,solar"],
-  "trade-investment": ["africa,port", "ghana,shipping", "africa,business", "africa,trade"],
-  "health-data": ["africa,hospital", "ghana,healthcare", "africa,medical", "africa,clinic"],
-  "education": ["africa,school", "ghana,classroom", "africa,students", "africa,university"],
-  "infrastructure-transport": ["ghana,road", "africa,construction", "africa,bridge", "ghana,transport"],
-  "security-governance": ["africa,government", "ghana,police", "africa,security", "africa,parliament"],
-  "technology-innovation": ["africa,technology", "ghana,computer", "africa,startup", "africa,mobile"],
-  "environment-climate": ["ghana,nature", "africa,environment", "africa,climate", "africa,forest"],
-  "population": ["ghana,city", "africa,people", "africa,urban", "ghana,community"],
-  "business": ["africa,business", "ghana,office", "africa,entrepreneur", "africa,meeting"],
-  "top-stories": ["ghana,city", "africa,news", "ghana,accra", "africa,people"],
-  "charts-explainers": ["africa,data", "africa,office", "africa,computer", "africa,meeting"],
-  "ghanacrimes": ["africa,police", "africa,security", "africa,justice", "africa,law"],
-};
-
-const DEFAULT_PHOTO_KEYWORDS = ["ghana", "africa,business", "africa,city", "africa,people"];
-
-function getPhotoKeywords(category: string): string {
-  const keywords = CATEGORY_PHOTO_KEYWORDS[category] || DEFAULT_PHOTO_KEYWORDS;
-  return keywords[Math.floor(Math.random() * keywords.length)];
+// Generate AI image using Lovable AI (Gemini)
+async function generateAiImage(
+  prompt: string,
+  supabase: any,
+  articleSlug: string
+): Promise<string | null> {
+  try {
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.log('LOVABLE_API_KEY not configured, skipping AI image');
+      return null;
+    }
+    
+    console.log(`Generating AI image for: ${articleSlug}`);
+    
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a photorealistic, professional editorial photograph for a news article. 
+Style: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.
+Subject: ${prompt}
+Requirements: No text, no logos, no watermarks, no AI-looking faces. 
+The image should look like it was taken by a professional photojournalist in Ghana or Africa.`
+          }
+        ],
+        modalities: ['image', 'text']
+      })
+    });
+    
+    if (!response.ok) {
+      console.log(`AI image generation failed: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!imageData || !imageData.startsWith('data:image')) {
+      console.log('No valid image in AI response');
+      return null;
+    }
+    
+    // Extract base64 data
+    const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!base64Match) {
+      console.log('Could not parse AI image data');
+      return null;
+    }
+    
+    const [, format, base64Data] = base64Match;
+    const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    
+    const ext = format === 'png' ? 'png' : 'jpg';
+    const contentType = `image/${format === 'png' ? 'png' : 'jpeg'}`;
+    const imagePath = `newsroom/${articleSlug}-${Date.now()}-ai.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(imagePath, bytes, { contentType, upsert: true });
+    
+    if (uploadError) {
+      console.error('AI image upload error:', uploadError);
+      return null;
+    }
+    
+    const { data: publicUrl } = supabase.storage
+      .from('media')
+      .getPublicUrl(imagePath);
+    
+    console.log(`AI image generated and uploaded: ${publicUrl.publicUrl}`);
+    return publicUrl.publicUrl;
+  } catch (error) {
+    console.log(`AI image error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
 }
 
 // Helper to ensure category exists in database
@@ -391,50 +445,24 @@ ${keyNumbersHtml}
 
     const articleSlug = `${slugBase}-${Date.now()}`;
 
-    // Ensure category exists first (needed for photo keywords)
+    // Ensure category exists first
     const categorySlug = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
     
-    // Get stock photo from Unsplash
-    const photoKeywords = getPhotoKeywords(categorySlug);
+    // Generate AI image for the article
     let heroImageUrl: string | null = null;
-
+    
     try {
-      console.log(`Fetching stock photo for: ${articleSlug}, keywords: ${photoKeywords}`);
+      console.log(`Generating AI image for: ${articleSlug}`);
+      const imagePrompt = `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
+      heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
       
-      // Unsplash Source provides real photos without API key
-      const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
-      
-      const imageResponse = await fetch(unsplashSourceUrl, {
-        redirect: "follow",
-      });
-      
-      if (imageResponse.ok) {
-        const imageBlob = await imageResponse.arrayBuffer();
-        const bytes = new Uint8Array(imageBlob);
-        
-        const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-        const ext = contentType.includes("png") ? "png" : "jpg";
-        
-        const imagePath = `newsroom/${articleSlug}.${ext}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("media")
-          .upload(imagePath, bytes, { contentType, upsert: true });
-
-        if (!uploadError) {
-          const { data: publicUrl } = supabase.storage
-            .from("media")
-            .getPublicUrl(imagePath);
-          heroImageUrl = publicUrl.publicUrl;
-          console.log(`Stock photo uploaded: ${heroImageUrl}`);
-        } else {
-          console.error("Image upload error:", uploadError);
-        }
+      if (heroImageUrl) {
+        console.log(`AI image generated: ${heroImageUrl}`);
       } else {
-        console.log(`Unsplash fetch failed: ${imageResponse.status}`);
+        console.log(`AI image generation failed for: ${articleSlug}`);
       }
     } catch (imgError) {
-      console.error("Stock photo fetch error:", imgError);
+      console.error("Image generation error:", imgError);
     }
 
     // Get category ID

@@ -149,60 +149,17 @@ serve(async (req) => {
     for (const article of articles || []) {
       console.log(`Processing: ${article.title}`);
       
-      const category = article.section || article.category_slug || "business";
-      const photoKeywords = getPhotoKeywords(category);
-      
       let heroImageUrl: string | null = null;
       let imageSource = "none";
 
-      // Try Unsplash first
-      try {
-        console.log(`Fetching Unsplash stock photo for: ${article.slug}, keywords: ${photoKeywords}`);
-        
-        const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
-        
-        const imageResponse = await fetch(unsplashSourceUrl, {
-          redirect: "follow",
-        });
-        
-        if (imageResponse.ok) {
-          const imageBlob = await imageResponse.arrayBuffer();
-          const bytes = new Uint8Array(imageBlob);
-          
-          if (bytes.length >= 10000) {
-            const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-            const ext = contentType.includes("png") ? "png" : "jpg";
-            
-            const imagePath = `newsroom/${article.slug}-stock.${ext}`;
-            
-            const { error: uploadError } = await supabase.storage
-              .from("media")
-              .upload(imagePath, bytes, { contentType, upsert: true });
-
-            if (!uploadError) {
-              const { data: publicUrl } = supabase.storage
-                .from("media")
-                .getPublicUrl(imagePath);
-              heroImageUrl = publicUrl.publicUrl;
-              imageSource = "unsplash";
-              console.log(`✓ Unsplash image uploaded: ${heroImageUrl}`);
-            }
-          }
-        }
-      } catch (imgError) {
-        console.error("Unsplash fetch error:", imgError);
-      }
-
-      // Fall back to AI generation if Unsplash failed
-      if (!heroImageUrl) {
-        console.log(`Falling back to AI image generation for: ${article.slug}`);
-        
-        const imagePrompt = `Professional editorial photograph: ${article.title}. African business context, Ghana, documentary style.`;
-        heroImageUrl = await generateAiImage(imagePrompt, supabase, article.slug);
-        
-        if (heroImageUrl) {
-          imageSource = "ai-generated";
-        }
+      // Generate AI image directly (Unsplash Source API is deprecated)
+      console.log(`Generating AI image for: ${article.slug}`);
+      
+      const imagePrompt = `Professional editorial photograph: ${article.title}. African business context, Ghana, documentary style.`;
+      heroImageUrl = await generateAiImage(imagePrompt, supabase, article.slug);
+      
+      if (heroImageUrl) {
+        imageSource = "ai-generated";
       }
 
       // Update article with image
