@@ -9,6 +9,21 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Remove accidental duplicated words/phrases like "not not" or "not. not".
+// Collapses immediate repeated tokens (case-insensitive). Keeps numbers intact.
+function collapseImmediateWordRepeats(input: string): string {
+  if (!input) return input;
+  let s = String(input);
+  s = s.replace(/\s+/g, " ").trim();
+
+  // Apply twice to handle triple repeats.
+  for (let i = 0; i < 2; i++) {
+    s = s.replace(/\b([a-zA-Z]+)\b([\s.,;:!?]+\1\b)+/gi, "$1");
+    s = s.replace(/\s+/g, " ").trim();
+  }
+  return s;
+}
+
 // ============================================
 // STATSGH NEWSROOM MASTER CONFIGURATION
 // ============================================
@@ -1042,6 +1057,31 @@ Return ONLY valid JSON.`;
             error_message: `AI returned invalid JSON`,
           }).eq("id", newsItem.id);
           continue;
+        }
+
+        // Guardrail: collapse accidental repeated words in AI fields (e.g., "not not").
+        // This prevents visible glitches in headlines/summaries and also reduces downstream duplication.
+        const cleanStr = (v: unknown) => typeof v === "string" ? collapseImmediateWordRepeats(v) : v;
+        articleJson.headline = cleanStr(articleJson.headline);
+        articleJson.subtitle = cleanStr(articleJson.subtitle);
+        articleJson.article_intro = cleanStr(articleJson.article_intro);
+        articleJson.article_context = cleanStr(articleJson.article_context);
+        articleJson.numbers_explanation = cleanStr(articleJson.numbers_explanation);
+        articleJson.takeaway = cleanStr(articleJson.takeaway);
+        articleJson.tweet = cleanStr(articleJson.tweet);
+        articleJson.seo_description = cleanStr(articleJson.seo_description);
+        articleJson.slug = cleanStr(articleJson.slug);
+        articleJson.section = cleanStr(articleJson.section);
+
+        if (Array.isArray(articleJson.key_numbers)) {
+          articleJson.key_numbers = articleJson.key_numbers
+            .map((n: unknown) => (typeof n === "string" ? collapseImmediateWordRepeats(n) : n))
+            .filter((n: unknown) => typeof n === "string");
+        }
+        if (Array.isArray(articleJson.tags)) {
+          articleJson.tags = articleJson.tags
+            .map((t: unknown) => (typeof t === "string" ? collapseImmediateWordRepeats(t) : t))
+            .filter((t: unknown) => typeof t === "string");
         }
 
         // ============================================
