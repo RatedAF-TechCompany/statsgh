@@ -39,6 +39,7 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
   "myjoyonline.com",
   "3news.com",
   "starrfm.com.gh",
+  "ghanaweb.com",
 ]);
 
 // Ghana business news sources with RSS feeds
@@ -48,6 +49,18 @@ const RSS_SOURCES = [
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
   { name: "3News Ghana", rss: "https://3news.com/feed/", domain: "3news.com" },
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
+] as const;
+
+// HTML scrape sources (no RSS available)
+const SCRAPE_SOURCES = [
+  { 
+    name: "GhanaWeb Business", 
+    url: "https://www.ghanaweb.com/GhanaHomePage/business/", 
+    domain: "ghanaweb.com",
+    // GhanaWeb article pattern: /GhanaHomePage/NewsArchive/artikel.php?ID=XXXXXXX or /GhanaHomePage/business/artikel.php?ID=XXXXXXX
+    articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/(?:business|NewsArchive)\/artikel\.php\?ID=\d+)"/gi,
+    titlePattern: /<a[^>]+href="[^"]*artikel\.php\?ID=\d+"[^>]*>([^<]+)<\/a>/gi,
+  },
 ] as const;
 
 // Preferred categories for GPT prompt guidance
@@ -515,6 +528,135 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
   }
 }
 
+// ============================================
+// GHANAWEB HTML SCRAPER
+// Fetches the business page and extracts article links/headlines
+// ============================================
+interface ScrapedArticle {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  source_name: string;
+}
+
+async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]> {
+  const articles: ScrapedArticle[] = [];
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch("https://www.ghanaweb.com/GhanaHomePage/business/", {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.log(`GhanaWeb scrape failed: ${response.status}`);
+      return articles;
+    }
+    
+    const html = await response.text();
+    console.log(`GhanaWeb HTML fetched: ${html.length} chars`);
+    
+    // Extract article links and titles from the business page
+    // GhanaWeb now uses semantic URLs like: /GhanaHomePage/business/ARTICLE-TITLE-SLUG-123456
+    
+    // Find all article links with their titles
+    const articleMatches: Array<{ url: string; title: string }> = [];
+    
+    // Pattern 1: Links with title attribute (most reliable for headline)
+    // <a href="https://www.ghanaweb.com/GhanaHomePage/business/TITLE-SLUG-123456" title="Headline Here">
+    const titleAttrPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/business\/[^"]+\-\d+)"[^>]+title="([^"]+)"/gi;
+    let match;
+    
+    while ((match = titleAttrPattern.exec(html)) !== null) {
+      const url = match[1];
+      let title = match[2].trim();
+      
+      // Decode HTML entities in title
+      title = title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      
+      // Skip very short titles
+      if (title.length < 15) continue;
+      
+      articleMatches.push({ url, title });
+    }
+    
+    // Pattern 2: Links with h2/h3 inside (alternative pattern)
+    // <a href="..."><div class="info"><h2>Headline</h2></div></a>
+    const headingPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/business\/[^"]+\-\d+)"[^>]*>[\s\S]*?<h[23][^>]*>([^<]+)<\/h[23]>/gi;
+    
+    while ((match = headingPattern.exec(html)) !== null) {
+      const url = match[1];
+      let title = match[2].trim();
+      
+      // Decode HTML entities
+      title = title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      
+      if (title.length < 15) continue;
+      
+      articleMatches.push({ url, title });
+    }
+    
+    console.log(`GhanaWeb: Found ${articleMatches.length} article matches before dedup`);
+    
+    // Deduplicate by URL (keep first occurrence which typically has best title)
+    const seenUrls = new Set<string>();
+    const uniqueArticles = articleMatches.filter(a => {
+      if (seenUrls.has(a.url)) return false;
+      seenUrls.add(a.url);
+      return true;
+    });
+    
+    console.log(`GhanaWeb: Found ${uniqueArticles.length} unique article links`);
+    
+    // Limit to first 15 articles to avoid overloading
+    const articlesToProcess = uniqueArticles.slice(0, 15);
+    
+    // For each article, use current time as pubDate estimate
+    const now = new Date();
+    
+    for (const item of articlesToProcess) {
+      articles.push({
+        title: item.title,
+        link: item.url,
+        pubDate: now.toISOString(),
+        description: "",
+        source_name: "GhanaWeb Business",
+      });
+    }
+    
+    console.log(`GhanaWeb: Returning ${articles.length} articles for processing`);
+    
+  } catch (error) {
+    console.log(`GhanaWeb scrape error:`, error instanceof Error ? error.message : "Unknown error");
+  }
+  
+  return articles;
+}
+
 // Log candidate to audit table
 async function logCandidate(
   supabase: any,
@@ -652,6 +794,8 @@ serve(async (req) => {
 
     const sourceNameToDomain = new Map<string, string>();
     for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
+    // Add GhanaWeb to domain mapping (scraped, not RSS)
+    sourceNameToDomain.set("GhanaWeb Business", "ghanaweb.com");
 
     const isFastPublishSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
@@ -716,6 +860,28 @@ serve(async (req) => {
     feedResults.forEach(items => allArticles.push(...items));
 
     console.log(`Total RSS items fetched: ${allArticles.length}`);
+
+    // ============================================
+    // FETCH GHANAWEB VIA HTML SCRAPING (no RSS available)
+    // ============================================
+    const shouldScrapeGhanaWeb = !targetSource || 
+      targetSource.toLowerCase().includes("ghanaweb") || 
+      targetSource.toLowerCase().includes("ghana web");
+    
+    if (shouldScrapeGhanaWeb) {
+      console.log("Scraping GhanaWeb Business page...");
+      const ghanaWebArticles = await scrapeGhanaWebBusiness();
+      allArticles.push(...ghanaWebArticles);
+      
+      // Update source health for GhanaWeb
+      if (ghanaWebArticles.length > 0) {
+        await updateSourceHealth(supabase, "GhanaWeb Business", true, ghanaWebArticles.length);
+      } else {
+        await updateSourceHealth(supabase, "GhanaWeb Business", false, 0, "HTML scrape returned no articles");
+      }
+    }
+
+    console.log(`Total items after scraping: ${allArticles.length}`);
 
     // ============================================
     // PROCESS EACH ARTICLE WITH FULL AUDIT TRAIL
