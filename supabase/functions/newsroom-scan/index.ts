@@ -39,6 +39,7 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
   "myjoyonline.com",
   "3news.com",
   "starrfm.com.gh",
+  "ghanaweb.com",
 ]);
 
 // Ghana business news sources with RSS feeds
@@ -48,6 +49,7 @@ const RSS_SOURCES = [
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
   { name: "3News Ghana", rss: "https://3news.com/feed/", domain: "3news.com" },
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
+  { name: "GhanaWeb Business", rss: "https://www.ghanaweb.com/GhanaHomePage/business/rss.xml", domain: "ghanaweb.com" },
 ] as const;
 
 // Preferred categories for GPT prompt guidance
