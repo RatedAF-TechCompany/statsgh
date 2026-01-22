@@ -36,12 +36,14 @@ const DEFAULT_MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function 
 const FAST_PUBLISH_DOMAINS = new Set<string>([
   "graphic.com.gh",
   "ceditalk.com",
+  "myjoyonline.com",
 ]);
 
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
   { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
+  { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
 ] as const;
 
 // Preferred categories for GPT prompt guidance
