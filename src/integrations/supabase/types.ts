@@ -1196,10 +1196,12 @@ export type Database = {
           generated_article_id: string | null
           id: string
           image_style: string | null
+          needs_review: boolean | null
           original_headline: string
           original_summary: string | null
           processing_status: string
           published_at: string | null
+          review_reason: string | null
           run_id: string | null
           source_name: string
           source_url: string | null
@@ -1212,10 +1214,12 @@ export type Database = {
           generated_article_id?: string | null
           id?: string
           image_style?: string | null
+          needs_review?: boolean | null
           original_headline: string
           original_summary?: string | null
           processing_status?: string
           published_at?: string | null
+          review_reason?: string | null
           run_id?: string | null
           source_name: string
           source_url?: string | null
@@ -1228,10 +1232,12 @@ export type Database = {
           generated_article_id?: string | null
           id?: string
           image_style?: string | null
+          needs_review?: boolean | null
           original_headline?: string
           original_summary?: string | null
           processing_status?: string
           published_at?: string | null
+          review_reason?: string | null
           run_id?: string | null
           source_name?: string
           source_url?: string | null
@@ -1246,6 +1252,101 @@ export type Database = {
           },
           {
             foreignKeyName: "newsroom_articles_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "newsroom_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      newsroom_candidates: {
+        Row: {
+          created_at: string | null
+          decision: string
+          dedupe_key: string | null
+          dedupe_matched_article_id: string | null
+          dedupe_matched_candidate_id: string | null
+          dedupe_similarity_evidence: Json | null
+          fetched_full_text: string | null
+          headline: string
+          id: string
+          newsroom_article_id: string | null
+          numbers_found: string[] | null
+          pub_date_parsed: string | null
+          pub_date_raw: string | null
+          rejection_code: string | null
+          rejection_detail: string | null
+          rss_summary: string | null
+          run_id: string | null
+          source_name: string
+          source_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          decision?: string
+          dedupe_key?: string | null
+          dedupe_matched_article_id?: string | null
+          dedupe_matched_candidate_id?: string | null
+          dedupe_similarity_evidence?: Json | null
+          fetched_full_text?: string | null
+          headline: string
+          id?: string
+          newsroom_article_id?: string | null
+          numbers_found?: string[] | null
+          pub_date_parsed?: string | null
+          pub_date_raw?: string | null
+          rejection_code?: string | null
+          rejection_detail?: string | null
+          rss_summary?: string | null
+          run_id?: string | null
+          source_name: string
+          source_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          decision?: string
+          dedupe_key?: string | null
+          dedupe_matched_article_id?: string | null
+          dedupe_matched_candidate_id?: string | null
+          dedupe_similarity_evidence?: Json | null
+          fetched_full_text?: string | null
+          headline?: string
+          id?: string
+          newsroom_article_id?: string | null
+          numbers_found?: string[] | null
+          pub_date_parsed?: string | null
+          pub_date_raw?: string | null
+          rejection_code?: string | null
+          rejection_detail?: string | null
+          rss_summary?: string | null
+          run_id?: string | null
+          source_name?: string
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "newsroom_candidates_dedupe_matched_article_id_fkey"
+            columns: ["dedupe_matched_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsroom_candidates_dedupe_matched_candidate_id_fkey"
+            columns: ["dedupe_matched_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "newsroom_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsroom_candidates_newsroom_article_id_fkey"
+            columns: ["newsroom_article_id"]
+            isOneToOne: false
+            referencedRelation: "newsroom_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "newsroom_candidates_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "newsroom_runs"
@@ -1306,6 +1407,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      newsroom_sources: {
+        Row: {
+          consecutive_errors: number | null
+          created_at: string | null
+          fallback_rss_url: string | null
+          id: string
+          is_active: boolean | null
+          last_error_at: string | null
+          last_error_message: string | null
+          last_item_at: string | null
+          last_success_at: string | null
+          name: string
+          rss_url: string
+          total_items_accepted: number | null
+          total_items_seen: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          consecutive_errors?: number | null
+          created_at?: string | null
+          fallback_rss_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_item_at?: string | null
+          last_success_at?: string | null
+          name: string
+          rss_url: string
+          total_items_accepted?: number | null
+          total_items_seen?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          consecutive_errors?: number | null
+          created_at?: string | null
+          fallback_rss_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_item_at?: string | null
+          last_success_at?: string | null
+          name?: string
+          rss_url?: string
+          total_items_accepted?: number | null
+          total_items_seen?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

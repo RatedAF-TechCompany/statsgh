@@ -145,6 +145,26 @@ const DATA_SUBSTANCE_KEYWORDS = [
 // Default category if GPT returns an invalid slug format
 const DEFAULT_CATEGORY = "business";
 
+// Rejection codes for audit trail
+const REJECTION_CODES = {
+  OUTSIDE_TIME_WINDOW: "OUTSIDE_TIME_WINDOW",
+  PUBDATE_PARSE_FAILED: "PUBDATE_PARSE_FAILED",
+  NOT_BUSINESS: "NOT_BUSINESS",
+  CRIME_FILTER: "CRIME_FILTER",
+  POLITICAL_GOSSIP: "POLITICAL_GOSSIP",
+  NO_NUMBERS_IN_RSS: "NO_NUMBERS_IN_RSS",
+  NO_NUMBERS_IN_FULL_PAGE: "NO_NUMBERS_IN_FULL_PAGE",
+  DEDUPED_NEWSROOM: "DEDUPED_NEWSROOM",
+  DEDUPED_ARTICLES: "DEDUPED_ARTICLES",
+  AI_JSON_INVALID: "AI_JSON_INVALID",
+  AI_REJECTED_NO_NUMBERS: "AI_REJECTED_NO_NUMBERS",
+  HEADLINE_NO_NUMBER: "HEADLINE_NO_NUMBER",
+  INSUFFICIENT_NUMBERS: "INSUFFICIENT_NUMBERS",
+  IMAGE_FETCH_FAILED: "IMAGE_FETCH_FAILED",
+  RSS_FETCH_FAILED: "RSS_FETCH_FAILED",
+  FULL_PAGE_FETCH_FAILED: "FULL_PAGE_FETCH_FAILED",
+} as const;
+
 // Helper to ensure category exists in database, creates if not
 async function ensureCategoryExists(supabase: any, slug: string): Promise<string> {
   // Validate slug format (lowercase, hyphens only)
@@ -286,14 +306,12 @@ function isCrimeNews(text: string): boolean {
     lowerText.includes(keyword)
   );
   if (isStatisticalAnalysis) {
-    console.log(`Crime content ALLOWED - contains statistical keyword`);
     return false; // Not excluded - it's statistical content
   }
   
   // Also allow if text contains percentage patterns with context (e.g., "90% of children")
   const hasPercentageWithContext = /\d+%\s+of\s+\w+/i.test(text) || /\d+\s+percent\s+of/i.test(text);
   if (hasPercentageWithContext) {
-    console.log(`Crime content ALLOWED - contains statistical percentage pattern`);
     return false; // Statistical percentage pattern detected
   }
   
@@ -314,26 +332,24 @@ function isPoliticalGossip(text: string): boolean {
   const hasSignificantNumbers = /\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:\s*(?:million|billion|percent|%|ghs|usd|ghc))/i.test(text);
   
   if (hasDataSubstance || hasSignificantNumbers) {
-    console.log(`Political content ALLOWED - contains data substance`);
     return false; // Has data substance, not excluded
   }
   
   // Check for political gossip keywords (excluded if no data)
-  const isPoliticalDrama = POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => 
+  return POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => 
     lowerText.includes(keyword)
   );
-  
-  if (isPoliticalDrama) {
-    console.log(`EXCLUDED - political gossip without data substance: "${text.substring(0, 80)}..."`);
-    return true;
-  }
-  
-  return false;
 }
 
 // Check if text contains numbers (required for StatsGH)
 function containsNumbers(text: string): boolean {
   return /\d+/.test(text);
+}
+
+// Extract numbers found in text for audit trail
+function extractNumbers(text: string): string[] {
+  const matches = text.match(/\d[\d,\.]*(?:\s*(?:%|percent|million|billion|ghs|usd|ghc))?/gi);
+  return matches ? [...new Set(matches.slice(0, 10))] : [];
 }
 
 // Parse RSS XML to extract articles
@@ -419,6 +435,157 @@ async function fetchRssFeed(url: string, timeout = 10000): Promise<string | null
   }
 }
 
+// Fetch full article page and extract text content
+async function fetchFullPageText(url: string, timeout = 15000): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'StatsGH-Newsroom/1.0 (Content Reader)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    // Extract text from HTML - remove scripts, styles, then strip tags
+    let text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+      .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Limit to first 5000 chars for efficiency
+    return text.substring(0, 5000);
+  } catch (error) {
+    console.log(`Full page fetch error for ${url}:`, error instanceof Error ? error.message : "Unknown error");
+    return null;
+  }
+}
+
+// Log candidate to audit table
+async function logCandidate(
+  supabase: any,
+  runId: string,
+  article: { title: string; link: string; pubDate: string; description: string; source_name: string },
+  decision: string,
+  rejectionCode: string | null,
+  rejectionDetail: string | null,
+  extras: {
+    fullText?: string | null;
+    pubDateParsed?: Date | null;
+    dedupeKey?: string;
+    dedupeMatchedArticleId?: string;
+    dedupeMatchedCandidateId?: string;
+    dedupeSimilarityEvidence?: any;
+    numbersFound?: string[];
+    newsroomArticleId?: string;
+  } = {}
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("newsroom_candidates")
+      .insert({
+        run_id: runId,
+        source_name: article.source_name,
+        source_url: article.link,
+        headline: article.title.substring(0, 500),
+        rss_summary: article.description?.substring(0, 1000) || null,
+        fetched_full_text: extras.fullText?.substring(0, 2000) || null,
+        pub_date_raw: article.pubDate,
+        pub_date_parsed: extras.pubDateParsed?.toISOString() || null,
+        decision,
+        rejection_code: rejectionCode,
+        rejection_detail: rejectionDetail?.substring(0, 500) || null,
+        dedupe_key: extras.dedupeKey || null,
+        dedupe_matched_article_id: extras.dedupeMatchedArticleId || null,
+        dedupe_matched_candidate_id: extras.dedupeMatchedCandidateId || null,
+        dedupe_similarity_evidence: extras.dedupeSimilarityEvidence || null,
+        numbers_found: extras.numbersFound || null,
+        newsroom_article_id: extras.newsroomArticleId || null,
+      })
+      .select("id")
+      .single();
+    
+    if (error) {
+      console.log(`Failed to log candidate: ${error.message}`);
+      return null;
+    }
+    return data?.id || null;
+  } catch (err) {
+    console.log(`Candidate logging error:`, err);
+    return null;
+  }
+}
+
+// Update source health tracking
+async function updateSourceHealth(
+  supabase: any,
+  sourceName: string,
+  success: boolean,
+  itemCount: number,
+  errorMessage?: string
+): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    
+    if (success) {
+      await supabase
+        .from("newsroom_sources")
+        .update({
+          last_success_at: now,
+          last_item_at: itemCount > 0 ? now : undefined,
+          consecutive_errors: 0,
+          total_items_seen: supabase.raw(`total_items_seen + ${itemCount}`),
+          updated_at: now,
+        })
+        .eq("name", sourceName);
+    } else {
+      // Increment error count
+      const { data } = await supabase
+        .from("newsroom_sources")
+        .select("consecutive_errors")
+        .eq("name", sourceName)
+        .single();
+      
+      const currentErrors = data?.consecutive_errors || 0;
+      
+      await supabase
+        .from("newsroom_sources")
+        .update({
+          last_error_at: now,
+          last_error_message: errorMessage?.substring(0, 500),
+          consecutive_errors: currentErrors + 1,
+          updated_at: now,
+        })
+        .eq("name", sourceName);
+    }
+  } catch (err) {
+    console.log(`Source health update error for ${sourceName}:`, err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -473,14 +640,17 @@ serve(async (req) => {
       source_name: string;
     }> = [];
 
-    // Fetch all RSS feeds in parallel
+    // Fetch all RSS feeds in parallel with health tracking
     const feedPromises = RSS_SOURCES.map(async (source) => {
       console.log(`Fetching RSS from ${source.name}: ${source.rss}`);
       const xml = await fetchRssFeed(source.rss);
       if (xml) {
         const items = parseRssXml(xml, source.name);
         console.log(`${source.name}: Found ${items.length} items`);
+        await updateSourceHealth(supabase, source.name, true, items.length);
         return items;
+      } else {
+        await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
       }
       return [];
     });
@@ -490,8 +660,23 @@ serve(async (req) => {
 
     console.log(`Total RSS items fetched: ${allArticles.length}`);
 
-    // Filter articles by time window and business relevance
-    const qualifyingArticles = allArticles.filter(article => {
+    // ============================================
+    // PROCESS EACH ARTICLE WITH FULL AUDIT TRAIL
+    // ============================================
+    const qualifyingArticles: Array<{
+      title: string;
+      link: string;
+      pubDate: string;
+      description: string;
+      source_name: string;
+      _pubDateParsed: Date;
+      _fullText: string;
+      _numbersFound: string[];
+      _dedupeKey: string;
+      _dedupeKeyRaw: string;
+    }> = [];
+
+    for (const article of allArticles) {
       // Parse publication date
       let pubDate: Date | null = null;
       try {
@@ -501,36 +686,128 @@ serve(async (req) => {
         pubDate = null;
       }
 
-      // Skip if no valid date or too old
-      if (!pubDate || pubDate < cutoffTime) {
-        return false;
+      // Log if date parsing failed
+      if (!pubDate) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.PUBDATE_PARSE_FAILED, 
+          `Could not parse date: ${article.pubDate}`, { pubDateParsed: null });
+        continue;
+      }
+
+      // Check time window
+      if (pubDate < cutoffTime) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.OUTSIDE_TIME_WINDOW,
+          `Published ${Math.round((nowUtc().getTime() - pubDate.getTime()) / (1000 * 60 * 60))}h ago, cutoff is ${TIME_WINDOW_HOURS}h`,
+          { pubDateParsed: pubDate });
+        continue;
       }
 
       // Check if business-related
-      const fullText = `${article.title} ${article.description}`;
-      if (!isBusinessRelated(fullText)) {
-        return false;
+      const rssText = `${article.title} ${article.description}`;
+      if (!isBusinessRelated(rssText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
+          "No business keywords found in headline/summary", { pubDateParsed: pubDate });
+        continue;
       }
 
-      // EXCLUDE crime news (unless statistical analysis)
-      if (isCrimeNews(fullText)) {
-        console.log(`Skipping crime news: ${article.title.substring(0, 50)}...`);
-        return false;
+      // Check crime filter
+      if (isCrimeNews(rssText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_FILTER,
+          "Contains crime keywords without statistical context", { pubDateParsed: pubDate });
+        continue;
       }
 
-      // EXCLUDE political gossip/drama without data substance
-      if (isPoliticalGossip(fullText)) {
-        console.log(`Skipping political gossip: ${article.title.substring(0, 50)}...`);
-        return false;
+      // Check political gossip filter
+      if (isPoliticalGossip(rssText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICAL_GOSSIP,
+          "Political drama/gossip without data substance", { pubDateParsed: pubDate });
+        continue;
       }
 
-      // Check if contains numbers
-      if (!containsNumbers(fullText)) {
-        return false;
+      // Check if RSS has numbers - if not, fetch full page
+      let fullText = rssText;
+      let numbersFound = extractNumbers(rssText);
+      
+      if (!containsNumbers(rssText)) {
+        console.log(`RSS has no numbers, fetching full page: ${article.link}`);
+        const pageText = await fetchFullPageText(article.link);
+        
+        if (!pageText) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.FULL_PAGE_FETCH_FAILED,
+            "RSS had no numbers, full page fetch failed", { pubDateParsed: pubDate, numbersFound: [] });
+          continue;
+        }
+        
+        fullText = `${rssText} ${pageText}`;
+        numbersFound = extractNumbers(fullText);
+        
+        if (!containsNumbers(fullText)) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NO_NUMBERS_IN_FULL_PAGE,
+            "No numbers found in RSS or full page content", 
+            { pubDateParsed: pubDate, fullText: pageText.substring(0, 1000), numbersFound: [] });
+          continue;
+        }
+        
+        console.log(`Full page has numbers: ${numbersFound.slice(0, 5).join(", ")}`);
       }
 
-      return true;
-    });
+      // Generate dedupe key
+      const dateStr = pubDate.toISOString().split("T")[0];
+      const dedupeKeyRaw = buildDedupeKey(article.title, article.source_name, dateStr, numbersFound);
+      const dedupeKeyHash = await sha256Hex(dedupeKeyRaw);
+
+      // Check for duplicates in newsroom_articles
+      const { data: seenNewsroom } = await supabase
+        .from("newsroom_articles")
+        .select("id, original_headline")
+        .eq("dedupe_key", dedupeKeyHash)
+        .limit(1);
+
+      if (seenNewsroom && seenNewsroom.length > 0) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_NEWSROOM,
+          `Matched existing newsroom article`, {
+            pubDateParsed: pubDate,
+            dedupeKey: dedupeKeyHash,
+            dedupeSimilarityEvidence: { 
+              matched_headline: seenNewsroom[0].original_headline,
+              dedupe_key_raw: dedupeKeyRaw 
+            },
+            numbersFound,
+          });
+        continue;
+      }
+
+      // Check for duplicates in published articles
+      const { data: seenPublished } = await supabase
+        .from("articles")
+        .select("id, title")
+        .eq("dedupe_key", dedupeKeyHash)
+        .limit(1);
+
+      if (seenPublished && seenPublished.length > 0) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_ARTICLES,
+          `Matched existing published article`, {
+            pubDateParsed: pubDate,
+            dedupeKey: dedupeKeyHash,
+            dedupeMatchedArticleId: seenPublished[0].id,
+            dedupeSimilarityEvidence: { 
+              matched_title: seenPublished[0].title,
+              dedupe_key_raw: dedupeKeyRaw 
+            },
+            numbersFound,
+          });
+        continue;
+      }
+
+      // Article passes all filters - add to qualifying list
+      qualifyingArticles.push({
+        ...article,
+        _pubDateParsed: pubDate,
+        _fullText: fullText,
+        _numbersFound: numbersFound,
+        _dedupeKey: dedupeKeyHash,
+        _dedupeKeyRaw: dedupeKeyRaw,
+      });
+    }
 
     console.log(`Qualifying business articles: ${qualifyingArticles.length}`);
 
@@ -559,73 +836,19 @@ serve(async (req) => {
       });
     }
 
-    // Deduplicate using headline-based key
-    const deduped: typeof qualifyingArticles = [];
-    for (const article of qualifyingArticles) {
-      const dateStr = new Date(article.pubDate).toISOString().split("T")[0];
-      const dedupeKeyRaw = buildDedupeKey(article.title, article.source_name, dateStr, []);
-      const dedupeKeyHash = await sha256Hex(dedupeKeyRaw);
-
-      // Check for duplicates in newsroom_articles
-      const { data: seen } = await supabase
-        .from("newsroom_articles")
-        .select("id")
-        .eq("dedupe_key", dedupeKeyHash)
-        .limit(1);
-
-      if (seen && seen.length > 0) {
-        console.log(`Skipping duplicate (newsroom): ${article.title.substring(0, 50)}...`);
-        continue;
-      }
-
-      // Check for duplicates in published articles
-      const { data: seenPublished } = await supabase
-        .from("articles")
-        .select("id")
-        .eq("dedupe_key", dedupeKeyHash)
-        .limit(1);
-
-      if (seenPublished && seenPublished.length > 0) {
-        console.log(`Skipping duplicate (articles): ${article.title.substring(0, 50)}...`);
-        continue;
-      }
-
-      (article as any)._dedupe_key = dedupeKeyHash;
-      (article as any)._dedupe_key_raw = dedupeKeyRaw;
-      deduped.push(article);
-    }
-
-    console.log(`After deduplication: ${deduped.length} new items`);
-
-    if (deduped.length === 0) {
-      await supabase.from("newsroom_runs").update({
-        status: "no_news",
-        completed_at: new Date().toISOString(),
-        metadata: { method: "rss-feeds", message: "All items were duplicates" }
-      }).eq("id", run.id);
-
-      return new Response(JSON.stringify({
-        success: true,
-        run_id: run.id,
-        message: "All items were duplicates",
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Limit to max 10 articles per run to avoid timeout
-    const toProcess = deduped.slice(0, 10);
+    const toProcess = qualifyingArticles.slice(0, 10);
 
     // Insert pending records
-    const newsRecords = toProcess.map((item: any) => ({
+    const newsRecords = toProcess.map((item) => ({
       run_id: run.id,
       source_name: item.source_name,
       original_headline: item.title,
       original_summary: item.description || "",
       source_url: item.link,
-      published_at: new Date(item.pubDate).toISOString(),
+      published_at: item._pubDateParsed.toISOString(),
       category_hint: null,
-      dedupe_key: item._dedupe_key,
+      dedupe_key: item._dedupeKey,
       processing_status: "pending",
     }));
 
@@ -638,6 +861,19 @@ serve(async (req) => {
       throw new Error(`Failed to insert newsroom items: ${insertError.message}`);
     }
 
+    // Log accepted candidates
+    for (let i = 0; i < toProcess.length; i++) {
+      const item = toProcess[i];
+      const newsroomId = insertedNews?.[i]?.id;
+      await logCandidate(supabase, run.id, item, "accepted", null, null, {
+        pubDateParsed: item._pubDateParsed,
+        fullText: item._fullText.length > 500 ? item._fullText.substring(0, 500) + "..." : item._fullText,
+        dedupeKey: item._dedupeKey,
+        numbersFound: item._numbersFound,
+        newsroomArticleId: newsroomId,
+      });
+    }
+
     await supabase.from("newsroom_runs").update({
       articles_found: insertedNews?.length || 0,
     }).eq("id", run.id);
@@ -648,7 +884,10 @@ serve(async (req) => {
     let articlesCreated = 0;
     const itemsToProcess = (insertedNews || []).slice(0, MAX_ARTICLES_PER_RUN);
 
-    for (const newsItem of itemsToProcess) {
+    for (let idx = 0; idx < itemsToProcess.length; idx++) {
+      const newsItem = itemsToProcess[idx];
+      const originalItem = toProcess[idx];
+      
       try {
         await supabase.from("newsroom_articles").update({
           processing_status: "processing",
@@ -679,6 +918,11 @@ Summary: ${newsItem.original_summary}
 Source: ${newsItem.source_name}
 URL: ${newsItem.source_url}
 Published: ${newsItem.published_at}
+
+ADDITIONAL CONTEXT (extracted from full page if RSS was thin):
+${originalItem._fullText.substring(0, 2000)}
+
+Numbers found in source: ${originalItem._numbersFound.join(", ")}
 
 CRITICAL RULES - READ CAREFULLY:
 
@@ -793,7 +1037,11 @@ Return ONLY valid JSON.`;
           }
           articleJson = JSON.parse(jsonStr);
         } catch {
-          throw new Error("Failed to parse article JSON");
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `AI returned invalid JSON`,
+          }).eq("id", newsItem.id);
+          continue;
         }
 
         // ============================================
