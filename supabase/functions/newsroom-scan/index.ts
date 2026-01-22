@@ -277,6 +277,60 @@ function getPhotoKeywords(category: string): string {
 // IMAGE EXTRACTION FROM SOURCE ARTICLE
 // Priority: 1) Source image, 2) Unsplash, 3) AI-generated
 // ============================================
+// Known competitor/news outlet domains whose images should be skipped
+// These images often contain branding, logos, studio shots with visible branding
+const COMPETITOR_IMAGE_DOMAINS = [
+  '3news.com', 'tv3network', '3news',
+  'myjoyonline', 'joynews', 'joyfm',
+  'citinewsroom', 'citifm', 'citi97',
+  'gaborbreaks', 'ghanaweb',
+  'graphiconline', 'graphic.com.gh',
+  'peacefmonline', 'peacefm',
+  'starfmonline', 'starfm',
+  'classfmonline', 'classfm',
+  'dailyguidenetwork', 'dailyguide',
+  'ghanaiantimes', 
+  'businessghana',
+  'aborotelegraph',
+  'aikidigital', 'asaaseradio',
+  'pulse.com.gh', 'pulse.ng',
+  'modernghana',
+  'yen.com.gh',
+  'gna.org.gh',
+  'thebftonline',
+  'bbc.co.uk', 'bbc.com',
+  'reuters.com', 'aljazeera',
+  'africanews.com',
+  'bloomberg.com',
+  // Common CDN patterns for news images
+  'cdngh', 'media.myjoyonline', 'images.citinewsroom'
+];
+
+// Patterns in image URLs that indicate branded/studio content
+const BRANDED_IMAGE_PATTERNS = [
+  'studio', 'presenter', 'anchor', 'newsroom', 'broadcast',
+  'live-stream', 'livestream', 'logo', 'brand', 'watermark',
+  'tv-studio', 'news-desk', 'breaking-news-graphic'
+];
+
+function isCompetitorImage(imageUrl: string): boolean {
+  const lowerUrl = imageUrl.toLowerCase();
+  
+  // Check if image is from a competitor domain
+  if (COMPETITOR_IMAGE_DOMAINS.some(domain => lowerUrl.includes(domain))) {
+    console.log(`⚠ Skipping competitor image from: ${imageUrl.substring(0, 100)}...`);
+    return true;
+  }
+  
+  // Check for branded image patterns
+  if (BRANDED_IMAGE_PATTERNS.some(pattern => lowerUrl.includes(pattern))) {
+    console.log(`⚠ Skipping branded image pattern in: ${imageUrl.substring(0, 100)}...`);
+    return true;
+  }
+  
+  return false;
+}
+
 async function extractImageFromSourceHtml(html: string, sourceUrl: string): Promise<string | null> {
   try {
     // Common patterns for article hero/featured images
@@ -328,6 +382,11 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
       } catch {
         return null;
       }
+    }
+    
+    // *** CHECK FOR COMPETITOR BRANDING ***
+    if (isCompetitorImage(imageUrl)) {
+      return null; // Skip competitor images, fall back to AI generation
     }
     
     // Validate it's actually an image URL
