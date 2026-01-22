@@ -671,6 +671,12 @@ serve(async (req) => {
     const perSourceLimit = Number(body.perSourceLimit ?? body.per_source_limit ?? 5);
     const isBackfill = triggerType === "fast_publish_backfill";
     const maxArticlesPerRun = Number(body.maxArticlesPerRun ?? body.max_articles_per_run ?? DEFAULT_MAX_ARTICLES_PER_RUN);
+    // Allow extended time window for backfill (default 168 hours = 7 days)
+    const timeWindowHours = isBackfill 
+      ? Number(body.timeWindowHours ?? body.time_window_hours ?? 168)
+      : TIME_WINDOW_HOURS;
+    // Optional source filter for targeted backfill
+    const targetSource = body.targetSource ?? body.target_source ?? null;
 
     const sourceNameToDomain = new Map<string, string>();
     for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
@@ -694,12 +700,12 @@ serve(async (req) => {
 
     if (runError) throw new Error(`Failed to create run: ${runError.message}`);
 
-    console.log(`Started newsroom run: ${run.id}`);
+    console.log(`Started newsroom run: ${run.id}, timeWindow: ${timeWindowHours}h, targetSource: ${targetSource || 'all'}`);
 
     // ============================================
     // FETCH RSS FEEDS FROM ALL SOURCES
     // ============================================
-    const cutoffTime = hoursAgo(TIME_WINDOW_HOURS);
+    const cutoffTime = hoursAgo(timeWindowHours);
     console.log(`Fetching RSS feeds, cutoff time: ${cutoffTime.toISOString()}`);
 
     const allArticles: Array<{
@@ -711,8 +717,13 @@ serve(async (req) => {
     }> = [];
 
     // Fetch all RSS feeds in parallel with health tracking
+    // Filter sources: backfill uses fast-publish domains, can target specific source
     const sourcesToFetch = isBackfill
-      ? RSS_SOURCES.filter((s) => FAST_PUBLISH_DOMAINS.has(s.domain))
+      ? RSS_SOURCES.filter((s) => {
+          const isFast = FAST_PUBLISH_DOMAINS.has(s.domain);
+          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || s.domain.includes(targetSource.toLowerCase());
+          return isFast && matchesTarget;
+        })
       : RSS_SOURCES;
 
     const feedPromises = sourcesToFetch.map(async (source) => {
