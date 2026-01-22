@@ -5,6 +5,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Remove accidental duplicated words/phrases like "not not" or "not. not".
+// Keeps punctuation, but collapses immediate repeated tokens (case-insensitive).
+function collapseImmediateWordRepeats(input: string): string {
+  if (!input) return input;
+
+  let s = String(input);
+  s = s.replace(/\s+/g, " ").trim();
+
+  // Collapse repeats even when separated by punctuation/spaces (e.g., "not. not", "the, the").
+  // We apply twice to handle triple repeats.
+  for (let i = 0; i < 2; i++) {
+    s = s.replace(/\b([a-zA-Z]+)\b([\s.,;:!?]+\1\b)+/gi, "$1");
+    s = s.replace(/\s+/g, " ").trim();
+  }
+
+  return s;
+}
+
 // Valid category slugs for StatsGH
 const VALID_CATEGORIES = [
   "top-stories",
@@ -205,6 +223,25 @@ serve(async (req) => {
     // Validate and sanitize the section field
     if (!VALID_CATEGORIES.includes(generatedFields.section)) {
       generatedFields.section = 'top-stories'; // Default fallback
+    }
+
+    // Guardrail: collapse accidental repeated words (e.g., "not not") across generated copy.
+    const keysToClean = [
+      'headline',
+      'subtitle',
+      'summary',
+      'seo_description',
+      'twitter_post',
+      'instagram_compressed',
+      'slug',
+      'author',
+      'section',
+      'tags',
+    ];
+    for (const k of keysToClean) {
+      if (typeof generatedFields?.[k] === 'string') {
+        generatedFields[k] = collapseImmediateWordRepeats(generatedFields[k]);
+      }
     }
 
     // Ensure instagram_comment is correct
