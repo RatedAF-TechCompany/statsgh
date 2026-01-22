@@ -75,6 +75,12 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
     setIsLoading(true);
     setProgress(0);
 
+    // Pre-create audio element immediately on user gesture (iOS requirement)
+    // This "unlocks" the audio context before async operations
+    const audio = new Audio();
+    audio.preload = "auto";
+    audioRef.current = audio;
+
     try {
       const text = getCleanText();
       
@@ -108,8 +114,8 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
       const audioUrl = URL.createObjectURL(audioBlob);
       audioUrlRef.current = audioUrl;
 
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
+      // Set source on the pre-created audio element
+      audio.src = audioUrl;
 
       // Track progress
       audio.addEventListener("timeupdate", () => {
@@ -133,21 +139,25 @@ export const ListenButton = ({ title, content, className }: ListenButtonProps) =
         setProgress(0);
       });
 
-      try {
-        await audio.play();
-        setIsPlaying(true);
-        setIsLoading(false);
-      } catch (playError) {
-        console.error("Audio play error:", playError);
-        // This error usually happens due to browser autoplay policies
-        toast.error("Unable to play audio. Please click the button again.");
-        setIsLoading(false);
-        setProgress(0);
-        return;
-      }
+      // Wait for audio to be ready
+      await new Promise<void>((resolve, reject) => {
+        audio.addEventListener("canplaythrough", () => resolve(), { once: true });
+        audio.addEventListener("error", () => reject(new Error("Audio load failed")), { once: true });
+        audio.load();
+      });
+
+      await audio.play();
+      setIsPlaying(true);
+      setIsLoading(false);
     } catch (error) {
       console.error("TTS error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate audio");
+      const message = error instanceof Error ? error.message : "Failed to generate audio";
+      // More specific error for autoplay issues
+      if (message.includes("not allowed") || message.includes("NotAllowedError")) {
+        toast.error("Tap the button again to start audio playback");
+      } else {
+        toast.error(message);
+      }
       setIsLoading(false);
       setProgress(0);
     }
