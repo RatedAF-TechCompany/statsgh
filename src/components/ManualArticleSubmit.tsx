@@ -2,26 +2,66 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Send, ExternalLink, Copy } from "lucide-react";
+import { Loader2, Send, ExternalLink, Copy, CalendarIcon, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export const ManualArticleSubmit = () => {
   const [input, setInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+  const [scheduledTime, setScheduledTime] = useState("09:00");
   const [result, setResult] = useState<{
     success: boolean;
     article?: { id: string; title: string; slug: string; category: string; url: string };
     tweet?: string;
+    scheduled?: boolean;
+    scheduled_at?: string;
     error?: string;
   } | null>(null);
   const navigate = useNavigate();
+
+  const getScheduledDateTime = (): string | null => {
+    if (!scheduleEnabled || !scheduledDate) return null;
+    
+    const [hours, minutes] = scheduledTime.split(":").map(Number);
+    const dateTime = new Date(scheduledDate);
+    dateTime.setHours(hours, minutes, 0, 0);
+    
+    // Ensure it's in the future
+    if (dateTime <= new Date()) {
+      return null;
+    }
+    
+    return dateTime.toISOString();
+  };
 
   const handleSubmit = async () => {
     if (!input.trim() || input.trim().length < 20) {
       toast.error("Please enter at least 20 characters (URL or article text)");
       return;
+    }
+
+    // Validate scheduled time if enabled
+    if (scheduleEnabled) {
+      if (!scheduledDate) {
+        toast.error("Please select a date for scheduling");
+        return;
+      }
+      const scheduledDateTime = getScheduledDateTime();
+      if (!scheduledDateTime) {
+        toast.error("Scheduled time must be in the future");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -43,7 +83,10 @@ export const ManualArticleSubmit = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ input: input.trim() }),
+          body: JSON.stringify({ 
+            input: input.trim(),
+            scheduled_at: getScheduledDateTime(),
+          }),
         }
       );
 
@@ -56,8 +99,17 @@ export const ManualArticleSubmit = () => {
       }
 
       setResult({ success: true, ...data });
-      toast.success("Article published successfully!");
+      
+      if (data.scheduled) {
+        toast.success(`Article scheduled for ${format(new Date(data.scheduled_at), "PPP 'at' p")}`);
+      } else {
+        toast.success("Article published successfully!");
+      }
+      
       setInput("");
+      setScheduleEnabled(false);
+      setScheduledDate(undefined);
+      setScheduledTime("09:00");
     } catch (error) {
       console.error("Submit error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to submit article";
@@ -94,6 +146,65 @@ export const ManualArticleSubmit = () => {
           className="min-h-[120px] resize-none"
           disabled={isSubmitting}
         />
+
+        {/* Schedule Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="schedule-toggle" className="text-sm font-medium cursor-pointer">
+              Schedule for later
+            </Label>
+          </div>
+          <Switch
+            id="schedule-toggle"
+            checked={scheduleEnabled}
+            onCheckedChange={setScheduleEnabled}
+            disabled={isSubmitting}
+          />
+        </div>
+
+        {/* Schedule Date/Time Picker */}
+        {scheduleEnabled && (
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border border-border bg-muted/30">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !scheduledDate && "text-muted-foreground"
+                    )}
+                    disabled={isSubmitting}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Time</Label>
+              <Input
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full"
+              />
+            </div>
+          </div>
+        )}
         
         <div className="flex gap-2">
           <Button
@@ -105,6 +216,11 @@ export const ManualArticleSubmit = () => {
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...
+              </>
+            ) : scheduleEnabled ? (
+              <>
+                <Clock className="h-4 w-4 mr-2" />
+                Schedule Article
               </>
             ) : (
               <>
@@ -122,10 +238,13 @@ export const ManualArticleSubmit = () => {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium text-foreground">
-                      ✓ Published: {result.article.title}
+                      {result.scheduled ? "📅 Scheduled:" : "✓ Published:"} {result.article.title}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       Category: {result.article.category}
+                      {result.scheduled && result.scheduled_at && (
+                        <span className="ml-2">• Publishes: {format(new Date(result.scheduled_at), "PPP 'at' p")}</span>
+                      )}
                     </p>
                   </div>
                   <Button
@@ -134,7 +253,7 @@ export const ManualArticleSubmit = () => {
                     onClick={() => navigate(result.article!.url)}
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
-                    View
+                    {result.scheduled ? "Preview" : "View"}
                   </Button>
                 </div>
                 
