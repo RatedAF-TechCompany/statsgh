@@ -178,6 +178,7 @@ const REJECTION_CODES = {
   OUTSIDE_TIME_WINDOW: "OUTSIDE_TIME_WINDOW",
   PUBDATE_PARSE_FAILED: "PUBDATE_PARSE_FAILED",
   NOT_BUSINESS: "NOT_BUSINESS",
+  NOT_GHANA_RELEVANT: "NOT_GHANA_RELEVANT",
   CRIME_FILTER: "CRIME_FILTER",
   POLITICAL_GOSSIP: "POLITICAL_GOSSIP",
   NO_NUMBERS_IN_RSS: "NO_NUMBERS_IN_RSS",
@@ -367,6 +368,36 @@ function isPoliticalGossip(text: string): boolean {
   return POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => 
     lowerText.includes(keyword)
   );
+}
+
+// ============================================
+// GHANA RELEVANCE CHECK - APPLIES TO ALL SOURCES
+// This ensures we don't publish international news that has nothing to do with Ghana
+// ============================================
+const GHANA_RELEVANCE_KEYWORDS = [
+  // Country/Region
+  "ghana", "ghanaian", "accra", "kumasi", "tamale", "takoradi", "tema", "cape coast",
+  "ashanti", "volta", "eastern region", "western region", "northern region", "greater accra",
+  "brong ahafo", "upper east", "upper west", "central region", "oti region", "savannah",
+  "bono east", "ahafo", "north east", "western north",
+  // Institutions
+  "bog", "bank of ghana", "gse", "ghana stock exchange", "gra", "ghana revenue",
+  "cocobod", "gnpc", "vra", "ecg", "gpha", "ghacem", "goil", "tullow ghana",
+  "mtn ghana", "vodafone ghana", "airtel-tigo", "airteltigo", "stanbic ghana",
+  "gcb", "ecobank ghana", "fidelity bank", "calbank", "unibank", "databank",
+  // Currency
+  "cedi", "cedis", "ghc", "ghs",
+  // Government
+  "parliament of ghana", "ndc", "npp", "akufo-addo", "bawumia", "mahama",
+  "finance minister", "ministry of finance", "ofori-atta", "ken ofori",
+  // Sports/Entertainment (if relevant)
+  "black stars", "kotoko", "hearts of oak",
+] as const;
+
+// Check if content is relevant to Ghana
+function isGhanaRelevant(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return GHANA_RELEVANCE_KEYWORDS.some(keyword => lowerText.includes(keyword));
 }
 
 // Check if text contains numbers (required for StatsGH)
@@ -761,6 +792,14 @@ serve(async (req) => {
       if (!isFast && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
           "No business keywords found in headline/summary", { pubDateParsed: pubDate });
+        continue;
+      }
+
+      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish)
+      // This prevents international press releases from being published
+      if (!isGhanaRelevant(rssText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
+          "Content does not mention Ghana or Ghanaian entities", { pubDateParsed: pubDate });
         continue;
       }
 
