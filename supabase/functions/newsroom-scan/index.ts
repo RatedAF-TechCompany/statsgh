@@ -58,7 +58,7 @@ const RSS_SOURCES = [
   
   // Major portals - business sections
   { name: "Pulse Ghana Business", rss: "https://www.pulse.com.gh/business/rss", domain: "pulse.com.gh" },
-  { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/feed", domain: "graphic.com.gh" },
+  { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
   { name: "GhanaWeb Business", rss: "https://www.ghanaweb.com/GhanaHomePage/business/rss/", domain: "ghanaweb.com" },
   { name: "ModernGhana Business", rss: "https://www.modernghana.com/news/business/rss/", domain: "modernghana.com" },
   
