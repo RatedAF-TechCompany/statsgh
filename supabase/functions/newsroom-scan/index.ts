@@ -1884,6 +1884,27 @@ ${keyNumbersHtml}
         }).eq("id", run.id);
         
         console.log(`Created article: ${newArticle.title}`);
+        
+        // Trigger AI extraction of indicator data from the article (fire-and-forget)
+        (async () => {
+          try {
+            const extractUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/extract-article-indicators`;
+            const response = await fetch(extractUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({ article_id: newArticle.id }),
+            });
+            const result = await response.json();
+            if (result.success && result.results?.inserted > 0) {
+              console.log(`Extracted ${result.results.inserted} indicator(s) from article: ${newArticle.title}`);
+            }
+          } catch (e) {
+            console.error("Indicator extraction failed:", e);
+          }
+        })();
       } catch (error) {
         console.error("Error processing news item:", error);
         await supabase.from("newsroom_articles").update({
