@@ -40,13 +40,19 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
   "3news.com",
   "starrfm.com.gh",
   "ghanaweb.com",
-  "citifmonline.com",
-  "peacefmonline.com",
-  "gikibi.com",
+  "citibusinessnews.com",
+  "gna.org.gh",
+  // Kumasi/Regional sources
+  "kumasimail.com",
+  "kessbenonline.com",
+  "sompaonline.com",
+  "ghstandard.com",
+  "yen.com.gh",
 ]);
 
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
+  // National sources
   { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
@@ -55,6 +61,12 @@ const RSS_SOURCES = [
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
   { name: "Citi Business News", rss: "https://citibusinessnews.com/feed/", domain: "citibusinessnews.com" },
   { name: "Ghana News Agency Business", rss: "https://gna.org.gh/category/business/feed/", domain: "gna.org.gh" },
+  // Kumasi/Regional sources
+  { name: "Kumasi Mail", rss: "https://kumasimail.com/feed/", domain: "kumasimail.com" },
+  { name: "Kessben Online", rss: "https://kessbenonline.com/feed/", domain: "kessbenonline.com" },
+  { name: "Sompa Online", rss: "https://sompaonline.com/feed/", domain: "sompaonline.com" },
+  { name: "Ghana Standard Kumasi", rss: "https://ghstandard.com/news/kumasi/feed/", domain: "ghstandard.com" },
+  { name: "YEN Ghana", rss: "https://yen.com.gh/feed/", domain: "yen.com.gh" },
 ] as const;
 
 // HTML scrape sources (no RSS available)
