@@ -50,7 +50,7 @@ const TOPIC_COLORS: Record<string, string> = {
   "governance-and-elections": "#ec4899", // pink
 };
 
-// Topic configuration from the site spec
+// Topic configuration from the site spec - Updated with actual database slugs
 const TOPICS_CONFIG = [
   {
     topicSlug: "population-and-demographic-change",
@@ -70,10 +70,10 @@ const TOPICS_CONFIG = [
     topicSlug: "health",
     topicTitle: "Health",
     indicatorLinks: [
+      { label: "Life Expectancy", indicatorSlug: "life-expectancy" },
       { label: "Maternal Mortality", indicatorSlug: "maternal-mortality-ratio" },
       { label: "Under 5 Mortality", indicatorSlug: "under-5-mortality" },
       { label: "Infant Mortality", indicatorSlug: "infant-mortality" },
-      { label: "Life Expectancy", indicatorSlug: "life-expectancy" },
       { label: "Skilled Birth Attendance", indicatorSlug: "skilled-birth-attendance" },
       { label: "Immunisation DTP3", indicatorSlug: "immunisation-dtp3" },
       { label: "Malaria Burden", indicatorSlug: "malaria-cases" },
@@ -85,10 +85,8 @@ const TOPICS_CONFIG = [
     topicTitle: "Energy and Environment",
     indicatorLinks: [
       { label: "Electricity Access", indicatorSlug: "electricity-access" },
-      { label: "Electricity Access Urban", indicatorSlug: "electricity-access-urban" },
-      { label: "Electricity Access Rural", indicatorSlug: "electricity-access-rural" },
-      { label: "Electricity Generation Mix", indicatorSlug: "electricity-generation-mix" },
-      { label: "Fuel Prices", indicatorSlug: "fuel-prices" },
+      { label: "Electricity Generation", indicatorSlug: "electricity-generation" },
+      { label: "Fuel Prices", indicatorSlug: "fuel-price-petrol" },
       { label: "CO2 Emissions", indicatorSlug: "co2-emissions" },
       { label: "Rainfall", indicatorSlug: "rainfall" },
       { label: "Deforestation", indicatorSlug: "forest-loss" },
@@ -103,7 +101,7 @@ const TOPICS_CONFIG = [
       { label: "Maize Production", indicatorSlug: "maize-production" },
       { label: "Rice Production", indicatorSlug: "rice-production" },
       { label: "Cassava Production", indicatorSlug: "cassava-production" },
-      { label: "Food Inflation", indicatorSlug: "inflation-food" },
+      { label: "Food Inflation", indicatorSlug: "cpi-inflation" },
       { label: "Fertiliser Use", indicatorSlug: "fertiliser-use" },
       { label: "Agriculture Share of GDP", indicatorSlug: "gdp-share-agriculture" },
     ],
@@ -112,9 +110,9 @@ const TOPICS_CONFIG = [
     topicSlug: "poverty-and-economic-development",
     topicTitle: "Poverty and Economic Development",
     indicatorLinks: [
+      { label: "GDP Growth", indicatorSlug: "gdp-growth-rate" },
       { label: "Poverty Rate", indicatorSlug: "poverty-rate" },
       { label: "Extreme Poverty Rate", indicatorSlug: "extreme-poverty-rate" },
-      { label: "GDP Growth", indicatorSlug: "gdp-growth" },
       { label: "GDP Per Capita", indicatorSlug: "gdp-per-capita" },
       { label: "Human Development Index", indicatorSlug: "hdi" },
       { label: "Inequality Gini", indicatorSlug: "gini" },
@@ -126,13 +124,13 @@ const TOPICS_CONFIG = [
     topicSlug: "finance-prices-and-public-debt",
     topicTitle: "Finance, Prices and Public Debt",
     indicatorLinks: [
-      { label: "Inflation Headline", indicatorSlug: "inflation-headline" },
-      { label: "Inflation Food", indicatorSlug: "inflation-food" },
-      { label: "Inflation Non-Food", indicatorSlug: "inflation-non-food" },
+      { label: "Inflation", indicatorSlug: "cpi-inflation" },
       { label: "Policy Rate", indicatorSlug: "policy-rate" },
-      { label: "T-Bill Rate 91 Day", indicatorSlug: "t-bill-91" },
-      { label: "Exchange Rate GHS/USD", indicatorSlug: "exchange-rate-usd" },
-      { label: "Public Debt", indicatorSlug: "public-debt" },
+      { label: "Exchange Rate GHS/USD", indicatorSlug: "exchange-rate-ghs-usd" },
+      { label: "Public Debt", indicatorSlug: "public-debt-gdp" },
+      { label: "Foreign Reserves", indicatorSlug: "foreign-reserves" },
+      { label: "Credit to Private Sector", indicatorSlug: "credit-private-sector" },
+      { label: "Tax Revenue", indicatorSlug: "tax-revenue" },
       { label: "Fiscal Balance", indicatorSlug: "fiscal-balance" },
     ],
   },
@@ -140,14 +138,12 @@ const TOPICS_CONFIG = [
     topicSlug: "trade-and-external-sector",
     topicTitle: "Trade and External Sector",
     indicatorLinks: [
-      { label: "Exports", indicatorSlug: "exports" },
-      { label: "Imports", indicatorSlug: "imports" },
       { label: "Trade Balance", indicatorSlug: "trade-balance" },
-      { label: "Gold Exports", indicatorSlug: "gold-exports" },
-      { label: "Cocoa Exports", indicatorSlug: "cocoa-exports" },
-      { label: "Oil Exports", indicatorSlug: "oil-exports" },
-      { label: "Remittances", indicatorSlug: "remittances" },
+      { label: "Gold Exports", indicatorSlug: "gold-production" },
+      { label: "Cocoa Exports", indicatorSlug: "cocoa-production" },
+      { label: "Remittances", indicatorSlug: "remittances-inflow" },
       { label: "Foreign Reserves", indicatorSlug: "foreign-reserves" },
+      { label: "Tourist Arrivals", indicatorSlug: "tourist-arrivals" },
     ],
   },
   {
@@ -155,9 +151,9 @@ const TOPICS_CONFIG = [
     topicTitle: "Jobs and Wages",
     indicatorLinks: [
       { label: "Unemployment Rate", indicatorSlug: "unemployment-rate" },
+      { label: "Minimum Wage", indicatorSlug: "minimum-wage-daily" },
       { label: "Labour Force Participation", indicatorSlug: "labour-force-participation" },
       { label: "Informal Employment Share", indicatorSlug: "informal-employment-share" },
-      { label: "Minimum Wage", indicatorSlug: "minimum-wage" },
       { label: "Public Sector Wage Bill", indicatorSlug: "public-sector-wage-bill" },
       { label: "Youth Unemployment", indicatorSlug: "youth-unemployment-rate" },
       { label: "Employment by Sector", indicatorSlug: "employment-by-sector" },
@@ -168,8 +164,8 @@ const TOPICS_CONFIG = [
     topicSlug: "education-and-knowledge",
     topicTitle: "Education and Knowledge",
     indicatorLinks: [
+      { label: "Primary Enrolment", indicatorSlug: "primary-enrollment" },
       { label: "Literacy Rate", indicatorSlug: "literacy-rate" },
-      { label: "Primary Enrolment", indicatorSlug: "primary-enrolment" },
       { label: "JHS Completion", indicatorSlug: "jhs-completion" },
       { label: "SHS Enrolment", indicatorSlug: "shs-enrolment" },
       { label: "Education Spending", indicatorSlug: "education-spending" },
@@ -199,10 +195,8 @@ const TOPICS_CONFIG = [
       { label: "Voter Turnout", indicatorSlug: "voter-turnout" },
       { label: "Registered Voters", indicatorSlug: "registered-voters" },
       { label: "Parliament Seats by Party", indicatorSlug: "parliament-seats-by-party" },
-      { label: "Budget Revenue", indicatorSlug: "government-revenue" },
-      { label: "Budget Expenditure", indicatorSlug: "government-expenditure" },
-      { label: "Fiscal Balance", indicatorSlug: "fiscal-balance" },
-      { label: "Public Debt", indicatorSlug: "public-debt" },
+      { label: "Tax Revenue", indicatorSlug: "tax-revenue" },
+      { label: "Public Debt", indicatorSlug: "public-debt-gdp" },
       { label: "Corruption Perception", indicatorSlug: "corruption-perception-index" },
     ],
   },
@@ -428,12 +422,16 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
                               <span className="text-muted-foreground mx-1.5">•</span>
                             )}
                             <button
-                              onClick={() => handleIndicatorClick(link.indicatorSlug, !!exists)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleIndicatorClick(link.indicatorSlug, !!exists);
+                              }}
+                              disabled={!exists}
                               className={`${
                                 exists
-                                  ? "text-primary cursor-pointer relative after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-[1px] after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left"
-                                  : "text-foreground/70"
-                              } text-sm transition-colors`}
+                                  ? "text-foreground font-medium cursor-pointer hover:text-primary underline decoration-foreground/30 underline-offset-2 hover:decoration-primary transition-colors"
+                                  : "text-muted-foreground cursor-default"
+                              } text-sm`}
                             >
                               {link.label}
                             </button>
