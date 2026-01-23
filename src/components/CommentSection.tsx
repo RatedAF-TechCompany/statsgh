@@ -44,19 +44,19 @@ export function CommentSection({ articleId }: Props) {
 
   return (
     <section className="space-y-6">
+      {/* Leave Comment Button - Right under the article */}
+      <button
+        type="button"
+        onClick={toggleComposer}
+        className="px-5 py-2.5 text-xs font-bold tracking-wide uppercase bg-foreground text-background hover:bg-foreground/90 transition-colors"
+      >
+        Leave Comment
+      </button>
+
       {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-xl font-semibold text-foreground">
-          Comments
-        </h2>
-        <button
-          type="button"
-          onClick={toggleComposer}
-          className="px-4 py-2 text-xs font-bold tracking-wide uppercase bg-foreground text-background hover:bg-foreground/90 transition-colors"
-        >
-          Leave Comment
-        </button>
-      </div>
+      <h2 className="font-serif text-xl font-semibold text-foreground border-b border-border pb-3">
+        Comments
+      </h2>
 
       {/* Comment Composer */}
       {composerOpen && (
