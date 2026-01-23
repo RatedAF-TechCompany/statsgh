@@ -53,10 +53,8 @@ const RSS_SOURCES = [
   { name: "MyJoyOnline News", rss: "https://www.myjoyonline.com/feed/", domain: "myjoyonline.com" },
   { name: "3News Ghana", rss: "https://3news.com/feed/", domain: "3news.com" },
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
-  { name: "Citi FM Online", rss: "https://citifmonline.com/feed/", domain: "citifmonline.com" },
-  { name: "Citi Business News", rss: "https://citibusinessnews.com/feed/", domain: "citifmonline.com" },
-  { name: "Peace FM Online", rss: "https://www.peacefmonline.com/pages/local/news/rss.xml", domain: "peacefmonline.com" },
-  { name: "Gikibi Ghana", rss: "https://gikibi.com/feed/", domain: "gikibi.com" },
+  { name: "Citi Business News", rss: "https://citibusinessnews.com/feed/", domain: "citibusinessnews.com" },
+  { name: "Ghana News Agency Business", rss: "https://gna.org.gh/category/business/feed/", domain: "gna.org.gh" },
 ] as const;
 
 // HTML scrape sources (no RSS available)
