@@ -132,20 +132,30 @@ const Home = () => {
         ) : (
           <>
             <div className="px-4">
-              {allArticles.map((article, index) => (
+              {/* Hero article */}
+              {allArticles.length > 0 && (
+                <RankedArticleItem
+                  key={allArticles[0].id}
+                  article={allArticles[0]}
+                  rank={0}
+                  isHero={true}
+                  showImage={false}
+                />
+              )}
+
+              {/* Most Read Section - right after hero */}
+              <MostReadArticles />
+
+              {/* Remaining articles */}
+              {allArticles.slice(1).map((article, index) => (
                 <RankedArticleItem
                   key={article.id}
                   article={article}
-                  rank={index}
-                  isHero={index === 0}
-                  showImage={index > 0 && (index % 5 === 0)}
+                  rank={index + 1}
+                  isHero={false}
+                  showImage={(index + 1) % 5 === 0}
                 />
               ))}
-            </div>
-
-            {/* Most Read Section */}
-            <div className="px-4">
-              <MostReadArticles />
             </div>
 
             {/* Pagination */}
