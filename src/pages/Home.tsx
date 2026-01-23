@@ -98,22 +98,13 @@ const Home = () => {
           <img src={statsghLogo} alt="StatsGH" className="h-6 sm:h-8" />
           <span className="font-serif text-base sm:text-lg font-semibold text-ft-maroon">StatsGH</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => navigate('/search')}
-            className="p-2 hover:opacity-70 transition-opacity"
-            aria-label="Search"
-          >
-            <Search size={22} className="text-ft-maroon" />
-          </button>
-          <button 
-            onClick={() => navigate('/auth')}
-            className="p-2 -mr-2 hover:opacity-70 transition-opacity"
-            aria-label="User account"
-          >
-            <User size={22} className="text-ft-maroon" />
-          </button>
-        </div>
+        <button 
+          onClick={() => navigate('/search')}
+          className="p-2 -mr-2 hover:opacity-70 transition-opacity"
+          aria-label="Search"
+        >
+          <Search size={22} className="text-ft-maroon" />
+        </button>
       </header>
 
       {/* Ghana Data Highlights Section */}
