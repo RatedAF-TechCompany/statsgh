@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { RankedArticleItem } from "@/components/RankedArticleItem";
 import GhanaDataHighlights from "@/components/GhanaDataHighlights";
 import TopicsOverview from "@/components/TopicsOverview";
+import MostReadArticles from "@/components/MostReadArticles";
 import statsghLogo from "@/assets/statsgh-logo.png";
 
 const ARTICLES_PER_PAGE = 10;
@@ -140,6 +141,11 @@ const Home = () => {
                   showImage={index > 0 && (index % 5 === 0)}
                 />
               ))}
+            </div>
+
+            {/* Most Read Section */}
+            <div className="px-4">
+              <MostReadArticles />
             </div>
 
             {/* Pagination */}
