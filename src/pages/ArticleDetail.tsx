@@ -438,9 +438,14 @@ const ArticleDetail = () => {
 
           {/* Article Body */}
           <div 
-            className="prose prose-lg max-w-none mb-12"
+            className="prose prose-lg max-w-none mb-6"
             dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
+
+          {/* Comments Section - Immediately after article */}
+          <div className="mb-12">
+            <CommentSection articleId={article.id} />
+          </div>
 
           {/* Video Embed */}
           {article.video_url && (
@@ -576,10 +581,6 @@ const ArticleDetail = () => {
           maxItems={6}
         />
 
-        {/* Comments Section */}
-        <div className="mt-12 border-t border-border pt-10">
-          <CommentSection articleId={article.id} />
-        </div>
       </main>
 
       {/* JSON-LD Structured Data */}
