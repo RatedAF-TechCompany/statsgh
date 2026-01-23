@@ -40,6 +40,9 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
   "3news.com",
   "starrfm.com.gh",
   "ghanaweb.com",
+  "citifmonline.com",
+  "peacefmonline.com",
+  "gikibi.com",
 ]);
 
 // Ghana business news sources with RSS feeds
@@ -47,8 +50,13 @@ const RSS_SOURCES = [
   { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
+  { name: "MyJoyOnline News", rss: "https://www.myjoyonline.com/feed/", domain: "myjoyonline.com" },
   { name: "3News Ghana", rss: "https://3news.com/feed/", domain: "3news.com" },
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
+  { name: "Citi FM Online", rss: "https://citifmonline.com/feed/", domain: "citifmonline.com" },
+  { name: "Citi Business News", rss: "https://citibusinessnews.com/feed/", domain: "citifmonline.com" },
+  { name: "Peace FM Online", rss: "https://www.peacefmonline.com/pages/local/news/rss.xml", domain: "peacefmonline.com" },
+  { name: "Gikibi Ghana", rss: "https://gikibi.com/feed/", domain: "gikibi.com" },
 ] as const;
 
 // HTML scrape sources (no RSS available)
