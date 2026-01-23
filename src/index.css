@@ -55,6 +55,9 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 40 34% 93%;
     
+    /* Accent colors */
+    --accent-green: 142 76% 36%;
+    
     --radius: 0rem;
   }
 }

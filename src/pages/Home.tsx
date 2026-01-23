@@ -2,32 +2,27 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { useState, useRef } from "react";
-import { Menu, User, Search } from "lucide-react";
+import { useState } from "react";
+import { Menu, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SITE_NAVIGATION } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
-import { RankedArticleItem } from "@/components/RankedArticleItem";
-import GhanaDataHighlights from "@/components/GhanaDataHighlights";
-import TopicsOverview from "@/components/TopicsOverview";
-import MostReadArticles from "@/components/MostReadArticles";
 import statsghLogo from "@/assets/statsgh-logo.png";
+import { LeadStory } from "@/components/home/LeadStory";
+import { SecondaryStory } from "@/components/home/SecondaryStory";
+import { LatestNewsList } from "@/components/home/LatestNewsList";
+import MostReadSidebar from "@/components/home/MostReadSidebar";
+import DataHighlightsSidebar from "@/components/home/DataHighlightsSidebar";
+import TopicsOverview from "@/components/TopicsOverview";
 
-const ARTICLES_PER_PAGE = 10;
-
-// Top Stories category slug
-const TOP_STORIES_SLUG = "top-stories";
+const ARTICLES_PER_PAGE = 20;
 
 const Home = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const topicsSectionRef = useRef<HTMLDivElement>(null);
 
-  const {
-    data: articlesData,
-    isLoading,
-  } = useQuery({
+  const { data: articlesData, isLoading } = useQuery({
     queryKey: ["all-articles", currentPage],
     queryFn: async () => {
       const from = (currentPage - 1) * ARTICLES_PER_PAGE;
@@ -47,17 +42,19 @@ const Home = () => {
 
   const allArticles = articlesData || [];
   const hasNextPage = allArticles.length === ARTICLES_PER_PAGE;
+  
+  // Split articles for different sections
+  const leadArticle = allArticles[0];
+  const secondaryArticles = allArticles.slice(1, 4); // Next 3 articles for grid
+  const remainingArticles = allArticles.slice(4); // Rest for the list
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Simplified Mobile Header */}
+      {/* Header */}
       <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-background sticky top-0 z-10">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <button 
-              className="p-2 -ml-2 hover:opacity-70 transition-opacity"
-              aria-label="Menu"
-            >
+            <button className="p-2 -ml-2 hover:opacity-70 transition-opacity" aria-label="Menu">
               <Menu size={24} className="text-ft-maroon" />
             </button>
           </SheetTrigger>
@@ -94,10 +91,12 @@ const Home = () => {
             </nav>
           </SheetContent>
         </Sheet>
+        
         <div className="flex items-center gap-1.5 sm:gap-2">
           <img src={statsghLogo} alt="StatsGH" className="h-6 sm:h-8" />
           <span className="font-serif text-base sm:text-lg font-semibold text-ft-maroon">StatsGH</span>
         </div>
+        
         <button 
           onClick={() => navigate('/search')}
           className="p-2 -mr-2 hover:opacity-70 transition-opacity"
@@ -107,100 +106,112 @@ const Home = () => {
         </button>
       </header>
 
-      {/* Ghana Data Highlights Section */}
-      <GhanaDataHighlights />
-
-      <main className="max-w-3xl mx-auto">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-6">
         {isLoading ? (
-          <div className="px-4">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="py-3 border-b border-border">
-                <Skeleton className="h-6 w-full mb-2" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8">
+              <Skeleton className="h-64 w-full mb-4" />
+              <Skeleton className="h-8 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="lg:col-span-4">
+              <Skeleton className="h-6 w-32 mb-4" />
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full mb-2" />
+              ))}
+            </div>
           </div>
         ) : (
           <>
-            <div className="px-4">
-              {/* Hero article */}
-              {allArticles.length > 0 && (
-                <RankedArticleItem
-                  key={allArticles[0].id}
-                  article={allArticles[0]}
-                  rank={0}
-                  isHero={true}
-                  showImage={false}
-                />
-              )}
-
-              {/* Most Read Section - right after hero */}
-              <MostReadArticles />
-
-              {/* Remaining articles */}
-              {allArticles.slice(1).map((article, index) => (
-                <RankedArticleItem
-                  key={article.id}
-                  article={article}
-                  rank={index + 1}
-                  isHero={false}
-                  showImage={(index + 1) % 5 === 0}
-                />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {(currentPage > 1 || hasNextPage) && (
-              <div className="px-4 py-6 flex justify-center gap-3">
-                {currentPage > 1 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCurrentPage(currentPage - 1);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {hasNextPage && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCurrentPage(currentPage + 1);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    Next
-                  </Button>
+            {/* Top Section: Lead Story + Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-8 border-b border-border">
+              {/* Lead Story (Main Column) */}
+              <div className="lg:col-span-8">
+                {leadArticle && <LeadStory article={leadArticle} />}
+                
+                {/* Secondary Stories Grid */}
+                {secondaryArticles.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      {secondaryArticles.map((article) => (
+                        <SecondaryStory 
+                          key={article.id} 
+                          article={article} 
+                          showImage={!!article.hero_image_url}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
+              
+              {/* Sidebar */}
+              <aside className="lg:col-span-4 space-y-6">
+                <MostReadSidebar />
+                <DataHighlightsSidebar />
+              </aside>
+            </div>
+
+            {/* Lower Section: More Stories + Topics */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8">
+              {/* More Stories */}
+              <div className="lg:col-span-8">
+                <LatestNewsList articles={remainingArticles} title="More stories" />
+                
+                {/* Pagination */}
+                {(currentPage > 1 || hasNextPage) && (
+                  <div className="py-6 flex justify-center gap-3">
+                    {currentPage > 1 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setCurrentPage(currentPage - 1);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                      >
+                        Previous
+                      </Button>
+                    )}
+                    {hasNextPage && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setCurrentPage(currentPage + 1);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                      >
+                        Next
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Topics Sidebar */}
+              <aside className="lg:col-span-4">
+                <section className="border-t-2 border-ft-maroon pt-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-serif text-base font-bold text-foreground">
+                      Topics
+                    </h2>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-ft-maroon hover:text-ft-maroon/80 -mt-1 h-auto py-0 text-xs"
+                      onClick={() => navigate('/topics')}
+                    >
+                      View all →
+                    </Button>
+                  </div>
+                  <TopicsOverview showHeader={false} limitIndicators={3} maxTopics={4} />
+                </section>
+              </aside>
+            </div>
           </>
         )}
       </main>
-
-      {/* Topics Overview Section - Always visible */}
-      <div 
-        ref={topicsSectionRef}
-        className="max-w-3xl mx-auto px-4 my-8"
-      >
-        <div className="border-t border-border pt-8 mb-6 flex items-start justify-between">
-          <div>
-            <h2 className="font-serif text-xl font-semibold text-ft-maroon mb-1">Explore by Topic</h2>
-            <p className="text-sm text-muted-foreground">Browse our data and research organized by subject area</p>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-ft-maroon hover:text-ft-maroon/80 -mt-1"
-            onClick={() => navigate('/topics')}
-          >
-            View all →
-          </Button>
-        </div>
-        <TopicsOverview showHeader={false} limitIndicators={5} />
-      </div>
     </div>
   );
 };

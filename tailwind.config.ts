@@ -58,6 +58,7 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         "ft-maroon": "hsl(var(--ft-maroon))",
+        "accent-green": "hsl(var(--accent-green))",
       },
       borderRadius: {
         lg: "var(--radius)",
