@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
@@ -33,13 +32,9 @@ export const RelatedArticles = ({
   const { data: relatedArticles, isLoading } = useQuery({
     queryKey: ["related-articles", articleId, tags, categorySlug],
     queryFn: async () => {
-      // Build a query that finds articles matching tags or category
-      // Priority: same tags > same category > latest
-      
       const matchedArticleIds = new Set<string>();
       const matchedArticles: RelatedArticle[] = [];
 
-      // 1. Match by tags if available
       if (tags && tags.length > 0) {
         const { data: tagMatches } = await supabase
           .from("articles")
@@ -60,7 +55,6 @@ export const RelatedArticles = ({
         }
       }
 
-      // 2. Match by category if available and need more articles
       if (categorySlug && matchedArticles.length < maxItems) {
         const { data: categoryMatches } = await supabase
           .from("articles")
@@ -81,7 +75,6 @@ export const RelatedArticles = ({
         }
       }
 
-      // 3. Fallback to latest articles if we still need more
       if (matchedArticles.length < maxItems) {
         const { data: latestArticles } = await supabase
           .from("articles")
@@ -108,15 +101,17 @@ export const RelatedArticles = ({
 
   if (isLoading) {
     return (
-      <section className="mt-12 border-t border-border pt-8">
-        <h2 className="font-serif text-2xl font-bold mb-6">Related Articles</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-12 pt-10 border-t border-border">
+        <h2 className="font-serif text-2xl font-semibold text-foreground mb-6">
+          More from StatsGH
+        </h2>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="space-y-3">
-              <Skeleton className="aspect-video w-full rounded-lg" />
-              <Skeleton className="h-4 w-20" />
+              <Skeleton className="aspect-[3/2] w-full" />
+              <Skeleton className="h-3 w-16" />
               <Skeleton className="h-5 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-32" />
             </div>
           ))}
         </div>
@@ -129,44 +124,48 @@ export const RelatedArticles = ({
   }
 
   return (
-    <section className="mt-12 border-t border-border pt-8">
-      <h2 className="font-serif text-2xl font-bold mb-6">Related Articles</h2>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="mt-12 pt-10 border-t border-border">
+      <h2 className="font-serif text-2xl font-semibold text-foreground mb-6">
+        More from StatsGH
+      </h2>
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {relatedArticles.map((article) => (
           <Link
             key={article.id}
             to={`/${article.category_slug}/${article.slug}`}
-            className="group"
+            className="group block"
           >
-            <article>
+            <article className="h-full">
               {article.hero_image_url && (
-                <div className="aspect-video overflow-hidden rounded-lg mb-3">
+                <div className="aspect-[3/2] overflow-hidden mb-3">
                   <img
                     src={article.hero_image_url}
-                    alt={article.title}
+                    alt=""
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
               )}
-              <Badge variant="outline" className="mb-2 text-xs capitalize">
-                {article.category_slug?.replace(/-/g, " ")}
-              </Badge>
-              <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1">
-                {article.title}
-              </h3>
-              {article.summary && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                  {article.summary}
-                </p>
-              )}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {article.author_name && <span>{article.author_name}</span>}
-                {article.published_at && (
-                  <>
-                    <span>·</span>
-                    <time>{format(new Date(article.published_at), "MMM d, yyyy")}</time>
-                  </>
-                )}
+              
+              <div className="space-y-2">
+                <Link 
+                  to={`/${article.category_slug}`}
+                  className="text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {article.category_slug?.replace(/-/g, " ")}
+                </Link>
+                
+                <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-3">
+                  {article.title}
+                </h3>
+                
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {article.published_at && (
+                    <time dateTime={article.published_at}>
+                      {format(new Date(article.published_at), "MMM d, yyyy")}
+                    </time>
+                  )}
+                </div>
               </div>
             </article>
           </Link>

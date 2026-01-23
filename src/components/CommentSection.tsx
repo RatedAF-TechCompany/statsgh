@@ -43,45 +43,52 @@ export function CommentSection({ articleId }: Props) {
   }
 
   return (
-    <section className="mt-8 space-y-4">
-      <div className="flex items-center justify-end">
+    <section className="space-y-6">
+      {/* Section Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-xl font-semibold text-foreground">
+          Comments
+        </h2>
         <button
           type="button"
           onClick={toggleComposer}
-          className="rounded-sm border-2 border-ft-maroon bg-ft-maroon px-4 py-2 text-xs font-bold tracking-wider uppercase text-white hover:bg-ft-maroon/90 transition-colors"
+          className="px-4 py-2 text-xs font-bold tracking-wide uppercase bg-foreground text-background hover:bg-foreground/90 transition-colors"
         >
           Leave Comment
         </button>
       </div>
 
+      {/* Comment Composer */}
       {composerOpen && (
-        <div className="rounded-sm border-2 border-ft-maroon/40 bg-[#fdf6ed] p-4 text-sm shadow-md">
-          <div className="mb-3 flex items-center justify-between border-b border-ft-maroon/20 pb-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-ft-maroon">
+        <div className="border border-border bg-muted/30 p-5">
+          <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
               {replyToId ? `Reply to ${replyToAuthor}` : "Leave a comment"}
             </p>
             {replyToId && (
               <button
                 type="button"
                 onClick={handleCancelReply}
-                className="text-[10px] text-black/60 hover:text-black"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel reply
               </button>
             )}
           </div>
+          
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
-            className="w-full resize-none rounded-sm border-2 border-ft-maroon/30 bg-white px-3 py-2 text-sm leading-relaxed outline-none focus:border-ft-maroon/60 transition-colors"
-            placeholder="Share your view on this story"
+            className="w-full resize-none border border-border bg-background px-4 py-3 text-sm leading-relaxed outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+            placeholder="Share your thoughts on this article..."
           />
-          <div className="mt-3 flex items-center justify-end gap-3">
+          
+          <div className="mt-4 flex items-center justify-end gap-4">
             <button
               type="button"
               onClick={() => setComposerOpen(false)}
-              className="text-xs font-medium text-ft-maroon/70 hover:text-ft-maroon transition-colors"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
@@ -89,7 +96,7 @@ export function CommentSection({ articleId }: Props) {
               type="button"
               onClick={handlePostClick}
               disabled={!body.trim()}
-              className="rounded-sm bg-ft-maroon px-4 py-2 text-xs font-bold uppercase tracking-wider text-white disabled:opacity-40 hover:bg-ft-maroon/90 transition-colors"
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wide bg-foreground text-background disabled:opacity-40 hover:bg-foreground/90 transition-colors"
             >
               Post Comment
             </button>
@@ -97,8 +104,10 @@ export function CommentSection({ articleId }: Props) {
         </div>
       )}
 
+      {/* Comments List */}
       <CommentsList articleId={articleId} onReply={handleReply} />
 
+      {/* Auth Modal */}
       {authOpen && (
         <CommentAuthModal
           articleId={articleId}
