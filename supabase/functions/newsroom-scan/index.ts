@@ -75,9 +75,17 @@ const SCRAPE_SOURCES = [
     name: "GhanaWeb Business", 
     url: "https://www.ghanaweb.com/GhanaHomePage/business/", 
     domain: "ghanaweb.com",
-    // GhanaWeb article pattern: /GhanaHomePage/NewsArchive/artikel.php?ID=XXXXXXX or /GhanaHomePage/business/artikel.php?ID=XXXXXXX
     articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/(?:business|NewsArchive)\/artikel\.php\?ID=\d+)"/gi,
     titlePattern: /<a[^>]+href="[^"]*artikel\.php\?ID=\d+"[^>]*>([^<]+)<\/a>/gi,
+    type: "news" as const,
+  },
+  { 
+    name: "GhanaWeb Opinions", 
+    url: "https://www.ghanaweb.com/GhanaHomePage/opinions/", 
+    domain: "ghanaweb.com",
+    articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/(?:opinions|NewsArchive)\/artikel\.php\?ID=\d+)"/gi,
+    titlePattern: /<a[^>]+href="[^"]*artikel\.php\?ID=\d+"[^>]*>([^<]+)<\/a>/gi,
+    type: "opinion" as const,
   },
 ] as const;
 
@@ -98,6 +106,7 @@ const PREFERRED_CATEGORIES = [
   "environment-climate",
   "population",
   "business",
+  "opinion",
   "charts-explainers",
 ] as const;
 
@@ -281,6 +290,7 @@ const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
   "population": ["ghana,city", "africa,people", "africa,urban", "ghana,community"],
   "business": ["africa,business", "ghana,office", "africa,entrepreneur", "africa,meeting"],
   "top-stories": ["ghana,city", "africa,news", "ghana,accra", "africa,people"],
+  "opinion": ["africa,writing", "ghana,newspaper", "africa,discussion", "africa,debate"],
   "charts-explainers": ["africa,data", "africa,office", "africa,computer", "africa,meeting"],
 };
 
@@ -848,6 +858,7 @@ interface ScrapedArticle {
   pubDate: string;
   description: string;
   source_name: string;
+  is_opinion?: boolean;
 }
 
 async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]> {
@@ -962,6 +973,120 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
     
   } catch (error) {
     console.log(`GhanaWeb scrape error:`, error instanceof Error ? error.message : "Unknown error");
+  }
+  
+  return articles;
+}
+
+// ============================================
+// GHANAWEB OPINIONS HTML SCRAPER
+// Fetches the opinions page and extracts article links/headlines
+// No numbers rule - opinion pieces don't require statistics
+// ============================================
+async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]> {
+  const articles: ScrapedArticle[] = [];
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch("https://www.ghanaweb.com/GhanaHomePage/opinions/", {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.log(`GhanaWeb Opinions scrape failed: ${response.status}`);
+      return articles;
+    }
+    
+    const html = await response.text();
+    console.log(`GhanaWeb Opinions HTML fetched: ${html.length} chars`);
+    
+    // Find all article links with their titles
+    const articleMatches: Array<{ url: string; title: string }> = [];
+    
+    // Pattern 1: Links with title attribute
+    const titleAttrPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/opinions\/[^"]+\-\d+)"[^>]+title="([^"]+)"/gi;
+    let match;
+    
+    while ((match = titleAttrPattern.exec(html)) !== null) {
+      const url = match[1];
+      let title = match[2].trim();
+      
+      title = title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      
+      if (title.length < 15) continue;
+      
+      articleMatches.push({ url, title });
+    }
+    
+    // Pattern 2: Links with h2/h3 inside
+    const headingPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/opinions\/[^"]+\-\d+)"[^>]*>[\s\S]*?<h[23][^>]*>([^<]+)<\/h[23]>/gi;
+    
+    while ((match = headingPattern.exec(html)) !== null) {
+      const url = match[1];
+      let title = match[2].trim();
+      
+      title = title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      
+      if (title.length < 15) continue;
+      
+      articleMatches.push({ url, title });
+    }
+    
+    console.log(`GhanaWeb Opinions: Found ${articleMatches.length} article matches before dedup`);
+    
+    // Deduplicate by URL
+    const seenUrls = new Set<string>();
+    const uniqueArticles = articleMatches.filter(a => {
+      if (seenUrls.has(a.url)) return false;
+      seenUrls.add(a.url);
+      return true;
+    });
+    
+    console.log(`GhanaWeb Opinions: Found ${uniqueArticles.length} unique article links`);
+    
+    // Limit to first 10 articles for opinions
+    const articlesToProcess = uniqueArticles.slice(0, 10);
+    
+    const now = new Date();
+    
+    for (const item of articlesToProcess) {
+      articles.push({
+        title: item.title,
+        link: item.url,
+        pubDate: now.toISOString(),
+        description: "",
+        source_name: "GhanaWeb Opinions",
+        is_opinion: true,
+      });
+    }
+    
+    console.log(`GhanaWeb Opinions: Returning ${articles.length} articles for processing`);
+    
+  } catch (error) {
+    console.log(`GhanaWeb Opinions scrape error:`, error instanceof Error ? error.message : "Unknown error");
   }
   
   return articles;
@@ -1115,10 +1240,15 @@ serve(async (req) => {
     for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
     // Add GhanaWeb to domain mapping (scraped, not RSS)
     sourceNameToDomain.set("GhanaWeb Business", "ghanaweb.com");
+    sourceNameToDomain.set("GhanaWeb Opinions", "ghanaweb.com");
 
     const isFastPublishSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
       return domain ? FAST_PUBLISH_DOMAINS.has(domain) : false;
+    };
+
+    const isOpinionSource = (sourceName: string): boolean => {
+      return sourceName === "GhanaWeb Opinions";
     };
 
     const { data: run, error: runError } = await supabase
@@ -1192,11 +1322,23 @@ serve(async (req) => {
       const ghanaWebArticles = await scrapeGhanaWebBusiness();
       allArticles.push(...ghanaWebArticles);
       
-      // Update source health for GhanaWeb
+      // Update source health for GhanaWeb Business
       if (ghanaWebArticles.length > 0) {
         await updateSourceHealth(supabase, "GhanaWeb Business", true, ghanaWebArticles.length);
       } else {
         await updateSourceHealth(supabase, "GhanaWeb Business", false, 0, "HTML scrape returned no articles");
+      }
+
+      // Scrape GhanaWeb Opinions
+      console.log("Scraping GhanaWeb Opinions page...");
+      const ghanaWebOpinions = await scrapeGhanaWebOpinions();
+      allArticles.push(...ghanaWebOpinions);
+      
+      // Update source health for GhanaWeb Opinions
+      if (ghanaWebOpinions.length > 0) {
+        await updateSourceHealth(supabase, "GhanaWeb Opinions", true, ghanaWebOpinions.length);
+      } else {
+        await updateSourceHealth(supabase, "GhanaWeb Opinions", false, 0, "HTML scrape returned no articles");
       }
     }
 
@@ -1216,6 +1358,7 @@ serve(async (req) => {
       _numbersFound: string[];
       _dedupeKey: string;
       _dedupeKeyRaw: string;
+      _isOpinion?: boolean;
     }> = [];
 
     // Enforce per-source quota (used for backfill: e.g., 5 per outlet)
@@ -1223,7 +1366,8 @@ serve(async (req) => {
 
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
-      if (isBackfill && !isFast) continue;
+      const isOpinion = isOpinionSource(article.source_name);
+      if (isBackfill && !isFast && !isOpinion) continue;
 
       if (isBackfill) {
         const current = perSourceCounts.get(article.source_name) ?? 0;
@@ -1255,15 +1399,15 @@ serve(async (req) => {
         continue;
       }
 
-      // Check if business-related (skipped for fast-publish sources)
+      // Check if business-related (skipped for fast-publish and opinion sources)
       const rssText = `${article.title} ${article.description}`;
-      if (!isFast && !isBusinessRelated(rssText)) {
+      if (!isFast && !isOpinion && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
           "No business keywords found in headline/summary", { pubDateParsed: pubDate });
         continue;
       }
 
-      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish)
+      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish and opinion)
       // This prevents international press releases from being published
       if (!isGhanaRelevant(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
@@ -1271,25 +1415,26 @@ serve(async (req) => {
         continue;
       }
 
-      // Check crime filter (skipped for fast-publish sources)
-      if (!isFast && isCrimeNews(rssText)) {
+      // Check crime filter (skipped for fast-publish and opinion sources)
+      if (!isFast && !isOpinion && isCrimeNews(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_FILTER,
           "Contains crime keywords without statistical context", { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check political gossip filter (skipped for fast-publish sources)
-      if (!isFast && isPoliticalGossip(rssText)) {
+      // Check political gossip filter (skipped for fast-publish and opinion sources - opinions can be political)
+      if (!isFast && !isOpinion && isPoliticalGossip(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICAL_GOSSIP,
           "Political drama/gossip without data substance", { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check if RSS has numbers - if not, fetch full page (skipped for fast-publish sources)
+      // Check if RSS has numbers - if not, fetch full page (skipped for fast-publish and opinion sources)
+      // OPINION articles don't require numbers
       let fullText = rssText;
       let numbersFound = extractNumbers(rssText);
 
-      if (!isFast && !containsNumbers(rssText)) {
+      if (!isFast && !isOpinion && !containsNumbers(rssText)) {
         console.log(`RSS has no numbers, fetching full page: ${article.link}`);
         const pageText = await fetchFullPageText(article.link);
         
@@ -1310,6 +1455,15 @@ serve(async (req) => {
         }
         
         console.log(`Full page has numbers: ${numbersFound.slice(0, 5).join(", ")}`);
+      }
+
+      // For opinion articles, fetch full page text for restructuring
+      if (isOpinion && !fullText.includes(article.link)) {
+        console.log(`Opinion article: Fetching full page for: ${article.link}`);
+        const pageText = await fetchFullPageText(article.link);
+        if (pageText) {
+          fullText = `${rssText} ${pageText}`;
+        }
       }
 
       // Generate dedupe key
@@ -1368,10 +1522,11 @@ serve(async (req) => {
         _numbersFound: numbersFound,
         _dedupeKey: dedupeKeyHash,
         _dedupeKeyRaw: dedupeKeyRaw,
+        _isOpinion: isOpinion,
       });
     }
 
-    console.log(`Qualifying business articles: ${qualifyingArticles.length}`);
+    console.log(`Qualifying articles: ${qualifyingArticles.length} (${qualifyingArticles.filter(a => a._isOpinion).length} opinion)`);
 
     // ============================================
     // FAILSAFE: No qualifying stories
@@ -1479,13 +1634,14 @@ serve(async (req) => {
         // MASTER ARTICLE GENERATION PROMPT
         // ============================================
         const isFastPublishItem = isFastPublishSource(newsItem.source_name);
+        const isOpinionItem = originalItem._isOpinion === true;
 
         // ============================================
-        // MASTER RULE: SOURCE MUST HAVE NUMBERS
-        // This applies to ALL sources including fast-publish
+        // MASTER RULE: SOURCE MUST HAVE NUMBERS (except for opinion articles)
+        // This applies to ALL sources including fast-publish, but NOT opinion
         // ============================================
         const sourceNumbers = originalItem._numbersFound || [];
-        if (sourceNumbers.length === 0 || !containsNumbers(originalItem._fullText)) {
+        if (!isOpinionItem && (sourceNumbers.length === 0 || !containsNumbers(originalItem._fullText))) {
           console.log(`MASTER RULE REJECTION: "${newsItem.original_headline.substring(0, 50)}..." - Source has NO NUMBERS`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
@@ -1494,7 +1650,68 @@ serve(async (req) => {
           continue;
         }
 
-        const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
+        // Choose the appropriate prompt based on whether this is an opinion piece
+        let articlePrompt: string;
+        
+        if (isOpinionItem) {
+          // ============================================
+          // OPINION ARTICLE PROMPT - No numbers required, simple English restructuring
+          // ============================================
+          articlePrompt = `You are the StatsGH editor for OPINION COLUMNS. Your job is to restructure opinion pieces into simple, clear English.
+
+ORIGINAL OPINION PIECE:
+Title: ${newsItem.original_headline}
+Summary: ${newsItem.original_summary}
+Source: ${newsItem.source_name}
+URL: ${newsItem.source_url}
+Published: ${newsItem.published_at}
+
+FULL TEXT:
+${originalItem._fullText.substring(0, 3000)}
+
+YOUR TASK:
+Rewrite this opinion piece using VERY SIMPLE ENGLISH. Make it easy for anyone to read and understand.
+
+LANGUAGE RULES - VERY SIMPLE ENGLISH:
+- Use short, simple words. "use" not "utilize". "get" not "obtain". "help" not "facilitate".
+- Write short sentences. One idea per sentence.
+- Explain difficult words in brackets. Example: "sovereignty (a country's right to rule itself)".
+- No big grammar words. No jargon.
+- Keep the writer's main argument and point of view.
+- Do not add your own opinions. Just simplify what the writer said.
+
+STRUCTURE:
+1. A clear headline that tells the reader what this opinion is about (max 80 characters)
+2. A one-sentence subtitle
+3. The opinion piece restructured into clear paragraphs with simple English
+4. A short summary of the main argument at the end
+
+OUTPUT (valid JSON only):
+{
+  "reject": false,
+  "headline": "Clear opinion headline, max 80 characters, no colons",
+  "subtitle": "One-sentence summary of the opinion",
+  "article_body": "The full opinion piece restructured in simple English. Use short paragraphs. Keep the original argument and viewpoint. Just make it easier to read.",
+  "takeaway": "One sentence summarizing the writer's main point",
+  "tweet": "One sentence capturing the key opinion, no URLs",
+  "source_url": "${newsItem.source_url}",
+  "seo_description": "SEO meta description under 155 characters",
+  "slug": "url-friendly-slug-lowercase-hyphens",
+  "section": "opinion",
+  "tags": ["opinion", "ghana", "plus relevant topic tags"],
+  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
+  "author_name": "Extract the opinion writer's name from the text if available, otherwise leave empty"
+}
+
+If the text is too short or not a real opinion piece, return:
+{"reject": true, "reason": "Explain why"}
+
+Return ONLY valid JSON.`;
+        } else {
+          // ============================================
+          // STANDARD NEWS ARTICLE PROMPT - Numbers required
+          // ============================================
+          articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
 
 ORIGINAL NEWS ITEM:
 Headline: ${newsItem.original_headline}
@@ -1597,6 +1814,7 @@ If source has numbers, return:
 }
 
 Return ONLY valid JSON.`;
+        }
 
         const articleResponse = await openai.chat.completions.create({
           model: "gpt-4o",
