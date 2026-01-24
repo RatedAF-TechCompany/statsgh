@@ -24,6 +24,7 @@ export const SITE_NAVIGATION = {
     { label: "Environment & Climate Data", slug: "environment-climate", type: "category" as const },
     { label: "Population & Demographics", slug: "population", type: "category" as const },
     { label: "Business Benchmarks", slug: "business", type: "category" as const },
+    { label: "Opinion", slug: "opinion", type: "category" as const },
     { label: "Charts & Explainers", slug: "charts-explainers", type: "category" as const },
     { label: "GhanaCrimes", slug: "ghanacrimes", type: "external" as const, url: "https://ghanacrimes.com" }
   ]
@@ -45,6 +46,7 @@ export const CATEGORY_MAPPING = {
   "environment-climate": "Environment & Climate Data",
   "population": "Population & Demographics",
   "business": "Business Benchmarks",
+  "opinion": "Opinion",
   "charts-explainers": "Charts & Explainers",
   "ghanacrimes": "GhanaCrimes"
 } as const;
