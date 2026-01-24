@@ -822,14 +822,41 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
     
     const html = await response.text();
     
+    // Special handling for GhanaWeb: extract article body from specific div
+    const isGhanaWeb = url.includes('ghanaweb.com');
+    let text = '';
+    
+    if (isGhanaWeb) {
+      // GhanaWeb uses specific article content containers
+      // Try to extract from article-content or feature-body divs
+      const articleContentMatch = html.match(/<div[^>]+class="[^"]*(?:article-content|feature-body|entry-content|post-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+      
+      if (articleContentMatch) {
+        text = articleContentMatch[1];
+      } else {
+        // Fallback: Extract content between common article markers
+        const mainMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+        if (mainMatch) {
+          text = mainMatch[1];
+        } else {
+          // Last resort: try to find the main text block after stripping junk
+          text = html;
+        }
+      }
+    } else {
+      text = html;
+    }
+    
     // Extract text from HTML - remove scripts, styles, then strip tags
-    let text = html
+    text = text
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
       .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
       .replace(/<header[\s\S]*?<\/header>/gi, ' ')
       .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+      .replace(/<form[\s\S]*?<\/form>/gi, ' ') // Remove login forms
+      .replace(/<div[^>]*class="[^"]*(?:login|signup|subscribe|newsletter|terms|cookie|consent|modal|popup|overlay|sidebar|advertisement|ad-|banner)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
@@ -838,6 +865,11 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
       .replace(/&#39;/gi, "'")
+      // Remove common boilerplate text patterns
+      .replace(/Terms of Service[\s\S]{0,200}Privacy Policy/gi, ' ')
+      .replace(/Log\s*in[\s\S]{0,100}Sign\s*up/gi, ' ')
+      .replace(/Cookie[\s\S]{0,100}preferences/gi, ' ')
+      .replace(/Subscribe to our newsletter/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
     
@@ -1010,40 +1042,35 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     const html = await response.text();
     console.log(`GhanaWeb Opinions HTML fetched: ${html.length} chars`);
     
+    // Debug: Log a sample of the HTML to understand the structure
+    const featuresSample = html.match(/features\/[^"'\s>]{10,100}/g);
+    console.log(`GhanaWeb Opinions: Sample feature links found: ${JSON.stringify(featuresSample?.slice(0, 5) || [])}`);
+    
+    // Debug: Log raw href patterns to understand the format
+    const hrefSample = html.match(/href="[^"]*features[^"]*"/g);
+    console.log(`GhanaWeb Opinions: Sample hrefs: ${JSON.stringify(hrefSample?.slice(0, 5) || [])}`);
+    
     // Find all article links with their titles
     const articleMatches: Array<{ url: string; title: string }> = [];
     
     // Pattern 1: Links to /features/ with any text content (the actual format on GhanaWeb)
-    const featureLinkPattern = /<a[^>]+href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/([^"]+\-\d+))"[^>]*>([^<]*(?:<[^>]+>[^<]*)*)<\/a>/gi;
+    const featureLinkPattern = /<a[^>]+href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/([^"]+\-\d+))"[^>]*>/gi;
     let match;
     
     while ((match = featureLinkPattern.exec(html)) !== null) {
       let url = match[1];
       const slug = match[2];
-      let title = match[3].trim();
       
       // Clean up URL if relative
       if (url.startsWith('/')) {
         url = `https://www.ghanaweb.com${url}`;
       }
       
-      // Extract title from slug if anchor text is empty or too short
-      if (title.length < 10) {
-        // Convert slug to title: "Why-galamsey-persists-2018681" -> "Why galamsey persists"
-        title = slug.replace(/\-\d+$/, '').replace(/-/g, ' ').trim();
-      }
+      // Extract title from slug: "Why-galamsey-persists-2018681" -> "Why galamsey persists"
+      let title = slug.replace(/\-\d+$/, '').replace(/-/g, ' ').trim();
       
-      // Clean HTML entities
-      title = title
-        .replace(/<[^>]+>/g, '') // Remove any remaining HTML tags
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+      // Capitalize first letter of each sentence
+      title = title.charAt(0).toUpperCase() + title.slice(1);
       
       if (title.length < 15) continue;
       
@@ -1051,6 +1078,7 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     }
     
     console.log(`GhanaWeb Opinions: Found ${articleMatches.length} article matches before dedup`);
+    console.log(`GhanaWeb Opinions: First 3 matches: ${JSON.stringify(articleMatches.slice(0, 3))}`);
     
     // Deduplicate by URL
     const seenUrls = new Set<string>();
@@ -1402,9 +1430,10 @@ serve(async (req) => {
         continue;
       }
 
-      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish and opinion)
+      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish)
+      // Opinion articles from GhanaWeb are inherently Ghana-relevant by source
       // This prevents international press releases from being published
-      if (!isGhanaRelevant(rssText)) {
+      if (!isOpinion && !isGhanaRelevant(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
           "Content does not mention Ghana or Ghanaian entities", { pubDateParsed: pubDate });
         continue;
@@ -1889,7 +1918,8 @@ Return ONLY valid JSON.`;
         const headline = String(articleJson.headline || "");
         const headlineHasNumber = /\d/.test(headline);
         
-        if (!headlineHasNumber) {
+        // Opinion articles don't require numbers in headlines
+        if (!isOpinionItem && !headlineHasNumber) {
           console.log(`MASTER RULE REJECTION: Headline "${headline}" has NO NUMBER - not StatsGH material`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
@@ -1915,7 +1945,8 @@ Return ONLY valid JSON.`;
           return /\d/.test(n);
         });
 
-        if (validKeyNumbers.length < 3) {
+        // Opinion articles don't require 3 numbers
+        if (!isOpinionItem && validKeyNumbers.length < 3) {
           console.log(`MASTER RULE REJECTION: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
