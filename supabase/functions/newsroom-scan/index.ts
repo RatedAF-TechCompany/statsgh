@@ -83,8 +83,9 @@ const SCRAPE_SOURCES = [
     name: "GhanaWeb Opinions", 
     url: "https://www.ghanaweb.com/GhanaHomePage/opinions/", 
     domain: "ghanaweb.com",
-    articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/(?:opinions|NewsArchive)\/artikel\.php\?ID=\d+)"/gi,
-    titlePattern: /<a[^>]+href="[^"]*artikel\.php\?ID=\d+"[^>]*>([^<]+)<\/a>/gi,
+    // GhanaWeb opinions now use /features/[slug]-[ID] format
+    articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/[^"]+\-\d+)"/gi,
+    titlePattern: /<a[^>]+href="[^"]*\/features\/[^"]+\-\d+"[^>]*>([^<]+)<\/a>/gi,
     type: "opinion" as const,
   },
 ] as const;
@@ -1012,42 +1013,36 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     // Find all article links with their titles
     const articleMatches: Array<{ url: string; title: string }> = [];
     
-    // Pattern 1: Links with title attribute
-    const titleAttrPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/opinions\/[^"]+\-\d+)"[^>]+title="([^"]+)"/gi;
+    // Pattern 1: Links to /features/ with any text content (the actual format on GhanaWeb)
+    const featureLinkPattern = /<a[^>]+href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/([^"]+\-\d+))"[^>]*>([^<]*(?:<[^>]+>[^<]*)*)<\/a>/gi;
     let match;
     
-    while ((match = titleAttrPattern.exec(html)) !== null) {
-      const url = match[1];
-      let title = match[2].trim();
+    while ((match = featureLinkPattern.exec(html)) !== null) {
+      let url = match[1];
+      const slug = match[2];
+      let title = match[3].trim();
       
+      // Clean up URL if relative
+      if (url.startsWith('/')) {
+        url = `https://www.ghanaweb.com${url}`;
+      }
+      
+      // Extract title from slug if anchor text is empty or too short
+      if (title.length < 10) {
+        // Convert slug to title: "Why-galamsey-persists-2018681" -> "Why galamsey persists"
+        title = slug.replace(/\-\d+$/, '').replace(/-/g, ' ').trim();
+      }
+      
+      // Clean HTML entities
       title = title
+        .replace(/<[^>]+>/g, '') // Remove any remaining HTML tags
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
         .replace(/&nbsp;/g, ' ')
-        .trim();
-      
-      if (title.length < 15) continue;
-      
-      articleMatches.push({ url, title });
-    }
-    
-    // Pattern 2: Links with h2/h3 inside
-    const headingPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/opinions\/[^"]+\-\d+)"[^>]*>[\s\S]*?<h[23][^>]*>([^<]+)<\/h[23]>/gi;
-    
-    while ((match = headingPattern.exec(html)) !== null) {
-      const url = match[1];
-      let title = match[2].trim();
-      
-      title = title
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
       
       if (title.length < 15) continue;
