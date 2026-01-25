@@ -1251,6 +1251,7 @@ serve(async (req) => {
     const triggerType = body.trigger_type || body.triggerType || "manual";
     const perSourceLimit = Number(body.perSourceLimit ?? body.per_source_limit ?? 5);
     const isBackfill = triggerType === "fast_publish_backfill";
+    const isReprocess = body.reprocessPending === true || body.reprocess_pending === true;
     const maxArticlesPerRun = Number(body.maxArticlesPerRun ?? body.max_articles_per_run ?? DEFAULT_MAX_ARTICLES_PER_RUN);
     // Allow extended time window for backfill (default 168 hours = 7 days)
     const timeWindowHours = isBackfill 
@@ -1273,6 +1274,291 @@ serve(async (req) => {
     const isOpinionSource = (sourceName: string): boolean => {
       return sourceName === "GhanaWeb Opinions";
     };
+
+    // ============================================
+    // REPROCESS PENDING MODE
+    // Re-process existing newsroom_articles with status 'pending' or 'failed'
+    // ============================================
+    if (isReprocess) {
+      console.log(`REPROCESS MODE: Looking for pending/failed articles${targetSource ? ` from ${targetSource}` : ''}`);
+      
+      let query = supabase
+        .from("newsroom_articles")
+        .select("*")
+        .in("processing_status", ["pending", "failed"])
+        .order("created_at", { ascending: false })
+        .limit(maxArticlesPerRun);
+      
+      if (targetSource) {
+        query = query.ilike("source_name", `%${targetSource}%`);
+      }
+      
+      const { data: pendingItems, error: pendingError } = await query;
+      
+      if (pendingError) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Failed to fetch pending items: ${pendingError.message}`,
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      if (!pendingItems || pendingItems.length === 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "No pending articles to reprocess.",
+          articles_reprocessed: 0,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      console.log(`Found ${pendingItems.length} pending articles to reprocess`);
+      
+      let articlesCreated = 0;
+      
+      for (const newsItem of pendingItems) {
+        try {
+          console.log(`Reprocessing: ${newsItem.original_headline.substring(0, 60)}...`);
+          
+          await supabase.from("newsroom_articles").update({
+            processing_status: "processing",
+          }).eq("id", newsItem.id);
+          
+          // Fetch full text from source URL
+          let fullText = "";
+          if (newsItem.source_url) {
+            try {
+              const pageResp = await fetch(newsItem.source_url, {
+                headers: { "User-Agent": "StatsGH-Bot/1.0" },
+              });
+              if (pageResp.ok) {
+                const html = await pageResp.text();
+                // Extract text content
+                fullText = html
+                  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                  .replace(/<[^>]+>/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim()
+                  .substring(0, 8000);
+              }
+            } catch (fetchErr) {
+              console.log(`Failed to fetch source URL: ${fetchErr}`);
+            }
+          }
+          
+          if (!fullText) {
+            fullText = `${newsItem.original_headline} ${newsItem.original_summary || ""}`;
+          }
+          
+          const isOpinionItem = isOpinionSource(newsItem.source_name);
+          
+          // Choose the appropriate prompt
+          let articlePrompt: string;
+          
+          if (isOpinionItem) {
+            articlePrompt = `You are rewriting an opinion piece into VERY BASIC ENGLISH for StatsGH readers.
+
+ORIGINAL TEXT:
+Title: ${newsItem.original_headline}
+Source: ${newsItem.source_name}
+URL: ${newsItem.source_url}
+
+FULL TEXT:
+${fullText.substring(0, 4000)}
+
+YOUR ONLY JOB: Make this opinion piece EASY TO READ. Break it into very simple language.
+
+RULES FOR VERY BASIC ENGLISH:
+1. Use ONLY simple words a child can understand:
+   - "use" NOT "utilize"
+   - "get" NOT "obtain"  
+   - "help" NOT "facilitate"
+   - "start" NOT "commence"
+   - "buy" NOT "purchase"
+   - "about" NOT "regarding"
+   - "show" NOT "demonstrate"
+   - "think" NOT "consider"
+   - "need" NOT "require"
+   - "end" NOT "terminate"
+
+2. Write SHORT sentences. One idea = one sentence. Max 15 words per sentence.
+
+3. EXPLAIN hard words in brackets right after you use them:
+   - "sovereignty (a country's right to rule itself)"
+   - "bilateral (between two countries)"
+   - "inflation (when prices go up)"
+   - "fiscal (about government money)"
+   - "GDP (the total value of everything a country makes)"
+
+4. Keep the writer's ORIGINAL ARGUMENT. Do not change their opinion. Just make it easier to read.
+
+5. Break into SHORT PARAGRAPHS. 2-3 sentences each. Use line breaks.
+
+6. Do NOT add numbers or statistics unless they are in the original text.
+
+OUTPUT (valid JSON only):
+{
+  "reject": false,
+  "headline": "Clear headline about the opinion, max 80 characters, no colons",
+  "subtitle": "One simple sentence about what this opinion says",
+  "article_body_html": "The FULL opinion piece rewritten in very basic English. Use <p> tags for paragraphs. Keep ALL the original arguments and points. Just make the words simpler and sentences shorter.",
+  "takeaway": "One sentence: what is the writer's main point?",
+  "tweet": "One sentence about this opinion, no URLs",
+  "source_url": "${newsItem.source_url}",
+  "seo_description": "SEO description under 155 characters",
+  "slug": "url-friendly-slug-lowercase-hyphens",
+  "section": "opinion",
+  "tags": ["opinion", "ghana"],
+  "image_prompt": "Visual for editorial art, max 50 words, no text/logos/faces",
+  "author_name": "The opinion writer's name if you can find it in the text"
+}
+
+If text is too short or not really an opinion, return:
+{"reject": true, "reason": "why"}
+
+Return ONLY valid JSON.`;
+          } else {
+            // Standard news prompt - skip for now in reprocess mode (focus on opinions)
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "Reprocess mode currently only supports opinion articles",
+            }).eq("id", newsItem.id);
+            continue;
+          }
+          
+          // Call GPT
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: articlePrompt }],
+            temperature: 0.3,
+          });
+          
+          const rawContent = response.choices[0]?.message?.content || "";
+          let articleJson: any;
+          
+          try {
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              articleJson = JSON.parse(jsonMatch[0]);
+            } else {
+              throw new Error("No JSON found in response");
+            }
+          } catch (parseErr) {
+            console.error("Failed to parse GPT response:", parseErr);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `GPT response parse error: ${parseErr}`,
+            }).eq("id", newsItem.id);
+            continue;
+          }
+          
+          if (articleJson.reject === true) {
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `Editorial rejection: ${articleJson.reason || "Unknown reason"}`,
+            }).eq("id", newsItem.id);
+            continue;
+          }
+          
+          // Clean up the article body
+          let articleBody = collapseImmediateWordRepeats(articleJson.article_body_html || "");
+          const takeaway = collapseImmediateWordRepeats(articleJson.takeaway || "");
+          
+          // Add takeaway footer
+          if (takeaway) {
+            articleBody += `\n\n<p><strong>Writer's main point:</strong> ${takeaway}</p>`;
+          }
+          
+          // Get/create category
+          const section = "opinion";
+          let categoryId: string | null = null;
+          
+          const { data: existingCat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("slug", section)
+            .limit(1);
+          
+          if (existingCat && existingCat.length > 0) {
+            categoryId = existingCat[0].id;
+          } else {
+            const { data: newCat } = await supabase
+              .from("categories")
+              .insert({ name: "Opinion", slug: section, color: "#6B7280" })
+              .select()
+              .single();
+            if (newCat) categoryId = newCat.id;
+          }
+          
+          // Generate a unique slug
+          const baseSlug = (articleJson.slug || "opinion-article").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+          const uniqueSlug = `${baseSlug}-${Date.now()}`;
+          
+          // Create the article
+          const authorName = articleJson.author_name || "StatsGH Newsroom";
+          const headline = collapseImmediateWordRepeats(articleJson.headline || newsItem.original_headline);
+          
+          const { data: newArticle, error: articleError } = await supabase
+            .from("articles")
+            .insert({
+              title: headline,
+              slug: uniqueSlug,
+              summary: articleJson.subtitle || "",
+              body: articleBody,
+              author_name: authorName,
+              category_slug: section,
+              category_id: categoryId,
+              section: section,
+              seo_description: articleJson.seo_description || "",
+              tags: articleJson.tags || ["opinion", "ghana"],
+              twitter_post: articleJson.tweet || "",
+              is_published: true,
+              published_at: new Date().toISOString(),
+              is_wire: true,
+              dedupe_key: newsItem.dedupe_key,
+            })
+            .select()
+            .single();
+          
+          if (articleError) {
+            console.error(`Failed to save article: ${articleError.message}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `Save error: ${articleError.message}`,
+            }).eq("id", newsItem.id);
+            continue;
+          }
+          
+          await supabase.from("newsroom_articles").update({
+            processing_status: "completed",
+            generated_article_id: newArticle.id,
+          }).eq("id", newsItem.id);
+          
+          articlesCreated++;
+          console.log(`✓ Created opinion article: ${headline}`);
+          
+        } catch (err) {
+          console.error(`Error reprocessing: ${err}`);
+          await supabase.from("newsroom_articles").update({
+            processing_status: "failed",
+            error_message: `Reprocess error: ${err}`,
+          }).eq("id", newsItem.id);
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Reprocessed ${pendingItems.length} articles, created ${articlesCreated}`,
+        articles_found: pendingItems.length,
+        articles_created: articlesCreated,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: run, error: runError } = await supabase
       .from("newsroom_runs")
