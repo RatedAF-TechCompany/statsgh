@@ -14,6 +14,7 @@ import { LatestNewsList } from "@/components/home/LatestNewsList";
 import MostReadSidebar from "@/components/home/MostReadSidebar";
 import DataHighlightsSidebar from "@/components/home/DataHighlightsSidebar";
 import TopicsOverview from "@/components/TopicsOverview";
+import GhanaAtAGlance from "@/components/home/GhanaAtAGlance";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -105,6 +106,9 @@ const Home = () => {
           <Search size={22} className="text-ft-maroon" />
         </button>
       </header>
+
+      {/* Ghana At A Glance Section */}
+      <GhanaAtAGlance />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
