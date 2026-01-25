@@ -139,12 +139,7 @@ const Home = () => {
               </aside>
             </div>
 
-            {/* Ghana At A Glance - Full Width Strip */}
-            <div className="-mx-4 mb-6">
-              <GhanaAtAGlance />
-            </div>
-
-            {/* Secondary Stories Grid */}
+            {/* Secondary Stories Grid - Show more news before data */}
             {secondaryArticles.length > 0 && (
               <div className="pb-6 border-b border-border">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -158,6 +153,11 @@ const Home = () => {
                 </div>
               </div>
             )}
+
+            {/* Ghana At A Glance - Full Width Strip */}
+            <div className="-mx-4 my-6">
+              <GhanaAtAGlance />
+            </div>
 
             {/* Lower Section: More Stories + Topics/Data */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
