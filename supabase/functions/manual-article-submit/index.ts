@@ -247,6 +247,24 @@ serve(async (req) => {
     const body = await req.json();
     const { input, scheduled_at } = body;
     
+    // Extract author attribution from input (e.g., "by Citizen Yao" or "by John Doe")
+    // Pattern: look for "by [Name]" at start or end of input, or after a period/newline
+    let extractedAuthor: string | null = null;
+    const authorPatterns = [
+      /\bby\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,  // "by Name" at end
+      /^\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*[\n.]/i,  // "by Name" at start
+      /[\n.]\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,  // "by Name" after newline/period at end
+    ];
+    
+    for (const pattern of authorPatterns) {
+      const match = input.match(pattern);
+      if (match && match[1]) {
+        extractedAuthor = match[1].trim();
+        console.log(`Extracted author from input: "${extractedAuthor}"`);
+        break;
+      }
+    }
+    
     if (!input || typeof input !== "string" || input.trim().length < 20) {
       return new Response(JSON.stringify({ error: "Please provide article content (URL or text, minimum 20 characters)" }), {
         status: 400,
@@ -551,7 +569,7 @@ Return ONLY valid JSON.`;
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
-        author_name: "StatsGH Newsroom",
+        author_name: extractedAuthor || "StatsGH Newsroom",
         section: categorySlug,
         status: isScheduled ? "scheduled" : "published",
         is_published: !isScheduled,
