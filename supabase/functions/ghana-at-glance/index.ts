@@ -1,9 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface SecondaryData {
+  value: string;
+  period: string;
+  source: string;
+}
 
 interface GlanceCard {
   id: string;
@@ -14,6 +21,7 @@ interface GlanceCard {
   period: string;
   source: string;
   status: 'ok' | 'unavailable';
+  secondary?: SecondaryData; // More recent data from secondary sources
 }
 
 interface GlanceResponse {
@@ -387,6 +395,146 @@ async function fetchPrivateSectorCredit(): Promise<GlanceCard> {
   return card;
 }
 
+// Fetch secondary data from database
+async function fetchSecondaryData(): Promise<Map<string, SecondaryData>> {
+  const secondaryMap = new Map<string, SecondaryData>();
+  
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch latest data points for relevant indicators
+    const { data: dbData, error } = await supabase
+      .from('data_points')
+      .select(`
+        value,
+        date,
+        data_series!inner(
+          indicator_id,
+          is_primary,
+          geography:geographies!inner(is_ghana),
+          indicator:indicators!inner(slug, name, short_name)
+        ),
+        source:data_sources(short_name, name)
+      `)
+      .eq('data_series.is_primary', true)
+      .eq('data_series.geography.is_ghana', true)
+      .gte('date', '2024-06-01')
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching secondary data:', error);
+      return secondaryMap;
+    }
+
+    // Process data and find latest for each indicator
+    const indicatorLatest = new Map<string, { value: number; date: string; source: string }>();
+    
+    for (const point of dbData || []) {
+      const series = point.data_series as any;
+      const indicator = series?.indicator;
+      const slug = indicator?.slug;
+      
+      if (!slug) continue;
+      
+      // Only keep the latest value for each indicator
+      if (!indicatorLatest.has(slug)) {
+        const sourceName = (point.source as any)?.short_name || 'DB';
+        indicatorLatest.set(slug, {
+          value: Number(point.value),
+          date: point.date,
+          source: sourceName
+        });
+      }
+    }
+
+    // Map database slugs to card IDs
+    const slugToCardId: Record<string, string> = {
+      'cpi-inflation': 'inflation',
+      'headline-inflation': 'inflation',
+      'food-inflation': 'food-inflation',
+      'gdp-growth-rate': 'gdp-growth',
+      'gdp-growth': 'gdp-growth',
+      'unemployment-rate': 'unemployment',
+      'population-total': 'population',
+      'credit-private-sector': 'private-credit',
+      'policy-rate': 'policy-rate' // Bonus data
+    };
+
+    // Format and add to map
+    for (const [slug, data] of indicatorLatest) {
+      const cardId = slugToCardId[slug];
+      if (!cardId) continue;
+
+      const date = new Date(data.date);
+      let period: string;
+      
+      // Format period based on date
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      const quarter = Math.ceil((date.getMonth() + 1) / 3);
+      
+      // Determine if it's monthly or quarterly data
+      if (slug.includes('gdp')) {
+        period = `Q${quarter} ${year}`;
+      } else if (slug === 'population-total') {
+        period = `${year}`;
+      } else {
+        period = `${month} ${year}`;
+      }
+
+      let formattedValue: string;
+      if (slug === 'population-total') {
+        formattedValue = formatNumber(data.value, 0);
+      } else if (slug === 'credit-private-sector') {
+        formattedValue = `GHS ${formatNumber(data.value, 1)}B`;
+      } else {
+        formattedValue = formatPercent(data.value, 1);
+      }
+
+      secondaryMap.set(cardId, {
+        value: formattedValue,
+        period: period,
+        source: data.source
+      });
+    }
+
+    console.log('Secondary data fetched:', [...secondaryMap.entries()]);
+  } catch (error) {
+    console.error('Error in fetchSecondaryData:', error);
+  }
+
+  return secondaryMap;
+}
+
+// Compare dates and determine if secondary is more recent
+function isMoreRecent(primaryPeriod: string, secondaryPeriod: string): boolean {
+  // Parse periods like "Dec 2024", "Q3 2024", "2021"
+  const parsePeriod = (p: string): Date => {
+    const quarterMatch = p.match(/Q(\d)\s+(\d{4})/);
+    if (quarterMatch) {
+      const quarter = parseInt(quarterMatch[1]);
+      const year = parseInt(quarterMatch[2]);
+      return new Date(year, (quarter - 1) * 3 + 2, 28); // End of quarter
+    }
+    
+    const monthMatch = p.match(/(\w+)\s+(\d{4})/);
+    if (monthMatch) {
+      return new Date(`${monthMatch[1]} 1, ${monthMatch[2]}`);
+    }
+    
+    const yearMatch = p.match(/(\d{4})/);
+    if (yearMatch) {
+      return new Date(parseInt(yearMatch[1]), 11, 31);
+    }
+    
+    return new Date(0);
+  };
+
+  return parsePeriod(secondaryPeriod) > parsePeriod(primaryPeriod);
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -396,32 +544,37 @@ serve(async (req) => {
   try {
     console.log('Fetching Ghana At A Glance data...');
 
-    // Fetch all cards in parallel
+    // Fetch all cards and secondary data in parallel
     const [
       unemployment,
       population,
       inflation,
       foodInflation,
       gdpGrowth,
-      privateCredit
+      privateCredit,
+      secondaryData
     ] = await Promise.all([
       fetchUnemploymentRate(),
       fetchPopulation(),
       fetchHeadlineInflation(),
       fetchFoodInflation(),
       fetchGDPGrowth(),
-      fetchPrivateSectorCredit()
+      fetchPrivateSectorCredit(),
+      fetchSecondaryData()
     ]);
 
+    // Enhance cards with secondary data if more recent
+    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit];
+    
+    for (const card of cards) {
+      const secondary = secondaryData.get(card.id);
+      if (secondary && isMoreRecent(card.period, secondary.period)) {
+        card.secondary = secondary;
+      }
+    }
+
     const response: GlanceResponse = {
-      cards: [
-        unemployment,
-        population,
-        inflation,
-        foodInflation,
-        gdpGrowth,
-        privateCredit
-      ],
+      cards,
       fetchedAt: new Date().toISOString()
     };
 

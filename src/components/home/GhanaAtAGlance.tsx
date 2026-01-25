@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TrendingUp } from "lucide-react";
+
+interface SecondaryData {
+  value: string;
+  period: string;
+  source: string;
+}
 
 interface GlanceCard {
   id: string;
@@ -11,6 +18,7 @@ interface GlanceCard {
   period: string;
   source: string;
   status: 'ok' | 'unavailable';
+  secondary?: SecondaryData;
 }
 
 interface GlanceResponse {
@@ -35,6 +43,24 @@ const StatCard = ({ card }: { card: GlanceCard }) => {
       <div className="text-xs text-muted-foreground leading-snug">
         {card.sublabel || `${card.period} • ${card.source}`}
       </div>
+
+      {/* Secondary/More Recent Data Highlight */}
+      {card.secondary && (
+        <div className="mt-3 pt-3 border-t border-border/40">
+          <div className="flex items-center gap-1.5 mb-1">
+            <TrendingUp size={12} className="text-accent-green" />
+            <span className="text-[10px] font-medium text-accent-green uppercase tracking-wide">
+              Latest update
+            </span>
+          </div>
+          <div className="font-serif text-lg font-bold text-foreground">
+            {card.secondary.value}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {card.secondary.period} • {card.secondary.source}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
