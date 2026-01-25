@@ -202,6 +202,7 @@ const REJECTION_CODES = {
   AI_REJECTED_NO_NUMBERS: "AI_REJECTED_NO_NUMBERS",
   HEADLINE_NO_NUMBER: "HEADLINE_NO_NUMBER",
   INSUFFICIENT_NUMBERS: "INSUFFICIENT_NUMBERS",
+  DAILY_OPINION_LIMIT: "DAILY_OPINION_LIMIT",
   IMAGE_FETCH_FAILED: "IMAGE_FETCH_FAILED",
   RSS_FETCH_FAILED: "RSS_FETCH_FAILED",
   FULL_PAGE_FETCH_FAILED: "FULL_PAGE_FETCH_FAILED",
@@ -1673,10 +1674,32 @@ Return ONLY valid JSON.`;
     // Enforce per-source quota (used for backfill: e.g., 5 per outlet)
     const perSourceCounts = new Map<string, number>();
 
+    // ============================================
+    // OPINION DAILY LIMIT: Max 3 opinions per 24 hours
+    // ============================================
+    const DAILY_OPINION_LIMIT = 3;
+    const twentyFourHoursAgo = new Date(nowUtc().getTime() - 24 * 60 * 60 * 1000);
+    const { count: opinionCountLast24h } = await supabase
+      .from("articles")
+      .select("id", { count: "exact", head: true })
+      .eq("category_slug", "opinion")
+      .gte("created_at", twentyFourHoursAgo.toISOString());
+    
+    const currentOpinionCount = opinionCountLast24h ?? 0;
+    let opinionsCreatedThisRun = 0;
+    console.log(`Opinion articles in last 24h: ${currentOpinionCount}/${DAILY_OPINION_LIMIT}`);
+
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name);
       if (isBackfill && !isFast && !isOpinion) continue;
+
+      // Check daily opinion limit
+      if (isOpinion && (currentOpinionCount + opinionsCreatedThisRun) >= DAILY_OPINION_LIMIT) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DAILY_OPINION_LIMIT,
+          `Daily opinion limit reached (${DAILY_OPINION_LIMIT} per 24h)`, { pubDateParsed: null });
+        continue;
+      }
 
       if (isBackfill) {
         const current = perSourceCounts.get(article.source_name) ?? 0;
@@ -2466,6 +2489,11 @@ ${keyNumbersHtml}
         }).eq("id", newsItem.id);
 
         articlesCreated++;
+        
+        // Track opinions for daily limit enforcement
+        if (isOpinionItem) {
+          opinionsCreatedThisRun++;
+        }
         
         // Update run progress incrementally to prevent data loss on timeout
         await supabase.from("newsroom_runs").update({
