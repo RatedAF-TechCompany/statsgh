@@ -120,7 +120,7 @@ export const Header = () => {
                           <button
                             key={navItem.slug}
                             onClick={() => {
-                              navigate(navItem.slug === "top-stories" ? "/" : `/category/${navItem.slug}`);
+                              navigate(navItem.slug === "top-stories" ? "/" : `/${navItem.slug}`);
                             }}
                             className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
                           >
