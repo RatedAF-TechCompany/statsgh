@@ -461,6 +461,64 @@ async function fetchPolicyRate(): Promise<GlanceCard> {
   return card;
 }
 
+// Card 8: USD/GHS Exchange Rate
+async function fetchExchangeRate(): Promise<GlanceCard> {
+  const card: GlanceCard = {
+    id: 'exchange-rate',
+    value: 'Not available',
+    unit: 'GHS',
+    label: 'USD/GHS rate',
+    sublabel: '',
+    period: '',
+    source: 'BoG',
+    status: 'unavailable',
+  };
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch latest exchange rate from database
+    const { data: dbData, error } = await supabase
+      .from('data_points')
+      .select(`
+        value,
+        date,
+        data_series!inner(
+          indicator_id,
+          is_primary,
+          geography:geographies!inner(is_ghana),
+          indicator:indicators!inner(slug)
+        ),
+        source:data_sources(short_name)
+      `)
+      .eq('data_series.indicator.slug', 'exchange-rate-ghs-usd')
+      .eq('data_series.geography.is_ghana', true)
+      .order('date', { ascending: false })
+      .limit(1);
+
+    if (!error && dbData && dbData.length > 0) {
+      const point = dbData[0];
+      const date = new Date(point.date);
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const day = date.getDate();
+      const year = date.getFullYear();
+      const sourceName = (point.source as any)?.short_name || 'BoG';
+      
+      card.value = `GHS ${formatNumber(Number(point.value), 2)}`;
+      card.period = `${day} ${month} ${year}`;
+      card.sublabel = `${card.period} • ${sourceName}`;
+      card.source = sourceName;
+      card.status = 'ok';
+    }
+  } catch (error) {
+    console.error('Exchange rate fetch error:', error);
+  }
+
+  return card;
+}
+
 // Fetch secondary data from database
 async function fetchSecondaryData(): Promise<Map<string, SecondaryData>> {
   const secondaryMap = new Map<string, SecondaryData>();
@@ -619,6 +677,7 @@ serve(async (req) => {
       gdpGrowth,
       privateCredit,
       policyRate,
+      exchangeRate,
       secondaryData
     ] = await Promise.all([
       fetchUnemploymentRate(),
@@ -628,11 +687,12 @@ serve(async (req) => {
       fetchGDPGrowth(),
       fetchPrivateSectorCredit(),
       fetchPolicyRate(),
+      fetchExchangeRate(),
       fetchSecondaryData()
     ]);
 
     // Enhance cards with secondary data if more recent
-    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit, policyRate];
+    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit, policyRate, exchangeRate];
     
     for (const card of cards) {
       const secondary = secondaryData.get(card.id);

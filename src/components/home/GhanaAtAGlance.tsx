@@ -105,11 +105,11 @@ const GhanaAtAGlance = () => {
           </p>
         </div>
 
-        {/* Cards grid - 7 cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+        {/* Cards grid - 8 cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
           {isLoading ? (
             // Skeleton loaders
-            Array.from({ length: 7 }).map((_, i) => (
+            Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))
           ) : data?.cards ? (
@@ -119,7 +119,7 @@ const GhanaAtAGlance = () => {
             ))
           ) : (
             // Error state - show placeholders
-            Array.from({ length: 7 }).map((_, i) => (
+            Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="bg-white/80 rounded-xl border border-border/50 p-5 text-left">
                 <div className="font-serif text-2xl font-bold text-muted-foreground mb-2">
                   —
