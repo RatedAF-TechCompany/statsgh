@@ -1679,56 +1679,69 @@ serve(async (req) => {
         
         if (isOpinionItem) {
           // ============================================
-          // OPINION ARTICLE PROMPT - No numbers required, simple English restructuring
+          // OPINION ARTICLE PROMPT - BYPASS MASTER RULE
+          // Focus ONLY on Very Basic English restructuring
+          // No numbers required, no data requirements
           // ============================================
-          articlePrompt = `You are the StatsGH editor for OPINION COLUMNS. Your job is to restructure opinion pieces into simple, clear English.
+          articlePrompt = `You are rewriting an opinion piece into VERY BASIC ENGLISH for StatsGH readers.
 
-ORIGINAL OPINION PIECE:
+ORIGINAL TEXT:
 Title: ${newsItem.original_headline}
-Summary: ${newsItem.original_summary}
 Source: ${newsItem.source_name}
 URL: ${newsItem.source_url}
-Published: ${newsItem.published_at}
 
 FULL TEXT:
-${originalItem._fullText.substring(0, 3000)}
+${originalItem._fullText.substring(0, 4000)}
 
-YOUR TASK:
-Rewrite this opinion piece using VERY SIMPLE ENGLISH. Make it easy for anyone to read and understand.
+YOUR ONLY JOB: Make this opinion piece EASY TO READ. Break it into very simple language.
 
-LANGUAGE RULES - VERY SIMPLE ENGLISH:
-- Use short, simple words. "use" not "utilize". "get" not "obtain". "help" not "facilitate".
-- Write short sentences. One idea per sentence.
-- Explain difficult words in brackets. Example: "sovereignty (a country's right to rule itself)".
-- No big grammar words. No jargon.
-- Keep the writer's main argument and point of view.
-- Do not add your own opinions. Just simplify what the writer said.
+RULES FOR VERY BASIC ENGLISH:
+1. Use ONLY simple words a child can understand:
+   - "use" NOT "utilize"
+   - "get" NOT "obtain"  
+   - "help" NOT "facilitate"
+   - "start" NOT "commence"
+   - "buy" NOT "purchase"
+   - "about" NOT "regarding"
+   - "show" NOT "demonstrate"
+   - "think" NOT "consider"
+   - "need" NOT "require"
+   - "end" NOT "terminate"
 
-STRUCTURE:
-1. A clear headline that tells the reader what this opinion is about (max 80 characters)
-2. A one-sentence subtitle
-3. The opinion piece restructured into clear paragraphs with simple English
-4. A short summary of the main argument at the end
+2. Write SHORT sentences. One idea = one sentence. Max 15 words per sentence.
+
+3. EXPLAIN hard words in brackets right after you use them:
+   - "sovereignty (a country's right to rule itself)"
+   - "bilateral (between two countries)"
+   - "inflation (when prices go up)"
+   - "fiscal (about government money)"
+   - "GDP (the total value of everything a country makes)"
+
+4. Keep the writer's ORIGINAL ARGUMENT. Do not change their opinion. Just make it easier to read.
+
+5. Break into SHORT PARAGRAPHS. 2-3 sentences each. Use line breaks.
+
+6. Do NOT add numbers or statistics unless they are in the original text.
 
 OUTPUT (valid JSON only):
 {
   "reject": false,
-  "headline": "Clear opinion headline, max 80 characters, no colons",
-  "subtitle": "One-sentence summary of the opinion",
-  "article_body": "The full opinion piece restructured in simple English. Use short paragraphs. Keep the original argument and viewpoint. Just make it easier to read.",
-  "takeaway": "One sentence summarizing the writer's main point",
-  "tweet": "One sentence capturing the key opinion, no URLs",
+  "headline": "Clear headline about the opinion, max 80 characters, no colons",
+  "subtitle": "One simple sentence about what this opinion says",
+  "article_body_html": "The FULL opinion piece rewritten in very basic English. Use <p> tags for paragraphs. Keep ALL the original arguments and points. Just make the words simpler and sentences shorter.",
+  "takeaway": "One sentence: what is the writer's main point?",
+  "tweet": "One sentence about this opinion, no URLs",
   "source_url": "${newsItem.source_url}",
-  "seo_description": "SEO meta description under 155 characters",
+  "seo_description": "SEO description under 155 characters",
   "slug": "url-friendly-slug-lowercase-hyphens",
   "section": "opinion",
-  "tags": ["opinion", "ghana", "plus relevant topic tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people",
-  "author_name": "Extract the opinion writer's name from the text if available, otherwise leave empty"
+  "tags": ["opinion", "ghana"],
+  "image_prompt": "Visual for editorial art, max 50 words, no text/logos/faces",
+  "author_name": "The opinion writer's name if you can find it in the text"
 }
 
-If the text is too short or not a real opinion piece, return:
-{"reject": true, "reason": "Explain why"}
+If text is too short or not really an opinion, return:
+{"reject": true, "reason": "why"}
 
 Return ONLY valid JSON.`;
         } else {
@@ -1885,6 +1898,9 @@ Return ONLY valid JSON.`;
         articleJson.seo_description = cleanStr(articleJson.seo_description);
         articleJson.slug = cleanStr(articleJson.slug);
         articleJson.section = cleanStr(articleJson.section);
+        // Opinion articles use article_body_html instead of component parts
+        articleJson.article_body_html = cleanStr(articleJson.article_body_html);
+        articleJson.author_name = cleanStr(articleJson.author_name);
 
         if (Array.isArray(articleJson.key_numbers)) {
           articleJson.key_numbers = articleJson.key_numbers
@@ -1955,12 +1971,24 @@ Return ONLY valid JSON.`;
           continue; // Skip this article
         }
 
-        console.log(`Numbers validation passed: ${validKeyNumbers.length} valid numbers found ✓`);
+        console.log(`${isOpinionItem ? 'Opinion article' : `Numbers validation passed: ${validKeyNumbers.length} valid numbers found`} ✓`);
 
-        // Build the article body with Key Numbers section prominently displayed
-        const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>• ${n}</p>`).join("\n");
-
-        const articleBody = `
+        // Build the article body - DIFFERENT FORMAT FOR OPINION vs NEWS
+        let articleBody: string;
+        
+        if (isOpinionItem) {
+          // OPINION: Use the article_body_html directly from AI (no Key Numbers section)
+          const opinionBody = articleJson.article_body_html || articleJson.article_body || "";
+          const takeaway = articleJson.takeaway || "";
+          articleBody = `
+${opinionBody}
+<p><strong>Writer's main point:</strong> ${takeaway}</p>
+`.trim();
+          console.log(`Built OPINION article body (no Key Numbers required)`);
+        } else {
+          // NEWS: Build structured body with Key Numbers section
+          const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>• ${n}</p>`).join("\n");
+          articleBody = `
 <p>${articleJson.article_intro || ""}</p>
 <p>${articleJson.article_context || ""}</p>
 <h3>📊 Key Numbers at a Glance</h3>
@@ -1968,6 +1996,7 @@ ${keyNumbersHtml}
 <p>${articleJson.numbers_explanation || ""}</p>
 <p><strong>Takeaway:</strong> ${articleJson.takeaway || ""}</p>
 `.trim();
+        }
 
         const slugBase = String(articleJson.slug || articleJson.headline || "article")
           .toLowerCase()
@@ -2092,14 +2121,26 @@ ${keyNumbersHtml}
           image_style: `${imageSource}:${photoKeywords}`,
         }).eq("id", newsItem.id);
 
-        // Build summary from the intro
+        // Build summary from the intro (or subtitle for opinions)
         let summary = articleJson.article_intro || articleJson.subtitle || "";
+        if (isOpinionItem && !summary) {
+          // For opinions, use first part of body as summary
+          const bodyText = (articleJson.article_body_html || articleJson.article_body || "")
+            .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          summary = bodyText.substring(0, 300);
+        }
         if (summary.length > 400) {
           summary = summary.substring(0, 397) + "...";
         }
         let seoDescription = articleJson.seo_description || "";
         if (seoDescription.length > 155) {
           seoDescription = seoDescription.substring(0, 152) + "...";
+        }
+
+        // Determine author name - for opinions, use extracted author if available
+        let authorName = "StatsGH Newsroom";
+        if (isOpinionItem && articleJson.author_name && articleJson.author_name.trim()) {
+          authorName = articleJson.author_name.trim();
         }
 
         // ============================================
@@ -2115,7 +2156,7 @@ ${keyNumbersHtml}
             slug: articleSlug,
             category_slug: section,
             section: section,
-            author_name: "StatsGH Newsroom",
+            author_name: authorName,
             tags: Array.isArray(articleJson.tags) ? articleJson.tags : [],
             seo_description: seoDescription,
             twitter_post: articleJson.tweet,
