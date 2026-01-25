@@ -107,9 +107,6 @@ const Home = () => {
         </button>
       </header>
 
-      {/* Ghana At A Glance Section */}
-      <GhanaAtAGlance />
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isLoading ? (
@@ -129,37 +126,41 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {/* Top Section: Lead Story + Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-8 border-b border-border">
+            {/* Top Section: Lead Story + Most Read Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-6">
               {/* Lead Story (Main Column) */}
               <div className="lg:col-span-8">
                 {leadArticle && <LeadStory article={leadArticle} />}
-                
-                {/* Secondary Stories Grid */}
-                {secondaryArticles.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-border">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                      {secondaryArticles.map((article) => (
-                        <SecondaryStory 
-                          key={article.id} 
-                          article={article} 
-                          showImage={!!article.hero_image_url}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
               
-              {/* Sidebar */}
-              <aside className="lg:col-span-4 space-y-6">
+              {/* Most Read Sidebar */}
+              <aside className="lg:col-span-4">
                 <MostReadSidebar />
-                <DataHighlightsSidebar />
               </aside>
             </div>
 
-            {/* Lower Section: More Stories + Topics */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8">
+            {/* Ghana At A Glance - Full Width Strip */}
+            <div className="-mx-4 mb-6">
+              <GhanaAtAGlance />
+            </div>
+
+            {/* Secondary Stories Grid */}
+            {secondaryArticles.length > 0 && (
+              <div className="pb-6 border-b border-border">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {secondaryArticles.map((article) => (
+                    <SecondaryStory 
+                      key={article.id} 
+                      article={article} 
+                      showImage={!!article.hero_image_url}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lower Section: More Stories + Topics/Data */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
               {/* More Stories */}
               <div className="lg:col-span-8">
                 <LatestNewsList articles={remainingArticles} title="More stories" />
@@ -193,8 +194,8 @@ const Home = () => {
                 )}
               </div>
               
-              {/* Topics Sidebar */}
-              <aside className="lg:col-span-4">
+              {/* Right Sidebar: Topics + Data Highlights */}
+              <aside className="lg:col-span-4 space-y-6">
                 <section className="border-t-2 border-ft-maroon pt-3">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-serif text-base font-bold text-foreground">
@@ -211,6 +212,7 @@ const Home = () => {
                   </div>
                   <TopicsOverview showHeader={false} limitIndicators={3} maxTopics={4} />
                 </section>
+                <DataHighlightsSidebar />
               </aside>
             </div>
           </>
