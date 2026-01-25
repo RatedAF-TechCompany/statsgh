@@ -11,14 +11,15 @@ import { Button } from "@/components/ui/button";
 const ARTICLES_PER_PAGE = 10;
 
 const Category = () => {
-  const { slug } = useParams();
+  const { categorySlug, slug } = useParams();
+  const categoryParam = categorySlug || slug; // Support both new and legacy routes
   const [currentPage, setCurrentPage] = useState(1);
 
   const {
     data: articlesData,
     isLoading,
   } = useQuery({
-    queryKey: ["category-articles", slug, currentPage],
+    queryKey: ["category-articles", categoryParam, currentPage],
     queryFn: async () => {
       const from = (currentPage - 1) * ARTICLES_PER_PAGE;
       const to = from + ARTICLES_PER_PAGE - 1;
@@ -27,19 +28,19 @@ const Category = () => {
         .from("articles")
         .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
-        .eq("category_slug", slug)
+        .eq("category_slug", categoryParam)
         .order("published_at", { ascending: false })
         .range(from, to);
 
       if (error) throw error;
       return data;
     },
-    enabled: !!slug,
+    enabled: !!categoryParam,
   });
 
   const articles = articlesData || [];
   const hasNextPage = articles.length === ARTICLES_PER_PAGE;
-  const categoryLabel = slug ? CATEGORY_MAPPING[slug as keyof typeof CATEGORY_MAPPING] : "";
+  const categoryLabel = categoryParam ? CATEGORY_MAPPING[categoryParam as keyof typeof CATEGORY_MAPPING] : "";
 
   return (
     <div className="min-h-screen bg-background">
