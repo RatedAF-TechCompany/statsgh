@@ -5,8 +5,9 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect } from "react";
-import { ArrowLeft, Eye, TrendingUp } from "lucide-react";
+import { ArrowLeft, Eye, TrendingUp, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -108,6 +109,48 @@ const Analytics = () => {
     enabled: !!session?.user?.id && isAdmin === true,
   });
 
+  const { data: dailyViews } = useQuery({
+    queryKey: ["daily-views-7-days"],
+    queryFn: async () => {
+      const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+      
+      const { data, error } = await supabase
+        .from("article_views")
+        .select("viewed_at")
+        .gte("viewed_at", sevenDaysAgo.toISOString());
+
+      if (error) {
+        console.error("Error fetching daily views:", error);
+        return [];
+      }
+
+      // Create a map for the last 7 days
+      const dailyMap: Record<string, number> = {};
+      for (let i = 6; i >= 0; i--) {
+        const date = format(subDays(new Date(), i), "yyyy-MM-dd");
+        dailyMap[date] = 0;
+      }
+
+      // Count views per day
+      (data || []).forEach((view) => {
+        if (view.viewed_at) {
+          const date = format(new Date(view.viewed_at), "yyyy-MM-dd");
+          if (dailyMap[date] !== undefined) {
+            dailyMap[date]++;
+          }
+        }
+      });
+
+      // Convert to array format for chart
+      return Object.entries(dailyMap).map(([date, views]) => ({
+        date,
+        day: format(new Date(date), "EEE"),
+        views,
+      }));
+    },
+    enabled: !!session?.user?.id && isAdmin === true,
+  });
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!session && !isLoadingAuth) {
@@ -196,12 +239,33 @@ const Analytics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Views Per Day (Last 7 Days)</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Views Per Day (Last 7 Days)
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              Daily analytics data coming soon. Track views, engagement, and traffic sources over time.
-            </p>
+            {dailyViews && dailyViews.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={dailyViews}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value} views`, "Views"]}
+                    labelFormatter={(label: string, payload: any[]) => {
+                      if (payload && payload[0]) {
+                        return format(new Date(payload[0].payload.date), "MMM d, yyyy");
+                      }
+                      return label;
+                    }}
+                  />
+                  <Bar dataKey="views" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-muted-foreground">No view data available yet</p>
+            )}
           </CardContent>
         </Card>
       </main>
