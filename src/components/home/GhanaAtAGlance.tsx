@@ -127,16 +127,16 @@ const GhanaAtAGlance = () => {
           </Button>
         </div>
 
-        {/* Cards grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3 lg:gap-4">
+        {/* Cards grid - 9 cards: 2 cols mobile, 3 cols tablet, 5 cols desktop with last row wrapping */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
           {isLoading ? (
-            // Skeleton loaders - show 4 on mobile, 8 on desktop
+            // Skeleton loaders - show 4 on mobile, 9 on desktop
             <>
               {Array.from({ length: 4 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
               <div className="hidden sm:contents">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <SkeletonCard key={`desktop-${i}`} />
                 ))}
               </div>

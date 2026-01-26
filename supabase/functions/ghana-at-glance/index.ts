@@ -461,7 +461,35 @@ async function fetchPolicyRate(): Promise<GlanceCard> {
   return card;
 }
 
-// Card 8: USD/GHS Exchange Rate
+// Card 8: Fertility Rate
+async function fetchFertilityRate(): Promise<GlanceCard> {
+  const card: GlanceCard = {
+    id: 'fertility-rate',
+    value: 'Not available',
+    unit: 'births',
+    label: 'Fertility rate',
+    sublabel: '',
+    period: '',
+    source: 'GSS',
+    status: 'unavailable',
+  };
+
+  try {
+    // Total Fertility Rate from GSS surveys
+    // 2022 Ghana Demographic and Health Survey: 3.9 births per woman
+    // 2023 estimate: 3.4 births per woman
+    card.value = '3.9';
+    card.period = '2022';
+    card.sublabel = `${card.period} DHS • ${card.source}`;
+    card.status = 'ok';
+  } catch (error) {
+    console.error('Fertility rate fetch error:', error);
+  }
+
+  return card;
+}
+
+// Card 9: USD/GHS Exchange Rate
 async function fetchExchangeRate(): Promise<GlanceCard> {
   const card: GlanceCard = {
     id: 'exchange-rate',
@@ -677,6 +705,7 @@ serve(async (req) => {
       gdpGrowth,
       privateCredit,
       policyRate,
+      fertilityRate,
       exchangeRate,
       secondaryData
     ] = await Promise.all([
@@ -687,12 +716,13 @@ serve(async (req) => {
       fetchGDPGrowth(),
       fetchPrivateSectorCredit(),
       fetchPolicyRate(),
+      fetchFertilityRate(),
       fetchExchangeRate(),
       fetchSecondaryData()
     ]);
 
     // Enhance cards with secondary data if more recent
-    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit, policyRate, exchangeRate];
+    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit, policyRate, fertilityRate, exchangeRate];
     
     for (const card of cards) {
       const secondary = secondaryData.get(card.id);
