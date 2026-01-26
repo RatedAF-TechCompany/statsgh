@@ -2316,7 +2316,7 @@ ${keyNumbersHtml}
         const articleSlug = `${slugBase}-${Date.now()}`;
 
         // ============================================
-        // IMAGE PRIORITY: 1) Source Article, 2) Unsplash, 3) AI-Generated
+        // IMAGE PRIORITY: 0) Known Person Override, 1) Source Article, 2) Unsplash, 3) AI-Generated
         // Every article MUST have a bold, high-quality image
         // ============================================
         const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
@@ -2324,9 +2324,28 @@ ${keyNumbersHtml}
         
         let heroImageUrl: string | null = null;
         let imageSource = "none";
+        
+        // PRIORITY 0: Known person image overrides (curated authentic photos)
+        const KNOWN_PERSON_IMAGES: Record<string, string> = {
+          "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+          "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+          "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+          "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+        };
+        
+        const headlineAndBodyLower = `${articleJson.headline} ${newsItem.original_headline} ${articleJson.article_intro || ""} ${articleJson.author_name || ""}`.toLowerCase();
+        
+        for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
+          if (headlineAndBodyLower.includes(personKey)) {
+            heroImageUrl = personImageUrl;
+            imageSource = `known-person:${personKey}`;
+            console.log(`✓ Using known person image for "${personKey}": ${heroImageUrl}`);
+            break;
+          }
+        }
 
-        // PRIORITY 1: Try to extract image from the source article page
-        if (newsItem.source_url) {
+        // PRIORITY 1: Try to extract image from the source article page (skip if known person)
+        if (!heroImageUrl && newsItem.source_url) {
           console.log(`Image priority 1: Fetching source page for images: ${newsItem.source_url}`);
           
           try {
