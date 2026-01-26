@@ -528,21 +528,44 @@ Return ONLY valid JSON.`;
     // Ensure category exists first
     const categorySlug = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
     
-    // Generate AI image for the article
+    // ============================================
+    // IMAGE SELECTION: Known Person Override → AI-Generated
+    // ============================================
     let heroImageUrl: string | null = null;
     
-    try {
-      console.log(`Generating AI image for: ${articleSlug}`);
-      const imagePrompt = `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
-      heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
-      
-      if (heroImageUrl) {
-        console.log(`AI image generated: ${heroImageUrl}`);
-      } else {
-        console.log(`AI image generation failed for: ${articleSlug}`);
+    // PRIORITY 0: Known person image overrides (curated authentic photos)
+    const KNOWN_PERSON_IMAGES: Record<string, string> = {
+      "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+      "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+      "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+      "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+    };
+    
+    const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
+    
+    for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
+      if (headlineAndBodyLower.includes(personKey)) {
+        heroImageUrl = personImageUrl;
+        console.log(`✓ Using known person image for "${personKey}": ${heroImageUrl}`);
+        break;
       }
-    } catch (imgError) {
-      console.error("Image generation error:", imgError);
+    }
+    
+    // FALLBACK: Generate AI image if no known person match
+    if (!heroImageUrl) {
+      try {
+        console.log(`Generating AI image for: ${articleSlug}`);
+        const imagePrompt = `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
+        heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
+        
+        if (heroImageUrl) {
+          console.log(`AI image generated: ${heroImageUrl}`);
+        } else {
+          console.log(`AI image generation failed for: ${articleSlug}`);
+        }
+      } catch (imgError) {
+        console.error("Image generation error:", imgError);
+      }
     }
 
     // Get category ID
