@@ -13,11 +13,38 @@ interface ExtractedDataPoint {
   unit: string;
   confidence: number;
   context: string;
+  description?: string;
+  topic_slug?: string;
 }
 
 interface ExtractionResult {
   data_points: ExtractedDataPoint[];
 }
+
+// Known indicator slugs that map to topic slugs for auto-creation
+const INDICATOR_TOPIC_MAP: Record<string, string> = {
+  "fertility-rate": "population-and-demographic-change",
+  "population-total": "population-and-demographic-change",
+  "population-growth-rate": "population-and-demographic-change",
+  "life-expectancy": "population-and-demographic-change",
+  "under-5-mortality": "population-and-demographic-change",
+  "urban-population-share": "population-and-demographic-change",
+  "net-migration": "population-and-demographic-change",
+  "cpi-inflation": "prices-and-cost-of-living",
+  "food-inflation": "prices-and-cost-of-living",
+  "fuel-price-petrol": "prices-and-cost-of-living",
+  "fuel-price-diesel": "prices-and-cost-of-living",
+  "gdp-growth-rate": "economy-and-gdp",
+  "gdp-nominal": "economy-and-gdp",
+  "unemployment-rate": "labour-and-employment",
+  "youth-unemployment": "labour-and-employment",
+  "policy-rate": "money-and-banking",
+  "exchange-rate-ghs-usd": "money-and-banking",
+  "public-debt-gdp": "government-finance",
+  "cocoa-production": "agriculture",
+  "gold-production": "mining-and-extractives",
+  "oil-production": "mining-and-extractives",
+};
 
 // Strip HTML tags from content
 function stripHtml(html: string): string {
@@ -79,30 +106,31 @@ Deno.serve(async (req) => {
       .select("id, name, slug, unit, description")
       .order("name");
 
-    if (!indicators || indicators.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No indicators configured" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const indicatorList = indicators
+    const indicatorList = (indicators || [])
       .map((i) => `- ${i.slug}: ${i.name} (unit: ${i.unit})`)
+      .join("\n");
+
+    // List of known slugs that CAN be auto-created if data is found
+    const knownSlugsList = Object.keys(INDICATOR_TOPIC_MAP)
+      .map((slug) => `- ${slug}`)
       .join("\n");
 
     const articleText = stripHtml(article.body || "");
     const articleDate = article.published_at?.split("T")[0] || new Date().toISOString().split("T")[0];
 
-    // Build the extraction prompt
+    // Build the extraction prompt - now includes ability to suggest new indicators
     const systemPrompt = `You are a data extraction specialist for Ghana economic and statistical indicators. 
 Your task is to extract numerical data points from news articles that can update official indicator databases.
 
-Available indicators to match against:
-${indicatorList}
+EXISTING indicators to match against:
+${indicatorList || "(No indicators configured yet)"}
+
+KNOWN indicator slugs that can be AUTO-CREATED if you find relevant data:
+${knownSlugsList}
 
 RULES:
 1. Only extract data points that are EXPLICITLY stated in the article with specific numerical values
-2. Match each extracted value to the most appropriate indicator from the list above
+2. Match each extracted value to an indicator from the existing list above, OR use a known slug from the auto-create list
 3. Include the surrounding context (1-2 sentences) that contains the number
 4. Estimate confidence (0.0-1.0) based on source reliability and clarity
 5. NEVER fabricate or estimate values - only extract what is explicitly stated
@@ -110,7 +138,10 @@ RULES:
 7. For currency, convert to the base unit (e.g., GHS millions = multiply by 1,000,000)
 8. For production/quantities, use metric tons or appropriate base unit
 9. If a date/period is mentioned for the data, use that date; otherwise use article date
-10. Only include data points with confidence >= 0.7`;
+10. Only include data points with confidence >= 0.7
+11. For new indicators (not in existing list), also provide:
+    - description: A clear 1-sentence description of what this indicator measures
+    - topic_slug: The topic category from the auto-create list`;
 
     const userPrompt = `Extract economic indicator data from this Ghana news article:
 
@@ -125,13 +156,15 @@ Return a JSON object with this structure:
 {
   "data_points": [
     {
-      "indicator_slug": "slug-from-list-above",
+      "indicator_slug": "slug-from-list-or-known-slugs",
       "indicator_name": "Human readable name",
       "value": 123.45,
       "date": "YYYY-MM-DD",
-      "unit": "percent|currency|tonnes|etc",
+      "unit": "percent|currency|tonnes|births per woman|years|etc",
       "confidence": 0.85,
-      "context": "The exact sentence containing this data"
+      "context": "The exact sentence containing this data",
+      "description": "Optional: for new indicators, describe what this measures",
+      "topic_slug": "Optional: topic category for new indicators"
     }
   ]
 }
@@ -175,6 +208,8 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
                         unit: { type: "string" },
                         confidence: { type: "number" },
                         context: { type: "string" },
+                        description: { type: "string" },
+                        topic_slug: { type: "string" },
                       },
                       required: ["indicator_slug", "indicator_name", "value", "date", "confidence", "context"],
                     },
@@ -243,9 +278,17 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
       .eq("short_name", "StatsGH")
       .single();
 
+    // Get GSS source as fallback for auto-created indicators
+    const { data: gssSource } = await supabase
+      .from("data_sources")
+      .select("id")
+      .eq("short_name", "GSS")
+      .single();
+
     const results = {
       extracted: extractedData.data_points.length,
       inserted: 0,
+      created_indicators: 0,
       skipped: 0,
       errors: [] as string[],
     };
@@ -259,9 +302,54 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
       }
 
       // Find matching indicator
-      const indicator = indicators.find((i) => i.slug === dp.indicator_slug);
+      let indicator = (indicators || []).find((i) => i.slug === dp.indicator_slug);
+      
+      // If indicator doesn't exist but is in our known list, create it!
+      if (!indicator && INDICATOR_TOPIC_MAP[dp.indicator_slug]) {
+        console.log(`Creating new indicator: ${dp.indicator_slug}`);
+        
+        // Find the topic for this indicator
+        const topicSlug = dp.topic_slug || INDICATOR_TOPIC_MAP[dp.indicator_slug];
+        const { data: topic } = await supabase
+          .from("data_topics")
+          .select("id")
+          .eq("slug", topicSlug)
+          .single();
+
+        // Create the indicator
+        const { data: newIndicator, error: indicatorError } = await supabase
+          .from("indicators")
+          .insert({
+            name: dp.indicator_name,
+            slug: dp.indicator_slug,
+            short_name: dp.indicator_name,
+            description: dp.description || `${dp.indicator_name} for Ghana`,
+            unit: dp.unit,
+            unit_display: dp.unit,
+            frequency: "annual",
+            is_ghana_core: true,
+            priority_tier: "tier1",
+            chart_type: "line",
+            decimal_places: dp.unit === "percent" ? 1 : 2,
+            show_change: true,
+            topic_id: topic?.id || null,
+          })
+          .select("id, name, slug, unit, description")
+          .single();
+
+        if (indicatorError) {
+          console.error(`Failed to create indicator ${dp.indicator_slug}:`, indicatorError);
+          results.errors.push(`Failed to create indicator ${dp.indicator_slug}: ${indicatorError.message}`);
+          continue;
+        }
+
+        indicator = newIndicator!;
+        results.created_indicators++;
+        console.log(`✓ Created new indicator: ${newIndicator!.name} (${newIndicator!.slug})`);
+      }
+
       if (!indicator) {
-        console.log(`Indicator not found: ${dp.indicator_slug}`);
+        console.log(`Indicator not found and not auto-creatable: ${dp.indicator_slug}`);
         results.skipped++;
         continue;
       }
@@ -281,7 +369,7 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
           .insert({
             indicator_id: indicator.id,
             geography_id: ghana.id,
-            source_id: articleSource?.id,
+            source_id: gssSource?.id || articleSource?.id,
             is_primary: true,
             name: `${indicator.name} - Ghana`,
           })
@@ -301,6 +389,8 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
           series_id: series!.id,
           date: dp.date,
           value: dp.value,
+          value_formatted: String(dp.value),
+          source_id: articleSource?.id,
           source_note: `Extracted from article: ${article.title}`,
           revision_note: dp.context,
         },
@@ -311,7 +401,7 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
         results.errors.push(`Failed to insert ${indicator.slug}: ${insertError.message}`);
       } else {
         results.inserted++;
-        console.log(`Inserted: ${indicator.name} = ${dp.value} (${dp.date})`);
+        console.log(`✓ Inserted: ${indicator.name} = ${dp.value} (${dp.date})`);
 
         // Update indicator timestamp
         await supabase
@@ -324,10 +414,12 @@ If no reliable data points can be extracted, return: {"data_points": []}`;
           {
             article_id: article_id,
             indicator_id: indicator.id,
-            geography_id: ghana.id,
-            display_value: String(dp.value),
+            cited_geography_id: ghana.id,
+            cited_value: dp.value,
+            cited_date: dp.date,
+            context_note: dp.context,
           },
-          { onConflict: "article_id,indicator_id,geography_id" }
+          { onConflict: "article_id,indicator_id" }
         );
       }
     }
