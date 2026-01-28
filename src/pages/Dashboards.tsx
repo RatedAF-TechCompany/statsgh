@@ -14,9 +14,18 @@ import {
   Heart,
   GraduationCap,
   Home,
+  BarChart3,
 } from "lucide-react";
 
 const DASHBOARDS = [
+  {
+    slug: "gse",
+    title: "Ghana Stock Exchange",
+    description: "Live share prices, trading volumes, and performance metrics for GSE-listed companies.",
+    icon: BarChart3,
+    color: "bg-emerald-500/10 text-emerald-600",
+    status: "live",
+  },
   {
     slug: "finance",
     title: "Ghana Finance Dashboard",
