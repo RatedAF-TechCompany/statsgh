@@ -32,3 +32,12 @@ verify_jwt = false
 
 [functions.ghana-at-glance]
 verify_jwt = false
+
+[functions.daily-homepage-refresh]
+verify_jwt = false
+
+[functions.data-refresh]
+verify_jwt = false
+
+[functions.cedirates-sync]
+verify_jwt = false
