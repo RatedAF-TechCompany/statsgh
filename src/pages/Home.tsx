@@ -15,6 +15,7 @@ import MostReadSidebar from "@/components/home/MostReadSidebar";
 import DataHighlightsSidebar from "@/components/home/DataHighlightsSidebar";
 import TopicsOverview from "@/components/TopicsOverview";
 import GhanaAtAGlance from "@/components/home/GhanaAtAGlance";
+import GSETickerStrip from "@/components/home/GSETickerStrip";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -107,7 +108,8 @@ const Home = () => {
         </button>
       </header>
 
-      {/* Main Content */}
+      {/* GSE Stock Ticker */}
+      <GSETickerStrip />
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
