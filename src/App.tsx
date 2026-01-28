@@ -27,6 +27,7 @@ import TopicDashboard from "./pages/TopicDashboard";
 import AdminDataManager from "./pages/AdminDataManager";
 import AdminNewsroom from "./pages/AdminNewsroom";
 import GhanaFinanceDashboard from "./pages/GhanaFinanceDashboard";
+import GhanaStockExchange from "./pages/GhanaStockExchange";
 import Topics from "./pages/Topics";
 import News from "./pages/News";
 import Dashboards from "./pages/Dashboards";
@@ -67,6 +68,7 @@ const App = () => (
           <Route path="/news" element={<News />} />
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/dashboards/finance" element={<GhanaFinanceDashboard />} />
+          <Route path="/dashboards/gse" element={<GhanaStockExchange />} />
           <Route path="/sources" element={<Sources />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />

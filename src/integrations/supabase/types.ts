@@ -980,6 +980,57 @@ export type Database = {
           },
         ]
       }
+      gse_stocks: {
+        Row: {
+          change_percent: number | null
+          created_at: string | null
+          current_price: number
+          id: string
+          last_updated: string | null
+          market_cap: number | null
+          month_change_percent: number | null
+          name: string
+          previous_close: number | null
+          price_one_month_ago: number | null
+          sector: string | null
+          symbol: string
+          updated_at: string | null
+          volume: number | null
+        }
+        Insert: {
+          change_percent?: number | null
+          created_at?: string | null
+          current_price?: number
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          month_change_percent?: number | null
+          name: string
+          previous_close?: number | null
+          price_one_month_ago?: number | null
+          sector?: string | null
+          symbol: string
+          updated_at?: string | null
+          volume?: number | null
+        }
+        Update: {
+          change_percent?: number | null
+          created_at?: string | null
+          current_price?: number
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          month_change_percent?: number | null
+          name?: string
+          previous_close?: number | null
+          price_one_month_ago?: number | null
+          sector?: string | null
+          symbol?: string
+          updated_at?: string | null
+          volume?: number | null
+        }
+        Relationships: []
+      }
       indicator_topics: {
         Row: {
           id: string
