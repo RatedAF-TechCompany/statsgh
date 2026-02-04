@@ -48,13 +48,26 @@ export async function generateMetadata({ params }: IndicatorPageProps): Promise<
       description,
       url: `https://statsgh.com/data/${slug}`,
       siteName: "StatsGH",
-      images: ["/social/statsgh-og-1200x630.png"],
+      images: [
+        {
+          url: "/social/statsgh-og-1200x630.png",
+          width: 1200,
+          height: 630,
+          alt: `${indicator.name} - StatsGH`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
+      site: "@StatsGH",
       title: `${indicator.name} - StatsGH`,
       description,
-      images: ["/social/statsgh-og-1200x630.png"],
+      images: [
+        {
+          url: "/social/statsgh-og-1200x630.png",
+          alt: `${indicator.name} - StatsGH`,
+        },
+      ],
     },
   };
 }

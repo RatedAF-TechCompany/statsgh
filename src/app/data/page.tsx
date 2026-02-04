@@ -13,13 +13,26 @@ export const metadata: Metadata = {
     description: "Explore Ghana's key economic, social, and demographic indicators with interactive data visualizations.",
     url: "https://statsgh.com/data",
     siteName: "StatsGH",
-    images: ["/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Data Indicators - StatsGH",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@StatsGH",
     title: "Data Indicators - StatsGH",
     description: "Explore Ghana's key economic, social, and demographic indicators with interactive data visualizations.",
-    images: ["/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        alt: "Data Indicators - StatsGH",
+      },
+    ],
   },
 };
 

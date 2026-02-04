@@ -72,7 +72,12 @@ export async function generateMetadata({
       site: "@StatsGH",
       title: `${categoryLabel} - StatsGH`,
       description,
-      images: ["https://statsgh.com/social/statsgh-og-1200x630.png"],
+      images: [
+        {
+          url: "https://statsgh.com/social/statsgh-og-1200x630.png",
+          alt: `StatsGH ${categoryLabel}`,
+        },
+      ],
     },
   };
 }

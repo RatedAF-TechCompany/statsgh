@@ -52,7 +52,8 @@ export async function generateMetadata({
     return `${baseUrl}/${url}`;
   };
 
-  const absoluteImageUrl = makeAbsoluteUrl(article.hero_image_url);
+  const fallbackImageUrl = `${baseUrl}/social/statsgh-og-1200x630.png`;
+  const absoluteImageUrl = makeAbsoluteUrl(article.hero_image_url) || fallbackImageUrl;
   const description = article.seo_description || article.summary || "";
 
   // Format keywords for Google News
@@ -86,28 +87,31 @@ export async function generateMetadata({
       url: canonicalUrl,
       siteName: "StatsGH",
       locale: "en_GH",
-      ...(absoluteImageUrl && {
-        images: [
-          {
-            url: absoluteImageUrl,
-            width: 1200,
-            height: 630,
-            alt: article.title,
-          },
-        ],
-      }),
+      images: [
+        {
+          url: absoluteImageUrl,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
       publishedTime: article.published_at || undefined,
       modifiedTime: article.updated_at || undefined,
       authors: article.author_name ? [article.author_name] : undefined,
       section: article.section || undefined,
     },
     twitter: {
-      card: absoluteImageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       site: "@StatsGH",
       creator: "@StatsGH",
       title: article.title,
       description,
-      ...(absoluteImageUrl && { images: [absoluteImageUrl] }),
+      images: [
+        {
+          url: absoluteImageUrl,
+          alt: article.title,
+        },
+      ],
     },
     other: {
       "article:published_time": article.published_at || "",
@@ -133,7 +137,9 @@ function generateJsonLd(article: any) {
   };
 
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
-  const imageUrl = makeAbsoluteUrl(article.hero_image_url);
+  const imageUrl =
+    makeAbsoluteUrl(article.hero_image_url) ||
+    `${baseUrl}/social/statsgh-og-1200x630.png`;
 
   return {
     "@context": "https://schema.org",
@@ -161,9 +167,9 @@ function generateJsonLd(article: any) {
       url: baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: "https://statsgh.com/social/statsgh-og-1200x630.png",
-        width: 1200,
-        height: 630,
+        url: "https://statsgh.com/web-app-manifest-512x512.png",
+        width: 512,
+        height: 512,
       },
       sameAs: [
         "https://twitter.com/StatsGH",

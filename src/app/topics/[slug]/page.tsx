@@ -51,13 +51,26 @@ export async function generateMetadata({ params }: TopicPageProps): Promise<Meta
       description,
       url: `https://statsgh.com/topics/${slug}`,
       siteName: "StatsGH",
-      images: ["/social/statsgh-og-1200x630.png"],
+      images: [
+        {
+          url: "/social/statsgh-og-1200x630.png",
+          width: 1200,
+          height: 630,
+          alt: `${topic.name} - StatsGH`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
+      site: "@StatsGH",
       title: `${topic.name} - StatsGH`,
       description,
-      images: ["/social/statsgh-og-1200x630.png"],
+      images: [
+        {
+          url: "/social/statsgh-og-1200x630.png",
+          alt: `${topic.name} - StatsGH`,
+        },
+      ],
     },
   };
 }

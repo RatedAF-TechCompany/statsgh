@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -177,14 +177,20 @@ export default function ArticleContent({ article }: ArticleContentProps) {
     }
   };
 
-  const DOMPurify = createDOMPurify(window);
-  const sanitizedBody = DOMPurify.sanitize(article.body, {
-    ALLOWED_TAGS: [
-      "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
-      "ul", "ol", "li", "a", "blockquote", "code", "pre", "img", "span"
-    ],
-    ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "title", "class", "style"],
-  });
+  const sanitizedBody = useMemo(() => {
+    if (typeof window === "undefined") {
+      // Avoid SSR crash; client will sanitize on hydration.
+      return article.body;
+    }
+    const DOMPurify = createDOMPurify(window);
+    return DOMPurify.sanitize(article.body, {
+      ALLOWED_TAGS: [
+        "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
+        "ul", "ol", "li", "a", "blockquote", "code", "pre", "img", "span"
+      ],
+      ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "title", "class", "style"],
+    });
+  }, [article.body]);
 
   const highlightNumbers = (html: string) => {
     return html.replace(

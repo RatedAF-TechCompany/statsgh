@@ -45,7 +45,12 @@ export const metadata: Metadata = {
     title: "StatsGH - Ghana's Premier News Source",
     description:
       "We retell the story with numbers openly sourced in Ghanaian news.",
-    images: ["https://statsgh.com/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "https://statsgh.com/social/statsgh-og-1200x630.png",
+        alt: "StatsGH - Ghana's Premier News Source",
+      },
+    ],
   },
 };
 
@@ -79,9 +84,9 @@ const jsonLd = {
       url: "https://statsgh.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://statsgh.com/social/statsgh-og-1200x630.png",
-        width: 1200,
-        height: 630,
+        url: "https://statsgh.com/web-app-manifest-512x512.png",
+        width: 512,
+        height: 512,
       },
       sameAs: [
         "https://twitter.com/StatsGH",

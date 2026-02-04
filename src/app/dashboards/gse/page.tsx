@@ -13,7 +13,26 @@ export const metadata: Metadata = {
     description: "Track Ghana Stock Exchange (GSE) performance, stock prices, and market trends.",
     url: "https://statsgh.com/dashboards/gse",
     siteName: "StatsGH",
-    images: ["/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "Ghana Stock Exchange - StatsGH",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@StatsGH",
+    title: "Ghana Stock Exchange - StatsGH",
+    description: "Track Ghana Stock Exchange (GSE) performance, stock prices, and market trends.",
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        alt: "Ghana Stock Exchange - StatsGH",
+      },
+    ],
   },
 };
 

@@ -44,7 +44,12 @@ export const metadata: Metadata = {
     title: "Latest News - StatsGH",
     description:
       "Latest data journalism and analysis from Ghana. Stay informed with StatsGH.",
-    images: ["https://statsgh.com/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "https://statsgh.com/social/statsgh-og-1200x630.png",
+        alt: "StatsGH News",
+      },
+    ],
   },
 };
 

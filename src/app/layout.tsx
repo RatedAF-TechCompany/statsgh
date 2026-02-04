@@ -22,14 +22,26 @@ export const metadata: Metadata = {
     url: "https://statsgh.com/",
     title: "StatsGH - Ghana's Premier News Source",
     description: "We retell the story with numbers openly sourced in Ghanaian news.",
-    images: ["/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        width: 1200,
+        height: 630,
+        alt: "StatsGH - Ghana's Premier News Source",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     site: "@StatsGH",
     title: "StatsGH - Ghana's Premier News Source",
     description: "We retell the story with numbers openly sourced in Ghanaian news.",
-    images: ["/social/statsgh-og-1200x630.png"],
+    images: [
+      {
+        url: "/social/statsgh-og-1200x630.png",
+        alt: "StatsGH - Ghana's Premier News Source",
+      },
+    ],
   },
 };
 

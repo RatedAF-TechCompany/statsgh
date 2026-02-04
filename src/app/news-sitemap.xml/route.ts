@@ -7,15 +7,15 @@ export async function GET() {
   const supabase = createReadOnlyServerClient();
   const baseUrl = "https://statsgh.com";
 
-  // Google News recommends articles from last 48 hours, but we include up to 7 days
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  // Google News recommends articles from last 48 hours
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
   const { data: articles } = await supabase
     .from("articles")
     .select("slug, category_slug, title, published_at, tags")
     .eq("is_published", true)
-    .gte("published_at", sevenDaysAgo.toISOString())
+    .gte("published_at", twoDaysAgo.toISOString())
     .order("published_at", { ascending: false })
     .limit(1000);
 
