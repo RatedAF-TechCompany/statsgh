@@ -33,6 +33,7 @@ import Topics from "./pages/Topics";
 import News from "./pages/News";
 import Dashboards from "./pages/Dashboards";
 import Sources from "./pages/Sources";
+import ArticleReader from "./pages/ArticleReader";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,8 @@ const App = () => (
           <Route path="/data" element={<DataIndicators />} />
           <Route path="/data/:slug" element={<IndicatorDetail />} />
           <Route path="/news" element={<News />} />
+          {/* Machine-readable reader route for crawlers */}
+          <Route path="/reader/:slug" element={<ArticleReader />} />
           <Route path="/dashboards" element={<Dashboards />} />
           <Route path="/dashboards/finance" element={<GhanaFinanceDashboard />} />
           <Route path="/dashboards/gse" element={<GhanaStockExchange />} />
