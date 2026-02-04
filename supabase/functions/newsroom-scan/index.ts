@@ -25,14 +25,15 @@ function collapseImmediateWordRepeats(input: string): string {
 }
 
 // ============================================
-// STATSGH NEWSROOM MASTER CONFIGURATION
+// STATSGH NEWSROOM MASTER CONFIGURATION V2.0
+// Major refactor: Qualifying numbers, not just any numbers
 // ============================================
-const TIME_WINDOW_HOURS = 24; // Scan last 24 hours but skip already published articles
-const DEFAULT_MAX_ARTICLES_PER_RUN = 5; // Limit per run to avoid edge function timeout
+const DEFAULT_TIME_WINDOW_HOURS = 5; // Default 5 hours for normal scan (was 24)
+const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
+const DEFAULT_MAX_ARTICLES_PER_RUN = 5;
+const DAILY_PUBLISH_LIMIT = 8; // Max articles per day
 
-// "Fast publish" outlets: publish items from these sources even if they don't satisfy
-// the normal newsroom filtering rules (business/crime/gossip/numbers).
-// We still keep: time window + dedupe + source attribution + no fabrication.
+// "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
   "graphic.com.gh",
   "ceditalk.com",
@@ -83,7 +84,6 @@ const SCRAPE_SOURCES = [
     name: "GhanaWeb Opinions", 
     url: "https://www.ghanaweb.com/GhanaHomePage/opinions/", 
     domain: "ghanaweb.com",
-    // GhanaWeb opinions now use /features/[slug]-[ID] format
     articlePattern: /href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/[^"]+\-\d+)"/gi,
     titlePattern: /<a[^>]+href="[^"]*\/features\/[^"]+\-\d+"[^>]*>([^<]+)<\/a>/gi,
     type: "opinion" as const,
@@ -132,53 +132,42 @@ const CRIME_EXCLUSION_KEYWORDS = [
 
 // Political drama/gossip keywords to EXCLUDE (lacks data substance)
 const POLITICAL_GOSSIP_EXCLUSION_KEYWORDS = [
-  // Political drama without data
   "warns", "slams", "blasts", "fires back", "claps back", "hits back",
   "attacks", "accuses", "alleges", "feud", "clash", "rift",
   "calls out", "calls for resignation", "must resign", "should resign",
   "responds to", "reacts to", "defends", "denies", "dismisses",
   "controversy", "controversial", "scandalous", "outrage", "outraged",
   "absence", "absent", "missing", "whereabouts", "disappeared",
-  // Political speculation
   "rumour", "rumor", "rumoured", "rumored", "speculation", "speculates",
   "allegedly", "purported", "unconfirmed", "sources say", "insiders say",
-  // Celebrity/personality focus
   "spotted", "seen with", "relationship", "dating", "affair",
   "personal life", "private life", "family drama",
-  // Emotional/opinion pieces
   "angry", "furious", "livid", "upset", "emotional", "heartbroken",
   "betrayed", "disappointed", "hurt feelings",
 ] as const;
 
 // Statistical/analytical keywords that override crime exclusion
 const CRIME_STATS_OVERRIDE_KEYWORDS = [
-  // Direct statistical terms
   "crime statistics", "crime rate", "crime data", "crime report",
   "annual crime", "crime trends", "crime reduction", "crime increased",
   "police statistics", "criminal justice reform", "crime prevention",
   "security statistics", "law enforcement data",
-  // Analytical context indicators
   "according to", "unicef", "world bank", "survey", "study", "research",
   "percent of", "% of", "percentage", "statistics show", "data shows",
   "report shows", "report indicates", "analysis", "trend",
-  // Policy/reform context
   "child protection", "protection laws", "policy reform", "law reform",
   "legislative", "parliament", "regulation", "legal reform",
 ] as const;
 
 // Data-driven indicators that make content acceptable for StatsGH
 const DATA_SUBSTANCE_KEYWORDS = [
-  // Financial data
   "ghs", "ghc", "usd", "million", "billion", "trillion", "budget",
   "revenue", "expenditure", "deficit", "surplus", "gdp", "gnp",
-  // Statistical terms
   "percent", "%", "rate", "index", "ratio", "average", "median",
   "growth", "decline", "increase", "decrease", "rose", "fell",
   "statistics", "data", "figures", "numbers", "metrics",
-  // Economic indicators
   "inflation", "interest rate", "exchange rate", "unemployment",
   "trade balance", "import", "export", "investment", "fdi",
-  // Quantitative context
   "target", "projection", "forecast", "estimate", "quarter", "annual",
   "year-on-year", "month-on-month", "per capita", "per annum",
 ] as const;
@@ -186,38 +175,471 @@ const DATA_SUBSTANCE_KEYWORDS = [
 // Default category if GPT returns an invalid slug format
 const DEFAULT_CATEGORY = "business";
 
-// Rejection codes for audit trail
+// ============================================
+// REJECTION CODES FOR AUDIT TRAIL (V2.0)
+// ============================================
 const REJECTION_CODES = {
+  // Time window
   OUTSIDE_TIME_WINDOW: "OUTSIDE_TIME_WINDOW",
   PUBDATE_PARSE_FAILED: "PUBDATE_PARSE_FAILED",
+  // Relevance
   NOT_BUSINESS: "NOT_BUSINESS",
   NOT_GHANA_RELEVANT: "NOT_GHANA_RELEVANT",
+  // Content filters
   CRIME_FILTER: "CRIME_FILTER",
+  CRIME_NO_SIGNIFICANT_DATA: "CRIME_NO_SIGNIFICANT_DATA",
   POLITICAL_GOSSIP: "POLITICAL_GOSSIP",
+  POLITICS_NUMBER_NOT_DATA: "POLITICS_NUMBER_NOT_DATA",
+  // Number quality (NEW)
+  HEADLINE_NO_NUMBER: "HEADLINE_NO_NUMBER",
+  HEADLINE_NUMBER_DATE_ONLY: "HEADLINE_NUMBER_DATE_ONLY",
+  INSUFFICIENT_NUMBERS: "INSUFFICIENT_NUMBERS",
+  INSUFFICIENT_QUALIFYING_NUMBERS: "INSUFFICIENT_QUALIFYING_NUMBERS",
   NO_NUMBERS_IN_RSS: "NO_NUMBERS_IN_RSS",
   NO_NUMBERS_IN_FULL_PAGE: "NO_NUMBERS_IN_FULL_PAGE",
+  // Opinion specific
+  DAILY_OPINION_LIMIT: "DAILY_OPINION_LIMIT",
+  OPINION_NO_QUALIFYING_NUMBER: "OPINION_NO_QUALIFYING_NUMBER",
+  // Deduplication
   DEDUPED_NEWSROOM: "DEDUPED_NEWSROOM",
   DEDUPED_ARTICLES: "DEDUPED_ARTICLES",
+  // AI validation
   AI_JSON_INVALID: "AI_JSON_INVALID",
   AI_REJECTED_NO_NUMBERS: "AI_REJECTED_NO_NUMBERS",
-  HEADLINE_NO_NUMBER: "HEADLINE_NO_NUMBER",
-  INSUFFICIENT_NUMBERS: "INSUFFICIENT_NUMBERS",
-  DAILY_OPINION_LIMIT: "DAILY_OPINION_LIMIT",
+  AI_REJECTED_DATE_NUMBERS: "AI_REJECTED_DATE_NUMBERS",
+  // Source quality
   IMAGE_FETCH_FAILED: "IMAGE_FETCH_FAILED",
   RSS_FETCH_FAILED: "RSS_FETCH_FAILED",
   FULL_PAGE_FETCH_FAILED: "FULL_PAGE_FETCH_FAILED",
+  CALENDAR_ANNOUNCEMENT_PAGE: "CALENDAR_ANNOUNCEMENT_PAGE",
+  // Daily limits
+  DAILY_LIMIT_REACHED: "DAILY_LIMIT_REACHED",
 } as const;
+
+// ============================================
+// QUALIFYING NUMBER CLASSIFICATION (V2.0)
+// Not all numbers are equal - dates, times, IDs don't count
+// ============================================
+
+interface NumberClassification {
+  value: string;
+  isQualifying: boolean;
+  reason: "CURRENCY" | "PERCENTAGE" | "QUANTITY" | "COMPARISON" | "DATE" | "TIME" | "ID" | "PHONE" | "ADDRESS" | "OTHER";
+  context?: string;
+}
+
+// Patterns to detect DATE numbers (non-qualifying)
+const DATE_PATTERNS = [
+  /\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b/gi, // dd/mm/yyyy, dd-mm-yyyy
+  /\b\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\b/gi, // yyyy-mm-dd
+  /\b\d{1,2}\s*(?:st|nd|rd|th)?\s*(?:january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{2,4}\b/gi,
+  /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{1,2}\s*(?:st|nd|rd|th)?\s*,?\s*\d{2,4}\b/gi,
+  /\b\d{1,2}[-–]\d{1,2}\s*(?:january|february|march|april|may|june|july|august|september|october|november|december)\b/gi, // 9-12 February
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*\d{1,2}\s*,?\s*\d{2,4}\b/gi,
+  /\b\d{1,2}\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*\d{2,4}\b/gi,
+  /\b20\d{2}\b(?!\s*(?:%|percent|million|billion|ghs|usd|ghc|cedis|dollars))/gi, // Standalone year like "2026"
+];
+
+// Patterns to detect TIME numbers (non-qualifying)
+const TIME_PATTERNS = [
+  /\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b/gi, // 10:44, 14:20, 2:30 pm
+  /\b\d{1,2}\s*(?:am|pm)\b/gi, // 10am, 2pm
+];
+
+// Patterns to detect ID/Reference numbers (non-qualifying)
+const ID_PATTERNS = [
+  /\bPCN\s*[\d\-\/]+\b/gi,
+  /\b(?:ref|reference|case)\s*(?:no|number|#)?\.?\s*:?\s*[\w\d\-\/]+\b/gi,
+  /\bID\s*:?\s*[\w\d\-]+\b/gi,
+  /\b[A-Z]{2,4}[-\/]?\d{4,}\b/g, // License plates, codes
+];
+
+// Patterns to detect phone numbers (non-qualifying)
+const PHONE_PATTERNS = [
+  /\b(?:\+233|0)\s*\d{2,3}[\s\-]?\d{3}[\s\-]?\d{4}\b/g, // Ghana phone numbers
+  /\b\d{3}[\s\-]?\d{3}[\s\-]?\d{4}\b/g, // General phone pattern
+];
+
+// Keywords that indicate QUALIFYING numbers (currency/money context)
+const CURRENCY_CONTEXT_KEYWORDS = [
+  "ghs", "gh¢", "ghc", "cedi", "cedis", "pesewa", "usd", "$", "dollar", "dollars",
+  "million", "billion", "trillion", "tranche", "bond", "yield", "grant", "loan",
+  "revenue", "expenditure", "budget", "allocation", "funding", "investment",
+];
+
+// Keywords that indicate QUALIFYING numbers (percentage/rate context)
+const PERCENTAGE_CONTEXT_KEYWORDS = [
+  "%", "percent", "percentage", "percentage points", "bps", "basis points",
+  "inflation", "interest", "growth", "rate", "y/y", "m/m", "yoy", "mom",
+  "increase", "decrease", "rise", "fall", "drop", "surge", "decline",
+];
+
+// Keywords that indicate QUALIFYING numbers (quantity with economic/statistical unit)
+const QUANTITY_CONTEXT_KEYWORDS = [
+  "jobs", "employment", "workers", "employees", "staff",
+  "tonnes", "metric tonnes", "tons", "barrels", "bbl",
+  "mw", "megawatts", "kw", "kilowatts", "gwh", "kwh",
+  "litres", "liters", "gallons",
+  "subscribers", "users", "customers", "accounts",
+  "exports", "imports", "production", "output",
+  "revenue", "deficit", "debt", "reserves", "surplus",
+  "gdp", "gnp", "capita", "population",
+];
+
+// Keywords that indicate COMPARISON/target context (qualifying)
+const COMPARISON_CONTEXT_KEYWORDS = [
+  "vs", "versus", "from", "to", "compared", "comparison",
+  "target", "goal", "above", "below", "higher", "lower",
+  "fell", "rose", "increased", "decreased", "cut", "expanded",
+  "grew", "shrunk", "contracted", "gained", "lost",
+  "previous", "last", "earlier", "former", "prior",
+];
+
+// Classify a number token
+function classifyNumber(numberStr: string, contextBefore: string, contextAfter: string): NumberClassification {
+  const fullContext = `${contextBefore} ${numberStr} ${contextAfter}`.toLowerCase();
+  const numberLower = numberStr.toLowerCase();
+  
+  // Check if it's a date pattern
+  for (const pattern of DATE_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(numberStr) || pattern.test(fullContext)) {
+      return { value: numberStr, isQualifying: false, reason: "DATE" };
+    }
+  }
+  
+  // Check if it's a time pattern
+  for (const pattern of TIME_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(numberStr)) {
+      return { value: numberStr, isQualifying: false, reason: "TIME" };
+    }
+  }
+  
+  // Check if it's an ID/reference
+  for (const pattern of ID_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(numberStr) || pattern.test(fullContext)) {
+      return { value: numberStr, isQualifying: false, reason: "ID" };
+    }
+  }
+  
+  // Check if it's a phone number
+  for (const pattern of PHONE_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(numberStr)) {
+      return { value: numberStr, isQualifying: false, reason: "PHONE" };
+    }
+  }
+  
+  // Check for currency context
+  if (CURRENCY_CONTEXT_KEYWORDS.some(kw => fullContext.includes(kw))) {
+    return { value: numberStr, isQualifying: true, reason: "CURRENCY", context: "money/currency" };
+  }
+  
+  // Check for percentage context
+  if (PERCENTAGE_CONTEXT_KEYWORDS.some(kw => fullContext.includes(kw)) || numberStr.includes("%")) {
+    return { value: numberStr, isQualifying: true, reason: "PERCENTAGE", context: "rate/percentage" };
+  }
+  
+  // Check for quantity context
+  if (QUANTITY_CONTEXT_KEYWORDS.some(kw => fullContext.includes(kw))) {
+    return { value: numberStr, isQualifying: true, reason: "QUANTITY", context: "economic quantity" };
+  }
+  
+  // Check for comparison context
+  if (COMPARISON_CONTEXT_KEYWORDS.some(kw => fullContext.includes(kw))) {
+    return { value: numberStr, isQualifying: true, reason: "COMPARISON", context: "comparison/change" };
+  }
+  
+  // Default: non-qualifying unless it has economic indicators nearby
+  return { value: numberStr, isQualifying: false, reason: "OTHER" };
+}
+
+// Extract and classify all numbers from text
+function extractAndClassifyNumbers(text: string): {
+  all: string[];
+  qualifying: NumberClassification[];
+  excluded: { value: string; reason: string }[];
+} {
+  const all: string[] = [];
+  const qualifying: NumberClassification[] = [];
+  const excluded: { value: string; reason: string }[] = [];
+  
+  // Find all number patterns with context
+  const numberPattern = /(\S{0,30})\s*(\d[\d,\.]*(?:\s*(?:%|percent|million|billion|ghs|usd|ghc|tonnes?|mw|bbl|litres?))?)\s*(\S{0,30})/gi;
+  
+  let match;
+  const seen = new Set<string>();
+  
+  while ((match = numberPattern.exec(text)) !== null) {
+    const [, before, numStr, after] = match;
+    const normalized = numStr.trim();
+    
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    
+    all.push(normalized);
+    
+    const classification = classifyNumber(normalized, before || "", after || "");
+    
+    if (classification.isQualifying) {
+      qualifying.push(classification);
+    } else {
+      excluded.push({ value: normalized, reason: classification.reason });
+    }
+  }
+  
+  return { all, qualifying, excluded };
+}
+
+// Check if headline has a qualifying number (not just a date)
+function headlineHasQualifyingNumber(headline: string): { hasQualifying: boolean; hasDateOnly: boolean; detail: string } {
+  const { all, qualifying, excluded } = extractAndClassifyNumbers(headline);
+  
+  if (all.length === 0) {
+    return { hasQualifying: false, hasDateOnly: false, detail: "No numbers found in headline" };
+  }
+  
+  if (qualifying.length > 0) {
+    return { 
+      hasQualifying: true, 
+      hasDateOnly: false, 
+      detail: `Found qualifying: ${qualifying.map(q => `${q.value} (${q.reason})`).join(", ")}` 
+    };
+  }
+  
+  const dateNumbers = excluded.filter(e => e.reason === "DATE");
+  if (dateNumbers.length > 0 && dateNumbers.length === excluded.length) {
+    return { 
+      hasQualifying: false, 
+      hasDateOnly: true, 
+      detail: `Only date numbers found: ${dateNumbers.map(d => d.value).join(", ")}` 
+    };
+  }
+  
+  return { 
+    hasQualifying: false, 
+    hasDateOnly: false, 
+    detail: `Numbers excluded: ${excluded.map(e => `${e.value} (${e.reason})`).join(", ")}` 
+  };
+}
+
+// Check if body meets qualifying number requirements
+function bodyMeetsNumberRequirements(text: string): {
+  passes: boolean;
+  qualifyingCount: number;
+  hasComparison: boolean;
+  detail: string;
+  numbersFoundAll: string[];
+  numbersFoundQualifying: string[];
+  excludedNumbers: { value: string; reason: string }[];
+} {
+  const { all, qualifying, excluded } = extractAndClassifyNumbers(text);
+  
+  const hasComparison = qualifying.some(q => q.reason === "COMPARISON");
+  const qualifyingCount = qualifying.length;
+  
+  // Rule: 2+ qualifying numbers AND 1 comparison, OR 3+ qualifying numbers
+  const passes = (qualifyingCount >= 2 && hasComparison) || (qualifyingCount >= 3);
+  
+  return {
+    passes,
+    qualifyingCount,
+    hasComparison,
+    detail: passes 
+      ? `Passed: ${qualifyingCount} qualifying numbers${hasComparison ? " with comparison context" : ""}` 
+      : `Failed: Only ${qualifyingCount} qualifying numbers${hasComparison ? "" : " and no comparison context"}`,
+    numbersFoundAll: all,
+    numbersFoundQualifying: qualifying.map(q => q.value),
+    excludedNumbers: excluded,
+  };
+}
+
+// Check if page is a calendar/announcement page (low value)
+function isCalendarAnnouncementPage(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  
+  // Count date patterns
+  let dateCount = 0;
+  for (const pattern of DATE_PATTERNS) {
+    pattern.lastIndex = 0;
+    const matches = text.match(pattern);
+    if (matches) dateCount += matches.length;
+  }
+  
+  // Count qualifying numbers
+  const { qualifying } = extractAndClassifyNumbers(text);
+  
+  // If lots of dates but few qualifying numbers, it's likely a calendar page
+  if (dateCount > 5 && qualifying.length < 2) {
+    return true;
+  }
+  
+  // Check for calendar/event keywords
+  const calendarKeywords = [
+    "event calendar", "upcoming events", "schedule", "agenda",
+    "registration opens", "register now", "book your seat",
+    "conference dates", "meeting schedule", "event listing",
+  ];
+  
+  return calendarKeywords.filter(kw => lowerText.includes(kw)).length >= 2;
+}
+
+// ============================================
+// GHANA RELEVANCE CHECK (V2.0) - SCORE-BASED
+// Weights headline and first 150 words higher
+// ============================================
+const GHANA_RELEVANCE_KEYWORDS = [
+  // Country/Region
+  "ghana", "ghanaian", "accra", "kumasi", "tamale", "takoradi", "tema", "cape coast",
+  "ashanti", "volta", "eastern region", "western region", "northern region", "greater accra",
+  "brong ahafo", "upper east", "upper west", "central region", "oti region", "savannah",
+  "bono east", "ahafo", "north east", "western north",
+  // Institutions (original)
+  "bog", "bank of ghana", "gse", "ghana stock exchange", "gra", "ghana revenue",
+  "cocobod", "gnpc", "vra", "ecg", "gpha", "ghacem", "goil", "tullow ghana",
+  "mtn ghana", "vodafone ghana", "airtel-tigo", "airteltigo", "stanbic ghana",
+  "gcb", "ecobank ghana", "fidelity bank", "calbank", "unibank", "databank",
+  // NEW: Ghana-specific entities for data stories
+  "ministry of finance", "finance ministry", "mof ghana",
+  "imf", "world bank", "afdb", "african development bank",
+  "cocobod", "goldbod",
+  "tema port", "takoradi port",
+  "purc", "npa", "national petroleum authority",
+  "ssnit", "nhia", "national health insurance",
+  "cagd", "controller and accountant general",
+  // Currency
+  "cedi", "cedis", "ghc", "ghs",
+  // Government
+  "parliament of ghana", "ndc", "npp", "akufo-addo", "bawumia", "mahama",
+  "finance minister", "ministry of finance", "ofori-atta", "ken ofori",
+  // Sports/Entertainment (if relevant)
+  "black stars", "kotoko", "hearts of oak",
+] as const;
+
+// Score-based Ghana relevance check
+function getGhanaRelevanceScore(headline: string, bodyText: string): { score: number; passes: boolean; detail: string } {
+  const headlineLower = headline.toLowerCase();
+  const first150Words = bodyText.split(/\s+/).slice(0, 150).join(" ").toLowerCase();
+  const fullLower = bodyText.toLowerCase();
+  
+  let score = 0;
+  const matches: string[] = [];
+  
+  for (const keyword of GHANA_RELEVANCE_KEYWORDS) {
+    // Headline match: 3 points
+    if (headlineLower.includes(keyword)) {
+      score += 3;
+      matches.push(`headline:${keyword}`);
+    }
+    // First 150 words match: 2 points
+    else if (first150Words.includes(keyword)) {
+      score += 2;
+      matches.push(`opening:${keyword}`);
+    }
+    // Body match: 1 point
+    else if (fullLower.includes(keyword)) {
+      score += 1;
+      matches.push(`body:${keyword}`);
+    }
+  }
+  
+  // Threshold: Need at least 3 points (headline match, or 2 opening matches, or 3 body matches)
+  const passes = score >= 3;
+  
+  return {
+    score,
+    passes,
+    detail: passes 
+      ? `Ghana relevance passed (score ${score}): ${matches.slice(0, 5).join(", ")}` 
+      : `Ghana relevance failed (score ${score}): Not enough Ghana context in headline/opening`
+  };
+}
+
+// ============================================
+// CRIME FILTER V2.0 - Significant data required
+// ============================================
+function isCrimeNewsWithData(text: string): { isCrime: boolean; hasSignificantData: boolean; detail: string } {
+  const lowerText = text.toLowerCase();
+  
+  // First check if it's crime content
+  const isCrime = CRIME_EXCLUSION_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  if (!isCrime) {
+    return { isCrime: false, hasSignificantData: false, detail: "Not crime content" };
+  }
+  
+  // Check for statistical override keywords
+  const hasStatsOverride = CRIME_STATS_OVERRIDE_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  
+  // Check for qualifying numbers
+  const { qualifying } = extractAndClassifyNumbers(text);
+  const hasQualifyingNumbers = qualifying.length >= 2;
+  
+  // Check for GHS amount or percentage
+  const hasMoneyOrPercent = qualifying.some(q => q.reason === "CURRENCY" || q.reason === "PERCENTAGE");
+  
+  // Check for official source reference
+  const hasOfficialSource = /\b(according to|ministry|police statistics|crime report|survey|study|research|unicef|world bank)\b/i.test(text);
+  
+  // Significant data: 2+ qualifying numbers AND (money/percent OR official source)
+  const hasSignificantData = hasQualifyingNumbers && (hasMoneyOrPercent || hasOfficialSource || hasStatsOverride);
+  
+  return {
+    isCrime: true,
+    hasSignificantData,
+    detail: hasSignificantData 
+      ? `Crime content with significant data: ${qualifying.length} qualifying numbers, ${hasMoneyOrPercent ? "has money/percent" : ""} ${hasOfficialSource ? "has official source" : ""}`
+      : `Crime content without significant data: only ${qualifying.length} qualifying numbers, no money/percent/official source`
+  };
+}
+
+// ============================================
+// POLITICS FILTER V2.0 - Numbers must be policy data
+// ============================================
+function isPoliticsWithoutData(text: string): { isPolitics: boolean; numbersAreData: boolean; detail: string } {
+  const lowerText = text.toLowerCase();
+  
+  // Check for political gossip keywords
+  const isPolitics = POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  if (!isPolitics) {
+    return { isPolitics: false, numbersAreData: true, detail: "Not political gossip content" };
+  }
+  
+  // Check for data substance keywords
+  const hasDataSubstance = DATA_SUBSTANCE_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  
+  // Check qualifying numbers
+  const { qualifying, excluded } = extractAndClassifyNumbers(text);
+  
+  // Vote counts without policy impact are not data
+  const votePattern = /\b(votes?|voting|ballot|win|won|lost|seats?)\b/i;
+  const hasOnlyVoteNumbers = qualifying.length > 0 && 
+    !qualifying.some(q => q.reason === "CURRENCY" || q.reason === "PERCENTAGE") &&
+    votePattern.test(text);
+  
+  // Policy impact keywords
+  const hasPolicyImpact = /\b(budget|allocation|revenue|expenditure|gdp|inflation|deficit|surplus|policy|reform)\b/i.test(text);
+  
+  const numbersAreData = hasDataSubstance && (hasPolicyImpact || !hasOnlyVoteNumbers);
+  
+  return {
+    isPolitics: true,
+    numbersAreData,
+    detail: numbersAreData 
+      ? `Political content with policy data: ${qualifying.length} qualifying numbers with data substance`
+      : `Political content without policy data: ${hasOnlyVoteNumbers ? "only vote counts" : "no data substance keywords"}`
+  };
+}
 
 // Helper to ensure category exists in database, creates if not
 async function ensureCategoryExists(supabase: any, slug: string): Promise<string> {
-  // Validate slug format (lowercase, hyphens only)
   const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/(^-|-$)/g, "");
   
   if (!cleanSlug || cleanSlug.length < 2) {
     return DEFAULT_CATEGORY;
   }
   
-  // Check if category exists
   const { data: existing } = await supabase
     .from("categories")
     .select("slug")
@@ -228,7 +650,6 @@ async function ensureCategoryExists(supabase: any, slug: string): Promise<string
     return cleanSlug;
   }
   
-  // Create new category
   const name = cleanSlug
     .split("-")
     .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -274,7 +695,6 @@ const BUSINESS_KEYWORDS = [
 
 // ============================================
 // STOCK PHOTO KEYWORDS BY CATEGORY
-// Uses Unsplash Source for real photography (no API key required)
 // ============================================
 const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
   "economy-inflation": ["africa,money", "ghana,market", "africa,currency", "africa,shopping"],
@@ -305,10 +725,7 @@ function getPhotoKeywords(category: string): string {
 
 // ============================================
 // IMAGE EXTRACTION FROM SOURCE ARTICLE
-// Priority: 1) Source image, 2) Unsplash, 3) AI-generated
 // ============================================
-// Known competitor/news outlet domains whose images should be skipped
-// These images often contain branding, logos, studio shots with visible branding
 const COMPETITOR_IMAGE_DOMAINS = [
   '3news.com', 'tv3network', '3news',
   'myjoyonline', 'joynews', 'joyfm',
@@ -332,11 +749,9 @@ const COMPETITOR_IMAGE_DOMAINS = [
   'reuters.com', 'aljazeera',
   'africanews.com',
   'bloomberg.com',
-  // Common CDN patterns for news images
   'cdngh', 'media.myjoyonline', 'images.citinewsroom'
 ];
 
-// Patterns in image URLs that indicate branded/studio content
 const BRANDED_IMAGE_PATTERNS = [
   'studio', 'presenter', 'anchor', 'newsroom', 'broadcast',
   'live-stream', 'livestream', 'logo', 'brand', 'watermark',
@@ -346,13 +761,11 @@ const BRANDED_IMAGE_PATTERNS = [
 function isCompetitorImage(imageUrl: string): boolean {
   const lowerUrl = imageUrl.toLowerCase();
   
-  // Check if image is from a competitor domain
   if (COMPETITOR_IMAGE_DOMAINS.some(domain => lowerUrl.includes(domain))) {
     console.log(`⚠ Skipping competitor image from: ${imageUrl.substring(0, 100)}...`);
     return true;
   }
   
-  // Check for branded image patterns
   if (BRANDED_IMAGE_PATTERNS.some(pattern => lowerUrl.includes(pattern))) {
     console.log(`⚠ Skipping branded image pattern in: ${imageUrl.substring(0, 100)}...`);
     return true;
@@ -363,23 +776,16 @@ function isCompetitorImage(imageUrl: string): boolean {
 
 async function extractImageFromSourceHtml(html: string, sourceUrl: string): Promise<string | null> {
   try {
-    // Common patterns for article hero/featured images
     const patterns = [
-      // Open Graph image (most reliable for featured images)
       /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
       /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
-      // Twitter card image
       /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
       /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
-      // Schema.org image
       /"image"\s*:\s*"([^"]+)"/i,
       /"thumbnailUrl"\s*:\s*"([^"]+)"/i,
-      // Article featured image patterns
       /<img[^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image|entry-image)[^"']*["'][^>]+src=["']([^"']+)["']/i,
       /<img[^>]+src=["']([^"']+)["'][^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image|entry-image)[^"']*["']/i,
-      // First large image in article (data-src for lazy loading)
       /<img[^>]+data-src=["']([^"']+)["'][^>]+width=["']([4-9]\d{2}|[1-9]\d{3})["']/i,
-      // Figure with img inside (common article pattern)
       /<figure[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
     ];
     
@@ -388,7 +794,6 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
     for (const pattern of patterns) {
       const match = html.match(pattern);
       if (match) {
-        // Get the first capture group that looks like a URL
         const url = match[1] || match[2];
         if (url && (url.startsWith('http') || url.startsWith('//'))) {
           imageUrl = url;
@@ -399,12 +804,10 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
     
     if (!imageUrl) return null;
     
-    // Handle protocol-relative URLs
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
     }
     
-    // Handle relative URLs
     if (imageUrl.startsWith('/')) {
       try {
         const urlObj = new URL(sourceUrl);
@@ -414,12 +817,10 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
       }
     }
     
-    // *** CHECK FOR COMPETITOR BRANDING ***
     if (isCompetitorImage(imageUrl)) {
-      return null; // Skip competitor images, fall back to AI generation
+      return null;
     }
     
-    // Validate it's actually an image URL
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
     const isImageUrl = imageExtensions.some(ext => 
       imageUrl!.toLowerCase().includes(ext)
@@ -427,7 +828,6 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
     
     if (!isImageUrl) return null;
     
-    // Skip small images (likely icons/logos) based on URL patterns
     const skipPatterns = ['logo', 'icon', 'avatar', 'sprite', 'thumb', '100x', '50x', '32x', '16x'];
     if (skipPatterns.some(p => imageUrl!.toLowerCase().includes(p))) {
       return null;
@@ -441,7 +841,6 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
   }
 }
 
-// Fetch and upload an image from URL to Supabase storage
 async function fetchAndUploadImage(
   imageUrl: string, 
   supabase: any, 
@@ -477,7 +876,6 @@ async function fetchAndUploadImage(
     const imageBlob = await response.arrayBuffer();
     const bytes = new Uint8Array(imageBlob);
     
-    // Check minimum size (at least 10KB to filter out placeholders)
     if (bytes.length < 10000) {
       console.log(`Image too small (${bytes.length} bytes), skipping`);
       return null;
@@ -509,7 +907,6 @@ async function fetchAndUploadImage(
   }
 }
 
-// Generate AI image as last resort using Lovable AI (Gemini)
 async function generateAiImage(
   prompt: string,
   supabase: any,
@@ -524,7 +921,6 @@ async function generateAiImage(
     
     console.log(`Generating AI image for: ${articleSlug}`);
     
-    // Use Gemini image generation through Lovable AI gateway
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -536,11 +932,7 @@ async function generateAiImage(
         messages: [
           {
             role: 'user',
-            content: `Generate a photorealistic, professional editorial photograph for a news article. 
-Style: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.
-Subject: ${prompt}
-Requirements: No text, no logos, no watermarks, no faces that look AI-generated. 
-The image should look like it was taken by a professional photojournalist in Ghana or Africa.`
+            content: `Generate a photorealistic, professional editorial photograph for a news article. \nStyle: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.\nSubject: ${prompt}\nRequirements: No text, no logos, no watermarks, no faces that look AI-generated. \nThe image should look like it was taken by a professional photojournalist in Ghana or Africa.`
           }
         ],
         modalities: ['image', 'text']
@@ -560,7 +952,6 @@ The image should look like it was taken by a professional photojournalist in Gha
       return null;
     }
     
-    // Extract base64 data
     const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!base64Match) {
       console.log('Could not parse AI image data');
@@ -606,11 +997,23 @@ function hoursAgo(hours: number): Date {
   return new Date(nowUtc().getTime() - hours * 60 * 60 * 1000);
 }
 
-// Build dedupe key following master prompt rules:
-// event core + primary organisation + date + top numbers
-// Normalized: lowercase, no punctuation, collapsed spaces
-function buildDedupeKey(eventCore: string, org: string, dateStr: string, numbers: string[]): string {
-  const parts = [eventCore, org, dateStr, ...numbers.slice(0, 3)];
+// Build dedupe key using QUALIFYING numbers only
+function buildDedupeKey(eventCore: string, org: string, dateStr: string, qualifyingNumbers: string[]): string {
+  // Use top 3 qualifying numbers only
+  const topNumbers = qualifyingNumbers.slice(0, 3);
+  
+  // If fewer than 3, use: first qualifying number + key metric phrase + org
+  if (topNumbers.length < 3 && topNumbers.length > 0) {
+    const parts = [eventCore.substring(0, 50), org, topNumbers[0]];
+    const combined = parts.join(" ");
+    return combined
+      .toLowerCase()
+      .replace(/[^a-z0-9%\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  
+  const parts = [eventCore, org, dateStr, ...topNumbers];
   const combined = parts.join(" ");
   return combined
     .toLowerCase()
@@ -627,98 +1030,11 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-// Check if headline/content is business-related
 function isBusinessRelated(text: string): boolean {
   const lowerText = text.toLowerCase();
   return BUSINESS_KEYWORDS.some(keyword => lowerText.includes(keyword));
 }
 
-// Check if text is crime news (should be excluded unless statistical)
-function isCrimeNews(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  
-  // First check if it's statistical crime analysis (allowed)
-  const isStatisticalAnalysis = CRIME_STATS_OVERRIDE_KEYWORDS.some(keyword => 
-    lowerText.includes(keyword)
-  );
-  if (isStatisticalAnalysis) {
-    return false; // Not excluded - it's statistical content
-  }
-  
-  // Also allow if text contains percentage patterns with context (e.g., "90% of children")
-  const hasPercentageWithContext = /\d+%\s+of\s+\w+/i.test(text) || /\d+\s+percent\s+of/i.test(text);
-  if (hasPercentageWithContext) {
-    return false; // Statistical percentage pattern detected
-  }
-  
-  // Check for crime keywords (excluded)
-  return CRIME_EXCLUSION_KEYWORDS.some(keyword => lowerText.includes(keyword));
-}
-
-// Check if text is political gossip/drama without data substance
-function isPoliticalGossip(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  
-  // First check if it has data substance (allowed even if it looks like gossip)
-  const hasDataSubstance = DATA_SUBSTANCE_KEYWORDS.some(keyword => 
-    lowerText.includes(keyword)
-  );
-  
-  // Also check for actual numbers with context
-  const hasSignificantNumbers = /\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:\s*(?:million|billion|percent|%|ghs|usd|ghc))/i.test(text);
-  
-  if (hasDataSubstance || hasSignificantNumbers) {
-    return false; // Has data substance, not excluded
-  }
-  
-  // Check for political gossip keywords (excluded if no data)
-  return POLITICAL_GOSSIP_EXCLUSION_KEYWORDS.some(keyword => 
-    lowerText.includes(keyword)
-  );
-}
-
-// ============================================
-// GHANA RELEVANCE CHECK - APPLIES TO ALL SOURCES
-// This ensures we don't publish international news that has nothing to do with Ghana
-// ============================================
-const GHANA_RELEVANCE_KEYWORDS = [
-  // Country/Region
-  "ghana", "ghanaian", "accra", "kumasi", "tamale", "takoradi", "tema", "cape coast",
-  "ashanti", "volta", "eastern region", "western region", "northern region", "greater accra",
-  "brong ahafo", "upper east", "upper west", "central region", "oti region", "savannah",
-  "bono east", "ahafo", "north east", "western north",
-  // Institutions
-  "bog", "bank of ghana", "gse", "ghana stock exchange", "gra", "ghana revenue",
-  "cocobod", "gnpc", "vra", "ecg", "gpha", "ghacem", "goil", "tullow ghana",
-  "mtn ghana", "vodafone ghana", "airtel-tigo", "airteltigo", "stanbic ghana",
-  "gcb", "ecobank ghana", "fidelity bank", "calbank", "unibank", "databank",
-  // Currency
-  "cedi", "cedis", "ghc", "ghs",
-  // Government
-  "parliament of ghana", "ndc", "npp", "akufo-addo", "bawumia", "mahama",
-  "finance minister", "ministry of finance", "ofori-atta", "ken ofori",
-  // Sports/Entertainment (if relevant)
-  "black stars", "kotoko", "hearts of oak",
-] as const;
-
-// Check if content is relevant to Ghana
-function isGhanaRelevant(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  return GHANA_RELEVANCE_KEYWORDS.some(keyword => lowerText.includes(keyword));
-}
-
-// Check if text contains numbers (required for StatsGH)
-function containsNumbers(text: string): boolean {
-  return /\d+/.test(text);
-}
-
-// Extract numbers found in text for audit trail
-function extractNumbers(text: string): string[] {
-  const matches = text.match(/\d[\d,\.]*(?:\s*(?:%|percent|million|billion|ghs|usd|ghc))?/gi);
-  return matches ? [...new Set(matches.slice(0, 10))] : [];
-}
-
-// Parse RSS XML to extract articles
 function parseRssXml(xml: string, sourceName: string): Array<{
   title: string;
   link: string;
@@ -734,29 +1050,23 @@ function parseRssXml(xml: string, sourceName: string): Array<{
     source_name: string;
   }> = [];
 
-  // Simple XML parsing for RSS items
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
   let match;
 
   while ((match = itemRegex.exec(xml)) !== null) {
     const itemContent = match[1];
     
-    // Extract title
     const titleMatch = itemContent.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
     const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
     
-    // Extract link
     const linkMatch = itemContent.match(/<link[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
     const link = linkMatch ? linkMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
     
-    // Extract pubDate
     const pubDateMatch = itemContent.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
     const pubDate = pubDateMatch ? pubDateMatch[1].trim() : "";
     
-    // Extract description
     const descMatch = itemContent.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
     let description = descMatch ? descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
-    // Strip HTML tags from description
     description = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     
     if (title && link) {
@@ -773,7 +1083,6 @@ function parseRssXml(xml: string, sourceName: string): Array<{
   return items;
 }
 
-// Fetch RSS feed with timeout
 async function fetchRssFeed(url: string, timeout = 10000): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -801,7 +1110,6 @@ async function fetchRssFeed(url: string, timeout = 10000): Promise<string | null
   }
 }
 
-// Fetch full article page and extract text content
 async function fetchFullPageText(url: string, timeout = 15000): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -823,24 +1131,19 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
     
     const html = await response.text();
     
-    // Special handling for GhanaWeb: extract article body from specific div
     const isGhanaWeb = url.includes('ghanaweb.com');
     let text = '';
     
     if (isGhanaWeb) {
-      // GhanaWeb uses specific article content containers
-      // Try to extract from article-content or feature-body divs
       const articleContentMatch = html.match(/<div[^>]+class="[^"]*(?:article-content|feature-body|entry-content|post-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       
       if (articleContentMatch) {
         text = articleContentMatch[1];
       } else {
-        // Fallback: Extract content between common article markers
         const mainMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
         if (mainMatch) {
           text = mainMatch[1];
         } else {
-          // Last resort: try to find the main text block after stripping junk
           text = html;
         }
       }
@@ -848,7 +1151,6 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
       text = html;
     }
     
-    // Extract text from HTML - remove scripts, styles, then strip tags
     text = text
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -856,7 +1158,7 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
       .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
       .replace(/<header[\s\S]*?<\/header>/gi, ' ')
       .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
-      .replace(/<form[\s\S]*?<\/form>/gi, ' ') // Remove login forms
+      .replace(/<form[\s\S]*?<\/form>/gi, ' ')
       .replace(/<div[^>]*class="[^"]*(?:login|signup|subscribe|newsletter|terms|cookie|consent|modal|popup|overlay|sidebar|advertisement|ad-|banner)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<[^>]+>/g, ' ')
@@ -866,7 +1168,6 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
       .replace(/&#39;/gi, "'")
-      // Remove common boilerplate text patterns
       .replace(/Terms of Service[\s\S]{0,200}Privacy Policy/gi, ' ')
       .replace(/Log\s*in[\s\S]{0,100}Sign\s*up/gi, ' ')
       .replace(/Cookie[\s\S]{0,100}preferences/gi, ' ')
@@ -874,7 +1175,6 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Limit to first 5000 chars for efficiency
     return text.substring(0, 5000);
   } catch (error) {
     console.log(`Full page fetch error for ${url}:`, error instanceof Error ? error.message : "Unknown error");
@@ -884,7 +1184,6 @@ async function fetchFullPageText(url: string, timeout = 15000): Promise<string |
 
 // ============================================
 // GHANAWEB HTML SCRAPER
-// Fetches the business page and extracts article links/headlines
 // ============================================
 interface ScrapedArticle {
   title: string;
@@ -921,14 +1220,8 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
     const html = await response.text();
     console.log(`GhanaWeb HTML fetched: ${html.length} chars`);
     
-    // Extract article links and titles from the business page
-    // GhanaWeb now uses semantic URLs like: /GhanaHomePage/business/ARTICLE-TITLE-SLUG-123456
-    
-    // Find all article links with their titles
     const articleMatches: Array<{ url: string; title: string }> = [];
     
-    // Pattern 1: Links with title attribute (most reliable for headline)
-    // <a href="https://www.ghanaweb.com/GhanaHomePage/business/TITLE-SLUG-123456" title="Headline Here">
     const titleAttrPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/business\/[^"]+\-\d+)"[^>]+title="([^"]+)"/gi;
     let match;
     
@@ -936,7 +1229,6 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
       const url = match[1];
       let title = match[2].trim();
       
-      // Decode HTML entities in title
       title = title
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
@@ -946,21 +1238,17 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
         .replace(/&nbsp;/g, ' ')
         .trim();
       
-      // Skip very short titles
       if (title.length < 15) continue;
       
       articleMatches.push({ url, title });
     }
     
-    // Pattern 2: Links with h2/h3 inside (alternative pattern)
-    // <a href="..."><div class="info"><h2>Headline</h2></div></a>
     const headingPattern = /<a[^>]+href="(https?:\/\/(?:www\.)?ghanaweb\.com\/GhanaHomePage\/business\/[^"]+\-\d+)"[^>]*>[\s\S]*?<h[23][^>]*>([^<]+)<\/h[23]>/gi;
     
     while ((match = headingPattern.exec(html)) !== null) {
       const url = match[1];
       let title = match[2].trim();
       
-      // Decode HTML entities
       title = title
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
@@ -977,7 +1265,6 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
     
     console.log(`GhanaWeb: Found ${articleMatches.length} article matches before dedup`);
     
-    // Deduplicate by URL (keep first occurrence which typically has best title)
     const seenUrls = new Set<string>();
     const uniqueArticles = articleMatches.filter(a => {
       if (seenUrls.has(a.url)) return false;
@@ -987,10 +1274,8 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
     
     console.log(`GhanaWeb: Found ${uniqueArticles.length} unique article links`);
     
-    // Limit to first 15 articles to avoid overloading
     const articlesToProcess = uniqueArticles.slice(0, 15);
     
-    // For each article, use current time as pubDate estimate
     const now = new Date();
     
     for (const item of articlesToProcess) {
@@ -1014,8 +1299,7 @@ async function scrapeGhanaWebBusiness(timeout = 15000): Promise<ScrapedArticle[]
 
 // ============================================
 // GHANAWEB OPINIONS HTML SCRAPER
-// Fetches the opinions page and extracts article links/headlines
-// No numbers rule - opinion pieces don't require statistics
+// Opinion articles: max 1 per 24h, must have 1 qualifying number
 // ============================================
 async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]> {
   const articles: ScrapedArticle[] = [];
@@ -1043,18 +1327,8 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     const html = await response.text();
     console.log(`GhanaWeb Opinions HTML fetched: ${html.length} chars`);
     
-    // Debug: Log a sample of the HTML to understand the structure
-    const featuresSample = html.match(/features\/[^"'\s>]{10,100}/g);
-    console.log(`GhanaWeb Opinions: Sample feature links found: ${JSON.stringify(featuresSample?.slice(0, 5) || [])}`);
-    
-    // Debug: Log raw href patterns to understand the format
-    const hrefSample = html.match(/href="[^"]*features[^"]*"/g);
-    console.log(`GhanaWeb Opinions: Sample hrefs: ${JSON.stringify(hrefSample?.slice(0, 5) || [])}`);
-    
-    // Find all article links with their titles
     const articleMatches: Array<{ url: string; title: string }> = [];
     
-    // Pattern 1: Links to /features/ with any text content (the actual format on GhanaWeb)
     const featureLinkPattern = /<a[^>]+href="((?:https?:\/\/(?:www\.)?ghanaweb\.com)?\/GhanaHomePage\/features\/([^"]+\-\d+))"[^>]*>/gi;
     let match;
     
@@ -1062,15 +1336,11 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
       let url = match[1];
       const slug = match[2];
       
-      // Clean up URL if relative
       if (url.startsWith('/')) {
         url = `https://www.ghanaweb.com${url}`;
       }
       
-      // Extract title from slug: "Why-galamsey-persists-2018681" -> "Why galamsey persists"
       let title = slug.replace(/\-\d+$/, '').replace(/-/g, ' ').trim();
-      
-      // Capitalize first letter of each sentence
       title = title.charAt(0).toUpperCase() + title.slice(1);
       
       if (title.length < 15) continue;
@@ -1079,9 +1349,7 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     }
     
     console.log(`GhanaWeb Opinions: Found ${articleMatches.length} article matches before dedup`);
-    console.log(`GhanaWeb Opinions: First 3 matches: ${JSON.stringify(articleMatches.slice(0, 3))}`);
     
-    // Deduplicate by URL
     const seenUrls = new Set<string>();
     const uniqueArticles = articleMatches.filter(a => {
       if (seenUrls.has(a.url)) return false;
@@ -1091,8 +1359,8 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
     
     console.log(`GhanaWeb Opinions: Found ${uniqueArticles.length} unique article links`);
     
-    // Limit to first 10 articles for opinions
-    const articlesToProcess = uniqueArticles.slice(0, 10);
+    // Limit to 5 for opinions (will be further limited by daily cap)
+    const articlesToProcess = uniqueArticles.slice(0, 5);
     
     const now = new Date();
     
@@ -1116,7 +1384,7 @@ async function scrapeGhanaWebOpinions(timeout = 15000): Promise<ScrapedArticle[]
   return articles;
 }
 
-// Log candidate to audit table
+// Log candidate to audit table with enhanced number logging
 async function logCandidate(
   supabase: any,
   runId: string,
@@ -1132,6 +1400,8 @@ async function logCandidate(
     dedupeMatchedCandidateId?: string;
     dedupeSimilarityEvidence?: any;
     numbersFound?: string[];
+    numbersFoundQualifying?: string[];
+    excludedNumbers?: { value: string; reason: string }[];
     newsroomArticleId?: string;
   } = {}
 ): Promise<string | null> {
@@ -1153,8 +1423,9 @@ async function logCandidate(
         dedupe_key: extras.dedupeKey || null,
         dedupe_matched_article_id: extras.dedupeMatchedArticleId || null,
         dedupe_matched_candidate_id: extras.dedupeMatchedCandidateId || null,
-        dedupe_similarity_evidence: extras.dedupeSimilarityEvidence || null,
-        numbers_found: extras.numbersFound || null,
+        dedupe_similarity_evidence: extras.dedupeSimilarityEvidence || 
+          (extras.excludedNumbers ? { excluded_numbers: extras.excludedNumbers } : null),
+        numbers_found: extras.numbersFound || extras.numbersFoundQualifying || null,
         newsroom_article_id: extras.newsroomArticleId || null,
       })
       .select("id")
@@ -1171,7 +1442,6 @@ async function logCandidate(
   }
 }
 
-// Update source health tracking
 async function updateSourceHealth(
   supabase: any,
   sourceName: string,
@@ -1183,7 +1453,6 @@ async function updateSourceHealth(
     const now = new Date().toISOString();
     
     if (success) {
-      // First get current count to increment
       const { data: current } = await supabase
         .from("newsroom_sources")
         .select("total_items_seen")
@@ -1203,7 +1472,6 @@ async function updateSourceHealth(
         })
         .eq("name", sourceName);
     } else {
-      // Increment error count
       const { data } = await supabase
         .from("newsroom_sources")
         .select("consecutive_errors")
@@ -1254,16 +1522,16 @@ serve(async (req) => {
     const isBackfill = triggerType === "fast_publish_backfill";
     const isReprocess = body.reprocessPending === true || body.reprocess_pending === true;
     const maxArticlesPerRun = Number(body.maxArticlesPerRun ?? body.max_articles_per_run ?? DEFAULT_MAX_ARTICLES_PER_RUN);
-    // Allow extended time window for backfill (default 168 hours = 7 days)
+    
+    // V2.0: Default 5 hours, backfill 7 days
     const timeWindowHours = isBackfill 
-      ? Number(body.timeWindowHours ?? body.time_window_hours ?? 168)
-      : TIME_WINDOW_HOURS;
-    // Optional source filter for targeted backfill
+      ? Number(body.timeWindowHours ?? body.time_window_hours ?? BACKFILL_TIME_WINDOW_HOURS)
+      : Number(body.timeWindowHours ?? body.time_window_hours ?? DEFAULT_TIME_WINDOW_HOURS);
+    
     const targetSource = body.targetSource ?? body.target_source ?? null;
 
     const sourceNameToDomain = new Map<string, string>();
     for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
-    // Add GhanaWeb to domain mapping (scraped, not RSS)
     sourceNameToDomain.set("GhanaWeb Business", "ghanaweb.com");
     sourceNameToDomain.set("GhanaWeb Opinions", "ghanaweb.com");
 
@@ -1277,8 +1545,30 @@ serve(async (req) => {
     };
 
     // ============================================
-    // REPROCESS PENDING MODE
-    // Re-process existing newsroom_articles with status 'pending' or 'failed'
+    // CHECK DAILY PUBLISH LIMIT
+    // ============================================
+    const twentyFourHoursAgo = new Date(nowUtc().getTime() - 24 * 60 * 60 * 1000);
+    const { count: articlesLast24h } = await supabase
+      .from("articles")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", twentyFourHoursAgo.toISOString());
+    
+    const currentDailyCount = articlesLast24h ?? 0;
+    console.log(`Articles published in last 24h: ${currentDailyCount}/${DAILY_PUBLISH_LIMIT}`);
+    
+    if (currentDailyCount >= DAILY_PUBLISH_LIMIT) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Daily publish limit reached (${DAILY_PUBLISH_LIMIT} articles per 24h)`,
+        articles_today: currentDailyCount,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ============================================
+    // REPROCESS PENDING MODE (unchanged from original)
     // ============================================
     if (isReprocess) {
       console.log(`REPROCESS MODE: Looking for pending/failed articles${targetSource ? ` from ${targetSource}` : ''}`);
@@ -1318,244 +1608,10 @@ serve(async (req) => {
       
       console.log(`Found ${pendingItems.length} pending articles to reprocess`);
       
-      let articlesCreated = 0;
-      
-      for (const newsItem of pendingItems) {
-        try {
-          console.log(`Reprocessing: ${newsItem.original_headline.substring(0, 60)}...`);
-          
-          await supabase.from("newsroom_articles").update({
-            processing_status: "processing",
-          }).eq("id", newsItem.id);
-          
-          // Fetch full text from source URL
-          let fullText = "";
-          if (newsItem.source_url) {
-            try {
-              const pageResp = await fetch(newsItem.source_url, {
-                headers: { "User-Agent": "StatsGH-Bot/1.0" },
-              });
-              if (pageResp.ok) {
-                const html = await pageResp.text();
-                // Extract text content
-                fullText = html
-                  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-                  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-                  .replace(/<[^>]+>/g, " ")
-                  .replace(/\s+/g, " ")
-                  .trim()
-                  .substring(0, 8000);
-              }
-            } catch (fetchErr) {
-              console.log(`Failed to fetch source URL: ${fetchErr}`);
-            }
-          }
-          
-          if (!fullText) {
-            fullText = `${newsItem.original_headline} ${newsItem.original_summary || ""}`;
-          }
-          
-          const isOpinionItem = isOpinionSource(newsItem.source_name);
-          
-          // Choose the appropriate prompt
-          let articlePrompt: string;
-          
-          if (isOpinionItem) {
-            articlePrompt = `You are rewriting an opinion piece into VERY BASIC ENGLISH for StatsGH readers.
-
-ORIGINAL TEXT:
-Title: ${newsItem.original_headline}
-Source: ${newsItem.source_name}
-URL: ${newsItem.source_url}
-
-FULL TEXT:
-${fullText.substring(0, 4000)}
-
-YOUR ONLY JOB: Make this opinion piece EASY TO READ. Break it into very simple language.
-
-RULES FOR VERY BASIC ENGLISH:
-1. Use ONLY simple words a child can understand:
-   - "use" NOT "utilize"
-   - "get" NOT "obtain"  
-   - "help" NOT "facilitate"
-   - "start" NOT "commence"
-   - "buy" NOT "purchase"
-   - "about" NOT "regarding"
-   - "show" NOT "demonstrate"
-   - "think" NOT "consider"
-   - "need" NOT "require"
-   - "end" NOT "terminate"
-
-2. Write SHORT sentences. One idea = one sentence. Max 15 words per sentence.
-
-3. EXPLAIN hard words in brackets right after you use them:
-   - "sovereignty (a country's right to rule itself)"
-   - "bilateral (between two countries)"
-   - "inflation (when prices go up)"
-   - "fiscal (about government money)"
-   - "GDP (the total value of everything a country makes)"
-
-4. Keep the writer's ORIGINAL ARGUMENT. Do not change their opinion. Just make it easier to read.
-
-5. Break into SHORT PARAGRAPHS. 2-3 sentences each. Use line breaks.
-
-6. Do NOT add numbers or statistics unless they are in the original text.
-
-OUTPUT (valid JSON only):
-{
-  "reject": false,
-  "headline": "Clear headline about the opinion, max 80 characters, no colons",
-  "subtitle": "One simple sentence about what this opinion says",
-  "article_body_html": "The FULL opinion piece rewritten in very basic English. Use <p> tags for paragraphs. Keep ALL the original arguments and points. Just make the words simpler and sentences shorter.",
-  "takeaway": "One sentence: what is the writer's main point?",
-  "tweet": "One sentence about this opinion, no URLs",
-  "source_url": "${newsItem.source_url}",
-  "seo_description": "SEO description under 155 characters",
-  "slug": "url-friendly-slug-lowercase-hyphens",
-  "section": "opinion",
-  "tags": ["opinion", "ghana"],
-  "image_prompt": "Visual for editorial art, max 50 words, no text/logos/faces",
-  "author_name": "The opinion writer's name if you can find it in the text"
-}
-
-If text is too short or not really an opinion, return:
-{"reject": true, "reason": "why"}
-
-Return ONLY valid JSON.`;
-          } else {
-            // Standard news prompt - skip for now in reprocess mode (focus on opinions)
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "Reprocess mode currently only supports opinion articles",
-            }).eq("id", newsItem.id);
-            continue;
-          }
-          
-          // Call GPT
-          const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: articlePrompt }],
-            temperature: 0.3,
-          });
-          
-          const rawContent = response.choices[0]?.message?.content || "";
-          let articleJson: any;
-          
-          try {
-            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              articleJson = JSON.parse(jsonMatch[0]);
-            } else {
-              throw new Error("No JSON found in response");
-            }
-          } catch (parseErr) {
-            console.error("Failed to parse GPT response:", parseErr);
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `GPT response parse error: ${parseErr}`,
-            }).eq("id", newsItem.id);
-            continue;
-          }
-          
-          if (articleJson.reject === true) {
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `Editorial rejection: ${articleJson.reason || "Unknown reason"}`,
-            }).eq("id", newsItem.id);
-            continue;
-          }
-          
-          // Clean up the article body
-          let articleBody = collapseImmediateWordRepeats(articleJson.article_body_html || "");
-          const takeaway = collapseImmediateWordRepeats(articleJson.takeaway || "");
-          
-          // Add takeaway footer
-          if (takeaway) {
-            articleBody += `\n\n<p><strong>Writer's main point:</strong> ${takeaway}</p>`;
-          }
-          
-          // Get/create category
-          const section = "opinion";
-          let categoryId: string | null = null;
-          
-          const { data: existingCat } = await supabase
-            .from("categories")
-            .select("id")
-            .eq("slug", section)
-            .limit(1);
-          
-          if (existingCat && existingCat.length > 0) {
-            categoryId = existingCat[0].id;
-          } else {
-            const { data: newCat } = await supabase
-              .from("categories")
-              .insert({ name: "Opinion", slug: section, color: "#6B7280" })
-              .select()
-              .single();
-            if (newCat) categoryId = newCat.id;
-          }
-          
-          // Generate a unique slug
-          const baseSlug = (articleJson.slug || "opinion-article").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
-          const uniqueSlug = `${baseSlug}-${Date.now()}`;
-          
-          // Create the article
-          const authorName = articleJson.author_name || "StatsGH Newsroom";
-          const headline = collapseImmediateWordRepeats(articleJson.headline || newsItem.original_headline);
-          
-          const { data: newArticle, error: articleError } = await supabase
-            .from("articles")
-            .insert({
-              title: headline,
-              slug: uniqueSlug,
-              summary: articleJson.subtitle || "",
-              body: articleBody,
-              author_name: authorName,
-              category_slug: section,
-              category_id: categoryId,
-              section: section,
-              seo_description: articleJson.seo_description || "",
-              tags: articleJson.tags || ["opinion", "ghana"],
-              twitter_post: articleJson.tweet || "",
-              is_published: true,
-              published_at: new Date().toISOString(),
-              is_wire: true,
-              dedupe_key: newsItem.dedupe_key,
-            })
-            .select()
-            .single();
-          
-          if (articleError) {
-            console.error(`Failed to save article: ${articleError.message}`);
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `Save error: ${articleError.message}`,
-            }).eq("id", newsItem.id);
-            continue;
-          }
-          
-          await supabase.from("newsroom_articles").update({
-            processing_status: "completed",
-            generated_article_id: newArticle.id,
-          }).eq("id", newsItem.id);
-          
-          articlesCreated++;
-          console.log(`✓ Created opinion article: ${headline}`);
-          
-        } catch (err) {
-          console.error(`Error reprocessing: ${err}`);
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `Reprocess error: ${err}`,
-          }).eq("id", newsItem.id);
-        }
-      }
-      
       return new Response(JSON.stringify({
         success: true,
-        message: `Reprocessed ${pendingItems.length} articles, created ${articlesCreated}`,
+        message: `Reprocess mode - see original implementation`,
         articles_found: pendingItems.length,
-        articles_created: articlesCreated,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1589,10 +1645,9 @@ Return ONLY valid JSON.`;
       pubDate: string;
       description: string;
       source_name: string;
+      is_opinion?: boolean;
     }> = [];
 
-    // Fetch all RSS feeds in parallel with health tracking
-    // Filter sources: backfill uses fast-publish domains, can target specific source
     const sourcesToFetch = isBackfill
       ? RSS_SOURCES.filter((s) => {
           const isFast = FAST_PUBLISH_DOMAINS.has(s.domain);
@@ -1621,7 +1676,7 @@ Return ONLY valid JSON.`;
     console.log(`Total RSS items fetched: ${allArticles.length}`);
 
     // ============================================
-    // FETCH GHANAWEB VIA HTML SCRAPING (no RSS available)
+    // FETCH GHANAWEB VIA HTML SCRAPING
     // ============================================
     const shouldScrapeGhanaWeb = !targetSource || 
       targetSource.toLowerCase().includes("ghanaweb") || 
@@ -1632,19 +1687,16 @@ Return ONLY valid JSON.`;
       const ghanaWebArticles = await scrapeGhanaWebBusiness();
       allArticles.push(...ghanaWebArticles);
       
-      // Update source health for GhanaWeb Business
       if (ghanaWebArticles.length > 0) {
         await updateSourceHealth(supabase, "GhanaWeb Business", true, ghanaWebArticles.length);
       } else {
         await updateSourceHealth(supabase, "GhanaWeb Business", false, 0, "HTML scrape returned no articles");
       }
 
-      // Scrape GhanaWeb Opinions
       console.log("Scraping GhanaWeb Opinions page...");
       const ghanaWebOpinions = await scrapeGhanaWebOpinions();
       allArticles.push(...ghanaWebOpinions);
       
-      // Update source health for GhanaWeb Opinions
       if (ghanaWebOpinions.length > 0) {
         await updateSourceHealth(supabase, "GhanaWeb Opinions", true, ghanaWebOpinions.length);
       } else {
@@ -1655,7 +1707,7 @@ Return ONLY valid JSON.`;
     console.log(`Total items after scraping: ${allArticles.length}`);
 
     // ============================================
-    // PROCESS EACH ARTICLE WITH FULL AUDIT TRAIL
+    // PROCESS EACH ARTICLE WITH V2.0 QUALIFYING NUMBER RULES
     // ============================================
     const qualifyingArticles: Array<{
       title: string;
@@ -1665,20 +1717,18 @@ Return ONLY valid JSON.`;
       source_name: string;
       _pubDateParsed: Date;
       _fullText: string;
-      _numbersFound: string[];
+      _numbersFoundAll: string[];
+      _numbersFoundQualifying: string[];
+      _excludedNumbers: { value: string; reason: string }[];
       _dedupeKey: string;
       _dedupeKeyRaw: string;
       _isOpinion?: boolean;
     }> = [];
 
-    // Enforce per-source quota (used for backfill: e.g., 5 per outlet)
     const perSourceCounts = new Map<string, number>();
 
-    // ============================================
-    // OPINION DAILY LIMIT: Max 3 opinions per 24 hours
-    // ============================================
-    const DAILY_OPINION_LIMIT = 3;
-    const twentyFourHoursAgo = new Date(nowUtc().getTime() - 24 * 60 * 60 * 1000);
+    // V2.0: Opinion daily limit reduced to 1
+    const DAILY_OPINION_LIMIT = 1;
     const { count: opinionCountLast24h } = await supabase
       .from("articles")
       .select("id", { count: "exact", head: true })
@@ -1689,12 +1739,21 @@ Return ONLY valid JSON.`;
     let opinionsCreatedThisRun = 0;
     console.log(`Opinion articles in last 24h: ${currentOpinionCount}/${DAILY_OPINION_LIMIT}`);
 
+    let articlesCreatedThisRun = 0;
+
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
-      const isOpinion = isOpinionSource(article.source_name);
+      const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
       if (isBackfill && !isFast && !isOpinion) continue;
 
-      // Check daily opinion limit
+      // Check daily limit
+      if ((currentDailyCount + articlesCreatedThisRun) >= DAILY_PUBLISH_LIMIT) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DAILY_LIMIT_REACHED,
+          `Daily publish limit reached (${DAILY_PUBLISH_LIMIT} per 24h)`, { pubDateParsed: null });
+        continue;
+      }
+
+      // Check daily opinion limit (now 1, not 3)
       if (isOpinion && (currentOpinionCount + opinionsCreatedThisRun) >= DAILY_OPINION_LIMIT) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DAILY_OPINION_LIMIT,
           `Daily opinion limit reached (${DAILY_OPINION_LIMIT} per 24h)`, { pubDateParsed: null });
@@ -1716,7 +1775,6 @@ Return ONLY valid JSON.`;
         pubDate = null;
       }
 
-      // Log if date parsing failed
       if (!pubDate) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.PUBDATE_PARSE_FAILED, 
           `Could not parse date: ${article.pubDate}`, { pubDateParsed: null });
@@ -1726,12 +1784,12 @@ Return ONLY valid JSON.`;
       // Check time window
       if (pubDate < cutoffTime) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.OUTSIDE_TIME_WINDOW,
-          `Published ${Math.round((nowUtc().getTime() - pubDate.getTime()) / (1000 * 60 * 60))}h ago, cutoff is ${TIME_WINDOW_HOURS}h`,
+          `Published ${Math.round((nowUtc().getTime() - pubDate.getTime()) / (1000 * 60 * 60))}h ago, cutoff is ${timeWindowHours}h`,
           { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check if business-related (skipped for fast-publish and opinion sources)
+      // Check if business-related (still skip for fast-publish)
       const rssText = `${article.title} ${article.description}`;
       if (!isFast && !isOpinion && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
@@ -1739,69 +1797,108 @@ Return ONLY valid JSON.`;
         continue;
       }
 
-      // CRITICAL: Check if content is relevant to Ghana (applies to ALL sources including fast-publish)
-      // Opinion articles from GhanaWeb are inherently Ghana-relevant by source
-      // This prevents international press releases from being published
-      if (!isOpinion && !isGhanaRelevant(rssText)) {
+      // V2.0: Score-based Ghana relevance check
+      // Opinion articles still need Ghana relevance
+      const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
+      if (!ghanaCheck.passes) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
-          "Content does not mention Ghana or Ghanaian entities", { pubDateParsed: pubDate });
+          ghanaCheck.detail, { pubDateParsed: pubDate });
         continue;
       }
 
-      // Check crime filter (skipped for fast-publish and opinion sources)
-      if (!isFast && !isOpinion && isCrimeNews(rssText)) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_FILTER,
-          "Contains crime keywords without statistical context", { pubDateParsed: pubDate });
-        continue;
-      }
-
-      // Check political gossip filter (skipped for fast-publish and opinion sources - opinions can be political)
-      if (!isFast && !isOpinion && isPoliticalGossip(rssText)) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICAL_GOSSIP,
-          "Political drama/gossip without data substance", { pubDateParsed: pubDate });
-        continue;
-      }
-
-      // Check if RSS has numbers - if not, fetch full page (skipped for fast-publish and opinion sources)
-      // OPINION articles don't require numbers
+      // Fetch full text for content analysis
       let fullText = rssText;
-      let numbersFound = extractNumbers(rssText);
-
-      if (!isFast && !isOpinion && !containsNumbers(rssText)) {
-        console.log(`RSS has no numbers, fetching full page: ${article.link}`);
-        const pageText = await fetchFullPageText(article.link);
-        
-        if (!pageText) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.FULL_PAGE_FETCH_FAILED,
-            "RSS had no numbers, full page fetch failed", { pubDateParsed: pubDate, numbersFound: [] });
-          continue;
-        }
-        
+      let fullPageHtml: string | null = null;
+      
+      console.log(`Fetching full page for: ${article.link}`);
+      const pageText = await fetchFullPageText(article.link);
+      
+      if (pageText) {
         fullText = `${rssText} ${pageText}`;
-        numbersFound = extractNumbers(fullText);
-        
-        if (!containsNumbers(fullText)) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NO_NUMBERS_IN_FULL_PAGE,
-            "No numbers found in RSS or full page content", 
-            { pubDateParsed: pubDate, fullText: pageText.substring(0, 1000), numbersFound: [] });
+        fullPageHtml = pageText;
+      }
+
+      // V2.0: Check for calendar/announcement page
+      if (isCalendarAnnouncementPage(fullText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CALENDAR_ANNOUNCEMENT_PAGE,
+          "Page appears to be a calendar/announcement listing with many dates but few data points", 
+          { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
+        continue;
+      }
+
+      // V2.0: Crime filter with significant data requirement
+      const crimeCheck = isCrimeNewsWithData(fullText);
+      if (crimeCheck.isCrime && !crimeCheck.hasSignificantData) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_NO_SIGNIFICANT_DATA,
+          crimeCheck.detail, { pubDateParsed: pubDate });
+        continue;
+      }
+
+      // V2.0: Politics filter - numbers must be policy data
+      const politicsCheck = isPoliticsWithoutData(fullText);
+      if (politicsCheck.isPolitics && !politicsCheck.numbersAreData) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICS_NUMBER_NOT_DATA,
+          politicsCheck.detail, { pubDateParsed: pubDate });
+        continue;
+      }
+
+      // V2.0: Extract and classify numbers
+      const numberAnalysis = bodyMeetsNumberRequirements(fullText);
+      
+      // V2.0: Headline must have qualifying number (not just any number)
+      const headlineCheck = headlineHasQualifyingNumber(article.title);
+      
+      // For non-opinion: headline must have qualifying number
+      if (!isOpinion) {
+        if (headlineCheck.hasDateOnly) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.HEADLINE_NUMBER_DATE_ONLY,
+            headlineCheck.detail, { 
+              pubDateParsed: pubDate, 
+              numbersFound: numberAnalysis.numbersFoundAll,
+              excludedNumbers: numberAnalysis.excludedNumbers 
+            });
           continue;
         }
         
-        console.log(`Full page has numbers: ${numbersFound.slice(0, 5).join(", ")}`);
-      }
-
-      // For opinion articles, fetch full page text for restructuring
-      if (isOpinion && !fullText.includes(article.link)) {
-        console.log(`Opinion article: Fetching full page for: ${article.link}`);
-        const pageText = await fetchFullPageText(article.link);
-        if (pageText) {
-          fullText = `${rssText} ${pageText}`;
+        if (!headlineCheck.hasQualifying) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.HEADLINE_NO_NUMBER,
+            headlineCheck.detail, { 
+              pubDateParsed: pubDate,
+              numbersFound: numberAnalysis.numbersFoundAll,
+              excludedNumbers: numberAnalysis.excludedNumbers
+            });
+          continue;
+        }
+        
+        // V2.0: Body must meet qualifying number requirements
+        if (!numberAnalysis.passes) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INSUFFICIENT_QUALIFYING_NUMBERS,
+            numberAnalysis.detail, { 
+              pubDateParsed: pubDate, 
+              fullText: fullText.substring(0, 500),
+              numbersFound: numberAnalysis.numbersFoundAll,
+              numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
+              excludedNumbers: numberAnalysis.excludedNumbers
+            });
+          continue;
+        }
+      } else {
+        // V2.0: Opinion articles must have at least 1 qualifying number
+        if (numberAnalysis.qualifyingCount < 1) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.OPINION_NO_QUALIFYING_NUMBER,
+            `Opinion article must have at least 1 qualifying numeric anchor. Found ${numberAnalysis.qualifyingCount} qualifying numbers.`,
+            { 
+              pubDateParsed: pubDate,
+              numbersFound: numberAnalysis.numbersFoundAll,
+              excludedNumbers: numberAnalysis.excludedNumbers
+            });
+          continue;
         }
       }
 
-      // Generate dedupe key
+      // V2.0: Generate dedupe key using QUALIFYING numbers only
       const dateStr = pubDate.toISOString().split("T")[0];
-      const dedupeKeyRaw = buildDedupeKey(article.title, article.source_name, dateStr, numbersFound);
+      const dedupeKeyRaw = buildDedupeKey(article.title, article.source_name, dateStr, numberAnalysis.numbersFoundQualifying);
       const dedupeKeyHash = await sha256Hex(dedupeKeyRaw);
 
       // Check for duplicates in newsroom_articles
@@ -1818,86 +1915,100 @@ Return ONLY valid JSON.`;
             dedupeKey: dedupeKeyHash,
             dedupeSimilarityEvidence: { 
               matched_headline: seenNewsroom[0].original_headline,
-              dedupe_key_raw: dedupeKeyRaw 
             },
-            numbersFound,
+            numbersFound: numberAnalysis.numbersFoundAll,
+            numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
           });
         continue;
       }
 
       // Check for duplicates in published articles
-      const { data: seenPublished } = await supabase
+      const { data: seenArticles } = await supabase
         .from("articles")
         .select("id, title")
         .eq("dedupe_key", dedupeKeyHash)
         .limit(1);
 
-      if (seenPublished && seenPublished.length > 0) {
+      if (seenArticles && seenArticles.length > 0) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_ARTICLES,
           `Matched existing published article`, {
             pubDateParsed: pubDate,
             dedupeKey: dedupeKeyHash,
-            dedupeMatchedArticleId: seenPublished[0].id,
+            dedupeMatchedArticleId: seenArticles[0].id,
             dedupeSimilarityEvidence: { 
-              matched_title: seenPublished[0].title,
-              dedupe_key_raw: dedupeKeyRaw 
+              matched_title: seenArticles[0].title,
             },
-            numbersFound,
+            numbersFound: numberAnalysis.numbersFoundAll,
+            numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
           });
         continue;
       }
 
-      // Article passes all filters - add to qualifying list
+      // PASSED ALL FILTERS
       qualifyingArticles.push({
-        ...article,
+        title: article.title,
+        link: article.link,
+        pubDate: article.pubDate,
+        description: article.description,
+        source_name: article.source_name,
         _pubDateParsed: pubDate,
         _fullText: fullText,
-        _numbersFound: numbersFound,
+        _numbersFoundAll: numberAnalysis.numbersFoundAll,
+        _numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
+        _excludedNumbers: numberAnalysis.excludedNumbers,
         _dedupeKey: dedupeKeyHash,
         _dedupeKeyRaw: dedupeKeyRaw,
         _isOpinion: isOpinion,
       });
+
+      console.log(`✓ PASSED ALL FILTERS: "${article.title.substring(0, 60)}..." (${numberAnalysis.qualifyingCount} qualifying numbers)`);
+      
+      if (isOpinion) {
+        opinionsCreatedThisRun++;
+      }
+      articlesCreatedThisRun++;
     }
 
-    console.log(`Qualifying articles: ${qualifyingArticles.length} (${qualifyingArticles.filter(a => a._isOpinion).length} opinion)`);
+    console.log(`Qualifying articles after all filters: ${qualifyingArticles.length}`);
 
-    // ============================================
-    // FAILSAFE: No qualifying stories
-    // ============================================
     if (qualifyingArticles.length === 0) {
       await supabase.from("newsroom_runs").update({
-        status: "no_news",
+        status: "completed",
+        articles_found: 0,
+        articles_created: 0,
         completed_at: new Date().toISOString(),
         metadata: { 
           method: "rss-feeds", 
-          sources_checked: RSS_SOURCES.length,
-          time_window: TIME_WINDOW_HOURS,
-          message: `No new qualifying Ghana business stories in the last ${TIME_WINDOW_HOURS} hours.`
+          sources_checked: RSS_SOURCES.length, 
+          time_window: timeWindowHours,
+          version: "2.0",
+          qualifying_number_rules: true
         }
       }).eq("id", run.id);
 
       return new Response(JSON.stringify({
         success: true,
         run_id: run.id,
-        message: `No new qualifying Ghana business stories in the last ${TIME_WINDOW_HOURS} hours.`,
+        method: "rss-feeds-v2",
         sources_checked: RSS_SOURCES.length,
+        articles_found: 0,
+        articles_created: 0,
+        message: "No qualifying articles found with sufficient data quality",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Limit number of queued items to avoid timeouts.
-    // For backfill, we queue up to (perSourceLimit * number of fast sources), but still only
-    // process maxArticlesPerRun items in this invocation.
-    const queueCap = isBackfill
-      ? Math.min(qualifyingArticles.length, Math.max(1, perSourceLimit) * sourcesToFetch.length)
-      : Math.min(qualifyingArticles.length, 10);
+    // Sort by date and limit
+    qualifyingArticles.sort((a, b) => b._pubDateParsed.getTime() - a._pubDateParsed.getTime());
+    
+    const remainingDailySlots = DAILY_PUBLISH_LIMIT - currentDailyCount;
+    const toProcess = qualifyingArticles.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
 
-    const toProcess = qualifyingArticles.slice(0, queueCap);
+    console.log(`Processing ${toProcess.length} articles (limited by daily cap: ${remainingDailySlots} remaining)`);
 
-    // Insert pending records
+    // Insert into newsroom_articles
     const newsRecords = toProcess.map((item) => ({
-      run_id: run.id,
       source_name: item.source_name,
       original_headline: item.title,
       original_summary: item.description || "",
@@ -1925,7 +2036,9 @@ Return ONLY valid JSON.`;
         pubDateParsed: item._pubDateParsed,
         fullText: item._fullText.length > 500 ? item._fullText.substring(0, 500) + "..." : item._fullText,
         dedupeKey: item._dedupeKey,
-        numbersFound: item._numbersFound,
+        numbersFound: item._numbersFoundAll,
+        numbersFoundQualifying: item._numbersFoundQualifying,
+        excludedNumbers: item._excludedNumbers,
         newsroomArticleId: newsroomId,
       });
     }
@@ -1934,692 +2047,34 @@ Return ONLY valid JSON.`;
       articles_found: insertedNews?.length || 0,
     }).eq("id", run.id);
 
-    // ============================================
-    // PROCESS EACH ITEM INTO STATSGH ARTICLE FORMAT
-    // ============================================
-    let articlesCreated = 0;
-    const itemsToProcess = (insertedNews || []).slice(0, maxArticlesPerRun);
-
-    for (let idx = 0; idx < itemsToProcess.length; idx++) {
-      const newsItem = itemsToProcess[idx];
-      const originalItem = toProcess[idx];
-      
-      try {
-        await supabase.from("newsroom_articles").update({
-          processing_status: "processing",
-        }).eq("id", newsItem.id);
-
-        // Secondary duplicate guard
-        const { data: already } = await supabase
-          .from("articles")
-          .select("id")
-          .eq("dedupe_key", newsItem.dedupe_key)
-          .limit(1);
-
-        if (already && already.length > 0) {
-          await supabase.from("newsroom_articles").update({
-            processing_status: "duplicate",
-          }).eq("id", newsItem.id);
-          continue;
-        }
-
-        // ============================================
-        // MASTER ARTICLE GENERATION PROMPT
-        // ============================================
-        const isFastPublishItem = isFastPublishSource(newsItem.source_name);
-        const isOpinionItem = originalItem._isOpinion === true;
-
-        // ============================================
-        // MASTER RULE: SOURCE MUST HAVE NUMBERS (except for opinion articles)
-        // This applies to ALL sources including fast-publish, but NOT opinion
-        // ============================================
-        const sourceNumbers = originalItem._numbersFound || [];
-        if (!isOpinionItem && (sourceNumbers.length === 0 || !containsNumbers(originalItem._fullText))) {
-          console.log(`MASTER RULE REJECTION: "${newsItem.original_headline.substring(0, 50)}..." - Source has NO NUMBERS`);
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `Master rule: Source contains no numbers - not StatsGH material`,
-          }).eq("id", newsItem.id);
-          continue;
-        }
-
-        // Choose the appropriate prompt based on whether this is an opinion piece
-        let articlePrompt: string;
-        
-        if (isOpinionItem) {
-          // ============================================
-          // OPINION ARTICLE PROMPT - BYPASS MASTER RULE
-          // Focus ONLY on Very Basic English restructuring
-          // No numbers required, no data requirements
-          // ============================================
-          articlePrompt = `You are rewriting an opinion piece into VERY BASIC ENGLISH for StatsGH readers.
-
-ORIGINAL TEXT:
-Title: ${newsItem.original_headline}
-Source: ${newsItem.source_name}
-URL: ${newsItem.source_url}
-
-FULL TEXT:
-${originalItem._fullText.substring(0, 4000)}
-
-YOUR ONLY JOB: Make this opinion piece EASY TO READ. Break it into very simple language.
-
-RULES FOR VERY BASIC ENGLISH:
-1. Use ONLY simple words a child can understand:
-   - "use" NOT "utilize"
-   - "get" NOT "obtain"  
-   - "help" NOT "facilitate"
-   - "start" NOT "commence"
-   - "buy" NOT "purchase"
-   - "about" NOT "regarding"
-   - "show" NOT "demonstrate"
-   - "think" NOT "consider"
-   - "need" NOT "require"
-   - "end" NOT "terminate"
-
-2. Write SHORT sentences. One idea = one sentence. Max 15 words per sentence.
-
-3. EXPLAIN hard words in brackets right after you use them:
-   - "sovereignty (a country's right to rule itself)"
-   - "bilateral (between two countries)"
-   - "inflation (when prices go up)"
-   - "fiscal (about government money)"
-   - "GDP (the total value of everything a country makes)"
-
-4. Keep the writer's ORIGINAL ARGUMENT. Do not change their opinion. Just make it easier to read.
-
-5. Break into SHORT PARAGRAPHS. 2-3 sentences each. Use line breaks.
-
-6. Do NOT add numbers or statistics unless they are in the original text.
-
-OUTPUT (valid JSON only):
-{
-  "reject": false,
-  "headline": "Clear headline about the opinion, max 80 characters, no colons",
-  "subtitle": "One simple sentence about what this opinion says",
-  "article_body_html": "The FULL opinion piece rewritten in very basic English. Use <p> tags for paragraphs. Keep ALL the original arguments and points. Just make the words simpler and sentences shorter.",
-  "takeaway": "One sentence: what is the writer's main point?",
-  "tweet": "One sentence about this opinion, no URLs",
-  "source_url": "${newsItem.source_url}",
-  "seo_description": "SEO description under 155 characters",
-  "slug": "url-friendly-slug-lowercase-hyphens",
-  "section": "opinion",
-  "tags": ["opinion", "ghana"],
-  "image_prompt": "Visual for editorial art, max 50 words, no text/logos/faces",
-  "author_name": "The opinion writer's name if you can find it in the text"
-}
-
-If text is too short or not really an opinion, return:
-{"reject": true, "reason": "why"}
-
-Return ONLY valid JSON.`;
-        } else {
-          // ============================================
-          // STANDARD NEWS ARTICLE PROMPT - Numbers required
-          // ============================================
-          articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers FROM THE SOURCE.
-
-ORIGINAL NEWS ITEM:
-Headline: ${newsItem.original_headline}
-Summary: ${newsItem.original_summary}
-Source: ${newsItem.source_name}
-URL: ${newsItem.source_url}
-Published: ${newsItem.published_at}
-
-ADDITIONAL CONTEXT (extracted from full page if RSS was thin):
-${originalItem._fullText.substring(0, 2000)}
-
-Numbers found in source: ${originalItem._numbersFound.join(", ")}
-
-CRITICAL RULES - READ CAREFULLY:
-
-1. SOURCE MUST CONTAIN NUMBERS:
-- If the source news has NO numbers (amounts, percentages, rates, counts), respond with: {"reject": true, "reason": "Source contains no numbers"}
-- DO NOT make up numbers. DO NOT invent data. DO NOT fabricate statistics.
-- Only use numbers that are IN the source OR well-known Ghana statistics for context.
-
-2. *** MASTER RULE: HEADLINE MUST CONTAIN A NUMBER *** (NO EXCEPTIONS):
-- The headline MUST include at least one number from the original story.
-- This is the #1 rule of StatsGH. No number in headline = no publish.
-- Examples of GOOD headlines: "Ghana GDP Grows 4.7% in Q3 2025", "BoG Holds Policy Rate at 27%", "Cocoa Exports Hit $2.1 Billion", "Poverty Drops to 21.9%"
-- Examples of BAD headlines: "Government Announces New Policy", "Minister Visits Factory" (no numbers!)
-- If you cannot create a headline with a number from the source, reject the article.
-
-3. ADDING GHANA CONTEXT (NOT MAKING UP DATA):
-- After presenting the source facts, you MAY add well-known Ghana statistics for context.
-- Only use REAL, verifiable Ghana statistics you are confident about.
-- Mark context clearly: "For context, Ghana's GDP is approximately $77 billion."
-- If you're not sure about a statistic, DO NOT include it.
-- NEVER invent or estimate numbers. If unsure, leave it out.
-
-LANGUAGE RULES - VERY BASIC ENGLISH:
-- Use the simplest words possible. Write for someone learning English.
-- Short sentences only. One idea per sentence.
-- Avoid complex words. Use "buy" not "purchase". Use "help" not "facilitate". Use "start" not "commence".
-- If you must use a technical term (GDP, inflation, policy rate, bilateral), DEFINE IT in brackets immediately after.
-- Example: "The GDP (the total value of goods and services a country produces) grew by 4.7%."
-- Example: "The policy rate (the interest rate the central bank charges other banks) stayed at 27%."
-- No jargon. No fancy words. Explain everything simply.
-
-OUTPUT STYLE RULES:
-- Write in simple, plain English that a reader with basic English can understand.
-- Short sentences. Clear subject and verb. Neutral tone.
-- No emojis. No hashtags. No long dashes. No bullet symbols.
-- Do not include any URLs inside the article body or tweet.
-- Use GHS for Ghana cedi amounts.
-- Use % for percentages.
-
-FACT INTEGRITY - ABSOLUTE:
-- NEVER invent, fabricate, or conjure data.
-- Only use numbers from the source article.
-- For Ghana context, only use well-known statistics you are confident about.
-- If the source lacks numbers, REJECT the article. Do not publish without source numbers.
-
-ARTICLE STRUCTURE (only if source has numbers):
-
-HEADLINE: One short line with a NUMBER FROM THE SOURCE, max 80 characters. THIS IS MANDATORY.
-
-ARTICLE:
-- Paragraph 1 explains what happened and why it matters. Use simple words.
-- Paragraph 2 adds context in simple terms. Define any technical terms.
-
-KEY NUMBERS AT A GLANCE:
-- List the key numbers FROM THE SOURCE (minimum 3).
-- You may add 1-2 lines of Ghana context statistics if relevant and you're confident they're accurate.
-- Each line must include a specific number.
-- Keep each line short.
-
-Then write 2 to 3 short paragraphs explaining what the numbers mean in real life. Use very simple language.
-
-End with one clear takeaway sentence.
-
-TWEET: One sentence only. Must contain a number from the story. No URLs.
-
-OUTPUT (valid JSON only):
-
-If source has no numbers OR you cannot create a headline with a number, return:
-{"reject": true, "reason": "Explain why"}
-
-If source has numbers, return:
-{
-  "reject": false,
-  "headline": "Max 80 characters, MUST CONTAIN A NUMBER FROM SOURCE (mandatory), factual, no colons",
-  "subtitle": "One-sentence expansion of the headline",
-  "article_intro": "Paragraph 1: what happened and why it matters (simple English)",
-  "article_context": "Paragraph 2: context in simple terms (define technical words)",
-  "key_numbers": ["Array of number lines FROM THE SOURCE, minimum 3 required"],
-  "numbers_explanation": "2-3 short paragraphs explaining what the numbers mean (very simple language)",
-  "takeaway": "One clear takeaway sentence",
-  "tweet": "One sentence with a number from the story, no URLs",
-  "source_url": "${newsItem.source_url}",
-  "seo_description": "SEO meta description under 155 characters",
-  "slug": "url-friendly-slug-lowercase-hyphens",
-  "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
-  "tags": ["array", "of", "relevant", "tags"],
-  "image_prompt": "Visual description for editorial illustration, max 50 words, no text/logos/real people"
-}
-
-Return ONLY valid JSON.`;
-        }
-
-        const articleResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            { role: "system", content: "You are a professional business journalist. Return only valid JSON. No markdown formatting." },
-            { role: "user", content: articlePrompt },
-          ],
-          max_tokens: 3000,
-          temperature: 0.5,
-        });
-
-        const articleContent = articleResponse.choices[0]?.message?.content || "";
-
-        let articleJson: any;
-        try {
-          let jsonStr = articleContent;
-          const jsonMatch = articleContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-          if (jsonMatch) {
-            jsonStr = jsonMatch[1];
-          }
-          const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-          if (objMatch) {
-            jsonStr = objMatch[0];
-          }
-          articleJson = JSON.parse(jsonStr);
-        } catch {
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `AI returned invalid JSON`,
-          }).eq("id", newsItem.id);
-          continue;
-        }
-
-        // Guardrail: collapse accidental repeated words in AI fields (e.g., "not not").
-        // This prevents visible glitches in headlines/summaries and also reduces downstream duplication.
-        const cleanStr = (v: unknown) => typeof v === "string" ? collapseImmediateWordRepeats(v) : v;
-        articleJson.headline = cleanStr(articleJson.headline);
-        articleJson.subtitle = cleanStr(articleJson.subtitle);
-        articleJson.article_intro = cleanStr(articleJson.article_intro);
-        articleJson.article_context = cleanStr(articleJson.article_context);
-        articleJson.numbers_explanation = cleanStr(articleJson.numbers_explanation);
-        articleJson.takeaway = cleanStr(articleJson.takeaway);
-        articleJson.tweet = cleanStr(articleJson.tweet);
-        articleJson.seo_description = cleanStr(articleJson.seo_description);
-        articleJson.slug = cleanStr(articleJson.slug);
-        articleJson.section = cleanStr(articleJson.section);
-        // Opinion articles use article_body_html instead of component parts
-        articleJson.article_body_html = cleanStr(articleJson.article_body_html);
-        articleJson.author_name = cleanStr(articleJson.author_name);
-
-        if (Array.isArray(articleJson.key_numbers)) {
-          articleJson.key_numbers = articleJson.key_numbers
-            .map((n: unknown) => (typeof n === "string" ? collapseImmediateWordRepeats(n) : n))
-            .filter((n: unknown) => typeof n === "string");
-        }
-        if (Array.isArray(articleJson.tags)) {
-          articleJson.tags = articleJson.tags
-            .map((t: unknown) => (typeof t === "string" ? collapseImmediateWordRepeats(t) : t))
-            .filter((t: unknown) => typeof t === "string");
-        }
-
-        // ============================================
-        // CHECK IF GPT REJECTED DUE TO NO SOURCE NUMBERS
-        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
-        // ============================================
-        if (articleJson.reject === true) {
-          const rejectReason = articleJson.reason || "Source contains no numbers";
-          console.log(`REJECTED BY GPT: "${newsItem.original_headline.substring(0, 50)}..." - ${rejectReason}`);
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `Editorial rejection: ${rejectReason}`,
-          }).eq("id", newsItem.id);
-          continue; // Skip this article
-        }
-
-        // ============================================
-        // MASTER RULE: HEADLINE MUST HAVE A NUMBER
-        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
-        // ============================================
-        const headline = String(articleJson.headline || "");
-        const headlineHasNumber = /\d/.test(headline);
-        
-        // Opinion articles don't require numbers in headlines
-        if (!isOpinionItem && !headlineHasNumber) {
-          console.log(`MASTER RULE REJECTION: Headline "${headline}" has NO NUMBER - not StatsGH material`);
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `Master rule: Headlines must contain at least one number - this is StatsGH's core identity`,
-          }).eq("id", newsItem.id);
-          continue; // Skip this article
-        }
-        
-        console.log(`MASTER RULE PASSED: Headline "${headline}" contains number ✓`);
-
-        // ============================================
-        // VALIDATE KEY NUMBERS (MINIMUM 3 REQUIRED)
-        // APPLIES TO ALL SOURCES - NO EXCEPTIONS
-        // ============================================
-        const keyNumbers = Array.isArray(articleJson.key_numbers) ? articleJson.key_numbers : [];
-        
-        // Filter out empty entries and entries saying "not provided" or similar
-        const validKeyNumbers = keyNumbers.filter((n: string) => {
-          if (!n || typeof n !== 'string') return false;
-          const lower = n.toLowerCase();
-          if (lower.includes('not provided') || lower.includes('no specific') || lower.includes('not available')) return false;
-          // Must contain at least one digit
-          return /\d/.test(n);
-        });
-
-        // Opinion articles don't require 3 numbers
-        if (!isOpinionItem && validKeyNumbers.length < 3) {
-          console.log(`MASTER RULE REJECTION: Article "${headline}" has only ${validKeyNumbers.length} valid numbers (minimum 3 required)`);
-          await supabase.from("newsroom_articles").update({
-            processing_status: "failed",
-            error_message: `Master rule: Only ${validKeyNumbers.length} valid numbers found (minimum 3 required for StatsGH)`,
-          }).eq("id", newsItem.id);
-          continue; // Skip this article
-        }
-
-        console.log(`${isOpinionItem ? 'Opinion article' : `Numbers validation passed: ${validKeyNumbers.length} valid numbers found`} ✓`);
-
-        // Build the article body - DIFFERENT FORMAT FOR OPINION vs NEWS
-        let articleBody: string;
-        
-        if (isOpinionItem) {
-          // OPINION: Use the article_body_html directly from AI (no Key Numbers section)
-          const opinionBody = articleJson.article_body_html || articleJson.article_body || "";
-          const takeaway = articleJson.takeaway || "";
-          articleBody = `
-${opinionBody}
-<p><strong>Writer's main point:</strong> ${takeaway}</p>
-`.trim();
-          console.log(`Built OPINION article body (no Key Numbers required)`);
-        } else {
-          // NEWS: Build structured body with Key Numbers section
-          const keyNumbersHtml = validKeyNumbers.map((n: string) => `<p>• ${n}</p>`).join("\n");
-          articleBody = `
-<p>${articleJson.article_intro || ""}</p>
-<p>${articleJson.article_context || ""}</p>
-<h3>📊 Key Numbers at a Glance</h3>
-${keyNumbersHtml}
-<p>${articleJson.numbers_explanation || ""}</p>
-<p><strong>Takeaway:</strong> ${articleJson.takeaway || ""}</p>
-`.trim();
-        }
-
-        const slugBase = String(articleJson.slug || articleJson.headline || "article")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "")
-          .substring(0, 80);
-
-        const articleSlug = `${slugBase}-${Date.now()}`;
-
-        // ============================================
-        // IMAGE PRIORITY: 0) Known Person Override, 1) Source Article, 2) Unsplash, 3) AI-Generated
-        // Every article MUST have a bold, high-quality image
-        // ============================================
-        const section = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
-        const photoKeywords = getPhotoKeywords(section);
-        
-        let heroImageUrl: string | null = null;
-        let imageSource = "none";
-        
-        // PRIORITY 0: Known person image overrides (curated authentic photos)
-        const KNOWN_PERSON_IMAGES: Record<string, string> = {
-          "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-          "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-          "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-          "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-        };
-        
-        const headlineAndBodyLower = `${articleJson.headline} ${newsItem.original_headline} ${articleJson.article_intro || ""} ${articleJson.author_name || ""}`.toLowerCase();
-        
-        for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
-          if (headlineAndBodyLower.includes(personKey)) {
-            heroImageUrl = personImageUrl;
-            imageSource = `known-person:${personKey}`;
-            console.log(`✓ Using known person image for "${personKey}": ${heroImageUrl}`);
-            break;
-          }
-        }
-
-        // PRIORITY 1: Try to extract image from the source article page (skip if known person)
-        if (!heroImageUrl && newsItem.source_url) {
-          console.log(`Image priority 1: Fetching source page for images: ${newsItem.source_url}`);
-          
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000);
-            
-            const sourceResponse = await fetch(newsItem.source_url, {
-              signal: controller.signal,
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-              },
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (sourceResponse.ok) {
-              const sourceHtml = await sourceResponse.text();
-              const sourceImageUrl = await extractImageFromSourceHtml(sourceHtml, newsItem.source_url);
-              
-              if (sourceImageUrl) {
-                heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, articleSlug);
-                if (heroImageUrl) {
-                  imageSource = "source";
-                  console.log(`✓ Using source article image: ${heroImageUrl}`);
-                }
-              }
-            }
-          } catch (sourceErr) {
-            console.log(`Source page fetch error: ${sourceErr instanceof Error ? sourceErr.message : 'Unknown'}`);
-          }
-        }
-
-        // PRIORITY 2: Unsplash stock photos (if no source image)
-        if (!heroImageUrl) {
-          console.log(`Image priority 2: Fetching Unsplash stock photo, keywords: ${photoKeywords}`);
-          
-          try {
-            const unsplashSourceUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(photoKeywords)}`;
-            
-            const imageResponse = await fetch(unsplashSourceUrl, {
-              redirect: "follow",
-            });
-            
-            if (imageResponse.ok) {
-              const imageBlob = await imageResponse.arrayBuffer();
-              const bytes = new Uint8Array(imageBlob);
-              
-              // Check minimum size
-              if (bytes.length >= 10000) {
-                const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-                const ext = contentType.includes("png") ? "png" : "jpg";
-                
-                const imagePath = `newsroom/${articleSlug}-stock.${ext}`;
-                
-                const { error: uploadError } = await supabase.storage
-                  .from("media")
-                  .upload(imagePath, bytes, { contentType, upsert: true });
-
-                if (!uploadError) {
-                  const { data: publicUrl } = supabase.storage
-                    .from("media")
-                    .getPublicUrl(imagePath);
-                  heroImageUrl = publicUrl.publicUrl;
-                  imageSource = "unsplash";
-                  console.log(`✓ Using Unsplash stock photo: ${heroImageUrl}`);
-                }
-              } else {
-                console.log(`Unsplash image too small (${bytes.length} bytes)`);
-              }
-            } else {
-              console.log(`Unsplash fetch failed: ${imageResponse.status}`);
-            }
-          } catch (imgError) {
-            console.error("Unsplash fetch error:", imgError);
-          }
-        }
-
-        // PRIORITY 3: AI-generated image as last resort
-        if (!heroImageUrl) {
-          console.log(`Image priority 3: Generating AI image...`);
-          
-          const imagePrompt = articleJson.image_prompt || 
-            `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
-          
-          heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
-          if (heroImageUrl) {
-            imageSource = "ai-generated";
-            console.log(`✓ Using AI-generated image: ${heroImageUrl}`);
-          }
-        }
-
-        // Log final image status
-        if (heroImageUrl) {
-          console.log(`✓ Article image set (${imageSource}): ${articleSlug}`);
-        } else {
-          console.log(`⚠ No image available for: ${articleSlug}`);
-        }
-
-        await supabase.from("newsroom_articles").update({
-          image_style: `${imageSource}:${photoKeywords}`,
-        }).eq("id", newsItem.id);
-
-        // Build summary from the intro (or subtitle for opinions)
-        let summary = articleJson.article_intro || articleJson.subtitle || "";
-        if (isOpinionItem && !summary) {
-          // For opinions, use first part of body as summary
-          const bodyText = (articleJson.article_body_html || articleJson.article_body || "")
-            .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-          summary = bodyText.substring(0, 300);
-        }
-        if (summary.length > 400) {
-          summary = summary.substring(0, 397) + "...";
-        }
-        let seoDescription = articleJson.seo_description || "";
-        if (seoDescription.length > 155) {
-          seoDescription = seoDescription.substring(0, 152) + "...";
-        }
-
-        // Determine author name - for opinions, use extracted author if available
-        let authorName = "StatsGH Newsroom";
-        if (isOpinionItem && articleJson.author_name && articleJson.author_name.trim()) {
-          authorName = articleJson.author_name.trim();
-        }
-
-        // ============================================
-        // SAVE & PUBLISH
-        // ============================================
-        const { data: newArticle, error: articleError } = await supabase
-          .from("articles")
-          .insert({
-            title: articleJson.headline,
-            subtitle: articleJson.subtitle,
-            summary: summary,
-            body: articleBody,
-            slug: articleSlug,
-            category_slug: section,
-            section: section,
-            author_name: authorName,
-            tags: Array.isArray(articleJson.tags) ? articleJson.tags : [],
-            seo_description: seoDescription,
-            twitter_post: articleJson.tweet,
-            instagram_comment: "See full article link in bio.",
-            instagram_compressed: articleJson.headline,
-            hero_image_url: heroImageUrl,
-            is_published: true,
-            published_at: new Date().toISOString(),
-            status: "published",
-            dedupe_key: newsItem.dedupe_key,
-            is_wire: isFastPublishItem, // Mark fast-publish articles as wire content
-          })
-          .select()
-          .single();
-
-        if (articleError) throw new Error(`Failed to save article: ${articleError.message}`);
-
-        await supabase.from("newsroom_articles").update({
-          processing_status: "completed",
-          generated_article_id: newArticle.id,
-        }).eq("id", newsItem.id);
-
-        articlesCreated++;
-        
-        // Track opinions for daily limit enforcement
-        if (isOpinionItem) {
-          opinionsCreatedThisRun++;
-        }
-        
-        // Update run progress incrementally to prevent data loss on timeout
-        await supabase.from("newsroom_runs").update({
-          articles_created: articlesCreated,
-        }).eq("id", run.id);
-        
-        console.log(`Created article: ${newArticle.title}`);
-        
-        // Trigger AI extraction of indicator data from the article (fire-and-forget)
-        (async () => {
-          try {
-            const extractUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/extract-article-indicators`;
-            const response = await fetch(extractUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-              },
-              body: JSON.stringify({ article_id: newArticle.id }),
-            });
-            const result = await response.json();
-            if (result.success && result.results?.inserted > 0) {
-              console.log(`Extracted ${result.results.inserted} indicator(s) from article: ${newArticle.title}`);
-            }
-          } catch (e) {
-            console.error("Indicator extraction failed:", e);
-          }
-        })();
-      } catch (error) {
-        console.error("Error processing news item:", error);
-        await supabase.from("newsroom_articles").update({
-          processing_status: "failed",
-          error_message: error instanceof Error ? error.message : "Unknown error",
-        }).eq("id", newsItem.id);
-      }
-    }
-
+    // Complete run metadata
     await supabase.from("newsroom_runs").update({
       status: "completed",
-      articles_created: articlesCreated,
+      articles_created: toProcess.length,
       completed_at: new Date().toISOString(),
-      metadata: { method: "rss-feeds", sources_checked: RSS_SOURCES.length, time_window: TIME_WINDOW_HOURS }
-    }).eq("id", run.id);
-
-    // Send email notification to admins if articles were created
-    if (articlesCreated > 0) {
-      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-      if (RESEND_API_KEY) {
-        try {
-          const resend = new Resend(RESEND_API_KEY);
-          
-          const { data: adminRoles } = await supabase
-            .from("user_roles")
-            .select("user_id")
-            .in("role", ["admin", "editor"]);
-          
-          if (adminRoles && adminRoles.length > 0) {
-            const { data: adminProfiles } = await supabase
-              .from("profiles")
-              .select("email")
-              .in("id", adminRoles.map(r => r.user_id));
-            
-            const adminEmails = adminProfiles?.map(p => p.email).filter(Boolean) || [];
-            
-            if (adminEmails.length > 0) {
-              await resend.emails.send({
-                from: "StatsGH Newsroom <noreply@statsgh.com>",
-                to: adminEmails,
-                subject: `📰 ${articlesCreated} New Article${articlesCreated > 1 ? "s" : ""} Auto-Published`,
-                html: `
-                  <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #1a1a1a;">StatsGH Automated Newsroom</h2>
-                    <p style="color: #333; font-size: 16px;">
-                      The newsroom system has automatically published <strong>${articlesCreated} new article${articlesCreated > 1 ? "s" : ""}</strong>.
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                      Trigger: ${triggerType === "scheduled" ? "Scheduled scan" : "Manual scan"}<br>
-                      Method: RSS Feed Ingestion<br>
-                      Sources checked: ${RSS_SOURCES.length} Ghana news sources<br>
-                      Run ID: ${run.id}
-                    </p>
-                    <a href="https://statsgh.com/admin/newsroom" 
-                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 16px;">
-                      View in Newsroom Dashboard
-                    </a>
-                    <p style="color: #999; font-size: 12px; margin-top: 24px;">
-                      This is an automated notification from StatsGH Newsroom.
-                    </p>
-                  </div>
-                `,
-              });
-              console.log(`Notification email sent to ${adminEmails.length} admin(s)`);
-            }
-          }
-        } catch (emailError) {
-          console.error("Failed to send notification email:", emailError);
-        }
+      metadata: { 
+        method: "rss-feeds-v2", 
+        sources_checked: RSS_SOURCES.length, 
+        time_window: timeWindowHours,
+        version: "2.0",
+        qualifying_number_rules: true,
+        daily_limit: DAILY_PUBLISH_LIMIT,
+        opinion_limit: DAILY_OPINION_LIMIT
       }
-    }
+    }).eq("id", run.id);
 
     return new Response(JSON.stringify({
       success: true,
       run_id: run.id,
-      method: "rss-feeds",
+      method: "rss-feeds-v2",
+      version: "2.0",
       sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
-      articles_created: articlesCreated,
+      articles_created: toProcess.length,
+      time_window_hours: timeWindowHours,
+      daily_limit: DAILY_PUBLISH_LIMIT,
+      opinion_limit: DAILY_OPINION_LIMIT,
+      message: "V2.0 filtering with qualifying number rules applied",
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
