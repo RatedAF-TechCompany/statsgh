@@ -31,7 +31,187 @@ const PREFERRED_CATEGORIES = [
 
 const DEFAULT_CATEGORY = "business";
 
-// Generate AI image using Lovable AI (Gemini)
+// ============================================
+// IMAGE PIPELINE: Original First, AI Fallback
+// ============================================
+
+// Image rejection domains (competitor branding)
+const COMPETITOR_IMAGE_DOMAINS = [
+  '3news.com', 'tv3network', 'myjoyonline', 'joynews',
+  'citinewsroom', 'citifm', 'gaborbreaks', 'ghanaweb',
+  'graphiconline', 'graphic.com.gh', 'peacefmonline',
+  'starfmonline', 'classfmonline', 'dailyguidenetwork',
+  'ghanaiantimes', 'businessghana', 'pulse.com.gh',
+  'modernghana', 'yen.com.gh', 'gna.org.gh', 'thebftonline',
+  'bbc.co.uk', 'bbc.com', 'reuters.com', 'aljazeera',
+  'africanews.com', 'bloomberg.com', 'cdngh',
+  'media.myjoyonline', 'images.citinewsroom'
+];
+
+const BRANDED_IMAGE_PATTERNS = [
+  'studio', 'presenter', 'anchor', 'newsroom', 'broadcast',
+  'live-stream', 'livestream', 'logo', 'brand', 'watermark',
+  'tv-studio', 'news-desk', 'breaking-news-graphic',
+  'stock-photo', 'shutterstock', 'getty', 'istock'
+];
+
+interface ImageAttempt {
+  url: string;
+  source_type: string;
+  success: boolean;
+  rejection_reason?: string;
+  timestamp: string;
+}
+
+interface ImagePipelineResult {
+  final_url: string | null;
+  final_source_type: 'SOURCE_HERO' | 'META_OG' | 'AI_FALLBACK' | 'KNOWN_PERSON' | 'PLACEHOLDER';
+  is_ai_generated: boolean;
+  image_prompt?: string;
+  image_reason_fallback?: string;
+  attempts: ImageAttempt[];
+  image_missing: boolean;
+}
+
+// Check if URL should be rejected
+function getImageRejectionReason(imageUrl: string): string | null {
+  const lowerUrl = imageUrl.toLowerCase();
+  
+  for (const domain of COMPETITOR_IMAGE_DOMAINS) {
+    if (lowerUrl.includes(domain)) {
+      return `Competitor domain: ${domain}`;
+    }
+  }
+  
+  for (const pattern of BRANDED_IMAGE_PATTERNS) {
+    if (lowerUrl.includes(pattern)) {
+      return `Branded pattern: ${pattern}`;
+    }
+  }
+  
+  const smallPatterns = ['thumb', '100x', '50x', '32x', '16x', 'icon', 'avatar', 'sprite'];
+  for (const pattern of smallPatterns) {
+    if (lowerUrl.includes(pattern)) {
+      return `Small image indicator: ${pattern}`;
+    }
+  }
+  
+  return null;
+}
+
+// Extract image from HTML
+function extractImageFromHtml(html: string, sourceUrl: string): { url: string | null; source_type: 'SOURCE_HERO' | 'META_OG' } {
+  // Priority 1: Hero/featured images
+  const heroPatterns = [
+    /<img[^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image|entry-image|wp-post-image)[^"']*["'][^>]+src=["']([^"']+)["']/i,
+    /<img[^>]+src=["']([^"']+)["'][^>]+class=["'][^"']*(?:featured|hero|main|article-image|post-image)[^"']*["']/i,
+    /<figure[^>]*class=["'][^"']*(?:hero|featured)[^"']*["'][^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
+  ];
+  
+  for (const pattern of heroPatterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const url = normalizeImageUrl(match[1], sourceUrl);
+      if (url) return { url, source_type: 'SOURCE_HERO' };
+    }
+  }
+  
+  // Priority 2: OG/Twitter meta images
+  const metaPatterns = [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+  ];
+  
+  for (const pattern of metaPatterns) {
+    const match = html.match(pattern);
+    if (match && match[1]) {
+      const url = normalizeImageUrl(match[1], sourceUrl);
+      if (url) return { url, source_type: 'META_OG' };
+    }
+  }
+  
+  return { url: null, source_type: 'META_OG' };
+}
+
+function normalizeImageUrl(imageUrl: string, sourceUrl: string): string | null {
+  try {
+    if (!imageUrl || imageUrl.trim() === '') return null;
+    
+    let url = imageUrl.trim();
+    
+    if (url.startsWith('//')) url = 'https:' + url;
+    
+    if (url.startsWith('/')) {
+      try {
+        const base = new URL(sourceUrl);
+        url = `${base.origin}${url}`;
+      } catch { return null; }
+    }
+    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
+    
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const isImageUrl = imageExtensions.some(ext => url.toLowerCase().includes(ext)) || 
+      url.includes('/image') || url.includes('/img') || url.includes('/media');
+    
+    if (!isImageUrl) return null;
+    
+    return url;
+  } catch { return null; }
+}
+
+// Fetch and upload image to storage
+async function fetchAndUploadImage(
+  imageUrl: string,
+  supabase: any,
+  articleSlug: string
+): Promise<{ success: boolean; publicUrl?: string; rejection?: string }> {
+  try {
+    const rejection = getImageRejectionReason(imageUrl);
+    if (rejection) return { success: false, rejection };
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(imageUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'StatsGH-Newsroom/2.0 (Image Pipeline)',
+        'Accept': 'image/*',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) return { success: false, rejection: `HTTP ${response.status}` };
+    
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) return { success: false, rejection: `Invalid content type: ${contentType}` };
+    
+    const imageBlob = await response.arrayBuffer();
+    const bytes = new Uint8Array(imageBlob);
+    
+    if (bytes.length < 20000) return { success: false, rejection: `Too small: ${bytes.length} bytes` };
+    
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+    const imagePath = `newsroom/${articleSlug}.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(imagePath, bytes, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`, upsert: true });
+    
+    if (uploadError) return { success: false, rejection: `Upload failed: ${uploadError.message}` };
+    
+    const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(imagePath);
+    
+    return { success: true, publicUrl: publicUrl.publicUrl };
+  } catch (error) {
+    return { success: false, rejection: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Generate AI image as fallback
 async function generateAiImage(
   prompt: string,
   supabase: any,
@@ -40,11 +220,11 @@ async function generateAiImage(
   try {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
-      console.log('LOVABLE_API_KEY not configured, skipping AI image');
+      console.log('[Image] LOVABLE_API_KEY not configured');
       return null;
     }
     
-    console.log(`Generating AI image for: ${articleSlug}`);
+    console.log(`[Image] Generating AI image for: ${articleSlug}`);
     
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -53,67 +233,156 @@ async function generateAiImage(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a photorealistic, professional editorial photograph for a news article. 
+        model: 'google/gemini-2.5-flash-image',
+        messages: [{
+          role: 'user',
+          content: `Generate a photorealistic, professional editorial photograph for a news article. 
 Style: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.
 Subject: ${prompt}
 Requirements: No text, no logos, no watermarks, no AI-looking faces. 
 The image should look like it was taken by a professional photojournalist in Ghana or Africa.`
-          }
-        ],
+        }],
         modalities: ['image', 'text']
       })
     });
     
     if (!response.ok) {
-      console.log(`AI image generation failed: ${response.status}`);
+      console.log(`[Image] AI generation failed: ${response.status}`);
       return null;
     }
     
     const data = await response.json();
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
-    if (!imageData || !imageData.startsWith('data:image')) {
-      console.log('No valid image in AI response');
-      return null;
-    }
+    if (!imageData || !imageData.startsWith('data:image')) return null;
     
-    // Extract base64 data
     const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!base64Match) {
-      console.log('Could not parse AI image data');
-      return null;
-    }
+    if (!base64Match) return null;
     
     const [, format, base64Data] = base64Match;
     const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
     const ext = format === 'png' ? 'png' : 'jpg';
-    const contentType = `image/${format === 'png' ? 'png' : 'jpeg'}`;
-    const imagePath = `newsroom/${articleSlug}-${Date.now()}-ai.${ext}`;
+    const imagePath = `newsroom/${articleSlug}-ai.${ext}`;
     
     const { error: uploadError } = await supabase.storage
       .from('media')
-      .upload(imagePath, bytes, { contentType, upsert: true });
+      .upload(imagePath, bytes, { contentType: `image/${format === 'png' ? 'png' : 'jpeg'}`, upsert: true });
     
     if (uploadError) {
-      console.error('AI image upload error:', uploadError);
+      console.error('[Image] AI upload error:', uploadError);
       return null;
     }
     
-    const { data: publicUrl } = supabase.storage
-      .from('media')
-      .getPublicUrl(imagePath);
-    
-    console.log(`AI image generated and uploaded: ${publicUrl.publicUrl}`);
+    const { data: publicUrl } = supabase.storage.from('media').getPublicUrl(imagePath);
+    console.log(`[Image] AI image generated: ${publicUrl.publicUrl}`);
     return publicUrl.publicUrl;
   } catch (error) {
-    console.log(`AI image error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    console.log(`[Image] AI error: ${error instanceof Error ? error.message : 'Unknown'}`);
     return null;
   }
+}
+
+// Main image pipeline
+async function processArticleImage(
+  sourceHtml: string | null,
+  sourceUrl: string | null,
+  articleTitle: string,
+  articleSlug: string,
+  supabase: any
+): Promise<ImagePipelineResult> {
+  const attempts: ImageAttempt[] = [];
+  const now = () => new Date().toISOString();
+  
+  console.log(`[Image Pipeline] Processing for: ${articleTitle.substring(0, 50)}...`);
+  
+  // STEP 1: Known person override (highest priority)
+  const KNOWN_PERSON_IMAGES: Record<string, string> = {
+    "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+    "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+    "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+    "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+  };
+  
+  const titleLower = articleTitle.toLowerCase();
+  for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
+    if (titleLower.includes(personKey)) {
+      console.log(`[Image] Using known person image: ${personKey}`);
+      return {
+        final_url: personImageUrl,
+        final_source_type: 'KNOWN_PERSON',
+        is_ai_generated: false,
+        attempts: [{ url: personImageUrl, source_type: 'KNOWN_PERSON', success: true, timestamp: now() }],
+        image_missing: false
+      };
+    }
+  }
+  
+  // STEP 2: Try source page image (if HTML available)
+  if (sourceHtml && sourceUrl) {
+    const { url: extractedUrl, source_type } = extractImageFromHtml(sourceHtml, sourceUrl);
+    
+    if (extractedUrl) {
+      console.log(`[Image] Found ${source_type}: ${extractedUrl.substring(0, 80)}...`);
+      const result = await fetchAndUploadImage(extractedUrl, supabase, articleSlug);
+      
+      attempts.push({
+        url: extractedUrl,
+        source_type,
+        success: result.success,
+        rejection_reason: result.rejection,
+        timestamp: now()
+      });
+      
+      if (result.success && result.publicUrl) {
+        console.log(`[Image] Source image uploaded: ${result.publicUrl}`);
+        return {
+          final_url: result.publicUrl,
+          final_source_type: source_type,
+          is_ai_generated: false,
+          attempts,
+          image_missing: false
+        };
+      }
+      
+      console.log(`[Image] Source rejected: ${result.rejection}`);
+    }
+  }
+  
+  // STEP 3: AI-generated fallback
+  console.log('[Image] Falling back to AI generation');
+  const aiPrompt = `Professional editorial photograph: ${articleTitle}. African business context, Ghana, documentary style.`;
+  const aiUrl = await generateAiImage(aiPrompt, supabase, articleSlug);
+  
+  attempts.push({
+    url: 'AI_GENERATION',
+    source_type: 'AI_FALLBACK',
+    success: !!aiUrl,
+    timestamp: now()
+  });
+  
+  if (aiUrl) {
+    return {
+      final_url: aiUrl,
+      final_source_type: 'AI_FALLBACK',
+      is_ai_generated: true,
+      image_prompt: aiPrompt,
+      image_reason_fallback: sourceHtml ? 'Source image rejected' : 'No source HTML available',
+      attempts,
+      image_missing: false
+    };
+  }
+  
+  // STEP 4: Failsafe - placeholder
+  console.log('[Image] All methods failed, article will have no image');
+  return {
+    final_url: null,
+    final_source_type: 'PLACEHOLDER',
+    is_ai_generated: false,
+    image_reason_fallback: 'All image methods failed',
+    attempts,
+    image_missing: true
+  };
 }
 
 // Helper to ensure category exists in database
@@ -158,11 +427,11 @@ async function ensureCategoryExists(supabase: any, slug: string): Promise<string
 }
 
 // Fetch URL content if input is a URL
-async function fetchUrlContent(url: string): Promise<{ title: string; content: string; sourceUrl: string } | null> {
+async function fetchUrlContent(url: string): Promise<{ title: string; content: string; sourceUrl: string; html: string } | null> {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'StatsGH-Manual-Submit/1.0',
+        'User-Agent': 'StatsGH-Manual-Submit/2.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
     });
@@ -174,11 +443,9 @@ async function fetchUrlContent(url: string): Promise<{ title: string; content: s
     
     const html = await response.text();
     
-    // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : "";
     
-    // Extract main content (strip HTML tags)
     let content = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -188,9 +455,9 @@ async function fetchUrlContent(url: string): Promise<{ title: string; content: s
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 10000); // Limit content length
+      .substring(0, 10000);
     
-    return { title, content, sourceUrl: url };
+    return { title, content, sourceUrl: url, html };
   } catch (error) {
     console.error("Error fetching URL:", error);
     return null;
@@ -247,20 +514,19 @@ serve(async (req) => {
     const body = await req.json();
     const { input, scheduled_at } = body;
     
-    // Extract author attribution from input (e.g., "by Citizen Yao" or "by John Doe")
-    // Pattern: look for "by [Name]" at start or end of input, or after a period/newline
+    // Extract author attribution from input
     let extractedAuthor: string | null = null;
     const authorPatterns = [
-      /\bby\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,  // "by Name" at end
-      /^\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*[\n.]/i,  // "by Name" at start
-      /[\n.]\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,  // "by Name" after newline/period at end
+      /\bby\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,
+      /^\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*[\n.]/i,
+      /[\n.]\s*by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})\s*$/i,
     ];
     
     for (const pattern of authorPatterns) {
       const match = input.match(pattern);
       if (match && match[1]) {
         extractedAuthor = match[1].trim();
-        console.log(`Extracted author from input: "${extractedAuthor}"`);
+        console.log(`Extracted author: "${extractedAuthor}"`);
         break;
       }
     }
@@ -272,21 +538,15 @@ serve(async (req) => {
       });
     }
     
-    // Handle scheduling: "auto" for system-picked time, ISO string for manual, null for immediate
+    // Handle scheduling
     let scheduledDateTime: Date | null = null;
     const isAutoSchedule = scheduled_at === "auto";
     
     if (isAutoSchedule) {
-      // Auto-schedule: pick next optimal slot
-      // Rules:
-      // 1. Max 4 auto-scheduled articles per day
-      // 2. No duplicate time slots
-      // 3. If day is full (4 articles), skip next day and schedule for day after
       const now = new Date();
-      const peakHours = [7, 9, 12, 15, 18, 20]; // 6 peak hours, but max 4 per day
+      const peakHours = [7, 9, 12, 15, 18, 20];
       const MAX_PER_DAY = 4;
       
-      // Helper to get scheduled articles for a specific day
       const getScheduledForDay = async (date: Date) => {
         const dayStart = new Date(date);
         dayStart.setHours(0, 0, 0, 0);
@@ -303,15 +563,10 @@ serve(async (req) => {
         return data || [];
       };
       
-      // Helper to find next available slot on a given day
       const findSlotOnDay = (date: Date, scheduledArticles: any[], afterHour: number = -1): Date | null => {
-        if (scheduledArticles.length >= MAX_PER_DAY) {
-          return null; // Day is full
-        }
+        if (scheduledArticles.length >= MAX_PER_DAY) return null;
         
-        const takenHours = new Set(
-          scheduledArticles.map(a => new Date(a.scheduled_at!).getHours())
-        );
+        const takenHours = new Set(scheduledArticles.map(a => new Date(a.scheduled_at!).getHours()));
         
         for (const hour of peakHours) {
           if (hour > afterHour && !takenHours.has(hour)) {
@@ -320,8 +575,7 @@ serve(async (req) => {
             return slot;
           }
         }
-        
-        return null; // No available slots
+        return null;
       };
       
       let selectedDate: Date | null = null;
@@ -329,26 +583,20 @@ serve(async (req) => {
       let currentCheckDate = new Date(now);
       const currentHour = now.getHours();
       
-      while (!selectedDate && daysChecked < 14) { // Check up to 2 weeks ahead
+      while (!selectedDate && daysChecked < 14) {
         const scheduledForDay = await getScheduledForDay(currentCheckDate);
-        
-        // For today, only consider hours after current time
         const afterHour = daysChecked === 0 ? currentHour : -1;
-        
         const slot = findSlotOnDay(currentCheckDate, scheduledForDay, afterHour);
         
         if (slot) {
           selectedDate = slot;
         } else {
-          // Day is full or no slots available
-          // Skip to day after next (leave a gap)
           daysChecked++;
-          currentCheckDate.setDate(currentCheckDate.getDate() + 2); // Skip a day
-          daysChecked++; // Count the skipped day too
+          currentCheckDate.setDate(currentCheckDate.getDate() + 2);
+          daysChecked++;
         }
       }
       
-      // Fallback: if somehow no slot found, schedule for 2 weeks from now
       if (!selectedDate) {
         selectedDate = new Date(now);
         selectedDate.setDate(selectedDate.getDate() + 14);
@@ -371,15 +619,12 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      console.log(`Manually scheduled for: ${scheduledDateTime.toISOString()}`);
     }
 
     const inputTrimmed = input.trim();
-    
-    // Determine if input is URL or raw text
     const isUrl = /^https?:\/\//i.test(inputTrimmed);
     
-    let articleSource: { headline: string; content: string; sourceUrl: string | null };
+    let articleSource: { headline: string; content: string; sourceUrl: string | null; html: string | null };
     
     if (isUrl) {
       console.log(`Fetching content from URL: ${inputTrimmed}`);
@@ -396,25 +641,23 @@ serve(async (req) => {
         headline: urlContent.title,
         content: urlContent.content,
         sourceUrl: urlContent.sourceUrl,
+        html: urlContent.html,
       };
     } else {
-      // Raw text input - extract first line as potential headline
       const lines = inputTrimmed.split('\n').filter(l => l.trim());
       const firstLine = lines[0] || "";
-      const rest = lines.slice(1).join('\n');
       
       articleSource = {
         headline: firstLine.length < 150 ? firstLine : "",
         content: inputTrimmed,
         sourceUrl: null,
+        html: null,
       };
     }
 
     console.log(`Processing article: "${articleSource.headline.substring(0, 50)}..."`);
 
-    // ============================================
-    // MASTER ARTICLE GENERATION PROMPT
-    // ============================================
+    // Article generation prompt
     const articlePrompt = `You are the StatsGH automated newsroom editor. StatsGH is a DATA-DRIVEN news platform - EVERY article MUST contain meaningful numbers.
 
 ORIGINAL NEWS ITEM:
@@ -480,13 +723,9 @@ Return ONLY valid JSON.`;
     try {
       let jsonStr = articleContent;
       const jsonMatch = articleContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
+      if (jsonMatch) jsonStr = jsonMatch[1];
       const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (objMatch) {
-        jsonStr = objMatch[0];
-      }
+      if (objMatch) jsonStr = objMatch[0];
       articleJson = JSON.parse(jsonStr);
     } catch {
       return new Response(JSON.stringify({ error: "Failed to generate article - invalid AI response" }), {
@@ -497,8 +736,6 @@ Return ONLY valid JSON.`;
 
     // Validate numbers requirement
     const keyNumbersCount = Number(articleJson.key_numbers_count) || 0;
-    
-    // Check article body for numbers as backup validation
     const bodyText = String(articleJson.article_body_html || "");
     const numbersInBody = (bodyText.match(/\d[\d,\.]*\d|\d/g) || []).length;
     
@@ -514,7 +751,6 @@ Return ONLY valid JSON.`;
 
     console.log(`Numbers validation passed: ${Math.max(keyNumbersCount, numbersInBody)} numbers found`);
 
-    // Use the full article body HTML from GPT
     const articleBody = String(articleJson.article_body_html || "").trim();
 
     const slugBase = String(articleJson.slug || articleJson.headline || "article")
@@ -525,48 +761,20 @@ Return ONLY valid JSON.`;
 
     const articleSlug = `${slugBase}-${Date.now()}`;
 
-    // Ensure category exists first
     const categorySlug = await ensureCategoryExists(supabase, articleJson.section || DEFAULT_CATEGORY);
     
     // ============================================
-    // IMAGE SELECTION: Known Person Override → AI-Generated
+    // IMAGE PIPELINE: Original First, AI Fallback
     // ============================================
-    let heroImageUrl: string | null = null;
+    const imageResult = await processArticleImage(
+      articleSource.html,
+      articleSource.sourceUrl,
+      articleJson.headline || articleSource.headline,
+      articleSlug,
+      supabase
+    );
     
-    // PRIORITY 0: Known person image overrides (curated authentic photos)
-    const KNOWN_PERSON_IMAGES: Record<string, string> = {
-      "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-      "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-    };
-    
-    const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
-    
-    for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
-      if (headlineAndBodyLower.includes(personKey)) {
-        heroImageUrl = personImageUrl;
-        console.log(`✓ Using known person image for "${personKey}": ${heroImageUrl}`);
-        break;
-      }
-    }
-    
-    // FALLBACK: Generate AI image if no known person match
-    if (!heroImageUrl) {
-      try {
-        console.log(`Generating AI image for: ${articleSlug}`);
-        const imagePrompt = `Professional editorial photograph: ${articleJson.headline}. African business context, Ghana, documentary style.`;
-        heroImageUrl = await generateAiImage(imagePrompt, supabase, articleSlug);
-        
-        if (heroImageUrl) {
-          console.log(`AI image generated: ${heroImageUrl}`);
-        } else {
-          console.log(`AI image generation failed for: ${articleSlug}`);
-        }
-      } catch (imgError) {
-        console.error("Image generation error:", imgError);
-      }
-    }
+    console.log(`[Image] Final result: ${imageResult.final_source_type}, AI: ${imageResult.is_ai_generated}`);
 
     // Get category ID
     const { data: categoryRow } = await supabase
@@ -577,7 +785,6 @@ Return ONLY valid JSON.`;
 
     const categoryId = categoryRow?.id || null;
 
-    // Determine if this is a scheduled or immediate publish
     const isScheduled = scheduledDateTime !== null;
     
     // Insert article
@@ -588,7 +795,7 @@ Return ONLY valid JSON.`;
         slug: articleSlug,
         body: articleBody,
         summary: String(articleJson.subtitle || "").substring(0, 500),
-        hero_image_url: heroImageUrl,
+        hero_image_url: imageResult.final_url,
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
@@ -623,6 +830,12 @@ Return ONLY valid JSON.`;
         slug: newArticle.slug,
         category: categorySlug,
         url: `/${categorySlug}/${newArticle.slug}`,
+      },
+      image: {
+        source_type: imageResult.final_source_type,
+        is_ai_generated: imageResult.is_ai_generated,
+        attempts: imageResult.attempts.length,
+        missing: imageResult.image_missing,
       },
       scheduled: isScheduled,
       scheduled_at: isScheduled && scheduledDateTime ? scheduledDateTime.toISOString() : null,
