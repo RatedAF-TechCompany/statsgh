@@ -1,7 +1,9 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 
@@ -85,7 +87,7 @@ const formatValue = (value: number | null, unit: string, decimals: number | null
 };
 
 const GhanaDataHighlights = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const { data: indicators, isLoading } = useQuery({
     queryKey: ["ghana-core-indicators-highlights"],
@@ -220,7 +222,7 @@ const GhanaDataHighlights = () => {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-lg font-semibold text-foreground">Ghana Data</h2>
           <button
-            onClick={() => navigate('/data')}
+            onClick={() => router.push('/data')}
             className="text-sm text-primary hover:underline flex items-center gap-1"
           >
             All indicators
@@ -235,7 +237,7 @@ const GhanaDataHighlights = () => {
             return (
               <button
                 key={indicator.id}
-                onClick={() => navigate(`/data/${indicator.slug}`)}
+                onClick={() => router.push(`/data/${indicator.slug}`)}
                 className="p-3 bg-background rounded-lg border border-border hover:border-primary/50 transition-colors text-left"
               >
                 <div className="flex items-start justify-between gap-2 mb-1">

@@ -1,4 +1,7 @@
+"use client";
+
 import { Menu, User, LogOut, ExternalLink, LayoutDashboard, Search } from "lucide-react";
+import Image from "next/image";
 import statsghLogo from "@/assets/statsgh-logo.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,7 +19,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { SITE_NAVIGATION } from "@/lib/navigation";
 
 export const Header = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -50,7 +53,7 @@ export const Header = () => {
       
       await supabase.auth.signOut();
       toast.success("Logged out successfully");
-      navigate("/auth");
+      router.push("/auth");
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Failed to logout");
@@ -85,7 +88,7 @@ export const Header = () => {
                       {SITE_NAVIGATION.primary.map((navItem) => (
                         <button
                           key={navItem.href}
-                          onClick={() => navigate(navItem.href)}
+                          onClick={() => router.push(navItem.href)}
                           className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
                         >
                           {navItem.label}
@@ -120,7 +123,7 @@ export const Header = () => {
                           <button
                             key={navItem.slug}
                             onClick={() => {
-                              navigate(navItem.slug === "top-stories" ? "/" : `/${navItem.slug}`);
+                              router.push(navItem.slug === "top-stories" ? "/" : `/${navItem.slug}`);
                             }}
                             className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
                           >
@@ -133,7 +136,7 @@ export const Header = () => {
                   
                   <div className="border-t border-border mt-2 pt-2">
                     <button
-                      onClick={() => navigate("/saved")}
+                      onClick={() => router.push("/saved")}
                       className="block w-full text-left px-4 py-3 text-base hover:bg-muted transition-colors"
                     >
                       Saved
@@ -146,18 +149,18 @@ export const Header = () => {
               variant="ghost" 
               size="icon" 
               className="h-9 w-9 hover:bg-transparent"
-              onClick={() => navigate("/search")}
+              onClick={() => router.push("/search")}
             >
               <Search className="h-[22px] w-[22px]" />
             </Button>
           </div>
 
           <div 
-            onClick={() => navigate("/")}
+            onClick={() => router.push("/")}
             className="cursor-pointer hover:opacity-90 transition-opacity absolute left-1/2 -translate-x-1/2"
           >
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <img src={statsghLogo} alt="StatsGH" className="h-6 sm:h-8" />
+              <Image src={statsghLogo} alt="StatsGH" className="h-6 sm:h-8 w-auto" />
               <span className="font-serif text-base sm:text-lg md:text-xl font-medium tracking-[0.04em]">StatsGH</span>
             </div>
           </div>
@@ -169,7 +172,7 @@ export const Header = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => router.push("/dashboard")}
                     className="h-9 w-9 hover:bg-transparent"
                     title="Dashboard"
                   >
@@ -179,7 +182,7 @@ export const Header = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => navigate("/saved")}
+                  onClick={() => router.push("/saved")}
                   className="h-9 w-9 hover:bg-transparent"
                 >
                   <User className="h-5 w-5" />
@@ -198,7 +201,7 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/auth")}
+                onClick={() => router.push("/auth")}
                 className="h-9 w-9 hover:bg-transparent"
               >
                 <User className="h-5 w-5" />
@@ -212,7 +215,7 @@ export const Header = () => {
           {SITE_NAVIGATION.primary.map((navItem) => (
             <button
               key={navItem.href}
-              onClick={() => navigate(navItem.href)}
+              onClick={() => router.push(navItem.href)}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               {navItem.label}

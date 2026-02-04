@@ -1,29 +1,30 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+﻿"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Users, 
-  Heart, 
-  Zap, 
-  Wheat, 
-  TrendingUp, 
-  DollarSign, 
-  Ship, 
-  Briefcase, 
-  GraduationCap, 
-  Home, 
+import {
+  ChevronDown,
+  ChevronUp,
+  Users,
+  Heart,
+  Zap,
+  Wheat,
+  TrendingUp,
+  DollarSign,
+  Ship,
+  Briefcase,
+  GraduationCap,
+  Home,
   Vote,
-  LucideIcon
+  LucideIcon,
 } from "lucide-react";
 
-// Map topic slugs to icons
 const TOPIC_ICONS: Record<string, LucideIcon> = {
   "population-and-demographic-change": Users,
-  "health": Heart,
+  health: Heart,
   "energy-and-environment": Zap,
   "food-and-agriculture": Wheat,
   "poverty-and-economic-development": TrendingUp,
@@ -35,22 +36,20 @@ const TOPIC_ICONS: Record<string, LucideIcon> = {
   "governance-and-elections": Vote,
 };
 
-// Map topic slugs to theme colors (for hover effects)
 const TOPIC_COLORS: Record<string, string> = {
-  "population-and-demographic-change": "#6366f1", // indigo
-  "health": "#ef4444", // red
-  "energy-and-environment": "#f59e0b", // amber
-  "food-and-agriculture": "#22c55e", // green
-  "poverty-and-economic-development": "#3b82f6", // blue
-  "finance-prices-and-public-debt": "#8b5cf6", // violet
-  "trade-and-external-sector": "#06b6d4", // cyan
-  "jobs-and-wages": "#f97316", // orange
-  "education-and-knowledge": "#a855f7", // purple
-  "living-conditions-and-wellbeing": "#14b8a6", // teal
-  "governance-and-elections": "#ec4899", // pink
+  "population-and-demographic-change": "#6366f1",
+  health: "#ef4444",
+  "energy-and-environment": "#f59e0b",
+  "food-and-agriculture": "#22c55e",
+  "poverty-and-economic-development": "#3b82f6",
+  "finance-prices-and-public-debt": "#8b5cf6",
+  "trade-and-external-sector": "#06b6d4",
+  "jobs-and-wages": "#f97316",
+  "education-and-knowledge": "#a855f7",
+  "living-conditions-and-wellbeing": "#14b8a6",
+  "governance-and-elections": "#ec4899",
 };
 
-// Topic configuration from the site spec - Updated with actual database slugs
 const TOPICS_CONFIG = [
   {
     topicSlug: "population-and-demographic-change",
@@ -202,6 +201,7 @@ const TOPICS_CONFIG = [
   },
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { TOPICS_CONFIG };
 
 interface TopicsOverviewProps {
@@ -211,35 +211,29 @@ interface TopicsOverviewProps {
 }
 
 const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: TopicsOverviewProps) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [visibleTopics, setVisibleTopics] = useState<Set<string>>(new Set());
   const topicRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Fetch existing indicators to check which links should be active
   const { data: existingIndicators, isLoading } = useQuery({
     queryKey: ["all-indicator-slugs"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("indicators")
-        .select("slug");
+      const { data, error } = await supabase.from("indicators").select("slug");
       if (error) throw error;
       return new Set(data?.map((i) => i.slug) || []);
     },
   });
 
-  // Intersection Observer for scroll-reveal animations
   useEffect(() => {
-    // Only set up observer after loading is complete and refs are populated
     if (isLoading) return;
-    
-    // Small delay to ensure refs are populated after render
+
     const timeoutId = setTimeout(() => {
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (entry.isIntersecting) {
-              const topicSlug = entry.target.getAttribute('data-topic-slug');
+              const topicSlug = entry.target.getAttribute("data-topic-slug");
               if (topicSlug) {
                 setVisibleTopics((prev) => new Set(prev).add(topicSlug));
                 observer.unobserve(entry.target);
@@ -247,7 +241,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             }
           });
         },
-        { threshold: 0.1, rootMargin: '50px 0px 0px 0px' }
+        { threshold: 0.1, rootMargin: "50px 0px 0px 0px" }
       );
 
       topicRefs.current.forEach((element) => {
@@ -262,7 +256,7 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
 
   const handleIndicatorClick = (slug: string, exists: boolean) => {
     if (exists) {
-      navigate(`/data/${slug}`);
+      router.push(`/data/${slug}`);
     }
   };
 
@@ -284,44 +278,45 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
     <section className="py-8">
       {showHeader && (
         <header className="mb-8">
-          <h2 className="font-serif text-2xl md:text-3xl font-semibold text-foreground mb-2">
-            All our topics
-          </h2>
-          <p className="text-muted-foreground">
-            All our data, research, and writing — topic by topic.
-          </p>
+          <h2 className="font-serif text-2xl md:text-3xl font-semibold text-foreground mb-2">All our topics</h2>
+          <p className="text-muted-foreground">All our data, research, and writing - topic by topic.</p>
         </header>
       )}
 
       {isLoading ? (
         <div className="space-y-5">
           {[...Array(6)].map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className="relative overflow-hidden border-b border-border/50 pb-4 last:border-0 -mx-3 px-3 py-3 rounded-lg pl-4"
-              style={{ 
-                borderLeftColor: 'hsl(var(--muted))',
-                borderLeftWidth: '3px',
-                borderLeftStyle: 'solid',
-                animationDelay: `${i * 100}ms`
+              style={{
+                borderLeftColor: "hsl(var(--muted))",
+                borderLeftWidth: "3px",
+                borderLeftStyle: "solid",
+                animationDelay: `${i * 100}ms`,
               }}
             >
-              {/* Topic title skeleton with icon */}
               <div className="flex items-center gap-2 mb-2">
                 <div className="relative overflow-hidden h-5 w-5 rounded bg-muted">
                   <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" />
                 </div>
                 <div className="relative overflow-hidden h-6 w-48 rounded bg-muted">
-                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" style={{ animationDelay: `${i * 50}ms` }} />
+                  <div
+                    className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  />
                 </div>
               </div>
-              {/* Indicator links skeleton */}
               <div className="flex flex-wrap gap-2">
                 {[...Array(5)].map((_, j) => (
-                  <div key={j} className="relative overflow-hidden h-4 rounded bg-muted" style={{ width: `${60 + Math.random() * 40}px` }}>
-                    <div 
-                      className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent" 
-                      style={{ animationDelay: `${(i * 50) + (j * 75)}ms` }} 
+                  <div
+                    key={j}
+                    className="relative overflow-hidden h-4 rounded bg-muted"
+                    style={{ width: `${60 + Math.random() * 40}px` }}
+                  >
+                    <div
+                      className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-background/60 to-transparent"
+                      style={{ animationDelay: `${i * 50 + j * 75}ms` }}
                     />
                   </div>
                 ))}
@@ -335,142 +330,124 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             const topicColor = TOPIC_COLORS[topic.topicSlug];
             const TopicIcon = TOPIC_ICONS[topic.topicSlug];
             return (
-            <article 
-              key={topic.topicSlug}
-              ref={(el) => {
-                if (el) topicRefs.current.set(topic.topicSlug, el);
-              }}
-              data-topic-slug={topic.topicSlug}
-              className={`group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-500 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer ${
-                visibleTopics.has(topic.topicSlug) 
-                  ? 'opacity-100 translate-y-0' 
-                  : 'opacity-0 translate-y-6'
-              }`}
-              style={{ 
-                transitionDelay: visibleTopics.has(topic.topicSlug) ? `${topicIndex * 75}ms` : '0ms',
-                borderLeftColor: topicColor || 'hsl(var(--primary))',
-                borderLeftWidth: '3px',
-                borderLeftStyle: 'solid'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderLeftWidth = '5px';
-                e.currentTarget.style.boxShadow = `0 4px 20px -4px ${topicColor || 'hsl(var(--primary))'}40`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderLeftWidth = '3px';
-                e.currentTarget.style.boxShadow = '';
-              }}
-              onClick={(e) => {
-                const article = e.currentTarget;
-                const rect = article.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                const ripple = document.createElement('span');
-                ripple.className = 'absolute rounded-full pointer-events-none animate-[ripple_0.6s_ease-out_forwards]';
-                ripple.style.cssText = `
+              <article
+                key={topic.topicSlug}
+                ref={(el) => {
+                  if (el) topicRefs.current.set(topic.topicSlug, el);
+                }}
+                data-topic-slug={topic.topicSlug}
+                className={`group relative overflow-hidden border-b border-border/50 pb-4 last:border-0 -mx-3 px-3 py-3 rounded-lg transition-all duration-500 hover:bg-muted/50 hover:scale-[1.01] active:scale-[0.98] active:shadow-sm pl-4 cursor-pointer ${
+                  visibleTopics.has(topic.topicSlug) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                }`}
+                style={{
+                  transitionDelay: visibleTopics.has(topic.topicSlug) ? `${topicIndex * 75}ms` : "0ms",
+                  borderLeftColor: topicColor || "hsl(var(--primary))",
+                  borderLeftWidth: "3px",
+                  borderLeftStyle: "solid",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderLeftWidth = "5px";
+                  e.currentTarget.style.boxShadow = `0 4px 20px -4px ${topicColor || "hsl(var(--primary))"}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderLeftWidth = "3px";
+                  e.currentTarget.style.boxShadow = "";
+                }}
+                onClick={(e) => {
+                  const article = e.currentTarget;
+                  const rect = article.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+
+                  const ripple = document.createElement("span");
+                  ripple.className = "absolute rounded-full pointer-events-none animate-[ripple_0.6s_ease-out_forwards]";
+                  ripple.style.cssText = `
                   left: ${x}px;
                   top: ${y}px;
                   width: 0;
                   height: 0;
-                  background: ${topicColor || 'hsl(var(--primary))'}20;
+                  background: ${topicColor || "hsl(var(--primary))"}20;
                   transform: translate(-50%, -50%);
                 `;
-                article.appendChild(ripple);
-                setTimeout(() => ripple.remove(), 600);
-              }}
-            >
-              {(() => {
-                return (
-                  <h3
-                    className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 w-fit transition-colors duration-200"
-                    onClick={() => navigate(`/topics/${topic.topicSlug}`)}
-                    onMouseEnter={(e) => {
-                      if (topicColor) {
-                        e.currentTarget.style.color = topicColor;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '';
-                    }}
-                  >
-                    {TopicIcon && (
-                      <TopicIcon 
-                        size={20} 
-                        className="flex-shrink-0"
-                      />
-                    )}
-                    <span className="hover:underline">{topic.topicTitle}</span>
-                  </h3>
-                );
-              })()}
-              <div className="leading-relaxed">
-                {(() => {
-                  const isExpanded = expandedTopics.has(topic.topicSlug);
-                  const indicators = limitIndicators && !isExpanded 
-                    ? topic.indicatorLinks.slice(0, limitIndicators) 
-                    : topic.indicatorLinks;
-                  const hasMore = limitIndicators && topic.indicatorLinks.length > limitIndicators;
+                  article.appendChild(ripple);
+                  setTimeout(() => ripple.remove(), 600);
+                }}
+              >
+                <h3
+                  className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 w-fit transition-colors duration-200"
+                  onClick={() => router.push(`/topics/${topic.topicSlug}`)}
+                  onMouseEnter={(e) => {
+                    if (topicColor) {
+                      e.currentTarget.style.color = topicColor;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "";
+                  }}
+                >
+                  {TopicIcon && <TopicIcon size={20} className="flex-shrink-0" />}
+                  <span className="hover:underline">{topic.topicTitle}</span>
+                </h3>
+                <div className="leading-relaxed">
+                  {(() => {
+                    const isExpanded = expandedTopics.has(topic.topicSlug);
+                    const indicators = limitIndicators && !isExpanded ? topic.indicatorLinks.slice(0, limitIndicators) : topic.indicatorLinks;
+                    const hasMore = limitIndicators && topic.indicatorLinks.length > limitIndicators;
 
-                  return (
-                    <>
-                      {indicators.map((link, index) => {
-                        const exists = existingIndicators?.has(link.indicatorSlug);
-                        return (
-                          <span key={link.indicatorSlug} className="inline">
-                            {index > 0 && (
-                              <span className="text-muted-foreground mx-1.5">•</span>
+                    return (
+                      <>
+                        {indicators.map((link, index) => {
+                          const exists = existingIndicators?.has(link.indicatorSlug);
+                          return (
+                            <span key={link.indicatorSlug} className="inline">
+                              {index > 0 && <span className="text-muted-foreground mx-1.5">-</span>}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleIndicatorClick(link.indicatorSlug, !!exists);
+                                }}
+                                disabled={!exists}
+                                className={`${
+                                  exists
+                                    ? "text-foreground font-medium cursor-pointer hover:text-primary underline decoration-foreground/30 underline-offset-2 hover:decoration-primary transition-colors"
+                                    : "text-muted-foreground cursor-default"
+                                } text-sm`}
+                              >
+                                {link.label}
+                              </button>
+                            </span>
+                          );
+                        })}
+                        {hasMore && (
+                          <button
+                            onClick={() => toggleTopicExpanded(topic.topicSlug)}
+                            className="inline-flex items-center gap-0.5 text-sm text-muted-foreground hover:text-primary transition-colors ml-2"
+                          >
+                            {isExpanded ? (
+                              <>
+                                less <ChevronUp size={14} />
+                              </>
+                            ) : (
+                              <>
+                                +{topic.indicatorLinks.length - limitIndicators} more <ChevronDown size={14} />
+                              </>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleIndicatorClick(link.indicatorSlug, !!exists);
-                              }}
-                              disabled={!exists}
-                              className={`${
-                                exists
-                                  ? "text-foreground font-medium cursor-pointer hover:text-primary underline decoration-foreground/30 underline-offset-2 hover:decoration-primary transition-colors"
-                                  : "text-muted-foreground cursor-default"
-                              } text-sm`}
-                            >
-                              {link.label}
-                            </button>
-                          </span>
-                        );
-                      })}
-                      {hasMore && (
-                        <button
-                          onClick={() => toggleTopicExpanded(topic.topicSlug)}
-                          className="inline-flex items-center gap-0.5 text-sm text-muted-foreground hover:text-primary transition-colors ml-2"
-                        >
-                          {isExpanded ? (
-                            <>
-                              less <ChevronUp size={14} />
-                            </>
-                          ) : (
-                            <>
-                              +{topic.indicatorLinks.length - limitIndicators} more <ChevronDown size={14} />
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </article>
-          );
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </article>
+            );
           })}
         </div>
       )}
 
       {maxTopics && maxTopics < TOPICS_CONFIG.length && (
         <div className="mt-6 pt-4 border-t border-border/50">
-          <button
-            onClick={() => navigate("/topics")}
-            className="text-primary hover:underline text-sm font-medium"
-          >
-            View all topics →
+          <button onClick={() => router.push("/topics")} className="text-primary hover:underline text-sm font-medium">
+            View all topics -&gt;
           </button>
         </div>
       )}

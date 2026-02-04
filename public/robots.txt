@@ -1,17 +1,37 @@
+# StatsGH Robots.txt
+# https://statsgh.com
+
+# Allow all search engines
+User-agent: *
+Allow: /
+
+# Google
 User-agent: Googlebot
 Allow: /
 
+# Google News
+User-agent: Googlebot-News
+Allow: /
+
+# Bing
 User-agent: Bingbot
 Allow: /
 
+# Social media crawlers
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
 
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap
+# Sitemaps
+Sitemap: https://statsgh.com/sitemap.xml
+Sitemap: https://statsgh.com/news-sitemap.xml
+
+# Disallow admin and auth pages
+Disallow: /admin
+Disallow: /auth
+Disallow: /verify-comment
