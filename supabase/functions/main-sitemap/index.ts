@@ -48,9 +48,12 @@ Deno.serve(async (req) => {
       'charts-explainers',
     ];
 
-    // Build main sitemap XML
+    const edgeFunctionBase = Deno.env.get('SUPABASE_URL') + '/functions/v1/article-reader';
+    
+    // Build main sitemap XML with xhtml:link for machine-readable alternate
     const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://statsgh.com/</loc>
     <changefreq>hourly</changefreq>
@@ -63,6 +66,7 @@ ${categories.map(cat => `  <url>
   </url>`).join('\n')}
 ${articles?.map(article => `  <url>
     <loc>https://statsgh.com/${article.category_slug}/${article.slug}</loc>
+    <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
     <lastmod>${article.updated_at || article.published_at}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
