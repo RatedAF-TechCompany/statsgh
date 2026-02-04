@@ -26,6 +26,7 @@ import IndicatorDetail from "./pages/IndicatorDetail";
 import TopicDashboard from "./pages/TopicDashboard";
 import AdminDataManager from "./pages/AdminDataManager";
 import AdminNewsroom from "./pages/AdminNewsroom";
+import AdminCrawlerTest from "./pages/AdminCrawlerTest";
 import GhanaFinanceDashboard from "./pages/GhanaFinanceDashboard";
 import GhanaStockExchange from "./pages/GhanaStockExchange";
 import Topics from "./pages/Topics";
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/admin/settings" element={<SiteSettings />} />
           <Route path="/admin/data" element={<AdminDataManager />} />
           <Route path="/admin/newsroom" element={<AdminNewsroom />} />
+          <Route path="/admin/crawler-test" element={<AdminCrawlerTest />} />
           {/* Primary navigation pages */}
           <Route path="/topics" element={<Topics />} />
           <Route path="/topics/:slug" element={<TopicDashboard />} />

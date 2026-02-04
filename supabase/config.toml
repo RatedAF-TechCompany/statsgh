@@ -41,3 +41,15 @@ verify_jwt = false
 
 [functions.cedirates-sync]
 verify_jwt = false
+
+[functions.article-reader]
+verify_jwt = false
+
+[functions.crawler-test]
+verify_jwt = false
+
+[functions.main-sitemap]
+verify_jwt = false
+
+[functions.article-meta]
+verify_jwt = false

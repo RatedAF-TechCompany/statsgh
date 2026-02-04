@@ -350,7 +350,7 @@ const ArticleDetail = () => {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <article>
+        <article itemScope itemType="https://schema.org/NewsArticle">
           {/* Category Label */}
           <Link 
             to={`/${article.category_slug}`}
@@ -360,20 +360,23 @@ const ArticleDetail = () => {
           </Link>
 
           {/* Headline */}
-          <h1 className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] font-semibold leading-tight text-foreground mb-4">
+          <h1 
+            className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] font-semibold leading-tight text-foreground mb-4"
+            itemProp="headline"
+          >
             {article.title}
           </h1>
 
           {/* Subtitle/Standfirst */}
           {article.subtitle && (
-            <p className="font-serif text-xl md:text-2xl text-muted-foreground leading-relaxed mb-6">
+            <p className="font-serif text-xl md:text-2xl text-muted-foreground leading-relaxed mb-6" itemProp="description">
               {article.subtitle}
             </p>
           )}
 
           {/* Summary/Lede */}
           {article.summary && (
-            <p className="text-lg text-foreground leading-relaxed mb-6 font-medium">
+            <p className="text-lg text-foreground leading-relaxed mb-6 font-medium" itemProp="abstract">
               {article.summary}
             </p>
           )}
@@ -383,11 +386,13 @@ const ArticleDetail = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-foreground">{article.author_name}</span>
+                  <span className="font-medium text-foreground" itemProp="author" itemScope itemType="https://schema.org/Person">
+                    <span itemProp="name">{article.author_name}</span>
+                  </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {article.published_at && (
-                    <time dateTime={article.published_at}>
+                    <time dateTime={article.published_at} itemProp="datePublished">
                       {format(new Date(article.published_at), "MMMM d, yyyy")}
                     </time>
                   )}
@@ -432,13 +437,16 @@ const ArticleDetail = () => {
                 src={article.hero_image_url}
                 alt={article.title}
                 className="w-full aspect-[16/9] object-cover"
+                itemProp="image"
               />
             </figure>
           )}
 
           {/* Article Body */}
-          <div 
+          <section 
+            data-article-body="true"
             className="prose prose-lg max-w-none mb-6"
+            itemProp="articleBody"
             dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
 
