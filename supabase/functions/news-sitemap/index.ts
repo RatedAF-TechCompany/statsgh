@@ -33,12 +33,16 @@ Deno.serve(async (req) => {
       throw error;
     }
 
-    // Build Google News sitemap XML
+    const edgeFunctionBase = Deno.env.get('SUPABASE_URL') + '/functions/v1/article-reader';
+    
+    // Build Google News sitemap XML with xhtml:link for machine-readable alternate
     const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${articles?.map(article => `  <url>
     <loc>https://statsgh.com/${article.category_slug}/${article.slug}</loc>
+    <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
     <news:news>
       <news:publication>
         <news:name>StatsGH</news:name>
