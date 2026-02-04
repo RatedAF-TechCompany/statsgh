@@ -1,4 +1,6 @@
-import { useNavigate } from "react-router-dom";
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import { formatTime } from "@/components/ReadingTime";
@@ -22,7 +24,7 @@ interface RankedArticleItemProps {
 }
 
 export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: RankedArticleItemProps) => {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const getTimeAgo = (publishedAt: string | null) => {
     if (!publishedAt) return "";
@@ -44,7 +46,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
     return (
       <div 
         className="pb-4 cursor-pointer hover:opacity-90 transition-opacity"
-        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+        onClick={() => router.push(`/${article.category_slug}/${article.slug}`)}
       >
         {article.hero_image_url && (
           <img 
@@ -87,7 +89,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
   return (
     <div 
       className="py-3 cursor-pointer hover:opacity-90 transition-opacity border-b border-border"
-      onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+      onClick={() => router.push(`/${article.category_slug}/${article.slug}`)}
     >
       <div className={showImage && article.hero_image_url ? "flex gap-3" : ""}>
         <div className="flex-1">

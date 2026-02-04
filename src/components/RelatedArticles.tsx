@@ -1,5 +1,7 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -132,7 +134,7 @@ export const RelatedArticles = ({
         {relatedArticles.map((article) => (
           <Link
             key={article.id}
-            to={`/${article.category_slug}/${article.slug}`}
+            href={`/${article.category_slug}/${article.slug}`}
             className="group block"
           >
             <article className="h-full">
@@ -147,13 +149,9 @@ export const RelatedArticles = ({
               )}
               
               <div className="space-y-2">
-                <Link 
-                  to={`/${article.category_slug}`}
-                  className="text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <span className="text-xs font-bold uppercase tracking-wide text-ft-maroon">
                   {article.category_slug?.replace(/-/g, " ")}
-                </Link>
+                </span>
                 
                 <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-3">
                   {article.title}

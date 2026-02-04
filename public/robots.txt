@@ -1,26 +1,32 @@
 # StatsGH Robots.txt
-# Data-driven news from Ghana
-# Last updated: 2026-02-04
+# https://statsgh.com
 
-# IMPORTANT: This site is a React SPA. For machine-readable article content,
-# use the article-reader edge function which returns full server-rendered HTML:
-# https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
+# Allow all search engines
+User-agent: *
+Allow: /
 
+# Google
 User-agent: Googlebot
 Allow: /
 Crawl-delay: 1
 
+# Google News
+User-agent: Googlebot-News
+Allow: /
+
+# Bing
 User-agent: Bingbot
 Allow: /
 Crawl-delay: 1
 
+# Social media crawlers
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
 Disallow: /admin
 Disallow: /admin/*
@@ -30,10 +36,11 @@ Disallow: /dashboard
 Disallow: /auth
 Disallow: /saved
 
-# Sitemaps (include alternate machine-readable links)
+# Sitemaps
 Sitemap: https://statsgh.com/sitemap.xml
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap
+Sitemap: https://statsgh.com/news-sitemap.xml
 
-# Machine-readable article endpoint (returns full HTML, no JS required):
-# GET https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
+# Disallow admin and auth pages
+Disallow: /admin
+Disallow: /auth
+Disallow: /verify-comment
