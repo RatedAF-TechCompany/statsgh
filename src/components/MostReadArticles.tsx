@@ -1,12 +1,10 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 
 const MostReadArticles = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { data: mostReadArticles, isLoading } = useQuery({
     queryKey: ["most-read-articles"],
@@ -93,7 +91,7 @@ const MostReadArticles = () => {
         {mostReadArticles.map((article, index) => (
           <button
             key={article.id}
-            onClick={() => router.push(`/${article.category_slug}/${article.slug}`)}
+            onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
             className="w-full flex items-start gap-4 py-4 border-b border-border hover:bg-muted/30 transition-colors text-left"
           >
             <span 

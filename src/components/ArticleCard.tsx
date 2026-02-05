@@ -1,8 +1,6 @@
-"use client";
-
 import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,7 +21,7 @@ interface ArticleCardProps {
 }
 
 export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: ArticleCardProps) => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: session } = useQuery({
@@ -52,7 +50,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
   const toggleBookmark = useMutation({
     mutationFn: async () => {
       if (!session?.user?.id) {
-        router.push("/auth");
+        navigate("/auth");
         return;
       }
 
@@ -93,7 +91,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
       <div className="flex-1 min-w-0">
         <div
           className="cursor-pointer"
-          onClick={() => router.push(`/${article.category_slug}/${article.slug}`)}
+          onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
         >
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-bold text-accent uppercase">
@@ -113,7 +111,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
         {article.hero_image_url && (
           <div
             className="w-[120px] h-[80px] bg-muted flex-shrink-0 cursor-pointer overflow-hidden"
-            onClick={() => router.push(`/${article.category_slug}/${article.slug}`)}
+            onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
           >
             <img
               src={article.hero_image_url}

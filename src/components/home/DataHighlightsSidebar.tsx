@@ -1,10 +1,9 @@
-﻿"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { format } from "date-fns";
 import { SidebarSection } from "./SidebarSection";
 
 interface IndicatorWithData {
@@ -21,9 +20,9 @@ interface IndicatorWithData {
 }
 
 const formatValue = (value: number | null, unit: string, decimals: number | null) => {
-  if (value === null) return "--";
+  if (value === null) return "—";
   const decimalPlaces = decimals ?? 1;
-
+  
   if (unit === "percent" || unit === "%") {
     return `${value.toFixed(decimalPlaces)}%`;
   }
@@ -39,17 +38,21 @@ const formatValue = (value: number | null, unit: string, decimals: number | null
   if (unit === "billion_usd") {
     return `$${value.toFixed(decimalPlaces)}B`;
   }
-
+  
   return value.toLocaleString(undefined, { maximumFractionDigits: decimalPlaces });
 };
 
 const DataHighlightsSidebar = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { data: indicators, isLoading } = useQuery({
     queryKey: ["data-highlights-sidebar"],
     queryFn: async () => {
-      const { data: ghana } = await supabase.from("geographies").select("id").eq("is_ghana", true).single();
+      const { data: ghana } = await supabase
+        .from("geographies")
+        .select("id")
+        .eq("is_ghana", true)
+        .single();
 
       if (!ghana) return [];
 
@@ -90,16 +93,15 @@ const DataHighlightsSidebar = () => {
           const latestValue = Number(dataPoints[0].value);
           const previousValue = dataPoints.length > 1 ? Number(dataPoints[1].value) : null;
           const change = previousValue !== null ? latestValue - previousValue : null;
-          const changePercent =
-            previousValue !== null && previousValue !== 0
-              ? ((latestValue - previousValue) / Math.abs(previousValue)) * 100
-              : null;
+          const changePercent = previousValue !== null && previousValue !== 0 
+            ? ((latestValue - previousValue) / Math.abs(previousValue)) * 100 
+            : null;
 
           return { ...indicator, latestValue, change, changePercent, latestDate: dataPoints[0].date };
         })
       );
 
-      return indicatorsWithData.filter((i) => i.latestValue !== null);
+      return indicatorsWithData.filter(i => i.latestValue !== null);
     },
   });
 
@@ -116,15 +118,15 @@ const DataHighlightsSidebar = () => {
   if (!indicators || indicators.length === 0) return null;
 
   return (
-    <SidebarSection title="Ghana Data" onViewAll={() => router.push("/data")} viewAllLabel="All data">
+    <SidebarSection title="Ghana Data" onViewAll={() => navigate('/data')} viewAllLabel="All data">
       <div className="space-y-0">
         {indicators.map((indicator) => {
           const positive = indicator.change !== null ? indicator.change >= 0 : null;
-
+          
           return (
             <button
               key={indicator.id}
-              onClick={() => router.push(`/data/${indicator.slug}`)}
+              onClick={() => navigate(`/data/${indicator.slug}`)}
               className="w-full flex items-center justify-between py-2.5 border-b border-border hover:bg-muted/30 transition-colors text-left group"
             >
               <div className="min-w-0 flex-1">
@@ -145,14 +147,11 @@ const DataHighlightsSidebar = () => {
                     ) : (
                       <TrendingDown size={12} className="text-destructive" />
                     )}
-                    <span
-                      className={`text-xs ${
-                        positive ? "text-accent-green" : indicator.change === 0 ? "text-muted-foreground" : "text-destructive"
-                      }`}
-                    >
-                      {indicator.changePercent !== null
-                        ? `${indicator.changePercent >= 0 ? "+" : ""}${indicator.changePercent.toFixed(1)}%`
-                        : "--"}
+                    <span className={`text-xs ${positive ? 'text-accent-green' : indicator.change === 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
+                      {indicator.changePercent !== null 
+                        ? `${indicator.changePercent >= 0 ? '+' : ''}${indicator.changePercent.toFixed(1)}%`
+                        : '—'
+                      }
                     </span>
                   </>
                 )}
