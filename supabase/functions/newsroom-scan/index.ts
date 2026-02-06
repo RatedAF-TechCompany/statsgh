@@ -932,7 +932,32 @@ async function generateAiImage(
         messages: [
           {
             role: 'user',
-            content: `Generate a photorealistic, professional editorial photograph for a news article. \nStyle: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.\nSubject: ${prompt}\nRequirements: No text, no logos, no watermarks, no faces that look AI-generated. \nThe image should look like it was taken by a professional photojournalist in Ghana or Africa.`
+            content: `Create a photograph that looks exactly like a real editorial photo from a wire service such as Reuters or AFP.
+
+SUBJECT: ${prompt}
+
+MANDATORY STYLE:
+- Must be indistinguishable from a real photograph taken by a professional photojournalist
+- Documentary journalism style, natural ambient lighting, low saturation
+- 16:9 aspect ratio, clean composition, no dramatic filters or cinematic effects
+- Calm, neutral, observational tone — like Financial Times or The Economist photography
+
+WHAT TO DEPICT (choose the most fitting):
+- Real environments: government buildings, offices, farms, factories, ports, markets, streets, skylines
+- Objects and commodities: documents, produce, machinery, currency, equipment
+- Wide establishing shots of cities, institutions, or landscapes
+- Anonymous workers or crowds seen from a distance or from behind (no close-up faces)
+
+STRICTLY FORBIDDEN:
+- No identifiable faces or named individuals
+- No digital art, concept art, illustrations, infographics, or stylised visuals
+- No text overlays, logos, watermarks, or labels
+- No staged political scenes or fake press conferences
+- No abstract or symbolic imagery
+- No dramatic lighting, lens flare, or HDR effects
+- The result must NOT look AI-generated in any way
+
+FINAL CHECK: Would this image feel completely normal on the front page of the Financial Times? If not, make it more restrained and documentary.`
           }
         ],
         modalities: ['image', 'text']
@@ -2267,9 +2292,10 @@ Return ONLY valid JSON with these exact keys:
             }
           }
 
-          // Fallback: generate AI image
+          // Fallback: generate photo-style AI image (must look like real editorial photography)
           if (!heroImageUrl) {
-            const photoPrompt = `${generated.headline}. Ghana, Africa. ${getPhotoKeywords(categorySlug)}`;
+            const sectorContext = getPhotoKeywords(categorySlug);
+            const photoPrompt = `${generated.headline}. Setting: Ghana, West Africa. Environment: ${sectorContext}. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
             heroImageUrl = await generateAiImage(photoPrompt, supabase, uniqueSlug);
           }
 
