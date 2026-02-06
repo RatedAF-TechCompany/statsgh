@@ -1608,10 +1608,20 @@ serve(async (req) => {
       
       console.log(`Found ${pendingItems.length} pending articles to reprocess`);
       
+      // Actually reprocess: reset status and let them be picked up
+      let reprocessed = 0;
+      for (const item of pendingItems) {
+        await supabase.from("newsroom_articles").update({
+          processing_status: "pending",
+          error_message: null,
+        }).eq("id", item.id);
+        reprocessed++;
+      }
+      
       return new Response(JSON.stringify({
         success: true,
-        message: `Reprocess mode - see original implementation`,
-        articles_found: pendingItems.length,
+        message: `Reset ${reprocessed} articles to pending for reprocessing`,
+        articles_reprocessed: reprocessed,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1806,7 +1816,16 @@ serve(async (req) => {
         continue;
       }
 
-      // Fetch full text for content analysis
+      // V2.1: Check headline for qualifying number BEFORE fetching full page (optimization)
+      const headlineCheck = headlineHasQualifyingNumber(article.title);
+      if (!isOpinion && !headlineCheck.hasQualifying) {
+        const rejCode = headlineCheck.hasDateOnly ? REJECTION_CODES.HEADLINE_NUMBER_DATE_ONLY : REJECTION_CODES.HEADLINE_NO_NUMBER;
+        await logCandidate(supabase, run.id, article, "rejected", rejCode,
+          headlineCheck.detail, { pubDateParsed: pubDate });
+        continue;
+      }
+
+      // Fetch full text for content analysis (only for articles that passed headline check)
       let fullText = rssText;
       let fullPageHtml: string | null = null;
       
@@ -1845,32 +1864,10 @@ serve(async (req) => {
       // V2.0: Extract and classify numbers
       const numberAnalysis = bodyMeetsNumberRequirements(fullText);
       
-      // V2.0: Headline must have qualifying number (not just any number)
-      const headlineCheck = headlineHasQualifyingNumber(article.title);
+      // V2.1: Headline check already done before page fetch (moved up for optimization)
       
-      // For non-opinion: headline must have qualifying number
+      // For non-opinion: body must meet qualifying number requirements
       if (!isOpinion) {
-        if (headlineCheck.hasDateOnly) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.HEADLINE_NUMBER_DATE_ONLY,
-            headlineCheck.detail, { 
-              pubDateParsed: pubDate, 
-              numbersFound: numberAnalysis.numbersFoundAll,
-              excludedNumbers: numberAnalysis.excludedNumbers 
-            });
-          continue;
-        }
-        
-        if (!headlineCheck.hasQualifying) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.HEADLINE_NO_NUMBER,
-            headlineCheck.detail, { 
-              pubDateParsed: pubDate,
-              numbersFound: numberAnalysis.numbersFoundAll,
-              excludedNumbers: numberAnalysis.excludedNumbers
-            });
-          continue;
-        }
-        
-        // V2.0: Body must meet qualifying number requirements
         if (!numberAnalysis.passes) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INSUFFICIENT_QUALIFYING_NUMBERS,
             numberAnalysis.detail, { 
@@ -2047,19 +2044,319 @@ serve(async (req) => {
       articles_found: insertedNews?.length || 0,
     }).eq("id", run.id);
 
+    // ============================================
+    // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
+    // ============================================
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    let publishedCount = 0;
+    const publishErrors: string[] = [];
+
+    if (!lovableApiKey) {
+      console.error("LOVABLE_API_KEY not configured — skipping AI processing");
+    } else {
+      for (let i = 0; i < toProcess.length; i++) {
+        const item = toProcess[i];
+        const newsroomRecord = insertedNews?.[i];
+        if (!newsroomRecord) continue;
+
+        try {
+          console.log(`\n=== Processing article ${i + 1}/${toProcess.length}: "${item.title.substring(0, 60)}..." ===`);
+
+          // 1. Fetch full page HTML for body content
+          let sourceHtml = "";
+          try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 15000);
+            const pageResp = await fetch(item.link, {
+              signal: controller.signal,
+              headers: {
+                "User-Agent": "StatsGH-Newsroom/2.0 (Content Reader)",
+                "Accept": "text/html,application/xhtml+xml",
+              },
+            });
+            clearTimeout(tid);
+            if (pageResp.ok) {
+              sourceHtml = await pageResp.text();
+            }
+          } catch (e) {
+            console.log(`Page fetch failed for ${item.link}: ${e instanceof Error ? e.message : "Unknown"}`);
+          }
+
+          // Extract article text from HTML
+          let articleText = item._fullText || "";
+          if (sourceHtml && sourceHtml.length > articleText.length) {
+            const cleaned = sourceHtml
+              .replace(/<script[\s\S]*?<\/script>/gi, " ")
+              .replace(/<style[\s\S]*?<\/style>/gi, " ")
+              .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+              .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+              .replace(/<header[\s\S]*?<\/header>/gi, " ")
+              .replace(/<aside[\s\S]*?<\/aside>/gi, " ")
+              .replace(/<!--[\s\S]*?-->/g, " ")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/&nbsp;/gi, " ")
+              .replace(/&amp;/gi, "&")
+              .replace(/&lt;/gi, "<")
+              .replace(/&gt;/gi, ">")
+              .replace(/&quot;/gi, '"')
+              .replace(/&#39;/gi, "'")
+              .replace(/\s+/g, " ")
+              .trim();
+            if (cleaned.length > articleText.length) {
+              articleText = cleaned.substring(0, 8000);
+            }
+          }
+
+          if (articleText.length < 100) {
+            console.log(`Article text too short (${articleText.length} chars), skipping`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "Source text too short for processing",
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          // 2. Call AI to restructure into article + generate metadata
+          const aiPrompt = `You are the StatsGH newsroom editor. Restructure this source text into a professional data-driven news article.
+
+WRITING RULES:
+- Rewrite in Very Basic English: short sentences, simple words
+- Put technical terms in brackets with definitions, e.g. "inflation [the rate at which prices rise]"
+- Include a "📊 Key Numbers" section with at least 3 key data points from the article
+- Do NOT truncate lists or rankings — preserve the full depth
+- Do NOT use colons in headlines
+- Do NOT use emojis or hashtags (except the 📊 in Key Numbers)
+- Keep it neutral and factual
+- Preserve the original author name if mentioned (look for "by [Name]" patterns)
+
+SOURCE HEADLINE: ${item.title}
+SOURCE: ${item.source_name}
+SOURCE URL: ${item.link}
+
+SOURCE TEXT:
+${articleText.substring(0, 6000)}
+
+Return ONLY valid JSON with these exact keys:
+{
+  "headline": "short factual headline with a key number, no colons or long dashes",
+  "subtitle": "one sentence expanding the headline",
+  "summary": "plain English summary, max 400 chars",
+  "seo_description": "max 155 chars for meta description",
+  "body_html": "full article body in HTML format with <p>, <h2>, <h3>, <ul>, <li> tags. Include the 📊 Key Numbers section. Minimum 300 words.",
+  "slug": "lowercase-hyphenated-slug-with-key-number",
+  "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
+  "author_name": "extracted author or StatsGH Newsroom",
+  "tags": ["tag1", "tag2", "tag3"],
+  "twitter_post": "short factual tweet text, no emojis or hashtags"
+}`;
+
+          console.log("Calling AI for article restructuring...");
+          const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${lovableApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                { role: "user", content: aiPrompt },
+              ],
+            }),
+          });
+
+          if (!aiResp.ok) {
+            const errText = await aiResp.text();
+            console.error(`AI call failed (${aiResp.status}): ${errText.substring(0, 200)}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `AI error ${aiResp.status}: ${errText.substring(0, 200)}`,
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`AI ${aiResp.status} for "${item.title.substring(0, 40)}"`);
+            continue;
+          }
+
+          const aiData = await aiResp.json();
+          const aiContent = aiData.choices?.[0]?.message?.content;
+
+          if (!aiContent) {
+            console.error("No content in AI response");
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "Empty AI response",
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          // Parse JSON from AI response
+          let generated: any;
+          try {
+            const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("No JSON found");
+            generated = JSON.parse(jsonMatch[0]);
+          } catch (parseErr) {
+            console.error("Failed to parse AI response:", parseErr, aiContent.substring(0, 300));
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "AI response JSON parse failed",
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`Parse error for "${item.title.substring(0, 40)}"`);
+            continue;
+          }
+
+          // Validate required fields
+          if (!generated.headline || !generated.body_html || !generated.slug) {
+            console.error("Missing required fields in AI output");
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "AI output missing headline/body/slug",
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          // Clean fields
+          generated.headline = collapseImmediateWordRepeats(generated.headline);
+          generated.summary = collapseImmediateWordRepeats(generated.summary || "");
+          if (generated.summary.length > 400) generated.summary = generated.summary.substring(0, 397) + "...";
+          if (generated.seo_description?.length > 155) generated.seo_description = generated.seo_description.substring(0, 152) + "...";
+
+          // Validate category
+          const categorySlug = PREFERRED_CATEGORIES.includes(generated.category_slug) 
+            ? generated.category_slug 
+            : (item._isOpinion ? "opinion" : DEFAULT_CATEGORY);
+
+          // Ensure category exists
+          await ensureCategoryExists(supabase, categorySlug);
+
+          // Make slug unique with timestamp
+          const uniqueSlug = `${generated.slug.substring(0, 80)}-${Date.now()}`;
+
+          // 3. Handle hero image
+          let heroImageUrl: string | null = null;
+
+          // Try extracting from source HTML first
+          if (sourceHtml) {
+            heroImageUrl = await extractImageFromSourceHtml(sourceHtml, item.link);
+            if (heroImageUrl) {
+              const uploadedUrl = await fetchAndUploadImage(heroImageUrl, supabase, uniqueSlug);
+              heroImageUrl = uploadedUrl;
+            }
+          }
+
+          // Fallback: generate AI image
+          if (!heroImageUrl) {
+            const photoPrompt = `${generated.headline}. Ghana, Africa. ${getPhotoKeywords(categorySlug)}`;
+            heroImageUrl = await generateAiImage(photoPrompt, supabase, uniqueSlug);
+          }
+
+          // 4. Calculate word count from body
+          const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          const wordCount = bodyText.split(/\s+/).length;
+
+          // 5. Check author patterns
+          let authorName = generated.author_name || "StatsGH Newsroom";
+          const authorMatch = articleText.match(/\bby\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/);
+          if (authorMatch && authorMatch[1] !== "StatsGH") {
+            authorName = authorMatch[1];
+          }
+
+          // 6. Insert into articles table
+          const { data: newArticle, error: articleError } = await supabase
+            .from("articles")
+            .insert({
+              title: generated.headline,
+              slug: uniqueSlug,
+              category_slug: categorySlug,
+              section: categorySlug,
+              summary: generated.summary || "",
+              subtitle: generated.subtitle || null,
+              seo_description: generated.seo_description || null,
+              body: generated.body_html,
+              author_name: authorName,
+              hero_image_url: heroImageUrl,
+              published_at: new Date().toISOString(),
+              is_published: true,
+              is_wire: false,
+              word_count: wordCount,
+              dedupe_key: item._dedupeKey,
+              tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
+              twitter_post: generated.twitter_post || null,
+              instagram_comment: "See full article link in bio.",
+              status: "published",
+            })
+            .select("id")
+            .single();
+
+          if (articleError) {
+            console.error(`Article insert failed: ${articleError.message}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `DB insert failed: ${articleError.message}`,
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`DB error for "${item.title.substring(0, 40)}"`);
+            continue;
+          }
+
+          console.log(`✅ PUBLISHED: "${generated.headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+
+          // 7. Update newsroom_articles record
+          await supabase.from("newsroom_articles").update({
+            processing_status: "completed",
+            generated_article_id: newArticle.id,
+          }).eq("id", newsroomRecord.id);
+
+          publishedCount++;
+
+          // 8. Trigger indicator extraction (fire-and-forget)
+          try {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            fetch(`${supabaseUrl}/functions/v1/extract-article-indicators`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ articleId: newArticle.id }),
+            }).catch(e => console.log(`Indicator extraction trigger failed: ${e}`));
+          } catch (e) {
+            console.log(`Indicator extraction error: ${e}`);
+          }
+
+        } catch (itemError) {
+          console.error(`Error processing article "${item.title.substring(0, 60)}":`, itemError);
+          if (newsroomRecord) {
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: itemError instanceof Error ? itemError.message : "Unknown processing error",
+            }).eq("id", newsroomRecord.id);
+          }
+          publishErrors.push(`Error: ${item.title.substring(0, 40)}`);
+        }
+      }
+    }
+
+    console.log(`\n=== Run complete: ${publishedCount} published out of ${toProcess.length} candidates ===`);
+    if (publishErrors.length > 0) {
+      console.log(`Errors: ${publishErrors.join("; ")}`);
+    }
+
     // Complete run metadata
     await supabase.from("newsroom_runs").update({
       status: "completed",
-      articles_created: toProcess.length,
+      articles_created: publishedCount,
       completed_at: new Date().toISOString(),
       metadata: { 
         method: "rss-feeds-v2", 
         sources_checked: RSS_SOURCES.length, 
         time_window: timeWindowHours,
-        version: "2.0",
+        version: "2.1",
         qualifying_number_rules: true,
         daily_limit: DAILY_PUBLISH_LIMIT,
-        opinion_limit: DAILY_OPINION_LIMIT
+        opinion_limit: DAILY_OPINION_LIMIT,
+        candidates: toProcess.length,
+        published: publishedCount,
+        errors: publishErrors.length > 0 ? publishErrors : undefined,
       }
     }).eq("id", run.id);
 
@@ -2067,14 +2364,16 @@ serve(async (req) => {
       success: true,
       run_id: run.id,
       method: "rss-feeds-v2",
-      version: "2.0",
+      version: "2.1",
       sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
-      articles_created: toProcess.length,
+      articles_published: publishedCount,
+      articles_failed: toProcess.length - publishedCount,
       time_window_hours: timeWindowHours,
       daily_limit: DAILY_PUBLISH_LIMIT,
       opinion_limit: DAILY_OPINION_LIMIT,
-      message: "V2.0 filtering with qualifying number rules applied",
+      errors: publishErrors.length > 0 ? publishErrors : undefined,
+      message: `V2.1: ${publishedCount} articles published from ${toProcess.length} candidates`,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
