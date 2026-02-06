@@ -542,6 +542,10 @@ Return ONLY valid JSON.`;
       "cocobod": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
       "cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
       "ghana cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+      "ghana statistical service": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
+      "statistical service": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
+      "statsservice": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
+      "gss": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
     };
     
     const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
