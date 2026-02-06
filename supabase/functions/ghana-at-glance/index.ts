@@ -21,7 +21,7 @@ interface GlanceCard {
   period: string;
   source: string;
   status: 'ok' | 'unavailable';
-  secondary?: SecondaryData; // More recent data from secondary sources
+  secondary?: SecondaryData;
 }
 
 interface GlanceResponse {
@@ -29,726 +29,267 @@ interface GlanceResponse {
   fetchedAt: string;
 }
 
-// GSS StatsBank PxWeb API base
-const PXWEB_BASE = "https://statsbank.statsghana.gov.gh/api/v1/en/";
-
-// Simple in-memory cache (edge functions are stateless, but this helps within a single invocation)
-const cache = new Map<string, { data: unknown; expires: number }>();
-
-function getCached<T>(key: string): T | null {
-  const item = cache.get(key);
-  if (item && item.expires > Date.now()) {
-    return item.data as T;
-  }
-  return null;
+// Card configuration — maps card IDs to database slugs and display rules
+interface CardConfig {
+  id: string;
+  slug: string;
+  label: string;
+  unit: string;
+  source: string;
+  formatValue: (value: number) => string;
+  formatPeriod: (date: Date) => string;
+  formatSublabel: (period: string, source: string) => string;
 }
 
-function setCache<T>(key: string, data: T, ttlMs: number): void {
-  cache.set(key, { data, expires: Date.now() + ttlMs });
-}
-
-// Format number with commas
 function formatNumber(num: number, decimals = 0): string {
-  return num.toLocaleString('en-US', { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 }
 
-// Format percent
 function formatPercent(num: number, decimals = 1): string {
   return `${num.toFixed(decimals)}%`;
 }
 
-// Parse PxWeb response to get latest value
-function parseLatestValue(pxResponse: unknown): { value: number | null; period: string | null } {
-  try {
-    const data = pxResponse as {
-      data?: Array<{ key: string[]; values: string[] }>;
-      columns?: Array<{ code: string; text: string }>;
-    };
-    
-    if (!data?.data || data.data.length === 0) {
-      return { value: null, period: null };
-    }
-
-    // Find the last entry with a valid value
-    for (let i = data.data.length - 1; i >= 0; i--) {
-      const entry = data.data[i];
-      const val = parseFloat(entry.values[0]);
-      if (!isNaN(val)) {
-        // Get period from key (usually last element)
-        const period = entry.key[entry.key.length - 1] || null;
-        return { value: val, period };
-      }
-    }
-    
-    return { value: null, period: null };
-  } catch {
-    return { value: null, period: null };
-  }
+function formatMonthYear(date: Date): string {
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  return `${month} ${date.getFullYear()}`;
 }
 
-// Fetch from PxWeb API
-async function fetchPxWeb(tablePath: string, query: unknown): Promise<unknown> {
-  try {
-    const response = await fetch(`${PXWEB_BASE}${tablePath}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query),
-    });
-    
-    if (!response.ok) {
-      console.error(`PxWeb error for ${tablePath}: ${response.status}`);
-      return null;
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`PxWeb fetch error for ${tablePath}:`, error);
-    return null;
-  }
+function formatQuarterYear(date: Date): string {
+  const quarter = Math.ceil((date.getMonth() + 1) / 3);
+  return `Q${quarter} ${date.getFullYear()}`;
 }
 
-// Card 1: Unemployment Rate
-async function fetchUnemploymentRate(): Promise<GlanceCard> {
-  const card: GlanceCard = {
-    id: 'unemployment',
-    value: 'Not available',
-    unit: '%',
-    label: 'Unemployment rate',
-    sublabel: '',
-    period: '',
-    source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    // Try GSS Labour Force Survey table
-    // Table path may vary - trying common paths
-    const tablePathsToTry = [
-      "Labour/LFS/Q4_2023/EMPLOYED POPULATION_15+_SEX.px",
-      "Labour/LFS/Unemployment_rate.px",
-      "PHC 2021/Labour/unemployment.px"
-    ];
-
-    for (const tablePath of tablePathsToTry) {
-      try {
-        const query = {
-          query: [],
-          response: { format: "json-stat2" }
-        };
-        
-        const data = await fetchPxWeb(tablePath, query);
-        if (data) {
-          const { value, period } = parseLatestValue(data);
-          if (value !== null) {
-            card.value = formatPercent(value);
-            card.period = period || 'Latest';
-            card.sublabel = `${card.period} • ${card.source}`;
-            card.status = 'ok';
-            break;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    // Fallback: use known recent data
-    if (card.status === 'unavailable') {
-      // Q4 2023 unemployment rate was approximately 14.7%
-      card.value = '14.7%';
-      card.period = 'Q4 2023';
-      card.sublabel = `${card.period} • ${card.source}`;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('Unemployment fetch error:', error);
-  }
-
-  return card;
+function formatDayMonthYear(date: Date): string {
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  return `${date.getDate()} ${month} ${date.getFullYear()}`;
 }
 
-// Card 2: Population
-async function fetchPopulation(): Promise<GlanceCard> {
-  const card: GlanceCard = {
-    id: 'population',
-    value: 'Not available',
-    unit: '',
-    label: 'Population',
-    sublabel: '',
-    period: '',
-    source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    // PHC 2021 total population
-    // Using known census data as primary source
-    card.value = formatNumber(30832019);
-    card.period = 'Census 2021';
-    card.sublabel = `${card.period} • ${card.source}`;
-    card.status = 'ok';
-  } catch (error) {
-    console.error('Population fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 3: Headline Inflation (CPI)
-async function fetchHeadlineInflation(): Promise<GlanceCard> {
-  const card: GlanceCard = {
+// All 10 card definitions
+const CARD_CONFIGS: CardConfig[] = [
+  {
     id: 'inflation',
-    value: 'Not available',
-    unit: '%',
+    slug: 'cpi-inflation',
     label: 'Headline inflation',
-    sublabel: '',
-    period: '',
+    unit: '%',
     source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    const tablePaths = [
-      "CPI/CPI_National_YoY.px",
-      "Prices/CPI/headline_inflation.px",
-      "CPI/National/headline.px"
-    ];
-
-    for (const tablePath of tablePaths) {
-      try {
-        const query = {
-          query: [],
-          response: { format: "json-stat2" }
-        };
-        
-        const data = await fetchPxWeb(tablePath, query);
-        if (data) {
-          const { value, period } = parseLatestValue(data);
-          if (value !== null) {
-            card.value = formatPercent(value);
-            card.period = period || 'Latest';
-            card.sublabel = `${card.period} YoY • ${card.source}`;
-            card.status = 'ok';
-            break;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    // Fallback with known recent data
-    if (card.status === 'unavailable') {
-      card.value = '23.1%';
-      card.period = 'Dec 2024';
-      card.sublabel = `${card.period} YoY • ${card.source}`;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('Inflation fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 4: Food Inflation
-async function fetchFoodInflation(): Promise<GlanceCard> {
-  const card: GlanceCard = {
+    formatValue: (v) => formatPercent(v),
+    formatPeriod: formatMonthYear,
+    formatSublabel: (p, s) => `${p} YoY • ${s}`,
+  },
+  {
     id: 'food-inflation',
-    value: 'Not available',
-    unit: '%',
+    slug: 'food-inflation',
     label: 'Food inflation',
-    sublabel: '',
-    period: '',
+    unit: '%',
     source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    const tablePaths = [
-      "CPI/CPI_Division_YoY.px",
-      "Prices/CPI/food_inflation.px"
-    ];
-
-    for (const tablePath of tablePaths) {
-      try {
-        const query = {
-          query: [
-            { code: "Division", selection: { filter: "item", values: ["Food and non-alcoholic beverages"] } }
-          ],
-          response: { format: "json-stat2" }
-        };
-        
-        const data = await fetchPxWeb(tablePath, query);
-        if (data) {
-          const { value, period } = parseLatestValue(data);
-          if (value !== null) {
-            card.value = formatPercent(value);
-            card.period = period || 'Latest';
-            card.sublabel = `${card.period} YoY • ${card.source}`;
-            card.status = 'ok';
-            break;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    // Fallback
-    if (card.status === 'unavailable') {
-      card.value = '27.8%';
-      card.period = 'Dec 2024';
-      card.sublabel = `${card.period} YoY • ${card.source}`;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('Food inflation fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 5: GDP Growth (Seasonally Adjusted)
-async function fetchGDPGrowth(): Promise<GlanceCard> {
-  const card: GlanceCard = {
+    formatValue: (v) => formatPercent(v),
+    formatPeriod: formatMonthYear,
+    formatSublabel: (p, s) => `${p} YoY • ${s}`,
+  },
+  {
     id: 'gdp-growth',
-    value: 'Not available',
-    unit: '%',
+    slug: 'gdp-growth-rate',
     label: 'GDP growth',
-    sublabel: '',
-    period: '',
-    source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    const tablePaths = [
-      "GDP/Quarterly_GDP_SA.px",
-      "National Accounts/GDP/quarterly_growth.px"
-    ];
-
-    for (const tablePath of tablePaths) {
-      try {
-        const query = {
-          query: [],
-          response: { format: "json-stat2" }
-        };
-        
-        const data = await fetchPxWeb(tablePath, query);
-        if (data) {
-          const { value, period } = parseLatestValue(data);
-          if (value !== null) {
-            card.value = formatPercent(value);
-            card.period = period || 'Latest';
-            card.sublabel = `${card.period} QoQ SA • ${card.source}`;
-            card.status = 'ok';
-            break;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    // Fallback
-    if (card.status === 'unavailable') {
-      card.value = '4.7%';
-      card.period = 'Q3 2024';
-      card.sublabel = `${card.period} QoQ SA • ${card.source}`;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('GDP growth fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 6: Credit to Private Sector Growth
-async function fetchPrivateSectorCredit(): Promise<GlanceCard> {
-  const card: GlanceCard = {
-    id: 'private-credit',
-    value: 'Not available',
     unit: '%',
-    label: 'Private sector credit growth',
-    sublabel: '',
-    period: '',
-    source: 'BoG',
-    status: 'unavailable',
-  };
-
-  try {
-    // Bank of Ghana doesn't have a structured API
-    // Using recent known data from Monetary Policy publications
-    card.value = '18.2%';
-    card.period = 'Nov 2024';
-    card.sublabel = `${card.period} YoY • ${card.source}`;
-    card.status = 'ok';
-  } catch (error) {
-    console.error('Private credit fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 7: BoG Policy Rate
-async function fetchPolicyRate(): Promise<GlanceCard> {
-  const card: GlanceCard = {
+    source: 'GSS',
+    formatValue: (v) => formatPercent(v),
+    formatPeriod: formatQuarterYear,
+    formatSublabel: (p, s) => `${p} QoQ SA • ${s}`,
+  },
+  {
     id: 'policy-rate',
-    value: 'Not available',
-    unit: '%',
+    slug: 'policy-rate',
     label: 'BoG policy rate',
-    sublabel: '',
-    period: '',
+    unit: '%',
     source: 'BoG',
-    status: 'unavailable',
-  };
-
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch latest policy rate from database
-    const { data: dbData, error } = await supabase
-      .from('data_points')
-      .select(`
-        value,
-        date,
-        data_series!inner(
-          indicator_id,
-          is_primary,
-          geography:geographies!inner(is_ghana),
-          indicator:indicators!inner(slug)
-        ),
-        source:data_sources(short_name)
-      `)
-      .eq('data_series.indicator.slug', 'policy-rate')
-      .eq('data_series.geography.is_ghana', true)
-      .order('date', { ascending: false })
-      .limit(1);
-
-    if (!error && dbData && dbData.length > 0) {
-      const point = dbData[0];
-      const date = new Date(point.date);
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      
-      card.value = formatPercent(Number(point.value), 1);
-      card.period = `${month} ${year}`;
-      card.sublabel = `${card.period} • ${card.source}`;
-      card.status = 'ok';
-    } else {
-      // Fallback with known recent data
-      card.value = '27.0%';
-      card.period = 'Jan 2025';
-      card.sublabel = `${card.period} • ${card.source}`;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('Policy rate fetch error:', error);
-    // Fallback
-    card.value = '27.0%';
-    card.period = 'Jan 2025';
-    card.sublabel = `${card.period} • ${card.source}`;
-    card.status = 'ok';
-  }
-
-  return card;
-}
-
-// Card 8: Fertility Rate
-async function fetchFertilityRate(): Promise<GlanceCard> {
-  const card: GlanceCard = {
-    id: 'fertility-rate',
-    value: 'Not available',
-    unit: 'births',
-    label: 'Fertility rate',
-    sublabel: '',
-    period: '',
-    source: 'GSS',
-    status: 'unavailable',
-  };
-
-  try {
-    // Total Fertility Rate from GSS surveys
-    // 2022 Ghana Demographic and Health Survey: 3.9 births per woman
-    // 2023 estimate: 3.4 births per woman
-    card.value = '3.9';
-    card.period = '2022';
-    card.sublabel = `${card.period} DHS • ${card.source}`;
-    card.status = 'ok';
-  } catch (error) {
-    console.error('Fertility rate fetch error:', error);
-  }
-
-  return card;
-}
-
-// Card 9: USD/GHS Exchange Rate
-async function fetchExchangeRate(): Promise<GlanceCard> {
-  const card: GlanceCard = {
+    formatValue: (v) => formatPercent(v),
+    formatPeriod: formatMonthYear,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
     id: 'exchange-rate',
-    value: 'Not available',
-    unit: 'GHS',
+    slug: 'exchange-rate-ghs-usd',
     label: 'USD/GHS rate',
-    sublabel: '',
-    period: '',
+    unit: 'GHS',
     source: 'BoG',
-    status: 'unavailable',
-  };
+    formatValue: (v) => `GHS ${formatNumber(v, 2)}`,
+    formatPeriod: formatDayMonthYear,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
+    id: 'fuel-price',
+    slug: 'fuel-price-petrol',
+    label: 'Petrol price',
+    unit: 'GHS/L',
+    source: 'NPA',
+    formatValue: (v) => `GHS ${formatNumber(v, 2)}/L`,
+    formatPeriod: formatDayMonthYear,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
+    id: 'private-credit',
+    slug: 'credit-private-sector',
+    label: 'Private sector credit',
+    unit: 'GHS',
+    source: 'BoG',
+    formatValue: (v) => `GHS ${formatNumber(v, 1)}B`,
+    formatPeriod: formatMonthYear,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
+    id: 'population',
+    slug: 'population-total',
+    label: 'Population',
+    unit: '',
+    source: 'WB',
+    formatValue: (v) => `${formatNumber(v, 1)}M`,
+    formatPeriod: (d) => `${d.getFullYear()}`,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
+    id: 'unemployment',
+    slug: 'unemployment-rate',
+    label: 'Unemployment rate',
+    unit: '%',
+    source: 'WB',
+    formatValue: (v) => formatPercent(v),
+    formatPeriod: (d) => `${d.getFullYear()}`,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+  {
+    id: 'fertility-rate',
+    slug: 'fertility-rate',
+    label: 'Fertility rate',
+    unit: 'births',
+    source: 'WB',
+    formatValue: (v) => formatNumber(v, 1),
+    formatPeriod: (d) => `${d.getFullYear()}`,
+    formatSublabel: (p, s) => `${p} • ${s}`,
+  },
+];
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+// Fetch all card data from the database in a single efficient query
+async function fetchAllCardsFromDB(): Promise<GlanceCard[]> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch latest exchange rate from database
-    const { data: dbData, error } = await supabase
-      .from('data_points')
-      .select(`
-        value,
-        date,
-        data_series!inner(
-          indicator_id,
-          is_primary,
-          geography:geographies!inner(is_ghana),
-          indicator:indicators!inner(slug)
-        ),
-        source:data_sources(short_name)
-      `)
-      .eq('data_series.indicator.slug', 'exchange-rate-ghs-usd')
-      .eq('data_series.geography.is_ghana', true)
-      .order('date', { ascending: false })
-      .limit(1);
+  const slugs = CARD_CONFIGS.map(c => c.slug);
 
-    if (!error && dbData && dbData.length > 0) {
-      const point = dbData[0];
-      const date = new Date(point.date);
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const day = date.getDate();
-      const year = date.getFullYear();
-      const sourceName = (point.source as any)?.short_name || 'BoG';
-      
-      card.value = `GHS ${formatNumber(Number(point.value), 2)}`;
-      card.period = `${day} ${month} ${year}`;
-      card.sublabel = `${card.period} • ${sourceName}`;
-      card.source = sourceName;
-      card.status = 'ok';
-    }
-  } catch (error) {
-    console.error('Exchange rate fetch error:', error);
+  // Fetch latest 2 data points per indicator for change detection
+  const { data: dbData, error } = await supabase
+    .from('data_points')
+    .select(`
+      value,
+      date,
+      data_series!inner(
+        indicator_id,
+        is_primary,
+        geography:geographies!inner(is_ghana),
+        indicator:indicators!inner(slug, name, short_name)
+      ),
+      source:data_sources(short_name, name)
+    `)
+    .eq('data_series.is_primary', true)
+    .eq('data_series.geography.is_ghana', true)
+    .in('data_series.indicator.slug', slugs)
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('DB fetch error:', error);
+    return [];
   }
 
-  return card;
-}
+  // Group by slug and take the latest value
+  const latestBySlug = new Map<string, { value: number; date: string; sourceName: string }>();
 
-// Fetch secondary data from database
-async function fetchSecondaryData(): Promise<Map<string, SecondaryData>> {
-  const secondaryMap = new Map<string, SecondaryData>();
-  
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  for (const point of dbData || []) {
+    const series = point.data_series as any;
+    const slug = series?.indicator?.slug;
+    if (!slug) continue;
 
-    // Fetch latest data points for relevant indicators
-    const { data: dbData, error } = await supabase
-      .from('data_points')
-      .select(`
-        value,
-        date,
-        data_series!inner(
-          indicator_id,
-          is_primary,
-          geography:geographies!inner(is_ghana),
-          indicator:indicators!inner(slug, name, short_name)
-        ),
-        source:data_sources(short_name, name)
-      `)
-      .eq('data_series.is_primary', true)
-      .eq('data_series.geography.is_ghana', true)
-      .gte('date', '2024-06-01')
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching secondary data:', error);
-      return secondaryMap;
-    }
-
-    // Process data and find latest for each indicator
-    const indicatorLatest = new Map<string, { value: number; date: string; source: string }>();
-    
-    for (const point of dbData || []) {
-      const series = point.data_series as any;
-      const indicator = series?.indicator;
-      const slug = indicator?.slug;
-      
-      if (!slug) continue;
-      
-      // Only keep the latest value for each indicator
-      if (!indicatorLatest.has(slug)) {
-        const sourceName = (point.source as any)?.short_name || 'DB';
-        indicatorLatest.set(slug, {
-          value: Number(point.value),
-          date: point.date,
-          source: sourceName
-        });
-      }
-    }
-
-    // Map database slugs to card IDs
-    const slugToCardId: Record<string, string> = {
-      'cpi-inflation': 'inflation',
-      'headline-inflation': 'inflation',
-      'food-inflation': 'food-inflation',
-      'gdp-growth-rate': 'gdp-growth',
-      'gdp-growth': 'gdp-growth',
-      'unemployment-rate': 'unemployment',
-      'population-total': 'population',
-      'credit-private-sector': 'private-credit',
-      'policy-rate': 'policy-rate' // Bonus data
-    };
-
-    // Format and add to map
-    for (const [slug, data] of indicatorLatest) {
-      const cardId = slugToCardId[slug];
-      if (!cardId) continue;
-
-      const date = new Date(data.date);
-      let period: string;
-      
-      // Format period based on date
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const quarter = Math.ceil((date.getMonth() + 1) / 3);
-      
-      // Determine if it's monthly or quarterly data
-      if (slug.includes('gdp')) {
-        period = `Q${quarter} ${year}`;
-      } else if (slug === 'population-total') {
-        period = `${year}`;
-      } else {
-        period = `${month} ${year}`;
-      }
-
-      let formattedValue: string;
-      if (slug === 'population-total') {
-        formattedValue = formatNumber(data.value, 0);
-      } else if (slug === 'credit-private-sector') {
-        formattedValue = `GHS ${formatNumber(data.value, 1)}B`;
-      } else {
-        formattedValue = formatPercent(data.value, 1);
-      }
-
-      secondaryMap.set(cardId, {
-        value: formattedValue,
-        period: period,
-        source: data.source
+    if (!latestBySlug.has(slug)) {
+      const sourceName = (point.source as any)?.short_name || (point.source as any)?.name || '';
+      latestBySlug.set(slug, {
+        value: Number(point.value),
+        date: point.date,
+        sourceName,
       });
     }
-
-    console.log('Secondary data fetched:', [...secondaryMap.entries()]);
-  } catch (error) {
-    console.error('Error in fetchSecondaryData:', error);
   }
 
-  return secondaryMap;
-}
+  console.log('DB data loaded for slugs:', [...latestBySlug.keys()]);
 
-// Compare dates and determine if secondary is more recent
-function isMoreRecent(primaryPeriod: string, secondaryPeriod: string): boolean {
-  // Parse periods like "Dec 2024", "Q3 2024", "2021"
-  const parsePeriod = (p: string): Date => {
-    const quarterMatch = p.match(/Q(\d)\s+(\d{4})/);
-    if (quarterMatch) {
-      const quarter = parseInt(quarterMatch[1]);
-      const year = parseInt(quarterMatch[2]);
-      return new Date(year, (quarter - 1) * 3 + 2, 28); // End of quarter
-    }
-    
-    const monthMatch = p.match(/(\w+)\s+(\d{4})/);
-    if (monthMatch) {
-      return new Date(`${monthMatch[1]} 1, ${monthMatch[2]}`);
-    }
-    
-    const yearMatch = p.match(/(\d{4})/);
-    if (yearMatch) {
-      return new Date(parseInt(yearMatch[1]), 11, 31);
-    }
-    
-    return new Date(0);
-  };
+  // Build cards
+  const cards: GlanceCard[] = [];
 
-  return parsePeriod(secondaryPeriod) > parsePeriod(primaryPeriod);
+  for (const config of CARD_CONFIGS) {
+    const dbEntry = latestBySlug.get(config.slug);
+
+    if (!dbEntry) {
+      console.warn(`No DB data for ${config.slug}`);
+      cards.push({
+        id: config.id,
+        value: '—',
+        unit: config.unit,
+        label: config.label,
+        sublabel: 'Data unavailable',
+        period: '',
+        source: config.source,
+        status: 'unavailable',
+      });
+      continue;
+    }
+
+    const date = new Date(dbEntry.date);
+    const period = config.formatPeriod(date);
+    const source = dbEntry.sourceName || config.source;
+
+    cards.push({
+      id: config.id,
+      value: config.formatValue(dbEntry.value),
+      unit: config.unit,
+      label: config.label,
+      sublabel: config.formatSublabel(period, source),
+      period,
+      source,
+      status: 'ok',
+    });
+  }
+
+  return cards;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Fetching Ghana At A Glance data...');
+    console.log('Fetching Ghana At A Glance data (DB-first)...');
 
-    // Fetch all cards and secondary data in parallel
-    const [
-      unemployment,
-      population,
-      inflation,
-      foodInflation,
-      gdpGrowth,
-      privateCredit,
-      policyRate,
-      fertilityRate,
-      exchangeRate,
-      secondaryData
-    ] = await Promise.all([
-      fetchUnemploymentRate(),
-      fetchPopulation(),
-      fetchHeadlineInflation(),
-      fetchFoodInflation(),
-      fetchGDPGrowth(),
-      fetchPrivateSectorCredit(),
-      fetchPolicyRate(),
-      fetchFertilityRate(),
-      fetchExchangeRate(),
-      fetchSecondaryData()
-    ]);
-
-    // Enhance cards with secondary data if more recent
-    const cards = [unemployment, population, inflation, foodInflation, gdpGrowth, privateCredit, policyRate, fertilityRate, exchangeRate];
-    
-    for (const card of cards) {
-      const secondary = secondaryData.get(card.id);
-      if (secondary && isMoreRecent(card.period, secondary.period)) {
-        card.secondary = secondary;
-      }
-    }
+    const cards = await fetchAllCardsFromDB();
 
     const response: GlanceResponse = {
       cards,
-      fetchedAt: new Date().toISOString()
+      fetchedAt: new Date().toISOString(),
     };
 
-    console.log('Ghana At A Glance data fetched successfully');
+    console.log(`Ghana At A Glance: ${cards.filter(c => c.status === 'ok').length}/${cards.length} cards OK`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-
   } catch (error) {
     console.error('Ghana At A Glance error:', error);
-    
-    return new Response(JSON.stringify({ 
+
+    return new Response(JSON.stringify({
       error: 'Failed to fetch data',
-      cards: []
+      cards: [],
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
