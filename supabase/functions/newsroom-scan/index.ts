@@ -2234,8 +2234,28 @@ Return ONLY valid JSON with these exact keys:
           // 3. Handle hero image
           let heroImageUrl: string | null = null;
 
-          // Try extracting from source HTML first
-          if (sourceHtml) {
+          // PRIORITY 0: Known image overrides (curated photos & institution logos)
+          const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
+            "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+            "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
+            "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+            "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+            "cocobod": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+            "cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+            "ghana cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+          };
+
+          const contentToCheck = `${generated.headline} ${articleText}`.toLowerCase();
+          for (const [overrideKey, overrideImageUrl] of Object.entries(KNOWN_IMAGE_OVERRIDES)) {
+            if (contentToCheck.includes(overrideKey)) {
+              heroImageUrl = overrideImageUrl;
+              console.log(`✓ Using known image override for "${overrideKey}": ${heroImageUrl}`);
+              break;
+            }
+          }
+
+          // Try extracting from source HTML if no override matched
+          if (!heroImageUrl && sourceHtml) {
             heroImageUrl = await extractImageFromSourceHtml(sourceHtml, item.link);
             if (heroImageUrl) {
               const uploadedUrl = await fetchAndUploadImage(heroImageUrl, supabase, uniqueSlug);
