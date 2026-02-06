@@ -533,20 +533,23 @@ Return ONLY valid JSON.`;
     // ============================================
     let heroImageUrl: string | null = null;
     
-    // PRIORITY 0: Known person image overrides (curated authentic photos)
-    const KNOWN_PERSON_IMAGES: Record<string, string> = {
+    // PRIORITY 0: Known image overrides (curated authentic photos & institution logos)
+    const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
       "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
       "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
       "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
       "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+      "cocobod": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+      "cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
+      "ghana cocoa board": "https://statsgh.lovable.app/images/cocobod-ghana-cocoa-board.png",
     };
     
     const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
     
-    for (const [personKey, personImageUrl] of Object.entries(KNOWN_PERSON_IMAGES)) {
-      if (headlineAndBodyLower.includes(personKey)) {
-        heroImageUrl = personImageUrl;
-        console.log(`✓ Using known person image for "${personKey}": ${heroImageUrl}`);
+    for (const [overrideKey, overrideImageUrl] of Object.entries(KNOWN_IMAGE_OVERRIDES)) {
+      if (headlineAndBodyLower.includes(overrideKey)) {
+        heroImageUrl = overrideImageUrl;
+        console.log(`✓ Using known image override for "${overrideKey}": ${heroImageUrl}`);
         break;
       }
     }
