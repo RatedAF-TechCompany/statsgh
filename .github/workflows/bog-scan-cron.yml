@@ -1,0 +1,24 @@
+name: BoG Dashboard Update Scanner
+
+on:
+  schedule:
+    # Run every 12 hours at minute 30
+    - cron: '30 */12 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  trigger-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger BoG Dashboard Scan
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/bog-dashboard-scan" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerType": "scheduled"}' \
+            --fail-with-body \
+            --max-time 300
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

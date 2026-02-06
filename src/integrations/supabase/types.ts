@@ -365,6 +365,86 @@ export type Database = {
           },
         ]
       }
+      bog_scan_items: {
+        Row: {
+          bog_url: string
+          created_at: string
+          dedupe_hash: string
+          detected_topics: string[] | null
+          id: string
+          published_date: string | null
+          qualifies: boolean
+          reason: string | null
+          run_id: string
+          title: string
+        }
+        Insert: {
+          bog_url: string
+          created_at?: string
+          dedupe_hash: string
+          detected_topics?: string[] | null
+          id?: string
+          published_date?: string | null
+          qualifies?: boolean
+          reason?: string | null
+          run_id: string
+          title: string
+        }
+        Update: {
+          bog_url?: string
+          created_at?: string
+          dedupe_hash?: string
+          detected_topics?: string[] | null
+          id?: string
+          published_date?: string | null
+          qualifies?: boolean
+          reason?: string | null
+          run_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bog_scan_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bog_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bog_scan_runs: {
+        Row: {
+          created_at: string
+          id: string
+          indicators_refreshed: number | null
+          items_qualifying: number | null
+          items_scanned: number | null
+          notes: string | null
+          run_time_utc: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          indicators_refreshed?: number | null
+          items_qualifying?: number | null
+          items_scanned?: number | null
+          notes?: string | null
+          run_time_utc?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          indicators_refreshed?: number | null
+          items_qualifying?: number | null
+          items_scanned?: number | null
+          notes?: string | null
+          run_time_utc?: string
+          status?: string
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           article_id: string
@@ -488,6 +568,50 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_updates: {
+        Row: {
+          id: string
+          indicator_key: string
+          period: string | null
+          run_id: string | null
+          source: string
+          source_detail: string | null
+          unit: string | null
+          updated_at_utc: string
+          value: number | null
+        }
+        Insert: {
+          id?: string
+          indicator_key: string
+          period?: string | null
+          run_id?: string | null
+          source?: string
+          source_detail?: string | null
+          unit?: string | null
+          updated_at_utc?: string
+          value?: number | null
+        }
+        Update: {
+          id?: string
+          indicator_key?: string
+          period?: string | null
+          run_id?: string | null
+          source?: string
+          source_detail?: string | null
+          unit?: string | null
+          updated_at_utc?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_updates_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bog_scan_runs"
             referencedColumns: ["id"]
           },
         ]
