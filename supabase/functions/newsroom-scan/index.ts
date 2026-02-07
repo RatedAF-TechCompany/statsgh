@@ -28,10 +28,10 @@ function collapseImmediateWordRepeats(input: string): string {
 // STATSGH NEWSROOM MASTER CONFIGURATION V2.0
 // Major refactor: Qualifying numbers, not just any numbers
 // ============================================
-const DEFAULT_TIME_WINDOW_HOURS = 5; // Default 5 hours for normal scan (was 24)
+const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 5;
-const DAILY_PUBLISH_LIMIT = 8; // Max articles per day
+const DEFAULT_MAX_ARTICLES_PER_RUN = 15; // V3.0: Increased from 5
+const DAILY_PUBLISH_LIMIT = 50; // V3.0: Effectively uncapped (was 8)
 
 // "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
@@ -440,8 +440,8 @@ function bodyMeetsNumberRequirements(text: string): {
   const hasComparison = qualifying.some(q => q.reason === "COMPARISON");
   const qualifyingCount = qualifying.length;
   
-  // Rule: 2+ qualifying numbers AND 1 comparison, OR 3+ qualifying numbers
-  const passes = (qualifyingCount >= 2 && hasComparison) || (qualifyingCount >= 3);
+  // V3.0: Relaxed — 1+ qualifying number anywhere in body is enough
+  const passes = qualifyingCount >= 1;
   
   return {
     passes,
@@ -545,8 +545,8 @@ function getGhanaRelevanceScore(headline: string, bodyText: string): { score: nu
     }
   }
   
-  // Threshold: Need at least 3 points (headline match, or 2 opening matches, or 3 body matches)
-  const passes = score >= 3;
+  // V3.0: Relaxed threshold — 1 point is enough (any single mention of Ghana entity)
+  const passes = score >= 1;
   
   return {
     score,
@@ -582,8 +582,8 @@ function isCrimeNewsWithData(text: string): { isCrime: boolean; hasSignificantDa
   // Check for official source reference
   const hasOfficialSource = /\b(according to|ministry|police statistics|crime report|survey|study|research|unicef|world bank)\b/i.test(text);
   
-  // Significant data: 2+ qualifying numbers AND (money/percent OR official source)
-  const hasSignificantData = hasQualifyingNumbers && (hasMoneyOrPercent || hasOfficialSource || hasStatsOverride);
+  // V3.0: Softened — any GHS amount, percentage, or 1+ qualifying number passes
+  const hasSignificantData = hasMoneyOrPercent || hasQualifyingNumbers || hasOfficialSource || hasStatsOverride;
   
   return {
     isCrime: true,
@@ -1762,8 +1762,8 @@ serve(async (req) => {
 
     const perSourceCounts = new Map<string, number>();
 
-    // V2.0: Opinion daily limit reduced to 1
-    const DAILY_OPINION_LIMIT = 1;
+    // V3.0: Opinion daily limit raised to 3 (was 1)
+    const DAILY_OPINION_LIMIT = 3;
     const { count: opinionCountLast24h } = await supabase
       .from("articles")
       .select("id", { count: "exact", head: true })
@@ -1841,14 +1841,9 @@ serve(async (req) => {
         continue;
       }
 
-      // V2.1: Check headline for qualifying number BEFORE fetching full page (optimization)
-      const headlineCheck = headlineHasQualifyingNumber(article.title);
-      if (!isOpinion && !headlineCheck.hasQualifying) {
-        const rejCode = headlineCheck.hasDateOnly ? REJECTION_CODES.HEADLINE_NUMBER_DATE_ONLY : REJECTION_CODES.HEADLINE_NO_NUMBER;
-        await logCandidate(supabase, run.id, article, "rejected", rejCode,
-          headlineCheck.detail, { pubDateParsed: pubDate });
-        continue;
-      }
+    // V3.0: Headline number requirement REMOVED — numbers in body are sufficient
+      // Previously rejected articles without numbers in headline (HEADLINE_NO_NUMBER)
+      // Now we only check body-level number quality after fetching full text
 
       // Fetch full text for content analysis (only for articles that passed headline check)
       let fullText = rssText;
