@@ -14,11 +14,7 @@ interface Comment {
   id: string;
   article_id: string;
   name: string | null;
-  email: string;
   body: string;
-  is_published: boolean;
-  verification_code: string;
-  verification_expires_at: string;
   created_at: string;
   parent_id: string | null;
 }
@@ -27,15 +23,15 @@ export const CommentsList = ({ articleId, onReply }: CommentsListProps) => {
   const { data: comments, isLoading } = useQuery({
     queryKey: ["comments", articleId],
     queryFn: async () => {
+      // Use the safe view that excludes PII (email, verification_code)
       const { data, error } = await supabase
-        .from("comments")
-        .select("*")
+        .from("comments_public" as any)
+        .select("id, article_id, name, body, created_at, parent_id")
         .eq("article_id", articleId)
-        .eq("is_published", true)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Comment[];
+      return (data as unknown) as Comment[];
     },
   });
 
