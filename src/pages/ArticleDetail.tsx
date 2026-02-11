@@ -12,6 +12,7 @@ import React, { useEffect } from "react";
 import DOMPurify from "dompurify";
 import { CommentSection } from "@/components/CommentSection";
 import { RelatedArticles } from "@/components/RelatedArticles";
+import CalabasheAdBanner from "@/components/CalabasheAdBanner";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -449,6 +450,9 @@ const ArticleDetail = () => {
             itemProp="articleBody"
             dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
+
+          {/* Advertisement */}
+          <CalabasheAdBanner />
 
           {/* Comments Section - Immediately after article */}
           <div className="mb-12">
