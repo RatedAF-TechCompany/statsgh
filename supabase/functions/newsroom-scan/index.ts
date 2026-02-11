@@ -2260,10 +2260,6 @@ Return ONLY valid JSON with these exact keys:
             "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
             "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
             "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-            "ghana statistical service": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
-            "statistical service": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
-            "statsservice": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
-            "gss": "https://statsgh.lovable.app/images/gss-ghana-statistical-service.png",
           };
 
           const contentToCheck = `${generated.headline} ${articleText}`.toLowerCase();
