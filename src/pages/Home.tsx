@@ -16,6 +16,7 @@ import DataHighlightsSidebar from "@/components/home/DataHighlightsSidebar";
 import TopicsOverview from "@/components/TopicsOverview";
 import GhanaAtAGlance from "@/components/home/GhanaAtAGlance";
 import GSETickerStrip from "@/components/home/GSETickerStrip";
+import CalabasheAdBanner from "@/components/CalabasheAdBanner";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -155,6 +156,9 @@ const Home = () => {
                 </div>
               </div>
             )}
+
+            {/* Advertisement */}
+            <CalabasheAdBanner />
 
             {/* Ghana At A Glance - Full Width Strip */}
             <div className="-mx-4 my-6">
