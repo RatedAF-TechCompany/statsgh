@@ -13,12 +13,14 @@ import { Loader2, Send, ExternalLink, Copy, CalendarIcon, Clock } from "lucide-r
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ImageUploader } from "@/components/ImageUploader";
 
 type ScheduleMode = "immediate" | "manual" | "auto";
 
 export const ManualArticleSubmit = () => {
   const [input, setInput] = useState("");
   const [customTitle, setCustomTitle] = useState("");
+  const [heroImageUrl, setHeroImageUrl] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("immediate");
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
@@ -93,6 +95,7 @@ export const ManualArticleSubmit = () => {
             input: input.trim(),
             scheduled_at: getScheduledDateTime(),
             custom_title: customTitle.trim() || undefined,
+            hero_image_url: heroImageUrl || undefined,
           }),
         }
       );
@@ -115,7 +118,7 @@ export const ManualArticleSubmit = () => {
       
       setInput("");
       setCustomTitle("");
-      setScheduleMode("immediate");
+      setHeroImageUrl(undefined);
       setScheduledDate(undefined);
       setScheduledTime("09:00");
     } catch (error) {
@@ -154,6 +157,15 @@ export const ManualArticleSubmit = () => {
             value={customTitle}
             onChange={(e) => setCustomTitle(e.target.value)}
             disabled={isSubmitting}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Hero Image</Label>
+          <ImageUploader
+            onUploadComplete={(url) => setHeroImageUrl(url)}
+            currentImage={heroImageUrl}
+            onRemove={() => setHeroImageUrl(undefined)}
           />
         </div>
 
