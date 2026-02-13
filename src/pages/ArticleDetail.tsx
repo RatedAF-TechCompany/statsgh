@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, TrendingUp, Database, ExternalLink } from "lucide-react";
-import { ListenButton } from "@/components/ListenButton";
+// import { ListenButton } from "@/components/ListenButton";
 import { ReadingTime } from "@/components/ReadingTime";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -404,10 +404,7 @@ const ArticleDetail = () => {
               
               {/* Action Buttons */}
               <div className="flex items-center gap-1">
-                <ListenButton 
-                  title={article.title} 
-                  content={article.body} 
-                />
+                {/* ListenButton temporarily removed */}
                 <Button
                   variant="ghost"
                   size="sm"
