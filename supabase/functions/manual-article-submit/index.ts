@@ -266,7 +266,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { input, scheduled_at, custom_title } = body;
+    const { input, scheduled_at, custom_title, hero_image_url: userProvidedImage } = body;
     
     // Extract author attribution from input (e.g., "by Citizen Yao" or "by John Doe")
     // Pattern: look for "by [Name]" at start or end of input, or after a period/newline
@@ -609,7 +609,7 @@ Return ONLY valid JSON.`;
         slug: articleSlug,
         body: articleBody,
         summary: String(articleJson.subtitle || "").substring(0, 500),
-        hero_image_url: heroImageUrl,
+        hero_image_url: userProvidedImage || heroImageUrl,
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
