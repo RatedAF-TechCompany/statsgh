@@ -69,6 +69,15 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error:", response.status, errorText);
+      
+      // Check for quota exceeded
+      if (errorText.includes("quota_exceeded")) {
+        return new Response(
+          JSON.stringify({ error: "Audio generation quota exceeded. Please try again later or contact support." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: "Failed to generate audio", details: errorText }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
