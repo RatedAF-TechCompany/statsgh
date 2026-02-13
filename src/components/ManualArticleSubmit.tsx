@@ -18,6 +18,7 @@ type ScheduleMode = "immediate" | "manual" | "auto";
 
 export const ManualArticleSubmit = () => {
   const [input, setInput] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("immediate");
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
@@ -91,6 +92,7 @@ export const ManualArticleSubmit = () => {
           body: JSON.stringify({ 
             input: input.trim(),
             scheduled_at: getScheduledDateTime(),
+            custom_title: customTitle.trim() || undefined,
           }),
         }
       );
@@ -112,6 +114,7 @@ export const ManualArticleSubmit = () => {
       }
       
       setInput("");
+      setCustomTitle("");
       setScheduleMode("immediate");
       setScheduledDate(undefined);
       setScheduledTime("09:00");
@@ -144,6 +147,16 @@ export const ManualArticleSubmit = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Title (optional)</Label>
+          <Input
+            placeholder="Override headline — leave blank to auto-generate"
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            disabled={isSubmitting}
+          />
+        </div>
+
         <Textarea
           placeholder="Paste article URL (e.g., https://example.com/news-story) or paste the full article text here..."
           value={input}

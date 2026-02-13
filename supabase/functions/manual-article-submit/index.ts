@@ -266,7 +266,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { input, scheduled_at } = body;
+    const { input, scheduled_at, custom_title } = body;
     
     // Extract author attribution from input (e.g., "by Citizen Yao" or "by John Doe")
     // Pattern: look for "by [Name]" at start or end of input, or after a period/newline
@@ -605,7 +605,7 @@ Return ONLY valid JSON.`;
     const { data: newArticle, error: insertError } = await supabase
       .from("articles")
       .insert({
-        title: String(articleJson.headline || "Untitled").substring(0, 200),
+        title: custom_title ? String(custom_title).substring(0, 200) : String(articleJson.headline || "Untitled").substring(0, 200),
         slug: articleSlug,
         body: articleBody,
         summary: String(articleJson.subtitle || "").substring(0, 500),
@@ -619,7 +619,7 @@ Return ONLY valid JSON.`;
         is_published: !isScheduled,
         published_at: isScheduled ? null : new Date().toISOString(),
         scheduled_at: isScheduled && scheduledDateTime ? scheduledDateTime.toISOString() : null,
-        meta_title: String(articleJson.headline || "").substring(0, 60),
+        meta_title: custom_title ? String(custom_title).substring(0, 60) : String(articleJson.headline || "").substring(0, 60),
         seo_description: String(articleJson.seo_description || "").substring(0, 155),
         twitter_post: String(articleJson.tweet || "").substring(0, 280),
       })
