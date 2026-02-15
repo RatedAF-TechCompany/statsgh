@@ -1045,19 +1045,49 @@ function buildDedupeKey(eventCore: string, org: string, dateStr: string, qualify
     .trim();
 }
 
-// Semantic similarity: extract significant keywords from a headline and compute Jaccard similarity
+// ── Multi-signal semantic deduplication ──────────────────────────────────────
+
+const STOP_WORDS = new Set(["the","a","an","is","are","was","were","be","been","being","have","has","had",
+  "do","does","did","will","would","shall","should","may","might","must","can","could",
+  "to","of","in","for","on","with","at","by","from","as","into","through","during","before",
+  "after","above","below","between","out","off","over","under","again","further","then","once",
+  "and","but","or","nor","not","so","yet","both","either","neither","each","every","all","any",
+  "few","more","most","other","some","such","no","only","own","same","than","too","very",
+  "it","its","this","that","these","those","he","she","they","we","you","i","me","him","her",
+  "us","them","my","your","his","our","their","what","which","who","whom","where","when","how",
+  "new","says","said","also","over","about","up","ghana","ghanaian","percent","ghs"]);
+
+function tokenize(text: string): string[] {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
+}
+
 function extractKeywords(text: string): Set<string> {
-  const STOP_WORDS = new Set(["the","a","an","is","are","was","were","be","been","being","have","has","had",
-    "do","does","did","will","would","shall","should","may","might","must","can","could",
-    "to","of","in","for","on","with","at","by","from","as","into","through","during","before",
-    "after","above","below","between","out","off","over","under","again","further","then","once",
-    "and","but","or","nor","not","so","yet","both","either","neither","each","every","all","any",
-    "few","more","most","other","some","such","no","only","own","same","than","too","very",
-    "it","its","this","that","these","those","he","she","they","we","you","i","me","him","her",
-    "us","them","my","your","his","our","their","what","which","who","whom","where","when","how",
-    "new","says","said","also","over","about","up","ghana","ghanaian","percent","ghs"]);
-  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
-  return new Set(words);
+  return new Set(tokenize(text));
+}
+
+/** Extract bigrams (consecutive word pairs) for phrase-level matching */
+function extractBigrams(text: string): Set<string> {
+  const words = tokenize(text);
+  const bigrams = new Set<string>();
+  for (let i = 0; i < words.length - 1; i++) {
+    bigrams.add(`${words[i]}|${words[i + 1]}`);
+  }
+  return bigrams;
+}
+
+/** Extract named entities: acronyms (AGI, IMF), proper nouns, org-like tokens */
+function extractEntities(text: string): Set<string> {
+  const entities = new Set<string>();
+  // Match acronyms (2+ uppercase letters)
+  const acronyms = text.match(/\b[A-Z]{2,}\b/g);
+  if (acronyms) acronyms.forEach(a => entities.add(a.toLowerCase()));
+  // Match capitalized multi-word names (e.g. "Bank of Ghana", "Cocoa Board")
+  const properNouns = text.match(/[A-Z][a-z]+(?:\s+(?:of|and|the|for)\s+[A-Z][a-z]+|\s+[A-Z][a-z]+)*/g);
+  if (properNouns) properNouns.forEach(p => entities.add(p.toLowerCase()));
+  // Match standalone capitalized words that aren't sentence starters (rough heuristic)
+  const caps = text.match(/(?<=[.!?]\s+|^)[A-Z][a-z]+|(?<=\s)[A-Z][a-z]{2,}/g);
+  if (caps) caps.forEach(c => { if (c.length > 3) entities.add(c.toLowerCase()); });
+  return entities;
 }
 
 function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
@@ -1068,6 +1098,26 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   }
   const union = a.size + b.size - intersection;
   return union === 0 ? 0 : intersection / union;
+}
+
+/**
+ * Composite similarity score combining multiple signals:
+ *  - Unigram Jaccard (word overlap)        weight: 0.30
+ *  - Bigram Jaccard (phrase overlap)       weight: 0.35
+ *  - Entity overlap (orgs, acronyms)       weight: 0.35
+ *
+ * Returns { score, breakdown } where score is 0-1.
+ */
+function compositeSimilarity(
+  textA: string, textB: string
+): { score: number; breakdown: { unigram: number; bigram: number; entity: number } } {
+  const unigramScore = jaccardSimilarity(extractKeywords(textA), extractKeywords(textB));
+  const bigramScore = jaccardSimilarity(extractBigrams(textA), extractBigrams(textB));
+  const entityScore = jaccardSimilarity(extractEntities(textA), extractEntities(textB));
+
+  // Weighted composite
+  const score = unigramScore * 0.30 + bigramScore * 0.35 + entityScore * 0.35;
+  return { score, breakdown: { unigram: unigramScore, bigram: bigramScore, entity: entityScore } };
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -1984,14 +2034,12 @@ serve(async (req) => {
         continue;
       }
 
-      // V3.1: Semantic similarity check against recent articles (last 48h)
-      // Use title + summary for richer keyword comparison, threshold 0.35
-      const SEMANTIC_THRESHOLD = 0.35;
+      // V4.0: Multi-signal semantic deduplication (unigram + bigram + entity overlap)
+      const SEMANTIC_THRESHOLD = 0.28; // lower threshold because composite is harder to max out
       const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       const candidateText = [article.title, article.summary || ""].join(" ");
-      const candidateKeywords = extractKeywords(candidateText);
       
-      // Check against recent published articles (include summary for richer comparison)
+      // Check against recent published articles
       const { data: recentArticles } = await supabase
         .from("articles")
         .select("id, title, summary")
@@ -2000,19 +2048,19 @@ serve(async (req) => {
         .order("published_at", { ascending: false })
         .limit(50);
 
-      let semanticMatch: { id: string; title: string; score: number } | null = null;
+      let semanticMatch: { id: string; title: string; score: number; breakdown: any } | null = null;
       if (recentArticles) {
         for (const ra of recentArticles) {
           const raText = [ra.title, (ra as any).summary || ""].join(" ");
-          const score = jaccardSimilarity(candidateKeywords, extractKeywords(raText));
+          const { score, breakdown } = compositeSimilarity(candidateText, raText);
           if (score >= SEMANTIC_THRESHOLD) {
-            semanticMatch = { id: ra.id, title: ra.title, score };
+            semanticMatch = { id: ra.id, title: ra.title, score, breakdown };
             break;
           }
         }
       }
 
-      // Also check recent newsroom articles (include original_summary)
+      // Also check recent newsroom articles
       if (!semanticMatch) {
         const { data: recentNewsroom } = await supabase
           .from("newsroom_articles")
@@ -2024,9 +2072,9 @@ serve(async (req) => {
         if (recentNewsroom) {
           for (const rn of recentNewsroom) {
             const rnText = [rn.original_headline, (rn as any).original_summary || ""].join(" ");
-            const score = jaccardSimilarity(candidateKeywords, extractKeywords(rnText));
+            const { score, breakdown } = compositeSimilarity(candidateText, rnText);
             if (score >= SEMANTIC_THRESHOLD) {
-              semanticMatch = { id: rn.id, title: rn.original_headline, score };
+              semanticMatch = { id: rn.id, title: rn.original_headline, score, breakdown };
               break;
             }
           }
@@ -2035,12 +2083,13 @@ serve(async (req) => {
 
       if (semanticMatch) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_SEMANTIC,
-          `Semantically similar (${(semanticMatch.score * 100).toFixed(0)}%) to: "${semanticMatch.title.substring(0, 80)}"`, {
+          `Composite similarity ${(semanticMatch.score * 100).toFixed(0)}% (uni:${(semanticMatch.breakdown.unigram * 100).toFixed(0)} bi:${(semanticMatch.breakdown.bigram * 100).toFixed(0)} ent:${(semanticMatch.breakdown.entity * 100).toFixed(0)}) to: "${semanticMatch.title.substring(0, 80)}"`, {
             pubDateParsed: pubDate,
             dedupeKey: dedupeKeyHash,
             dedupeSimilarityEvidence: {
               matched_title: semanticMatch.title,
-              similarity_score: semanticMatch.score,
+              composite_score: semanticMatch.score,
+              breakdown: semanticMatch.breakdown,
             },
             numbersFound: numberAnalysis.numbersFoundAll,
             numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
