@@ -2137,37 +2137,122 @@ serve(async (req) => {
           }
 
           // 2. Call AI to restructure into article + generate metadata
-          const aiPrompt = `You are the StatsGH newsroom editor. Restructure this source text into a professional data-driven news article.
+          const aiPrompt = `You are the Editor in Chief of StatsGH.
 
-WRITING RULES:
-- Rewrite in Very Basic English: short sentences, simple words
-- Put technical terms in brackets with definitions, e.g. "inflation [the rate at which prices rise]"
-- Include a "📊 Key Numbers" section with at least 3 key data points from the article
-- Do NOT truncate lists or rankings — preserve the full depth
-- Do NOT use colons in headlines
-- Do NOT use emojis or hashtags (except the 📊 in Key Numbers)
-- Keep it neutral and factual
-- Preserve the original author name if mentioned (look for "by [Name]" patterns)
+Your role is both gatekeeper and editor. You must first decide if a story meets StatsGH publication standards. If it passes, you then rewrite it into a professional data driven economic report.
 
-SOURCE HEADLINE: ${item.title}
-SOURCE: ${item.source_name}
-SOURCE URL: ${item.link}
+STEP 1 – EDITORIAL FILTER
 
-SOURCE TEXT:
+Before writing anything, evaluate the story.
+
+Publish ONLY if it meets at least one of these:
+- Contains meaningful economic or financial data
+- Affects markets, inflation, currency, trade, debt, banking, taxation, jobs or public finance
+- Has clear business or investor impact
+- Signals structural reform or economic risk
+- Involves large monetary values
+- Has measurable national or regional economic effect
+
+Reject stories that are:
+- Political rhetoric without data
+- Ceremonial events without economic impact
+- Pure opinion pieces
+- Promotional PR without numbers
+- Repetitive with no new data
+
+If the story fails the filter, return exactly:
+
+Rejected – Does not meet StatsGH economic impact threshold.
+
+Do not return JSON in rejection case.
+
+STEP 2 – WRITING STANDARD
+
+Tone
+- Calm
+- Analytical
+- Neutral
+- Written like an Economist or Bloomberg journalist stationed in Ghana
+
+Language
+- Very basic English
+- Short sentences
+- Simple words
+- Readable by a 10 year old
+- Explain complex ideas simply
+
+Structure
+1. What happened
+2. Why it matters economically
+3. The key numbers
+4. The risks or implications
+5. Comparison to past data where relevant
+
+Length Rules
+- Maximum 450 words
+- Designed for 2 minute read
+- Short paragraphs
+- No decorative sections
+- No emojis
+- ASCII characters only
+
+Headline Rules
+- No colons
+- No long dashes
+- No dates in headline
+- Include a key number if relevant
+- Keep factual and direct
+
+Data Rules
+- Use GHS for currency
+- Percentages must appear as 70%
+- Do not invent statistics
+- Add relevant background if necessary
+- Avoid speculation
+- If data cannot be verified, omit it
+
+Social Media Rules
+
+Twitter
+- Maximum 140 characters
+- No emojis
+- No hashtags
+
+Instagram
+- Slightly longer than Twitter
+- Must end with
+Visit StatsGH.com to read more.
+
+INPUT
+
+SOURCE HEADLINE
+${item.title}
+
+SOURCE
+${item.source_name}
+
+SOURCE URL
+${item.link}
+
+SOURCE TEXT
 ${articleText.substring(0, 6000)}
 
+OUTPUT
+
 Return ONLY valid JSON with these exact keys:
+
 {
-  "headline": "short factual headline with a key number, no colons or long dashes",
-  "subtitle": "one sentence expanding the headline",
-  "summary": "plain English summary, max 400 chars",
-  "seo_description": "max 155 chars for meta description",
-  "body_html": "full article body in HTML format with <p>, <h2>, <h3>, <ul>, <li> tags. Include the 📊 Key Numbers section. Minimum 300 words.",
-  "slug": "lowercase-hyphenated-slug-with-key-number",
-  "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
-  "author_name": "extracted author or StatsGH Newsroom",
-  "tags": ["tag1", "tag2", "tag3"],
-  "twitter_post": "short factual tweet text, no emojis or hashtags"
+"headline": "",
+"subtitle": "",
+"summary": "",
+"seo_description": "",
+"body_html": "",
+"slug": "",
+"category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
+"author_name": "",
+"tags": [],
+"twitter_post": "",
+"instagram_post": ""
 }`;
 
           console.log("Calling AI for article restructuring...");
@@ -2204,6 +2289,16 @@ Return ONLY valid JSON with these exact keys:
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
               error_message: "Empty AI response",
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          // Check if AI rejected the story
+          if (aiContent.trim().toLowerCase().startsWith("rejected")) {
+            console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — ${aiContent.trim().substring(0, 100)}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `AI editorial rejection: ${aiContent.trim().substring(0, 200)}`,
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -2319,7 +2414,7 @@ Return ONLY valid JSON with these exact keys:
               dedupe_key: item._dedupeKey,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
               twitter_post: generated.twitter_post || null,
-              instagram_comment: "See full article link in bio.",
+              instagram_comment: generated.instagram_post || "See full article link in bio.",
               status: "published",
             })
             .select("id")
