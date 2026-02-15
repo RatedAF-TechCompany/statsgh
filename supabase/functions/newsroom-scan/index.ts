@@ -200,6 +200,7 @@ const REJECTION_CODES = {
   // Deduplication
   DEDUPED_NEWSROOM: "DEDUPED_NEWSROOM",
   DEDUPED_ARTICLES: "DEDUPED_ARTICLES",
+  DEDUPED_SEMANTIC: "DEDUPED_SEMANTIC",
   // AI validation
   AI_JSON_INVALID: "AI_JSON_INVALID",
   AI_REJECTED_NO_NUMBERS: "AI_REJECTED_NO_NUMBERS",
@@ -1042,6 +1043,31 @@ function buildDedupeKey(eventCore: string, org: string, dateStr: string, qualify
     .replace(/[^a-z0-9%\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Semantic similarity: extract significant keywords from a headline and compute Jaccard similarity
+function extractKeywords(text: string): Set<string> {
+  const STOP_WORDS = new Set(["the","a","an","is","are","was","were","be","been","being","have","has","had",
+    "do","does","did","will","would","shall","should","may","might","must","can","could",
+    "to","of","in","for","on","with","at","by","from","as","into","through","during","before",
+    "after","above","below","between","out","off","over","under","again","further","then","once",
+    "and","but","or","nor","not","so","yet","both","either","neither","each","every","all","any",
+    "few","more","most","other","some","such","no","only","own","same","than","too","very",
+    "it","its","this","that","these","those","he","she","they","we","you","i","me","him","her",
+    "us","them","my","your","his","our","their","what","which","who","whom","where","when","how",
+    "new","says","said","also","over","about","up","ghana","ghanaian","percent","ghs"]);
+  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
+  return new Set(words);
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const word of a) {
+    if (b.has(word)) intersection++;
+  }
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -1951,6 +1977,65 @@ serve(async (req) => {
             dedupeMatchedArticleId: seenArticles[0].id,
             dedupeSimilarityEvidence: { 
               matched_title: seenArticles[0].title,
+            },
+            numbersFound: numberAnalysis.numbersFoundAll,
+            numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
+          });
+        continue;
+      }
+
+      // V3.0: Semantic similarity check against recent articles (last 48h)
+      const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const candidateKeywords = extractKeywords(article.title);
+      
+      // Check against recent published articles
+      const { data: recentArticles } = await supabase
+        .from("articles")
+        .select("id, title")
+        .eq("is_published", true)
+        .gte("published_at", cutoff48h)
+        .order("published_at", { ascending: false })
+        .limit(50);
+
+      let semanticMatch: { id: string; title: string; score: number } | null = null;
+      if (recentArticles) {
+        for (const ra of recentArticles) {
+          const score = jaccardSimilarity(candidateKeywords, extractKeywords(ra.title));
+          if (score >= 0.45) {
+            semanticMatch = { id: ra.id, title: ra.title, score };
+            break;
+          }
+        }
+      }
+
+      // Also check recent newsroom articles
+      if (!semanticMatch) {
+        const { data: recentNewsroom } = await supabase
+          .from("newsroom_articles")
+          .select("id, original_headline")
+          .gte("created_at", cutoff48h)
+          .order("created_at", { ascending: false })
+          .limit(80);
+
+        if (recentNewsroom) {
+          for (const rn of recentNewsroom) {
+            const score = jaccardSimilarity(candidateKeywords, extractKeywords(rn.original_headline));
+            if (score >= 0.45) {
+              semanticMatch = { id: rn.id, title: rn.original_headline, score };
+              break;
+            }
+          }
+        }
+      }
+
+      if (semanticMatch) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_SEMANTIC,
+          `Semantically similar (${(semanticMatch.score * 100).toFixed(0)}%) to: "${semanticMatch.title.substring(0, 80)}"`, {
+            pubDateParsed: pubDate,
+            dedupeKey: dedupeKeyHash,
+            dedupeSimilarityEvidence: {
+              matched_title: semanticMatch.title,
+              similarity_score: semanticMatch.score,
             },
             numbersFound: numberAnalysis.numbersFoundAll,
             numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
