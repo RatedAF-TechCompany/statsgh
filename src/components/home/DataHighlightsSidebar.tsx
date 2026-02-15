@@ -48,11 +48,14 @@ const DataHighlightsSidebar = () => {
   const { data: indicators, isLoading } = useQuery({
     queryKey: ["data-highlights-sidebar"],
     queryFn: async () => {
-      const { data: ghana } = await supabase
+      const { data: ghanaRows } = await supabase
         .from("geographies")
         .select("id")
         .eq("is_ghana", true)
-        .single();
+        .eq("type", "country")
+        .limit(1);
+
+      const ghana = ghanaRows?.[0] ?? null;
 
       if (!ghana) return [];
 
