@@ -237,7 +237,8 @@ const ArticleDetail = () => {
   }, [article]);
 
   const handleShare = async () => {
-    const url = `https://statsgh.com/${article?.category_slug}/${article?.slug}`;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/article-reader?slug=${article?.slug}`;
     
     if (navigator.share) {
       try {
