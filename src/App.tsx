@@ -34,6 +34,9 @@ import News from "./pages/News";
 import Dashboards from "./pages/Dashboards";
 import Sources from "./pages/Sources";
 import ArticleReader from "./pages/ArticleReader";
+import EconomicCalendar from "./pages/EconomicCalendar";
+import EditorialStandards from "./pages/EditorialStandards";
+import CommodityTracker from "./pages/CommodityTracker";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +78,9 @@ const App = () => (
           <Route path="/dashboards/finance" element={<GhanaFinanceDashboard />} />
           <Route path="/dashboards/gse" element={<GhanaStockExchange />} />
           <Route path="/sources" element={<Sources />} />
+          <Route path="/calendar" element={<EconomicCalendar />} />
+          <Route path="/editorial-standards" element={<EditorialStandards />} />
+          <Route path="/dashboards/commodities" element={<CommodityTracker />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}

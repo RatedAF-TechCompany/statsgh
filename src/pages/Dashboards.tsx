@@ -35,6 +35,14 @@ const DASHBOARDS = [
     status: "live",
   },
   {
+    slug: "commodities",
+    title: "Commodity & Currency Tracker",
+    description: "Cocoa, gold, oil prices and USD/GHS, EUR/GHS, GBP/GHS exchange rates.",
+    icon: DollarSign,
+    color: "bg-green-500/10 text-green-600",
+    status: "live",
+  },
+  {
     slug: "inflation",
     title: "Ghana Inflation Dashboard",
     description: "CPI breakdown, food prices, fuel prices, and regional inflation data.",

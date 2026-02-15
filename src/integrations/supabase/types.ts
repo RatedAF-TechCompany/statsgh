@@ -579,6 +579,81 @@ export type Database = {
           },
         ]
       }
+      commodity_prices: {
+        Row: {
+          change_percent: number | null
+          commodity: string
+          created_at: string | null
+          currency: string | null
+          fetched_at: string | null
+          id: string
+          previous_close: number | null
+          price: number
+          source: string | null
+          unit: string | null
+        }
+        Insert: {
+          change_percent?: number | null
+          commodity: string
+          created_at?: string | null
+          currency?: string | null
+          fetched_at?: string | null
+          id?: string
+          previous_close?: number | null
+          price: number
+          source?: string | null
+          unit?: string | null
+        }
+        Update: {
+          change_percent?: number | null
+          commodity?: string
+          created_at?: string | null
+          currency?: string | null
+          fetched_at?: string | null
+          id?: string
+          previous_close?: number | null
+          price?: number
+          source?: string | null
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      currency_rates: {
+        Row: {
+          base_currency: string | null
+          change_percent: number | null
+          created_at: string | null
+          fetched_at: string | null
+          id: string
+          previous_rate: number | null
+          rate: number
+          source: string | null
+          target_currency: string | null
+        }
+        Insert: {
+          base_currency?: string | null
+          change_percent?: number | null
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          previous_rate?: number | null
+          rate: number
+          source?: string | null
+          target_currency?: string | null
+        }
+        Update: {
+          base_currency?: string | null
+          change_percent?: number | null
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          previous_rate?: number | null
+          rate?: number
+          source?: string | null
+          target_currency?: string | null
+        }
+        Relationships: []
+      }
       dashboard_updates: {
         Row: {
           id: string
@@ -971,6 +1046,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      economic_calendar: {
+        Row: {
+          actual_value: string | null
+          created_at: string | null
+          description: string | null
+          event_type: string
+          id: string
+          impact_level: string | null
+          indicator_slug: string | null
+          is_recurring: boolean | null
+          previous_value: string | null
+          recurrence_rule: string | null
+          scheduled_date: string
+          source_name: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          impact_level?: string | null
+          indicator_slug?: string | null
+          is_recurring?: boolean | null
+          previous_value?: string | null
+          recurrence_rule?: string | null
+          scheduled_date: string
+          source_name?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          impact_level?: string | null
+          indicator_slug?: string | null
+          is_recurring?: boolean | null
+          previous_value?: string | null
+          recurrence_rule?: string | null
+          scheduled_date?: string
+          source_name?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       geographies: {
         Row: {
@@ -1371,6 +1500,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      newsletter_sends: {
+        Row: {
+          error_message: string | null
+          id: string
+          key_indicators: Json | null
+          recipients_count: number | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+          top_stories: Json | null
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          key_indicators?: Json | null
+          recipients_count?: number | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          top_stories?: Json | null
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          key_indicators?: Json | null
+          recipients_count?: number | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          top_stories?: Json | null
+        }
+        Relationships: []
       }
       newsroom_articles: {
         Row: {

@@ -1,0 +1,29 @@
+name: Market Data & Newsletter Cron
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # Market data every 6 hours
+    - cron: '0 6 * * *'     # Newsletter at 6am UTC daily
+  workflow_dispatch:
+
+jobs:
+  market-data:
+    if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh market data
+        run: |
+          curl -s -X POST \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/market-data-refresh" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json"
+
+  newsletter:
+    if: github.event.schedule == '0 6 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send daily newsletter
+        run: |
+          curl -s -X POST \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/daily-newsletter" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json"
