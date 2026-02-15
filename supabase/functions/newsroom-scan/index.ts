@@ -1984,14 +1984,17 @@ serve(async (req) => {
         continue;
       }
 
-      // V3.0: Semantic similarity check against recent articles (last 48h)
+      // V3.1: Semantic similarity check against recent articles (last 48h)
+      // Use title + summary for richer keyword comparison, threshold 0.35
+      const SEMANTIC_THRESHOLD = 0.35;
       const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-      const candidateKeywords = extractKeywords(article.title);
+      const candidateText = [article.title, article.summary || ""].join(" ");
+      const candidateKeywords = extractKeywords(candidateText);
       
-      // Check against recent published articles
+      // Check against recent published articles (include summary for richer comparison)
       const { data: recentArticles } = await supabase
         .from("articles")
-        .select("id, title")
+        .select("id, title, summary")
         .eq("is_published", true)
         .gte("published_at", cutoff48h)
         .order("published_at", { ascending: false })
@@ -2000,27 +2003,29 @@ serve(async (req) => {
       let semanticMatch: { id: string; title: string; score: number } | null = null;
       if (recentArticles) {
         for (const ra of recentArticles) {
-          const score = jaccardSimilarity(candidateKeywords, extractKeywords(ra.title));
-          if (score >= 0.45) {
+          const raText = [ra.title, (ra as any).summary || ""].join(" ");
+          const score = jaccardSimilarity(candidateKeywords, extractKeywords(raText));
+          if (score >= SEMANTIC_THRESHOLD) {
             semanticMatch = { id: ra.id, title: ra.title, score };
             break;
           }
         }
       }
 
-      // Also check recent newsroom articles
+      // Also check recent newsroom articles (include original_summary)
       if (!semanticMatch) {
         const { data: recentNewsroom } = await supabase
           .from("newsroom_articles")
-          .select("id, original_headline")
+          .select("id, original_headline, original_summary")
           .gte("created_at", cutoff48h)
           .order("created_at", { ascending: false })
           .limit(80);
 
         if (recentNewsroom) {
           for (const rn of recentNewsroom) {
-            const score = jaccardSimilarity(candidateKeywords, extractKeywords(rn.original_headline));
-            if (score >= 0.45) {
+            const rnText = [rn.original_headline, (rn as any).original_summary || ""].join(" ");
+            const score = jaccardSimilarity(candidateKeywords, extractKeywords(rnText));
+            if (score >= SEMANTIC_THRESHOLD) {
               semanticMatch = { id: rn.id, title: rn.original_headline, score };
               break;
             }
