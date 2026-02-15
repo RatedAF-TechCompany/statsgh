@@ -378,7 +378,7 @@ const AdminArticleEditor = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Articles
           </Button>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               onClick={handleAutoGenerate}
@@ -398,6 +398,38 @@ const AdminArticleEditor = () => {
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Preview
+              </Button>
+            )}
+            {isEditing && (
+              <Button
+                type="button"
+                variant="default"
+                disabled={tweeting || twitterPost?.startsWith("POSTED:")}
+                onClick={async () => {
+                  setTweeting(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("tweet-article", {
+                      body: { articleId: id },
+                    });
+                    if (error) throw error;
+                    if (data?.skipped) {
+                      toast.info("This article was already tweeted");
+                    } else if (data?.success) {
+                      toast.success("Tweeted successfully!");
+                      if (data.tweetUrl) {
+                        window.open(data.tweetUrl, "_blank");
+                      }
+                      setTwitterPost(`POSTED:${data.tweetId}|${data.tweetText}`);
+                    }
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to tweet");
+                  } finally {
+                    setTweeting(false);
+                  }
+                }}
+              >
+                <Twitter className="h-4 w-4 mr-2" />
+                {tweeting ? "Posting..." : twitterPost?.startsWith("POSTED:") ? "Already Tweeted ✓" : "Tweet Now"}
               </Button>
             )}
           </div>
