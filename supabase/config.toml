@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.bog-dashboard-scan]
 verify_jwt = false
+
+[functions.tweet-article]
+verify_jwt = false
