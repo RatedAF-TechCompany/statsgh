@@ -142,7 +142,7 @@ serve(async (req) => {
     }
 
     // Build tweet text: use twitter_post field if available, else auto-generate
-    const articleUrl = `https://statsgh.lovable.app/${article.category_slug}/${article.slug}`;
+    const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}`;
     let tweetText = article.twitter_post || `${article.title}\n\n${articleUrl}`;
 
     // Ensure URL is appended if not already present
