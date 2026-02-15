@@ -92,23 +92,20 @@ const SCRAPE_SOURCES = [
 
 // Preferred categories for GPT prompt guidance
 const PREFERRED_CATEGORIES = [
-  "top-stories",
-  "economy-inflation",
+  "macroeconomy",
+  "markets",
   "public-finance",
-  "labour-salaries",
-  "agriculture-food",
-  "energy-resources",
-  "trade-investment",
-  "health-data",
-  "education",
-  "infrastructure-transport",
-  "security-governance",
-  "technology-innovation",
-  "environment-climate",
-  "population",
-  "business",
-  "opinion",
-  "charts-explainers",
+  "banking-and-finance",
+  "energy-and-utilities",
+  "trade-and-industry",
+  "corporate-ghana",
+  "agriculture-and-commodities",
+  "infrastructure-and-transport",
+  "data-and-research",
+  "regulation-and-policy",
+  "technology-and-digital-economy",
+  "labour-and-jobs",
+  "regional-economy",
 ] as const;
 
 // Crime-related keywords to EXCLUDE (unless statistical analysis)
@@ -173,7 +170,7 @@ const DATA_SUBSTANCE_KEYWORDS = [
 ] as const;
 
 // Default category if GPT returns an invalid slug format
-const DEFAULT_CATEGORY = "business";
+const DEFAULT_CATEGORY = "macroeconomy";
 
 // ============================================
 // REJECTION CODES FOR AUDIT TRAIL (V2.0)

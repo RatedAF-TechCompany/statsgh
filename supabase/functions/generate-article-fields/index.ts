@@ -25,41 +25,37 @@ function collapseImmediateWordRepeats(input: string): string {
 
 // Valid category slugs for StatsGH
 const VALID_CATEGORIES = [
-  "top-stories",
-  "economy-inflation",
+  "macroeconomy",
+  "markets",
   "public-finance",
-  "labour-salaries",
-  "agriculture-food",
-  "energy-resources",
-  "trade-investment",
-  "health-data",
-  "education",
-  "infrastructure-transport",
-  "security-governance",
-  "technology-innovation",
-  "environment-climate",
-  "population",
-  "business",
-  "charts-explainers"
+  "banking-and-finance",
+  "energy-and-utilities",
+  "trade-and-industry",
+  "corporate-ghana",
+  "agriculture-and-commodities",
+  "infrastructure-and-transport",
+  "data-and-research",
+  "regulation-and-policy",
+  "technology-and-digital-economy",
+  "labour-and-jobs",
+  "regional-economy",
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  "top-stories": "Top Stories",
-  "economy-inflation": "Economy & Inflation",
-  "public-finance": "Public Revenue & Spending",
-  "labour-salaries": "Jobs, Salaries & Labour Market",
-  "agriculture-food": "Agriculture & Food Systems",
-  "energy-resources": "Energy & Natural Resources",
-  "trade-investment": "Trade, Markets & Investment",
-  "health-data": "Health & Social Indicators",
-  "education": "Education & Human Capital",
-  "infrastructure-transport": "Transport, Housing & Infrastructure",
-  "security-governance": "Crime, Security & Governance",
-  "technology-innovation": "Technology & Innovation",
-  "environment-climate": "Environment & Climate Data",
-  "population": "Population & Demographics",
-  "business": "Business Benchmarks",
-  "charts-explainers": "Charts & Explainers"
+  "macroeconomy": "Macroeconomy",
+  "markets": "Markets",
+  "public-finance": "Public Finance",
+  "banking-and-finance": "Banking and Finance",
+  "energy-and-utilities": "Energy and Utilities",
+  "trade-and-industry": "Trade and Industry",
+  "corporate-ghana": "Corporate Ghana",
+  "agriculture-and-commodities": "Agriculture and Commodities",
+  "infrastructure-and-transport": "Infrastructure and Transport",
+  "data-and-research": "Data and Research",
+  "regulation-and-policy": "Regulation and Policy",
+  "technology-and-digital-economy": "Technology and Digital Economy",
+  "labour-and-jobs": "Labour and Jobs",
+  "regional-economy": "Regional Economy",
 };
 
 const systemPrompt = `You are a professional news editor for StatsGH, a data-driven news platform focused on Ghana.
@@ -222,7 +218,7 @@ serve(async (req) => {
 
     // Validate and sanitize the section field
     if (!VALID_CATEGORIES.includes(generatedFields.section)) {
-      generatedFields.section = 'top-stories'; // Default fallback
+      generatedFields.section = 'macroeconomy'; // Default fallback
     }
 
     // Guardrail: collapse accidental repeated words (e.g., "not not") across generated copy.

@@ -10,26 +10,23 @@ const corsHeaders = {
 
 // Preferred categories for GPT prompt guidance
 const PREFERRED_CATEGORIES = [
-  "top-stories",
-  "economy-inflation",
+  "macroeconomy",
+  "markets",
   "public-finance",
-  "labour-salaries",
-  "agriculture-food",
-  "energy-resources",
-  "trade-investment",
-  "health-data",
-  "education",
-  "infrastructure-transport",
-  "security-governance",
-  "technology-innovation",
-  "environment-climate",
-  "population",
-  "business",
-  "charts-explainers",
-  "ghanacrimes",
+  "banking-and-finance",
+  "energy-and-utilities",
+  "trade-and-industry",
+  "corporate-ghana",
+  "agriculture-and-commodities",
+  "infrastructure-and-transport",
+  "data-and-research",
+  "regulation-and-policy",
+  "technology-and-digital-economy",
+  "labour-and-jobs",
+  "regional-economy",
 ] as const;
 
-const DEFAULT_CATEGORY = "business";
+const DEFAULT_CATEGORY = "macroeconomy";
 
 // Generate AI image using Lovable AI (Gemini)
 async function generateAiImage(
