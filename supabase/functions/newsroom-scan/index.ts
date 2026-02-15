@@ -2361,6 +2361,22 @@ Return ONLY valid JSON with these exact keys:
             console.log(`Indicator extraction error: ${e}`);
           }
 
+          // 9. Auto-tweet the article (fire-and-forget)
+          try {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            fetch(`${supabaseUrl}/functions/v1/tweet-article`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ articleId: newArticle.id }),
+            }).catch(e => console.log(`Auto-tweet trigger failed: ${e}`));
+          } catch (e) {
+            console.log(`Auto-tweet error: ${e}`);
+          }
+
         } catch (itemError) {
           console.error(`Error processing article "${item.title.substring(0, 60)}":`, itemError);
           if (newsroomRecord) {

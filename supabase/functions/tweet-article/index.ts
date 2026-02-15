@@ -67,7 +67,7 @@ serve(async (req) => {
       throw new Error("Twitter API credentials not configured");
     }
 
-    // Auth check
+    // Auth check - allow service role key OR authenticated admin/editor
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -76,35 +76,40 @@ serve(async (req) => {
       });
     }
 
+    const token = authHeader.replace("Bearer ", "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const isServiceRole = token === serviceRoleKey;
+
+    // Use service role client for DB access when called internally
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      isServiceRole ? serviceRoleKey! : Deno.env.get("SUPABASE_ANON_KEY")!,
+      isServiceRole ? {} : { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!isServiceRole) {
+      // Validate user auth
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    const userId = claimsData.claims.sub;
+      const userId = claimsData.claims.sub;
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-    // Check admin/editor role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (!roleData || !["admin", "editor"].includes(roleData.role)) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin/editor only" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!roleData || !["admin", "editor"].includes(roleData.role)) {
+        return new Response(JSON.stringify({ error: "Forbidden: admin/editor only" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { articleId } = await req.json();
@@ -127,6 +132,13 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    // Skip if already tweeted
+    if (article.twitter_post?.startsWith("POSTED:")) {
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, message: "Already tweeted" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Build tweet text: use twitter_post field if available, else auto-generate
