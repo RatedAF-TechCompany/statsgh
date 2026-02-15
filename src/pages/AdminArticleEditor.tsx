@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Eye, Wand2, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Eye, Wand2, Loader2, Twitter } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ImageUploader } from "@/components/ImageUploader";
 import { ArticleIndicatorLinker } from "@/components/ArticleIndicatorLinker";
@@ -64,6 +64,7 @@ const AdminArticleEditor = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [isMostRead, setIsMostRead] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [tweeting, setTweeting] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
   
   // New social media fields
@@ -592,6 +593,40 @@ const AdminArticleEditor = () => {
                   placeholder="Short factual post for Twitter (auto-generated)"
                   rows={2}
                 />
+                {isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={tweeting || twitterPost?.startsWith("POSTED:")}
+                    onClick={async () => {
+                      setTweeting(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke("tweet-article", {
+                          body: { articleId: id },
+                        });
+                        if (error) throw error;
+                        if (data?.skipped) {
+                          toast.info("This article was already tweeted");
+                        } else if (data?.success) {
+                          toast.success("Tweeted successfully!");
+                          if (data.tweetUrl) {
+                            window.open(data.tweetUrl, "_blank");
+                          }
+                          setTwitterPost(`POSTED:${data.tweetId}|${data.tweetText}`);
+                        }
+                      } catch (err: any) {
+                        toast.error(err.message || "Failed to tweet");
+                      } finally {
+                        setTweeting(false);
+                      }
+                    }}
+                  >
+                    <Twitter className="h-4 w-4 mr-2" />
+                    {tweeting ? "Posting..." : twitterPost?.startsWith("POSTED:") ? "Already Tweeted ✓" : "Tweet Now"}
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-2">
