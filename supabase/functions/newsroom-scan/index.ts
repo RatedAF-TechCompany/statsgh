@@ -30,8 +30,8 @@ function collapseImmediateWordRepeats(input: string): string {
 // ============================================
 const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 15; // V3.0: Increased from 5
-const DAILY_PUBLISH_LIMIT = 50; // V3.0: Effectively uncapped (was 8)
+const DEFAULT_MAX_ARTICLES_PER_RUN = 999; // No per-run cap
+const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
 
 // "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
@@ -1762,8 +1762,8 @@ serve(async (req) => {
 
     const perSourceCounts = new Map<string, number>();
 
-    // V3.0: Opinion daily limit raised to 3 (was 1)
-    const DAILY_OPINION_LIMIT = 3;
+    // No opinion daily limit
+    const DAILY_OPINION_LIMIT = 999;
     const { count: opinionCountLast24h } = await supabase
       .from("articles")
       .select("id", { count: "exact", head: true })
