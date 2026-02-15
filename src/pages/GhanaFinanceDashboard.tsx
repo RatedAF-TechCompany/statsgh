@@ -90,6 +90,7 @@ const GhanaFinanceDashboard = () => {
         .from("geographies")
         .select("id")
         .eq("is_ghana", true)
+        .eq("type", "country")
         .single();
 
       if (!ghana) return [];
