@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.tweet-article]
 verify_jwt = false
+
+[functions.source-health-check]
+verify_jwt = false
