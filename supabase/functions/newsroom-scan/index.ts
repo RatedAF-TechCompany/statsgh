@@ -1055,7 +1055,7 @@ const STOP_WORDS = new Set(["the","a","an","is","are","was","were","be","been","
   "few","more","most","other","some","such","no","only","own","same","than","too","very",
   "it","its","this","that","these","those","he","she","they","we","you","i","me","him","her",
   "us","them","my","your","his","our","their","what","which","who","whom","where","when","how",
-  "new","says","said","also","over","about","up","ghana","ghanaian","percent","ghs"]);
+  "new","says","said","also","over","about","up","percent","ghs"]);
 
 function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
@@ -2045,14 +2045,13 @@ serve(async (req) => {
       const candidateText = [article.title, article.summary || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
-      // Fetch recent published articles
+      // Fetch ALL recent articles (including drafts from pipeline)
       const { data: recentArticles } = await supabase
         .from("articles")
         .select("id, title, summary")
-        .eq("is_published", true)
-        .gte("published_at", cutoff48h)
-        .order("published_at", { ascending: false })
-        .limit(50);
+        .gte("created_at", cutoff48h)
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       // Fetch recent newsroom articles
       const { data: recentNewsroom } = await supabase
