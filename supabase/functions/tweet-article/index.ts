@@ -142,13 +142,10 @@ serve(async (req) => {
     }
 
     // Build tweet text: use twitter_post field if available, else auto-generate
-    const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}`;
-    let tweetText = article.twitter_post || `${article.title}\n\n${articleUrl}`;
+    let tweetText = article.twitter_post || article.title;
 
-    // Ensure URL is appended if not already present
-    if (!tweetText.includes(articleUrl) && !tweetText.includes("statsgh.lovable.app")) {
-      tweetText += `\n\n${articleUrl}`;
-    }
+    // Strip any URLs from the tweet text
+    tweetText = tweetText.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
 
     // Truncate to 280 chars
     if (tweetText.length > 280) {
