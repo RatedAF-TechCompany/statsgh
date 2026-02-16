@@ -2034,12 +2034,16 @@ serve(async (req) => {
         continue;
       }
 
-      // V4.0: Multi-signal semantic deduplication (unigram + bigram + entity overlap)
-      const SEMANTIC_THRESHOLD = 0.28; // lower threshold because composite is harder to max out
+      // V5.0: Two-tier deduplication
+      // Tier 1: Fast title-keyword overlap (3+ shared content words in title = immediate reject)
+      // Tier 2: Composite semantic similarity on title+summary
+      const KEYWORD_OVERLAP_MIN = 3; // 3+ shared title keywords = same story
+      const SEMANTIC_THRESHOLD = 0.25; // composite threshold for title+summary
       const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       const candidateText = [article.title, article.summary || ""].join(" ");
+      const candidateTitleKeywords = extractKeywords(article.title);
       
-      // Check against recent published articles
+      // Fetch recent published articles
       const { data: recentArticles } = await supabase
         .from("articles")
         .select("id, title, summary")
@@ -2048,42 +2052,65 @@ serve(async (req) => {
         .order("published_at", { ascending: false })
         .limit(50);
 
-      let semanticMatch: { id: string; title: string; score: number; breakdown: any } | null = null;
+      // Fetch recent newsroom articles
+      const { data: recentNewsroom } = await supabase
+        .from("newsroom_articles")
+        .select("id, original_headline, original_summary")
+        .gte("created_at", cutoff48h)
+        .order("created_at", { ascending: false })
+        .limit(80);
+
+      // Build combined comparison list
+      const comparisons: Array<{ id: string; title: string; text: string }> = [];
       if (recentArticles) {
         for (const ra of recentArticles) {
-          const raText = [ra.title, (ra as any).summary || ""].join(" ");
-          const { score, breakdown } = compositeSimilarity(candidateText, raText);
-          if (score >= SEMANTIC_THRESHOLD) {
-            semanticMatch = { id: ra.id, title: ra.title, score, breakdown };
-            break;
-          }
+          comparisons.push({ id: ra.id, title: ra.title, text: [ra.title, (ra as any).summary || ""].join(" ") });
+        }
+      }
+      if (recentNewsroom) {
+        for (const rn of recentNewsroom) {
+          comparisons.push({ id: rn.id, title: rn.original_headline, text: [rn.original_headline, (rn as any).original_summary || ""].join(" ") });
         }
       }
 
-      // Also check recent newsroom articles
-      if (!semanticMatch) {
-        const { data: recentNewsroom } = await supabase
-          .from("newsroom_articles")
-          .select("id, original_headline, original_summary")
-          .gte("created_at", cutoff48h)
-          .order("created_at", { ascending: false })
-          .limit(80);
+      let semanticMatch: { id: string; title: string; score: number; breakdown: any; method: string } | null = null;
 
-        if (recentNewsroom) {
-          for (const rn of recentNewsroom) {
-            const rnText = [rn.original_headline, (rn as any).original_summary || ""].join(" ");
-            const { score, breakdown } = compositeSimilarity(candidateText, rnText);
-            if (score >= SEMANTIC_THRESHOLD) {
-              semanticMatch = { id: rn.id, title: rn.original_headline, score, breakdown };
-              break;
-            }
+      for (const comp of comparisons) {
+        // TIER 1: Title keyword overlap – if 3+ content words match, it's the same story
+        const compTitleKeywords = extractKeywords(comp.title);
+        let sharedCount = 0;
+        const sharedWords: string[] = [];
+        for (const w of candidateTitleKeywords) {
+          if (compTitleKeywords.has(w)) {
+            sharedCount++;
+            sharedWords.push(w);
           }
+        }
+        if (sharedCount >= KEYWORD_OVERLAP_MIN) {
+          semanticMatch = {
+            id: comp.id,
+            title: comp.title,
+            score: sharedCount / Math.min(candidateTitleKeywords.size, compTitleKeywords.size),
+            breakdown: { method: "title_keyword_overlap", shared_words: sharedWords, shared_count: sharedCount },
+            method: "keyword",
+          };
+          break;
+        }
+
+        // TIER 2: Full composite similarity on title+summary
+        const { score, breakdown } = compositeSimilarity(candidateText, comp.text);
+        if (score >= SEMANTIC_THRESHOLD) {
+          semanticMatch = { id: comp.id, title: comp.title, score, breakdown: { ...breakdown, method: "composite" }, method: "composite" };
+          break;
         }
       }
 
       if (semanticMatch) {
+        const detail = semanticMatch.method === "keyword"
+          ? `Title keyword overlap: ${semanticMatch.breakdown.shared_count} shared words [${semanticMatch.breakdown.shared_words.join(", ")}] with: "${semanticMatch.title.substring(0, 80)}"`
+          : `Composite similarity ${(semanticMatch.score * 100).toFixed(0)}% (uni:${(semanticMatch.breakdown.unigram * 100).toFixed(0)} bi:${(semanticMatch.breakdown.bigram * 100).toFixed(0)} ent:${(semanticMatch.breakdown.entity * 100).toFixed(0)}) to: "${semanticMatch.title.substring(0, 80)}"`;
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_SEMANTIC,
-          `Composite similarity ${(semanticMatch.score * 100).toFixed(0)}% (uni:${(semanticMatch.breakdown.unigram * 100).toFixed(0)} bi:${(semanticMatch.breakdown.bigram * 100).toFixed(0)} ent:${(semanticMatch.breakdown.entity * 100).toFixed(0)}) to: "${semanticMatch.title.substring(0, 80)}"`, {
+          detail, {
             pubDateParsed: pubDate,
             dedupeKey: dedupeKeyHash,
             dedupeSimilarityEvidence: {
