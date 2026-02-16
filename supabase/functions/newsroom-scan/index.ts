@@ -1848,6 +1848,8 @@ serve(async (req) => {
     console.log(`Opinion articles in last 24h: ${currentOpinionCount}/${DAILY_OPINION_LIMIT}`);
 
     let articlesCreatedThisRun = 0;
+    // In-memory set of accepted titles this run to prevent within-run duplicates
+    const acceptedTitlesThisRun: string[] = [];
 
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
@@ -2073,6 +2075,11 @@ serve(async (req) => {
         }
       }
 
+      // Also compare against titles accepted earlier in THIS run (not yet in DB)
+      for (const prevTitle of acceptedTitlesThisRun) {
+        comparisons.push({ id: "in-run", title: prevTitle, text: prevTitle });
+      }
+
       let semanticMatch: { id: string; title: string; score: number; breakdown: any; method: string } | null = null;
 
       for (const comp of comparisons) {
@@ -2147,6 +2154,7 @@ serve(async (req) => {
         opinionsCreatedThisRun++;
       }
       articlesCreatedThisRun++;
+      acceptedTitlesThisRun.push(article.title);
     }
 
     console.log(`Qualifying articles after all filters: ${qualifyingArticles.length}`);
