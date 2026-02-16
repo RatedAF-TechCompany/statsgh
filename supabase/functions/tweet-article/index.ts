@@ -141,11 +141,56 @@ serve(async (req) => {
       );
     }
 
+    // ── PRE-TWEET DEDUP: check if a very similar tweet was posted in the last 24h ──
+    const STOP_WORDS = new Set(["the","a","an","in","on","at","to","for","of","and","or","is","are","was","were","has","have","had","been","be","will","with","by","from","as","its","it","that","this","not","but","than","also","into","over","per","no","up","out","new","said"]);
+    function tweetKeywords(text: string): Set<string> {
+      return new Set(
+        text.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/)
+          .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+      );
+    }
+
+    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentTweeted } = await supabase
+      .from("articles")
+      .select("id, title, twitter_post")
+      .like("twitter_post", "POSTED:%")
+      .gte("published_at", cutoff24h)
+      .neq("id", articleId)
+      .limit(50);
+
     // Build tweet text: use twitter_post field if available, else auto-generate
     let tweetText = article.twitter_post || article.title;
 
     // Strip any URLs from the tweet text
     tweetText = tweetText.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
+
+    // Check keyword overlap against recently tweeted articles
+    const candidateKw = tweetKeywords(tweetText);
+    if (recentTweeted && recentTweeted.length > 0) {
+      for (const prev of recentTweeted) {
+        // Extract the actual tweet text from "POSTED:id|text"
+        const prevText = prev.twitter_post?.replace(/^POSTED:[^|]*\|/, "") || prev.title;
+        const prevKw = tweetKeywords(prevText);
+        let shared = 0;
+        const sharedWords: string[] = [];
+        for (const w of candidateKw) {
+          if (prevKw.has(w)) { shared++; sharedWords.push(w); }
+        }
+        if (shared >= 4) {
+          console.log(`Tweet dedup: skipping "${tweetText.substring(0, 60)}..." — ${shared} keywords overlap [${sharedWords.join(", ")}] with already-tweeted article ${prev.id}`);
+          // Mark as skipped so it doesn't retry
+          await supabase
+            .from("articles")
+            .update({ twitter_post: `DEDUP_SKIP:${prev.id}|${tweetText}` })
+            .eq("id", articleId);
+          return new Response(
+            JSON.stringify({ success: true, skipped: true, message: `Dedup: ${shared} keywords overlap with recently tweeted article` }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
 
     // Truncate to 280 chars
     if (tweetText.length > 280) {
