@@ -2349,10 +2349,17 @@ Data Rules
 
 Social Media Rules
 
-Twitter
-- Maximum 140 characters
+Twitter (twitter_post)
+- Maximum 160 characters
+- Must be written in full reported sentence form
+- Must start with the institution, company, or subject name
+- Must use active voice with has/said/will/recorded + action/result + key number
+- Must use "GHS" for currency
+- No headline fragments
 - No emojis
 - No hashtags
+- Must read like Bloomberg or Financial Times reported speech, not a headline
+- Example: "Ghana Water has deployed 200 staff to recover GHS866m debt as 51.6% of water goes unpaid."
 
 Instagram
 - Slightly longer than Twitter
