@@ -222,16 +222,16 @@ serve(async (req) => {
 
     if (isUrlTweet) {
       const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}/`;
-      // Append URL, ensure total fits in 280 chars (URLs use ~23 chars via t.co)
-      const maxTextLen = 280 - 1 - 23; // 1 for space, 23 for t.co wrapped URL
+      // Append URL, ensure total fits in 170 chars (URLs use ~23 chars via t.co)
+      const maxTextLen = 170 - 1 - 23; // 1 for space, 23 for t.co wrapped URL
       if (tweetText.length > maxTextLen) {
         tweetText = tweetText.substring(0, maxTextLen - 3) + "...";
       }
       tweetText = `${tweetText} ${articleUrl}`;
     } else {
-      // Truncate to 280 chars
-      if (tweetText.length > 280) {
-        tweetText = tweetText.substring(0, 277) + "...";
+      // Truncate to 170 chars
+      if (tweetText.length > 170) {
+        tweetText = tweetText.substring(0, 167) + "...";
       }
     }
 
