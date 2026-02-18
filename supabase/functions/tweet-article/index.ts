@@ -141,6 +141,24 @@ serve(async (req) => {
       );
     }
 
+    // ── RATE LIMIT: max 1 tweet every 3 hours ──
+    const cutoff3h = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    const { data: recentPosted } = await supabase
+      .from("articles")
+      .select("id, twitter_post")
+      .like("twitter_post", "POSTED:%")
+      .gte("published_at", cutoff3h)
+      .neq("id", articleId)
+      .limit(1);
+
+    if (recentPosted && recentPosted.length > 0) {
+      console.log(`Tweet rate-limited: another tweet was posted within the last 3 hours (article ${recentPosted[0].id})`);
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, message: "Rate limited: max 1 tweet every 3 hours" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── PRE-TWEET DEDUP: check if a very similar tweet was posted in the last 24h ──
     const STOP_WORDS = new Set(["the","a","an","in","on","at","to","for","of","and","or","is","are","was","were","has","have","had","been","be","will","with","by","from","as","its","it","that","this","not","but","than","also","into","over","per","no","up","out","new","said"]);
     function tweetKeywords(text: string): Set<string> {
