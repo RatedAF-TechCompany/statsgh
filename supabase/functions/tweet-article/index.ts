@@ -210,9 +210,29 @@ serve(async (req) => {
       }
     }
 
-    // Truncate to 280 chars
-    if (tweetText.length > 280) {
-      tweetText = tweetText.substring(0, 277) + "...";
+    // ── EVERY 6TH TWEET: append article URL ──
+    // Count all successful tweets (no time limit, just the cycle of 5)
+    const { count: postedCount } = await supabase
+      .from("articles")
+      .select("id", { count: "exact", head: true })
+      .like("twitter_post", "POSTED:%");
+
+    const tweetNumber = (postedCount || 0) + 1; // this will be the Nth tweet
+    const isUrlTweet = tweetNumber % 6 === 0;
+
+    if (isUrlTweet) {
+      const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}/`;
+      // Append URL, ensure total fits in 280 chars (URLs use ~23 chars via t.co)
+      const maxTextLen = 280 - 1 - 23; // 1 for space, 23 for t.co wrapped URL
+      if (tweetText.length > maxTextLen) {
+        tweetText = tweetText.substring(0, maxTextLen - 3) + "...";
+      }
+      tweetText = `${tweetText} ${articleUrl}`;
+    } else {
+      // Truncate to 280 chars
+      if (tweetText.length > 280) {
+        tweetText = tweetText.substring(0, 277) + "...";
+      }
     }
 
     // Post tweet using X API v2
