@@ -33,6 +33,12 @@ const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
 const DEFAULT_MAX_ARTICLES_PER_RUN = 999; // No per-run cap
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
 
+// "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
+const AUTO_PASS_DOMAINS = new Set<string>([
+  "citibusinessnews.com",
+  "myjoyonline.com", // covers both JoyBiz and MyJoyOnline
+]);
+
 // "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
   "graphic.com.gh",
@@ -1638,6 +1644,12 @@ serve(async (req) => {
       return domain ? FAST_PUBLISH_DOMAINS.has(domain) : false;
     };
 
+    // Auto-pass: Citi Business News and Joy Business bypass ALL editorial filters
+    const isAutoPassSource = (sourceName: string): boolean => {
+      const domain = sourceNameToDomain.get(sourceName);
+      return domain ? AUTO_PASS_DOMAINS.has(domain) : false;
+    };
+
     const isOpinionSource = (sourceName: string): boolean => {
       return sourceName === "GhanaWeb Opinions";
     };
@@ -1853,6 +1865,7 @@ serve(async (req) => {
 
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
+      const isAutoPass = isAutoPassSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
       if (isBackfill && !isFast && !isOpinion) continue;
 
@@ -1899,21 +1912,22 @@ serve(async (req) => {
         continue;
       }
 
-      // Check if business-related (still skip for fast-publish)
+      // Check if business-related (still skip for fast-publish; auto-pass sources bypass this)
       const rssText = `${article.title} ${article.description}`;
-      if (!isFast && !isOpinion && !isBusinessRelated(rssText)) {
+      if (!isAutoPass && !isFast && !isOpinion && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
           "No business keywords found in headline/summary", { pubDateParsed: pubDate });
         continue;
       }
 
-      // V2.0: Score-based Ghana relevance check
-      // Opinion articles still need Ghana relevance
-      const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
-      if (!ghanaCheck.passes) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
-          ghanaCheck.detail, { pubDateParsed: pubDate });
-        continue;
+      // V2.0: Score-based Ghana relevance check (auto-pass sources skip this)
+      if (!isAutoPass) {
+        const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
+        if (!ghanaCheck.passes) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
+            ghanaCheck.detail, { pubDateParsed: pubDate });
+          continue;
+        }
       }
 
     // V3.0: Headline number requirement REMOVED — numbers in body are sufficient
@@ -1932,28 +1946,31 @@ serve(async (req) => {
         fullPageHtml = pageText;
       }
 
-      // V2.0: Check for calendar/announcement page
-      if (isCalendarAnnouncementPage(fullText)) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CALENDAR_ANNOUNCEMENT_PAGE,
-          "Page appears to be a calendar/announcement listing with many dates but few data points", 
-          { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
-        continue;
-      }
+      // Auto-pass sources skip all content filters below — proceed directly to dedupe + publish
+      if (!isAutoPass) {
+        // V2.0: Check for calendar/announcement page
+        if (isCalendarAnnouncementPage(fullText)) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CALENDAR_ANNOUNCEMENT_PAGE,
+            "Page appears to be a calendar/announcement listing with many dates but few data points", 
+            { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
+          continue;
+        }
 
-      // V2.0: Crime filter with significant data requirement
-      const crimeCheck = isCrimeNewsWithData(fullText);
-      if (crimeCheck.isCrime && !crimeCheck.hasSignificantData) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_NO_SIGNIFICANT_DATA,
-          crimeCheck.detail, { pubDateParsed: pubDate });
-        continue;
-      }
+        // V2.0: Crime filter with significant data requirement
+        const crimeCheck = isCrimeNewsWithData(fullText);
+        if (crimeCheck.isCrime && !crimeCheck.hasSignificantData) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_NO_SIGNIFICANT_DATA,
+            crimeCheck.detail, { pubDateParsed: pubDate });
+          continue;
+        }
 
-      // V2.0: Politics filter - numbers must be policy data
-      const politicsCheck = isPoliticsWithoutData(fullText);
-      if (politicsCheck.isPolitics && !politicsCheck.numbersAreData) {
-        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICS_NUMBER_NOT_DATA,
-          politicsCheck.detail, { pubDateParsed: pubDate });
-        continue;
+        // V2.0: Politics filter - numbers must be policy data
+        const politicsCheck = isPoliticsWithoutData(fullText);
+        if (politicsCheck.isPolitics && !politicsCheck.numbersAreData) {
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICS_NUMBER_NOT_DATA,
+            politicsCheck.detail, { pubDateParsed: pubDate });
+          continue;
+        }
       }
 
       // V2.0: Extract and classify numbers
@@ -1961,8 +1978,8 @@ serve(async (req) => {
       
       // V2.1: Headline check already done before page fetch (moved up for optimization)
       
-      // For non-opinion: body must meet qualifying number requirements
-      if (!isOpinion) {
+      // For non-opinion: body must meet qualifying number requirements (auto-pass sources skip)
+      if (!isAutoPass && !isOpinion) {
         if (!numberAnalysis.passes) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INSUFFICIENT_QUALIFYING_NUMBERS,
             numberAnalysis.detail, { 
@@ -1974,7 +1991,7 @@ serve(async (req) => {
             });
           continue;
         }
-      } else {
+      } else if (!isAutoPass && isOpinion) {
         // V2.0: Opinion articles must have at least 1 qualifying number
         if (numberAnalysis.qualifyingCount < 1) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.OPINION_NO_QUALIFYING_NUMBER,
