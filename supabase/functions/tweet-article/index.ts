@@ -141,20 +141,20 @@ serve(async (req) => {
       );
     }
 
-    // ── RATE LIMIT: max 1 tweet every 3 hours ──
-    const cutoff3h = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    // ── RATE LIMIT: max 1 tweet every 30 minutes ──
+    const cutoff30m = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: recentPosted } = await supabase
       .from("articles")
       .select("id, twitter_post")
       .like("twitter_post", "POSTED:%")
-      .gte("published_at", cutoff3h)
+      .gte("published_at", cutoff30m)
       .neq("id", articleId)
       .limit(1);
 
     if (recentPosted && recentPosted.length > 0) {
-      console.log(`Tweet rate-limited: another tweet was posted within the last 3 hours (article ${recentPosted[0].id})`);
+      console.log(`Tweet rate-limited: another tweet was posted within the last 30 minutes (article ${recentPosted[0].id})`);
       return new Response(
-        JSON.stringify({ success: true, skipped: true, message: "Rate limited: max 1 tweet every 3 hours" }),
+        JSON.stringify({ success: true, skipped: true, message: "Rate limited: max 1 tweet every 30 minutes" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
