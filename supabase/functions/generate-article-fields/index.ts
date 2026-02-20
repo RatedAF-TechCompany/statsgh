@@ -85,7 +85,7 @@ FIELD-SPECIFIC RULES:
 
 5. instagram_comment: ALWAYS exactly this text: "See full article link in bio."
 
-6. twitter_post: Maximum 160 characters. Must be a full reported sentence starting with the institution/company/subject name. Use active voice with has/said/will/recorded + action/result + key number. Use "GHS" for currency. No headline fragments, no emojis, no hashtags. Must read like Bloomberg or Financial Times reported speech. Example: "Ghana Water has deployed 200 staff to recover GHS866m debt as 51.6% of water goes unpaid."
+6. twitter_post: Maximum 150 characters. Target approximately 30% shorter than source text. Must be a full reported sentence starting with the institution/company/subject name. Use active voice with has/said/will/recorded + action/result + key number. Preserve ALL key figures, percentages, dates and currency values. Use "GHS" for currency and "%" for percentages. Remove filler words and compress phrasing without losing meaning. No headline fragments, no emojis, no hashtags, no commentary, no added context. Tone must read like Bloomberg or Financial Times reported speech. Output only the final tweet sentence. Example: "Ghana Water has deployed 200 staff to recover GHS866m debt as 51.6% of water goes unpaid."
 
 7. instagram_compressed: Short headline-style line plus one short line. MUST include "See full article link in bio." at the end.
 
