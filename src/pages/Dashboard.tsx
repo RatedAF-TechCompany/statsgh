@@ -21,6 +21,7 @@ import {
   ScrollText,
   Database,
   Newspaper,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -235,6 +236,18 @@ const Dashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Auto-scan Ghana news and generate articles
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-blue-500/30" onClick={() => navigate("/admin/tweet-scheduler")}>
+            <CardHeader>
+              <CalendarClock className="h-8 w-8 mb-2 text-blue-500" />
+              <CardTitle>Tweet Scheduler</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Hourly tweet bank and scheduling
               </p>
             </CardContent>
           </Card>

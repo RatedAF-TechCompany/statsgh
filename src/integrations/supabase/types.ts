@@ -1887,6 +1887,123 @@ export type Database = {
           },
         ]
       }
+      tweet_bank_items: {
+        Row: {
+          category: string
+          created_at: string
+          hash: string
+          id: string
+          is_active: boolean
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          hash: string
+          id?: string
+          is_active?: boolean
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          hash?: string
+          id?: string
+          is_active?: boolean
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tweet_scheduler_logs: {
+        Row: {
+          category: string | null
+          cycle_id: string | null
+          error_message: string | null
+          id: string
+          reason: string | null
+          status: string
+          timestamp: string
+          tweet_id: string | null
+          tweet_text: string | null
+        }
+        Insert: {
+          category?: string | null
+          cycle_id?: string | null
+          error_message?: string | null
+          id?: string
+          reason?: string | null
+          status: string
+          timestamp?: string
+          tweet_id?: string | null
+          tweet_text?: string | null
+        }
+        Update: {
+          category?: string | null
+          cycle_id?: string | null
+          error_message?: string | null
+          id?: string
+          reason?: string | null
+          status?: string
+          timestamp?: string
+          tweet_id?: string | null
+          tweet_text?: string | null
+        }
+        Relationships: []
+      }
+      tweet_scheduler_state: {
+        Row: {
+          cycle_id: string
+          fail_count_24h: number
+          id: number
+          is_enabled: boolean
+          last_error_at: string | null
+          last_posted_at: string | null
+          last_posted_hash: string | null
+          posted_hashes: Json
+          queue_hashes: Json
+          quiet_end: string
+          quiet_hours_enabled: boolean
+          quiet_start: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          cycle_id?: string
+          fail_count_24h?: number
+          id?: number
+          is_enabled?: boolean
+          last_error_at?: string | null
+          last_posted_at?: string | null
+          last_posted_hash?: string | null
+          posted_hashes?: Json
+          queue_hashes?: Json
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          cycle_id?: string
+          fail_count_24h?: number
+          id?: number
+          is_enabled?: boolean
+          last_error_at?: string | null
+          last_posted_at?: string | null
+          last_posted_hash?: string | null
+          posted_hashes?: Json
+          queue_hashes?: Json
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_invitations: {
         Row: {
           accepted_at: string | null

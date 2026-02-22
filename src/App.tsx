@@ -37,6 +37,7 @@ import ArticleReader from "./pages/ArticleReader";
 import EconomicCalendar from "./pages/EconomicCalendar";
 import EditorialStandards from "./pages/EditorialStandards";
 import CommodityTracker from "./pages/CommodityTracker";
+import TweetScheduler from "./pages/TweetScheduler";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/admin/data" element={<AdminDataManager />} />
           <Route path="/admin/newsroom" element={<AdminNewsroom />} />
           <Route path="/admin/crawler-test" element={<AdminCrawlerTest />} />
+          <Route path="/admin/tweet-scheduler" element={<TweetScheduler />} />
           {/* Primary navigation pages */}
           <Route path="/topics" element={<Topics />} />
           <Route path="/topics/:slug" element={<TopicDashboard />} />
