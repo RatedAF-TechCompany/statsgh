@@ -222,16 +222,33 @@ serve(async (req) => {
 
     if (isUrlTweet) {
       const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}/`;
-      // Append URL, ensure total fits in 170 chars (URLs use ~23 chars via t.co)
-      const maxTextLen = 170 - 1 - 23; // 1 for space, 23 for t.co wrapped URL
+      // Append URL, ensure total fits in 280 chars (URLs use ~23 chars via t.co)
+      const maxTextLen = 160 - 1; // keep text portion to 160 chars max
       if (tweetText.length > maxTextLen) {
-        tweetText = tweetText.substring(0, maxTextLen - 3) + "...";
+        // Trim to last full stop or space to avoid mid-word cutoff
+        let trimmed = tweetText.substring(0, maxTextLen);
+        const lastStop = trimmed.lastIndexOf('.');
+        if (lastStop > maxTextLen * 0.5) {
+          trimmed = trimmed.substring(0, lastStop + 1);
+        }
+        tweetText = trimmed;
       }
       tweetText = `${tweetText} ${articleUrl}`;
     } else {
-      // Truncate to 170 chars
-      if (tweetText.length > 170) {
-        tweetText = tweetText.substring(0, 167) + "...";
+      // Enforce 160 char limit without truncation dots
+      if (tweetText.length > 160) {
+        let trimmed = tweetText.substring(0, 160);
+        const lastStop = trimmed.lastIndexOf('.');
+        if (lastStop > 80) {
+          trimmed = trimmed.substring(0, lastStop + 1);
+        } else {
+          // Fall back to last space to avoid mid-word cutoff
+          const lastSpace = trimmed.lastIndexOf(' ');
+          if (lastSpace > 80) {
+            trimmed = trimmed.substring(0, lastSpace) + '.';
+          }
+        }
+        tweetText = trimmed;
       }
     }
 
