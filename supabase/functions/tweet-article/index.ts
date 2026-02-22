@@ -223,7 +223,7 @@ serve(async (req) => {
     if (isUrlTweet) {
       const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}/`;
       // Append URL, ensure total fits in 280 chars (URLs use ~23 chars via t.co)
-      const maxTextLen = 160 - 1; // keep text portion to 160 chars max
+      const maxTextLen = 150 - 1; // keep text portion to 150 chars max
       if (tweetText.length > maxTextLen) {
         // Trim to last full stop or space to avoid mid-word cutoff
         let trimmed = tweetText.substring(0, maxTextLen);
@@ -235,9 +235,9 @@ serve(async (req) => {
       }
       tweetText = `${tweetText} ${articleUrl}`;
     } else {
-      // Enforce 160 char limit without truncation dots
-      if (tweetText.length > 160) {
-        let trimmed = tweetText.substring(0, 160);
+      // Enforce 150 char limit without truncation dots
+      if (tweetText.length > 150) {
+        let trimmed = tweetText.substring(0, 150);
         const lastStop = trimmed.lastIndexOf('.');
         if (lastStop > 80) {
           trimmed = trimmed.substring(0, lastStop + 1);
