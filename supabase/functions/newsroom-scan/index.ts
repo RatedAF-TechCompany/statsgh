@@ -149,6 +149,187 @@ const POLITICAL_GOSSIP_EXCLUSION_KEYWORDS = [
   "betrayed", "disappointed", "hurt feelings",
 ] as const;
 
+// ============================================
+// HEADLINE BLOCKLIST (Optimization #1: Pre-filter)
+// Reject obviously non-business content before any fetch/AI call
+// ============================================
+const HEADLINE_BLOCKLIST = [
+  // Entertainment & celebrity
+  "nollywood", "big brother", "grammy", "oscars", "red carpet",
+  "celebrity", "actress", "actor", "musician", "comedian", "rapper",
+  "movie premiere", "film festival", "reality show", "talent show",
+  "wedding photos", "baby bump", "divorce", "dating",
+  // Sports (non-business)
+  "goal scored", "penalty kick", "match preview", "full time score",
+  "transfer window", "injury update", "squad list", "starting lineup",
+  "premier league", "champions league", "la liga", "serie a",
+  "relegation", "hat trick", "red card", "yellow card",
+  // Religion & spirituality
+  "prophecy", "prophetic", "pastor warns", "church service",
+  "prayer warrior", "miracle healing", "deliverance", "anointing",
+  "tithe", "crusade", "revival meeting",
+  // Obituaries & funerals
+  "funeral rites", "burial ceremony", "rest in peace", "rip",
+  "condolence", "tribute to the late", "memorial service",
+  "final funeral", "one week celebration", "40th day",
+  // Lifestyle & gossip
+  "fashion week", "slay queen", "best dressed", "outfit of the day",
+  "recipe for", "cooking tips", "diet plan", "weight loss",
+  "horoscope", "zodiac", "love life", "relationship advice",
+  // Accidents & disasters (non-data)
+  "accident on", "crash scene", "fire outbreak at",
+  "drowning", "electrocuted", "collapsed building",
+] as const;
+
+function headlineIsBlocklisted(headline: string): { blocked: boolean; matchedTerm: string | null } {
+  const lower = headline.toLowerCase();
+  for (const term of HEADLINE_BLOCKLIST) {
+    if (lower.includes(term)) {
+      return { blocked: true, matchedTerm: term };
+    }
+  }
+  return { blocked: false, matchedTerm: null };
+}
+
+// ============================================
+// BATCH AI EDITORIAL FILTER (Optimization #2 + #3)
+// Screen multiple headlines in one AI call using flash-lite
+// ============================================
+async function batchEditorialFilter(
+  items: Array<{ title: string; description: string; source_name: string }>,
+  lovableApiKey: string,
+): Promise<Map<string, { pass: boolean; reason: string }>> {
+  const results = new Map<string, { pass: boolean; reason: string }>();
+  
+  if (items.length === 0) return results;
+
+  const numbered = items.map((item, i) => 
+    `${i + 1}. [${item.source_name}] ${item.title}${item.description ? " — " + item.description.substring(0, 100) : ""}`
+  ).join("\n");
+
+  const prompt = `You are the editorial gatekeeper for StatsGH, a Ghana economic data news site.
+
+Review each headline below. For EACH, respond with its number and either PASS or FAIL with a short reason.
+
+PASS criteria (any one):
+- Contains economic/financial data (GDP, inflation, budget, revenue, trade, etc.)
+- Affects markets, currency, banking, taxation, jobs, or public finance
+- Has clear business or investor impact
+- Involves large monetary values (GHS, USD)
+- Signals structural reform or economic risk
+
+FAIL criteria:
+- Crime stories without economic data
+- Political rhetoric/gossip without policy data
+- Entertainment, sports, celebrity news
+- Ceremonial/social events
+- Pure opinion without numbers
+- Promotional PR
+
+Headlines:
+${numbered}
+
+Respond in this exact format, one per line:
+1: PASS
+2: FAIL - political gossip
+3: PASS
+...`;
+
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!resp.ok) {
+      console.log(`Batch filter AI call failed (${resp.status}), defaulting all to PASS`);
+      items.forEach(item => results.set(item.title, { pass: true, reason: "filter_unavailable" }));
+      return results;
+    }
+
+    const data = await resp.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    
+    // Parse response line by line
+    const lines = content.split("\n").filter((l: string) => l.trim());
+    for (const line of lines) {
+      const match = line.match(/^(\d+)\s*:\s*(PASS|FAIL)(?:\s*[-–]\s*(.+))?/i);
+      if (match) {
+        const idx = parseInt(match[1]) - 1;
+        if (idx >= 0 && idx < items.length) {
+          const pass = match[2].toUpperCase() === "PASS";
+          results.set(items[idx].title, { pass, reason: match[3]?.trim() || (pass ? "approved" : "rejected") });
+        }
+      }
+    }
+
+    // Default any missing to PASS (don't block if parsing fails)
+    items.forEach(item => {
+      if (!results.has(item.title)) {
+        results.set(item.title, { pass: true, reason: "parse_default" });
+      }
+    });
+
+  } catch (err) {
+    console.log(`Batch filter error: ${err instanceof Error ? err.message : "Unknown"}`);
+    items.forEach(item => results.set(item.title, { pass: true, reason: "error_default" }));
+  }
+
+  return results;
+}
+
+// ============================================
+// SOURCE REJECTION CACHE (Optimization #5)
+// Skip sources with very high recent rejection rates
+// ============================================
+const SOURCE_REJECTION_THRESHOLD = 0.95; // Skip if 95%+ rejected in last 24h
+const SOURCE_MIN_SAMPLE = 10; // Need at least 10 candidates to evaluate
+
+async function getHighRejectionSources(supabase: any): Promise<Set<string>> {
+  const highRejectionSources = new Set<string>();
+  
+  try {
+    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    // Get rejection stats per source from recent candidates
+    const { data: candidates } = await supabase
+      .from("newsroom_candidates")
+      .select("source_name, decision")
+      .gte("created_at", cutoff24h);
+    
+    if (!candidates || candidates.length === 0) return highRejectionSources;
+    
+    // Aggregate per source
+    const stats = new Map<string, { total: number; rejected: number }>();
+    for (const c of candidates) {
+      const s = stats.get(c.source_name) || { total: 0, rejected: 0 };
+      s.total++;
+      if (c.decision === "rejected") s.rejected++;
+      stats.set(c.source_name, s);
+    }
+    
+    for (const [source, s] of stats) {
+      if (s.total >= SOURCE_MIN_SAMPLE && (s.rejected / s.total) >= SOURCE_REJECTION_THRESHOLD) {
+        console.log(`⚠ Source "${source}" has ${((s.rejected / s.total) * 100).toFixed(0)}% rejection rate (${s.rejected}/${s.total}) — temporarily skipped`);
+        highRejectionSources.add(source);
+      }
+    }
+  } catch (err) {
+    console.log(`Rejection cache error: ${err}`);
+  }
+  
+  return highRejectionSources;
+}
+
+
+
 // Statistical/analytical keywords that override crime exclusion
 const CRIME_STATS_OVERRIDE_KEYWORDS = [
   "crime statistics", "crime rate", "crime data", "crime report",
@@ -1863,11 +2044,33 @@ serve(async (req) => {
     // In-memory set of accepted titles this run to prevent within-run duplicates
     const acceptedTitlesThisRun: string[] = [];
 
+    // Optimization #5: Load high-rejection sources to skip
+    const highRejectionSources = await getHighRejectionSources(supabase);
+    let preFilterBlockedCount = 0;
+    let sourceSkippedCount = 0;
+
     for (const article of allArticles) {
       const isFast = isFastPublishSource(article.source_name);
       const isAutoPass = isAutoPassSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
       if (isBackfill && !isFast && !isOpinion) continue;
+
+      // Optimization #5: Skip high-rejection sources (but not auto-pass)
+      if (!isAutoPass && highRejectionSources.has(article.source_name)) {
+        sourceSkippedCount++;
+        continue;
+      }
+
+      // Optimization #1: Fast headline blocklist (no AI needed)
+      if (!isAutoPass) {
+        const blockCheck = headlineIsBlocklisted(article.title);
+        if (blockCheck.blocked) {
+          preFilterBlockedCount++;
+          await logCandidate(supabase, run.id, article, "rejected", "PRE_FILTER_BLOCKED",
+            `Headline matched blocklist term: "${blockCheck.matchedTerm}"`, {});
+          continue;
+        }
+      }
 
       // Check daily limit
       if ((currentDailyCount + articlesCreatedThisRun) >= DAILY_PUBLISH_LIMIT) {
@@ -2261,12 +2464,52 @@ serve(async (req) => {
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
     } else {
+      // ============================================
+      // OPTIMIZATION #2+#3: BATCH EDITORIAL PRE-SCREEN
+      // Screen headlines in batches of 10 using flash-lite (cheapest model)
+      // before spending on per-article rewrites with standard model
+      // ============================================
+      const nonAutoPassItems = toProcess.filter(item => {
+        const domain = sourceNameToDomain.get(item.source_name);
+        return !domain || !AUTO_PASS_DOMAINS.has(domain);
+      });
+
+      let batchFilterResults = new Map<string, { pass: boolean; reason: string }>();
+      
+      if (nonAutoPassItems.length > 0) {
+        console.log(`\n=== Batch editorial pre-screen: ${nonAutoPassItems.length} headlines ===`);
+        
+        // Process in batches of 10
+        for (let batch = 0; batch < nonAutoPassItems.length; batch += 10) {
+          const batchItems = nonAutoPassItems.slice(batch, batch + 10);
+          const batchResults = await batchEditorialFilter(batchItems, lovableApiKey);
+          for (const [title, result] of batchResults) {
+            batchFilterResults.set(title, result);
+          }
+        }
+        
+        const passCount = [...batchFilterResults.values()].filter(r => r.pass).length;
+        const failCount = [...batchFilterResults.values()].filter(r => !r.pass).length;
+        console.log(`Batch filter results: ${passCount} PASS, ${failCount} FAIL`);
+      }
+
       for (let i = 0; i < toProcess.length; i++) {
         const item = toProcess[i];
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
 
         try {
+          // Optimization #2: Check batch editorial filter result (skip expensive rewrite if failed)
+          const batchResult = batchFilterResults.get(item.title);
+          if (batchResult && !batchResult.pass) {
+            console.log(`⊘ Batch filter REJECTED: "${item.title.substring(0, 60)}..." — ${batchResult.reason}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `Batch editorial filter: ${batchResult.reason}`,
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
           console.log(`\n=== Processing article ${i + 1}/${toProcess.length}: "${item.title.substring(0, 60)}..." ===`);
 
           // 1. Fetch full page HTML for body content
@@ -2690,15 +2933,20 @@ Return ONLY valid JSON with these exact keys:
       articles_created: publishedCount,
       completed_at: new Date().toISOString(),
       metadata: { 
-        method: "rss-feeds-v2", 
+        method: "rss-feeds-v3-optimized", 
         sources_checked: RSS_SOURCES.length, 
         time_window: timeWindowHours,
-        version: "2.1",
+        version: "3.0",
         qualifying_number_rules: true,
         daily_limit: DAILY_PUBLISH_LIMIT,
         opinion_limit: DAILY_OPINION_LIMIT,
         candidates: toProcess.length,
         published: publishedCount,
+        optimizations: {
+          pre_filter_blocked: preFilterBlockedCount,
+          source_skipped: sourceSkippedCount,
+          high_rejection_sources: [...highRejectionSources],
+        },
         errors: publishErrors.length > 0 ? publishErrors : undefined,
       }
     }).eq("id", run.id);
@@ -2706,8 +2954,8 @@ Return ONLY valid JSON with these exact keys:
     return new Response(JSON.stringify({
       success: true,
       run_id: run.id,
-      method: "rss-feeds-v2",
-      version: "2.1",
+      method: "rss-feeds-v3-optimized",
+      version: "3.0",
       sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
       articles_published: publishedCount,
@@ -2715,8 +2963,10 @@ Return ONLY valid JSON with these exact keys:
       time_window_hours: timeWindowHours,
       daily_limit: DAILY_PUBLISH_LIMIT,
       opinion_limit: DAILY_OPINION_LIMIT,
+      pre_filter_blocked: preFilterBlockedCount,
+      source_skipped: sourceSkippedCount,
       errors: publishErrors.length > 0 ? publishErrors : undefined,
-      message: `V2.1: ${publishedCount} articles published from ${toProcess.length} candidates`,
+      message: `V3.0: ${publishedCount} published, ${preFilterBlockedCount} pre-filtered, ${sourceSkippedCount} source-skipped`,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
