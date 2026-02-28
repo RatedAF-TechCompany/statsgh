@@ -112,9 +112,84 @@ serve(async (req) => {
       }
     }
 
-    const { articleId } = await req.json();
+    const body = await req.json();
+    const { articleId, articleIds } = body;
+    
+    // ── Batch mode: tweet multiple articles with delays ──
+    if (articleIds && Array.isArray(articleIds) && articleIds.length > 0) {
+      const results: Array<{ articleId: string; success: boolean; skipped?: boolean; message?: string; tweetId?: string; error?: string }> = [];
+      
+      for (let i = 0; i < articleIds.length; i++) {
+        const aid = articleIds[i];
+        try {
+          const { data: art, error: artErr } = await supabase
+            .from("articles")
+            .select("id, title, slug, category_slug, twitter_post, summary")
+            .eq("id", aid)
+            .single();
+          
+          if (artErr || !art) { results.push({ articleId: aid, success: false, error: "Not found" }); continue; }
+          if (art.twitter_post?.startsWith("POSTED:")) { results.push({ articleId: aid, success: true, skipped: true, message: "Already tweeted" }); continue; }
+
+          let text = art.twitter_post || art.title;
+          text = text.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
+          
+          if (text.length > 150) {
+            const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
+            if (LOVABLE_KEY) {
+              try {
+                const aiRes = await fetch("https://api.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ model: "google/gemini-2.5-flash-lite", messages: [{ role: "user", content: `Condense into one complete sentence UNDER 140 chars. Bloomberg/FT style, active voice, end with period, no hashtags/emojis/links/dashes. Output ONLY the sentence.\n\nOriginal: ${text}` }], max_tokens: 100, temperature: 0.3 }),
+                });
+                if (aiRes.ok) {
+                  const aiData = await aiRes.json();
+                  const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
+                  if (condensed && condensed.length <= 150 && condensed.endsWith(".")) text = condensed;
+                }
+              } catch (_) { /* fallback below */ }
+            }
+            if (text.length > 150) {
+              let trimmed = text.substring(0, 150);
+              const lastStop = trimmed.lastIndexOf('.');
+              if (lastStop > 80) trimmed = trimmed.substring(0, lastStop + 1);
+              else { const ls = trimmed.lastIndexOf(' '); if (ls > 80) trimmed = trimmed.substring(0, ls) + '.'; }
+              text = trimmed;
+            }
+          }
+          
+          const tweetApiUrl = "https://api.x.com/2/tweets";
+          const oParams: Record<string, string> = {
+            oauth_consumer_key: CONSUMER_KEY!, oauth_nonce: generateNonce(),
+            oauth_signature_method: "HMAC-SHA1", oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+            oauth_token: ACCESS_TOKEN!, oauth_version: "1.0",
+          };
+          const sig = await createOAuthSignature("POST", tweetApiUrl, oParams, CONSUMER_SECRET!, ACCESS_TOKEN_SECRET!);
+          const oauthHeader = "OAuth " + Object.entries({ ...oParams, oauth_signature: sig })
+            .sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`).join(", ");
+          
+          const tRes = await fetch(tweetApiUrl, { method: "POST", headers: { Authorization: oauthHeader, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+          const tData = await tRes.json();
+          
+          if (!tRes.ok) { results.push({ articleId: aid, success: false, error: `X API ${tRes.status}: ${JSON.stringify(tData)}` }); continue; }
+          
+          const tid = tData?.data?.id;
+          await supabase.from("articles").update({ twitter_post: `POSTED:${tid}|${text}` }).eq("id", aid);
+          results.push({ articleId: aid, success: true, tweetId: tid, message: text });
+          
+          // 90s delay between tweets
+          if (i < articleIds.length - 1) await new Promise(r => setTimeout(r, 90_000));
+        } catch (err) {
+          results.push({ articleId: aid, success: false, error: err.message });
+        }
+      }
+      
+      return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (!articleId) {
-      return new Response(JSON.stringify({ error: "articleId is required" }), {
+      return new Response(JSON.stringify({ error: "articleId or articleIds is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
