@@ -83,21 +83,63 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
   return { success: true, tweetId: data?.data?.id };
 }
 
-// ── Filler word compression ──
+// ── AI-powered tweet condensation ──
 
-const FILLER_WORDS = ["the", "a", "an", "is", "are", "was", "were", "has been", "have been", "that", "which", "very", "really", "just", "also", "about", "approximately", "nearly", "around", "some", "certain", "currently", "now", "today", "recently"];
-
-function compressTweet(text: string): string {
-  let result = text;
-  for (const w of FILLER_WORDS) {
-    const re = new RegExp(`\\b${w}\\b\\s*`, "gi");
-    result = result.replace(re, "");
+async function condenseTweet(text: string): Promise<string | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    console.error("LOVABLE_API_KEY not set, cannot condense tweet");
+    return null;
   }
-  // collapse spaces
-  result = result.replace(/\s{2,}/g, " ").trim();
-  // fix double periods
-  result = result.replace(/\.{2,}/g, ".").replace(/\s+\./g, ".");
-  return result;
+
+  const prompt = `Condense this into a single complete sentence UNDER 140 characters. Rules:
+- Must be a full, conclusive sentence ending with a period
+- No hashtags, no emojis, no links, no dashes (— or –)
+- Use active voice, Bloomberg/FT style
+- Use "GHS" for Ghana cedis
+- Never truncate mid-thought or mid-word
+- Output ONLY the condensed sentence, nothing else
+
+Original: ${text}`;
+
+  try {
+    const res = await fetch("https://api.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 100,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("AI condensation failed:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const condensed = data.choices?.[0]?.message?.content?.trim();
+    if (!condensed) return null;
+
+    // Strip any quotes the model might wrap around the output
+    const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
+
+    // Validate the condensed result
+    if (cleaned.length > 150) return null;
+    if (!cleaned.endsWith(".")) return null;
+    const validation = validateTweet(cleaned);
+    if (!validation.valid) return null;
+
+    return cleaned;
+  } catch (err) {
+    console.error("AI condensation error:", err);
+    return null;
+  }
 }
 
 // ── Time helpers for Africa/Accra (UTC+0) ──
@@ -202,6 +244,14 @@ serve(async (req) => {
           text = tagMatch[2].trim();
         }
         if (!text) continue;
+        // Pre-condense tweets over 150 chars at save time
+        if (text.length > 150) {
+          const condensed = await condenseTweet(text);
+          if (condensed) {
+            text = condensed;
+          }
+          // If condensation fails, still save original - it'll be condensed at post time
+        }
         // compute hash
         const encoder = new TextEncoder();
         const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(text));
@@ -360,21 +410,22 @@ serve(async (req) => {
         continue;
       }
 
-      // Check length
+      // Check length - use AI to condense if over 150
       if (tweetText.length > 150) {
-        tweetText = compressTweet(tweetText);
-        if (tweetText.length > 150) {
+        const condensed = await condenseTweet(tweetText);
+        if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({
             tweet_text: candidate.text,
             category: candidate.category,
             status: "skipped",
-            reason: "too_long",
+            reason: "too_long_condense_failed",
             cycle_id: cycleId,
           });
           queueHashes = queueHashes.filter(h => h !== candidate.hash);
           postedHashes = [...postedHashes, candidate.hash];
           continue;
         }
+        tweetText = condensed;
       }
 
       selectedTweet = { ...candidate, text: tweetText };
