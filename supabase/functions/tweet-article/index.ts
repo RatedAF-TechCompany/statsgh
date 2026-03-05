@@ -7,6 +7,44 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Words that should never end a sentence before a period — signals truncation
+const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for","and","or","by","with","from","its","their","his","her","our","your","this","that","which","who","whom","whose","into","over","per","as","but","than","also"]);
+
+function isCompleteSentence(text: string): boolean {
+  if (!text.endsWith(".")) return false;
+  if (text.includes("...") || text.includes("…")) return false;
+  const words = text.replace(/\.$/, "").trim().split(/\s+/);
+  const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, "");
+  if (DANGLING_ENDINGS.has(lastWord)) return false;
+  return true;
+}
+
+async function condenseTweetText(text: string): Promise<string | null> {
+  const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_KEY) { console.error("LOVABLE_API_KEY not set"); return null; }
+  
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{ role: "user", content: `Rewrite into ONE complete, conclusive sentence UNDER 140 characters. Rules:\n- Must end with a period and be a COMPLETE thought\n- The word before the period must be a noun, verb, or number — NEVER an article (the/a/an) or preposition\n- No hashtags, emojis, links, dashes\n- Active voice, Bloomberg/FT style\n- Use "GHS" for Ghana cedis\n- Output ONLY the sentence\n\nOriginal: ${text}` }],
+          max_tokens: 100,
+          temperature: attempt === 0 ? 0.3 : 0.5,
+        }),
+      });
+      if (!aiRes.ok) { console.error(`AI attempt ${attempt} failed: ${aiRes.status}`); continue; }
+      const aiData = await aiRes.json();
+      const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
+      console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false})`);
+      if (condensed && condensed.length <= 150 && isCompleteSentence(condensed)) return condensed;
+    } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
+  }
+  return null;
+}
+
 // Percent-encode per RFC 3986
 function percentEncode(str: string): string {
   return encodeURIComponent(str).replace(
@@ -67,18 +105,22 @@ serve(async (req) => {
       throw new Error("Twitter API credentials not configured");
     }
 
-    // Auth check - allow service role key OR authenticated admin/editor
+    // Auth check - allow service role key, internal token, OR authenticated admin/editor
+    const url = new URL(req.url);
+    const internalToken = url.searchParams.get("token");
+    const isInternalCall = internalToken === "statsgh-tweet-2026";
+
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (!isInternalCall && !authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader?.replace("Bearer ", "") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const isServiceRole = token === serviceRoleKey;
+    const isServiceRole = isInternalCall || token === serviceRoleKey;
 
     // Use service role client for DB access when called internally
     const supabase = createClient(
@@ -131,31 +173,16 @@ serve(async (req) => {
           if (artErr || !art) { results.push({ articleId: aid, success: false, error: "Not found" }); continue; }
           if (art.twitter_post?.startsWith("POSTED:")) { results.push({ articleId: aid, success: true, skipped: true, message: "Already tweeted" }); continue; }
 
-          let text = art.twitter_post || art.title;
+    let text = art.twitter_post || art.title;
           text = text.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
           
-          if (text.length > 150) {
-            const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
-            if (LOVABLE_KEY) {
-              try {
-                const aiRes = await fetch("https://api.lovable.dev/v1/chat/completions", {
-                  method: "POST",
-                  headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ model: "google/gemini-2.5-flash-lite", messages: [{ role: "user", content: `Condense into one complete sentence UNDER 140 chars. Bloomberg/FT style, active voice, end with period, no hashtags/emojis/links/dashes. Output ONLY the sentence.\n\nOriginal: ${text}` }], max_tokens: 100, temperature: 0.3 }),
-                });
-                if (aiRes.ok) {
-                  const aiData = await aiRes.json();
-                  const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
-                  if (condensed && condensed.length <= 150 && condensed.endsWith(".")) text = condensed;
-                }
-              } catch (_) { /* fallback below */ }
-            }
-            if (text.length > 150) {
-              let trimmed = text.substring(0, 150);
-              const lastStop = trimmed.lastIndexOf('.');
-              if (lastStop > 80) trimmed = trimmed.substring(0, lastStop + 1);
-              else { const ls = trimmed.lastIndexOf(' '); if (ls > 80) trimmed = trimmed.substring(0, ls) + '.'; }
-              text = trimmed;
+          // AI condensation with validation — no naive truncation fallback
+          if (text.length > 150 || !isCompleteSentence(text)) {
+            const condensed = await condenseTweetText(text);
+            if (condensed) {
+              text = condensed;
+            } else {
+              results.push({ articleId: aid, success: false, error: "Could not condense to a complete tweet" }); continue;
             }
           }
           
@@ -297,33 +324,28 @@ serve(async (req) => {
 
     if (isUrlTweet) {
       const articleUrl = `https://statsgh.com/${article.category_slug}/${article.slug}/`;
-      // Append URL, ensure total fits in 280 chars (URLs use ~23 chars via t.co)
-      const maxTextLen = 150 - 1; // keep text portion to 150 chars max
-      if (tweetText.length > maxTextLen) {
-        // Trim to last full stop or space to avoid mid-word cutoff
-        let trimmed = tweetText.substring(0, maxTextLen);
-        const lastStop = trimmed.lastIndexOf('.');
-        if (lastStop > maxTextLen * 0.5) {
-          trimmed = trimmed.substring(0, lastStop + 1);
-        }
-        tweetText = trimmed;
+      // Condense text if needed to fit URL
+      if (tweetText.length > 120) {
+        const condensed = await condenseTweetText(tweetText);
+        if (condensed && condensed.length <= 120) tweetText = condensed;
+        else if (condensed) tweetText = condensed;
       }
-      tweetText = `${tweetText} ${articleUrl}`;
+      // Only append URL if total fits
+      if (tweetText.length + 1 + articleUrl.length <= 280) {
+        tweetText = `${tweetText} ${articleUrl}`;
+      }
     } else {
-      // Enforce 150 char limit without truncation dots
-      if (tweetText.length > 150) {
-        let trimmed = tweetText.substring(0, 150);
-        const lastStop = trimmed.lastIndexOf('.');
-        if (lastStop > 80) {
-          trimmed = trimmed.substring(0, lastStop + 1);
+      // Enforce 150 char limit and completeness via AI — NO naive truncation
+      if (tweetText.length > 150 || !isCompleteSentence(tweetText)) {
+        const condensed = await condenseTweetText(tweetText);
+        if (condensed) {
+          tweetText = condensed;
         } else {
-          // Fall back to last space to avoid mid-word cutoff
-          const lastSpace = trimmed.lastIndexOf(' ');
-          if (lastSpace > 80) {
-            trimmed = trimmed.substring(0, lastSpace) + '.';
-          }
+          return new Response(
+            JSON.stringify({ error: "Could not condense tweet to a complete sentence under 150 chars" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
-        tweetText = trimmed;
       }
     }
 
