@@ -103,7 +103,7 @@ async function condenseTweet(text: string): Promise<string | null> {
 Original: ${text}`;
 
   try {
-    const res = await fetch("https://api.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
@@ -201,11 +201,21 @@ function weightedRandomSelect(items: Array<{ hash: string; text: string; categor
 
 // ── Validation ──
 
+// Words that should never end a sentence (before the period) — signals truncation
+const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for","and","or","by","with","from","its","their","his","her","our","your","this","that","which","who","whom","whose","into","over","per","as","but","than","also"]);
+
 function validateTweet(text: string): { valid: boolean; reason?: string } {
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
   if (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u)) return { valid: false, reason: "contains_emoji" };
   if (text.includes("—") || text.includes("–")) return { valid: false, reason: "contains_long_dash" };
+  // Check for truncated/incomplete sentences
+  if (text.endsWith(".")) {
+    const words = text.replace(/\.$/, "").trim().split(/\s+/);
+    const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, "");
+    if (DANGLING_ENDINGS.has(lastWord)) return { valid: false, reason: `truncated_ending_${lastWord}` };
+  }
+  if (text.includes("...") || text.includes("…")) return { valid: false, reason: "contains_ellipsis" };
   return { valid: true };
 }
 
