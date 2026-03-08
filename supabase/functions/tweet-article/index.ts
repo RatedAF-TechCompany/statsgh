@@ -30,7 +30,7 @@ async function condenseTweetText(text: string): Promise<string | null> {
         headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: `Rewrite into ONE complete, conclusive sentence UNDER 140 characters. Rules:\n- Must end with a period and be a COMPLETE thought\n- The word before the period must be a noun, verb, or number — NEVER an article (the/a/an) or preposition\n- No hashtags, emojis, links, dashes\n- Active voice, Bloomberg/FT style\n- Use "GHS" for Ghana cedis\n- Output ONLY the sentence\n\nOriginal: ${text}` }],
+          messages: [{ role: "user", content: `Rewrite into ONE complete, conclusive sentence UNDER 140 characters. Rules:\n- MUST use reported speech past tense (e.g. "Ghana has adopted" NOT "Ghana adopts"). NEVER use present tense headlines.\n- Structure: [Subject] + [has/have/said/reported/recorded] + [action/result] + [key number if available]\n- Must end with a period and be a COMPLETE thought\n- The word before the period must be a noun, verb, or number — NEVER an article (the/a/an) or preposition\n- No hashtags, emojis, links, dashes\n- Bloomberg/FT reported style, NOT headline style\n- Use "GHS" for Ghana cedis\n- Output ONLY the sentence\n\nOriginal: ${text}` }],
           max_tokens: 100,
           temperature: attempt === 0 ? 0.3 : 0.5,
         }),
