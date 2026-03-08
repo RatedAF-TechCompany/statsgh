@@ -92,13 +92,30 @@ async function condenseTweet(text: string): Promise<string | null> {
     return null;
   }
 
-  const prompt = `Condense this into a single complete sentence UNDER 140 characters. Rules:
-- Must be a full, conclusive sentence ending with a period
-- No hashtags, no emojis, no links, no dashes (— or –)
-- Use active voice, Bloomberg/FT style
-- Use "GHS" for Ghana cedis
-- Never truncate mid-thought or mid-word
-- Output ONLY the condensed sentence, nothing else
+  const prompt = `Rewrite into ONE complete sentence UNDER 140 characters using this MANDATORY structure:
+
+Subject + reported verb + action/result + key number.
+
+Allowed verbs: has reported, has recorded, has announced, has increased, has reduced, has launched, has approved, has adopted, has secured, has allocated, has produced.
+
+The sentence MUST read like a reported statement, NOT a headline.
+
+Correct: "Ghana has adopted digital AI and geospatial systems for the 2030 census."
+Incorrect: "Ghana adopts digital AI and geospatial tech for 2030 census."
+
+STRICT RULES:
+- Use reported past or present perfect tense (has/have/reported/recorded/announced)
+- NEVER write headline-style present tense (adopts, launches, approves, cuts)
+- Sentence must be a COMPLETE grammatical statement
+- Maximum 140 characters
+- Must end with a period
+- The word before the period must be a noun, verb, or number
+- NEVER end with: the, a, an, to, in, on, at, of, for, and, or, by, with, from, this, that
+- No emojis, hashtags, links, or dashes
+- Use "GHS" for Ghana cedi values
+- Use numbers whenever possible
+- Bloomberg/Financial Times data sentence tone
+- Output ONLY the sentence
 
 Original: ${text}`;
 
