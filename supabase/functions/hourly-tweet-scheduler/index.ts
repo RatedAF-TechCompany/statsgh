@@ -444,6 +444,20 @@ serve(async (req) => {
 
       let tweetText = candidate.text;
 
+      // Check numeric requirement
+      if (!containsNumericStatistic(tweetText)) {
+        await supabase.from("tweet_scheduler_logs").insert({
+          tweet_text: tweetText,
+          category: candidate.category,
+          status: "skipped",
+          reason: "no_numeric_statistic",
+          cycle_id: cycleId,
+        });
+        queueHashes = queueHashes.filter(h => h !== candidate.hash);
+        postedHashes = [...postedHashes, candidate.hash];
+        continue;
+      }
+
       // Validate
       const validation = validateTweet(tweetText);
       if (!validation.valid) {
@@ -460,8 +474,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Check length - use AI to condense if over 150
-      if (tweetText.length > 150) {
+      // Check length - use AI to condense if over 140
+      if (tweetText.length > 140) {
         const condensed = await condenseTweet(tweetText);
         if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({
