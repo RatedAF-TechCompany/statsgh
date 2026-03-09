@@ -83,6 +83,14 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
   return { success: true, tweetId: data?.data?.id };
 }
 
+// ── Numeric detection ──
+
+const NUMERIC_REGEX = /[0-9]+/;
+
+function containsNumericStatistic(text: string): boolean {
+  return NUMERIC_REGEX.test(text);
+}
+
 // ── AI-powered tweet condensation ──
 
 async function condenseTweet(text: string): Promise<string | null> {
@@ -92,18 +100,26 @@ async function condenseTweet(text: string): Promise<string | null> {
     return null;
   }
 
-  const prompt = `Rewrite into ONE complete sentence UNDER 140 characters using this MANDATORY structure:
+  const prompt = `Rewrite into ONE complete sentence UNDER 140 characters. The tweet MUST contain at least one number.
 
-Subject + reported verb + action/result + key number.
+PREFERRED structure (number first):
+Number + subject + action + context.
+Example: "30,000 students may re-sit WASSCE mathematics under new education ministry plan."
 
-Allowed verbs: has reported, has recorded, has announced, has increased, has reduced, has launched, has approved, has adopted, has secured, has allocated, has produced.
+ALTERNATIVE structure:
+Subject + reported verb + number.
+Example: "Stanbic Bank Ghana has arranged $205 million financing for Engineers and Planners."
+
+Allowed verbs: has, have, said, reported, recorded, approved, allocated, secured, increased, reduced, launched, announced, adopted.
 
 The sentence MUST read like a reported statement, NOT a headline.
 
-Correct: "Ghana has adopted digital AI and geospatial systems for the 2030 census."
+Correct: "Ghana has adopted digital and geospatial systems for the 2030 census."
 Incorrect: "Ghana adopts digital AI and geospatial tech for 2030 census."
 
 STRICT RULES:
+- The tweet MUST contain at least one number (digits, percentages, currency values, years)
+- If possible, place the number at the BEGINNING of the tweet
 - Use reported past or present perfect tense (has/have/reported/recorded/announced)
 - NEVER write headline-style present tense (adopts, launches, approves, cuts)
 - Sentence must be a COMPLETE grammatical statement
@@ -147,8 +163,9 @@ Original: ${text}`;
     const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
 
     // Validate the condensed result
-    if (cleaned.length > 150) return null;
+    if (cleaned.length > 140) return null;
     if (!cleaned.endsWith(".")) return null;
+    if (!containsNumericStatistic(cleaned)) return null;
     const validation = validateTweet(cleaned);
     if (!validation.valid) return null;
 
@@ -222,6 +239,9 @@ function weightedRandomSelect(items: Array<{ hash: string; text: string; categor
 const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for","and","or","by","with","from","its","their","his","her","our","your","this","that","which","who","whom","whose","into","over","per","as","but","than","also"]);
 
 function validateTweet(text: string): { valid: boolean; reason?: string } {
+  // Must contain at least one number
+  if (!containsNumericStatistic(text)) return { valid: false, reason: "no_numeric_statistic" };
+  if (text.length > 140) return { valid: false, reason: "over_140_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
   if (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u)) return { valid: false, reason: "contains_emoji" };
@@ -233,6 +253,7 @@ function validateTweet(text: string): { valid: boolean; reason?: string } {
     if (DANGLING_ENDINGS.has(lastWord)) return { valid: false, reason: `truncated_ending_${lastWord}` };
   }
   if (text.includes("...") || text.includes("…")) return { valid: false, reason: "contains_ellipsis" };
+  if (!text.endsWith(".")) return { valid: false, reason: "missing_period" };
   return { valid: true };
 }
 
@@ -271,8 +292,10 @@ serve(async (req) => {
           text = tagMatch[2].trim();
         }
         if (!text) continue;
-        // Pre-condense tweets over 150 chars at save time
-        if (text.length > 150) {
+        // Skip tweets with no numeric statistic
+        if (!containsNumericStatistic(text)) continue;
+        // Pre-condense tweets over 140 chars at save time
+        if (text.length > 140) {
           const condensed = await condenseTweet(text);
           if (condensed) {
             text = condensed;
@@ -421,6 +444,20 @@ serve(async (req) => {
 
       let tweetText = candidate.text;
 
+      // Check numeric requirement
+      if (!containsNumericStatistic(tweetText)) {
+        await supabase.from("tweet_scheduler_logs").insert({
+          tweet_text: tweetText,
+          category: candidate.category,
+          status: "skipped",
+          reason: "no_numeric_statistic",
+          cycle_id: cycleId,
+        });
+        queueHashes = queueHashes.filter(h => h !== candidate.hash);
+        postedHashes = [...postedHashes, candidate.hash];
+        continue;
+      }
+
       // Validate
       const validation = validateTweet(tweetText);
       if (!validation.valid) {
@@ -437,8 +474,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Check length - use AI to condense if over 150
-      if (tweetText.length > 150) {
+      // Check length - use AI to condense if over 140
+      if (tweetText.length > 140) {
         const condensed = await condenseTweet(tweetText);
         if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({
