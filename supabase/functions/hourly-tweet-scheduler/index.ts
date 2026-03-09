@@ -239,6 +239,9 @@ function weightedRandomSelect(items: Array<{ hash: string; text: string; categor
 const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for","and","or","by","with","from","its","their","his","her","our","your","this","that","which","who","whom","whose","into","over","per","as","but","than","also"]);
 
 function validateTweet(text: string): { valid: boolean; reason?: string } {
+  // Must contain at least one number
+  if (!containsNumericStatistic(text)) return { valid: false, reason: "no_numeric_statistic" };
+  if (text.length > 140) return { valid: false, reason: "over_140_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
   if (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u)) return { valid: false, reason: "contains_emoji" };
@@ -250,6 +253,7 @@ function validateTweet(text: string): { valid: boolean; reason?: string } {
     if (DANGLING_ENDINGS.has(lastWord)) return { valid: false, reason: `truncated_ending_${lastWord}` };
   }
   if (text.includes("...") || text.includes("…")) return { valid: false, reason: "contains_ellipsis" };
+  if (!text.endsWith(".")) return { valid: false, reason: "missing_period" };
   return { valid: true };
 }
 
