@@ -100,10 +100,17 @@ async function condenseTweet(text: string): Promise<string | null> {
     return null;
   }
 
-  const prompt = `Rewrite into ONE complete sentence UNDER 140 characters. The tweet MUST contain at least one number.
+  const prompt = `Rewrite into ONE complete English sentence UNDER 150 characters. The tweet MUST contain at least one number.
 
-PREFERRED structure (number first):
-Number + subject + action + context.
+SENTENCE CASE RULES (CRITICAL):
+- Write as a normal English sentence, NOT a headline.
+- Only the first word of the sentence gets a capital letter.
+- Only capitalize proper nouns (names, places, institutions, organizations).
+- Do NOT use title case or capitalize every word.
+
+PREFERRED structure:
+Authority / subject + action + key event + location.
+Example: "Police have arrested a man for stealing vehicle parts at a mechanic shop in Tema."
 Example: "30,000 students may re-sit WASSCE mathematics under new education ministry plan."
 
 ALTERNATIVE structure:
@@ -112,25 +119,26 @@ Example: "Stanbic Bank Ghana has arranged $205 million financing for Engineers a
 
 Allowed verbs: has, have, said, reported, recorded, approved, allocated, secured, increased, reduced, launched, announced, adopted.
 
-The sentence MUST read like a reported statement, NOT a headline.
+The sentence MUST read like a reported news statement, NOT a headline.
 
 Correct: "Ghana has adopted digital and geospatial systems for the 2030 census."
-Incorrect: "Ghana adopts digital AI and geospatial tech for 2030 census."
+Incorrect: "Ghana Adopts Digital AI And Geospatial Tech For 2030 Census."
 
 STRICT RULES:
 - The tweet MUST contain at least one number (digits, percentages, currency values, years)
 - If possible, place the number at the BEGINNING of the tweet
 - Use reported past or present perfect tense (has/have/reported/recorded/announced)
 - NEVER write headline-style present tense (adopts, launches, approves, cuts)
+- NEVER use title case — only capitalize proper nouns
 - Sentence must be a COMPLETE grammatical statement
-- Maximum 140 characters
+- Maximum 150 characters
 - Must end with a period
 - The word before the period must be a noun, verb, or number
 - NEVER end with: the, a, an, to, in, on, at, of, for, and, or, by, with, from, this, that
 - No emojis, hashtags, links, or dashes
+- Tone must be factual, neutral and journalistic — avoid dramatic language
 - Use "GHS" for Ghana cedi values
 - Use numbers whenever possible
-- Bloomberg/Financial Times data sentence tone
 - Output ONLY the sentence
 
 Original: ${text}`;
@@ -163,7 +171,7 @@ Original: ${text}`;
     const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
 
     // Validate the condensed result
-    if (cleaned.length > 140) return null;
+    if (cleaned.length > 150) return null;
     if (!cleaned.endsWith(".")) return null;
     if (!containsNumericStatistic(cleaned)) return null;
     const validation = validateTweet(cleaned);
@@ -241,7 +249,7 @@ const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for",
 function validateTweet(text: string): { valid: boolean; reason?: string } {
   // Must contain at least one number
   if (!containsNumericStatistic(text)) return { valid: false, reason: "no_numeric_statistic" };
-  if (text.length > 140) return { valid: false, reason: "over_140_chars" };
+  if (text.length > 150) return { valid: false, reason: "over_150_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
   if (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u)) return { valid: false, reason: "contains_emoji" };
@@ -295,7 +303,7 @@ serve(async (req) => {
         // Skip tweets with no numeric statistic
         if (!containsNumericStatistic(text)) continue;
         // Pre-condense tweets over 140 chars at save time
-        if (text.length > 140) {
+        if (text.length > 150) {
           const condensed = await condenseTweet(text);
           if (condensed) {
             text = condensed;
@@ -474,8 +482,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Check length - use AI to condense if over 140
-      if (tweetText.length > 140) {
+      // Check length - use AI to condense if over 150
+      if (tweetText.length > 150) {
         const condensed = await condenseTweet(tweetText);
         if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({

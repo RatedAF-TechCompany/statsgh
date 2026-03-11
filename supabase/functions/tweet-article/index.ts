@@ -28,9 +28,9 @@ async function condenseTweetText(text: string): Promise<string | null> {
       const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+           body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: `Rewrite into ONE complete sentence UNDER 140 characters using this MANDATORY structure:\n\nSubject + reported verb + action/result + key number.\n\nAllowed verbs: has reported, has recorded, has announced, has increased, has reduced, has launched, has approved, has adopted, has secured, has allocated, has produced.\n\nThe sentence MUST read like a reported statement, NOT a headline.\n\nCorrect: "Ghana has adopted digital AI and geospatial systems for the 2030 census."\nIncorrect: "Ghana adopts digital AI and geospatial tech for 2030 census."\n\nSTRICT RULES:\n- Use reported past or present perfect tense (has/have/reported/recorded/announced)\n- NEVER write headline-style present tense (adopts, launches, approves, cuts)\n- Sentence must be a COMPLETE grammatical statement\n- Maximum 140 characters\n- Must end with a period\n- The word before the period must be a noun, verb, or number\n- NEVER end with: the, a, an, to, in, on, at, of, for, and, or, by, with, from, this, that\n- No emojis, hashtags, links, or dashes\n- Use "GHS" for Ghana cedi values\n- Use numbers whenever possible\n- Bloomberg/Financial Times data sentence tone\n- Output ONLY the sentence\n\nOriginal: ${text}` }],
+          messages: [{ role: "user", content: `Rewrite into ONE complete English sentence UNDER 150 characters using this MANDATORY structure:\n\nAuthority / subject + action + key event + location.\n\nAllowed verbs: has, have, said, reported, recorded, approved, allocated, secured, increased, reduced, launched, announced, adopted.\n\nSENTENCE CASE RULES (CRITICAL):\n- Write as a normal English sentence, NOT a headline.\n- Only the first word gets a capital letter.\n- Only capitalize proper nouns (names, places, institutions, organizations).\n- Do NOT use title case or capitalize every word.\n\nCorrect: "Ghana has adopted digital and geospatial systems for the 2030 census."\nIncorrect: "Ghana Adopts Digital AI And Geospatial Tech For 2030 Census."\n\nSTRICT RULES:\n- Use reported past or present perfect tense (has/have/reported/recorded/announced)\n- NEVER write headline-style present tense (adopts, launches, approves, cuts)\n- NEVER use title case — only capitalize proper nouns\n- Sentence must be a COMPLETE grammatical statement\n- Maximum 150 characters\n- Must end with a period\n- The word before the period must be a noun, verb, or number\n- NEVER end with: the, a, an, to, in, on, at, of, for, and, or, by, with, from, this, that\n- No emojis, hashtags, links, or dashes\n- Tone must be factual, neutral and journalistic\n- Use "GHS" for Ghana cedi values\n- Use numbers whenever possible\n- Output ONLY the sentence\n\nOriginal: ${text}` }],
           max_tokens: 100,
           temperature: attempt === 0 ? 0.3 : 0.5,
         }),
@@ -40,6 +40,7 @@ async function condenseTweetText(text: string): Promise<string | null> {
       const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
       console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false})`);
       if (condensed && condensed.length <= 150 && isCompleteSentence(condensed)) return condensed;
+
     } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
   }
   return null;
