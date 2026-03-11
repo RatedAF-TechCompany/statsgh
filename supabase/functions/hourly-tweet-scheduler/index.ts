@@ -303,7 +303,7 @@ serve(async (req) => {
         // Skip tweets with no numeric statistic
         if (!containsNumericStatistic(text)) continue;
         // Pre-condense tweets over 140 chars at save time
-        if (text.length > 140) {
+        if (text.length > 150) {
           const condensed = await condenseTweet(text);
           if (condensed) {
             text = condensed;
