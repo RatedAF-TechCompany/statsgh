@@ -482,8 +482,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Check length - use AI to condense if over 140
-      if (tweetText.length > 140) {
+      // Check length - use AI to condense if over 150
+      if (tweetText.length > 150) {
         const condensed = await condenseTweet(tweetText);
         if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({
