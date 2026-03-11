@@ -40,6 +40,7 @@ async function condenseTweetText(text: string): Promise<string | null> {
       const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
       console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false})`);
       if (condensed && condensed.length <= 150 && isCompleteSentence(condensed)) return condensed;
+
     } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
   }
   return null;
