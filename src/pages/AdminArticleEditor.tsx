@@ -65,7 +65,7 @@ const AdminArticleEditor = () => {
   const [isMostRead, setIsMostRead] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tweeting, setTweeting] = useState(false);
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   
   // New social media fields
   const [twitterPost, setTwitterPost] = useState("");
