@@ -171,7 +171,7 @@ Original: ${text}`;
     const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
 
     // Validate the condensed result
-    if (cleaned.length > 140) return null;
+    if (cleaned.length > 150) return null;
     if (!cleaned.endsWith(".")) return null;
     if (!containsNumericStatistic(cleaned)) return null;
     const validation = validateTweet(cleaned);
