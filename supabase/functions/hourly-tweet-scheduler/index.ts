@@ -420,12 +420,26 @@ serve(async (req) => {
       });
     }
 
-    // Fetch tweet items for the queue
-    const { data: queueItems } = await supabase
-      .from("tweet_bank_items")
-      .select("hash, text, category")
-      .eq("is_active", true)
-      .in("hash", queueHashes);
+    // Fetch tweet items for the queue - use batched lookups to avoid URL length limits
+    const queueSet = new Set(queueHashes);
+    const BATCH_SIZE = 50;
+    const hashBatches: string[][] = [];
+    const queueHashArray = [...queueSet];
+    for (let i = 0; i < queueHashArray.length; i += BATCH_SIZE) {
+      hashBatches.push(queueHashArray.slice(i, i + BATCH_SIZE));
+    }
+    
+    let queueItems: Array<{ hash: string; text: string; category: string }> = [];
+    for (const batch of hashBatches) {
+      const { data: batchItems } = await supabase
+        .from("tweet_bank_items")
+        .select("hash, text, category")
+        .eq("is_active", true)
+        .in("hash", batch);
+      if (batchItems) queueItems = queueItems.concat(batchItems);
+      // Stop once we have enough candidates
+      if (queueItems.length >= 50) break;
+    }
 
     if (!queueItems || queueItems.length === 0) {
       await supabase.from("tweet_scheduler_logs").insert({
