@@ -576,7 +576,7 @@ serve(async (req) => {
     if (!postResult.success) {
       console.log("First attempt failed, retrying in 5s...", postResult.error);
       await new Promise(r => setTimeout(r, 5000));
-      postResult = await postTweet(selectedTweet.text);
+      postResult = await postTweet(finalText);
     }
 
     if (postResult.success) {
