@@ -92,37 +92,7 @@ function containsNumericStatistic(text: string): boolean {
   return NUMERIC_REGEX.test(text);
 }
 
-// ── Date context helpers ──
-
-function getDefaultDataDate(): string {
-  // Last completed month
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function appendDateContext(text: string, dataDate: string | null): string {
-  // Only append if tweet contains a statistic
-  if (!STAT_REGEX.test(text)) return text;
-
-  const dateStr = dataDate || getDefaultDataDate();
-  const suffix = ` (as of ${dateStr}).`;
-
-  // Remove trailing period if present, then append
-  const base = text.endsWith(".") ? text.slice(0, -1) : text;
-  const combined = base + suffix;
-
-  if (combined.length <= 280) return combined;
-
-  // Trim base to fit within 280
-  const maxBase = 280 - suffix.length;
-  // Trim to last full word
-  let trimmed = base.slice(0, maxBase);
-  const lastSpace = trimmed.lastIndexOf(" ");
-  if (lastSpace > maxBase * 0.5) trimmed = trimmed.slice(0, lastSpace);
-  return trimmed + suffix;
-}
+// (Date suffix logic removed — tweets post exactly as stored)
 
 // ── AI-powered tweet condensation ──
 
