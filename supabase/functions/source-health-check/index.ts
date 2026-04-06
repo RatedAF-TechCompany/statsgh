@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Curated watchlist of known Ghana news RSS feeds to try auto-adding
 const DISCOVERY_WATCHLIST = [
-  { name: "Graphic Online", rss_url: "https://www.graphic.com.gh/feed" },
+  { name: "Ghana Business News", rss_url: "https://www.ghanabusinessnews.com/feed/" },
   { name: "Citi Newsroom", rss_url: "https://citinewsroom.com/feed/" },
   { name: "GhanaWeb General", rss_url: "https://www.ghanaweb.com/GhanaHomePage/rss" },
   { name: "Ghana News Agency", rss_url: "https://gna.org.gh/feed/" },

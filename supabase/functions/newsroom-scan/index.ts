@@ -30,7 +30,8 @@ function collapseImmediateWordRepeats(input: string): string {
 // ============================================
 const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 999; // No per-run cap
+const DEFAULT_MAX_ARTICLES_PER_RUN = 8; // Cap at 8 to stay within CPU limits
+const AI_BATCH_SIZE = 8; // Max articles to process through AI per invocation
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
 
 // "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
@@ -41,7 +42,7 @@ const AUTO_PASS_DOMAINS = new Set<string>([
 
 // "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
-  "graphic.com.gh",
+  "ghanabusinessnews.com",
   "ceditalk.com",
   "myjoyonline.com",
   "3news.com",
@@ -63,8 +64,7 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
   // National sources
-  { name: "Graphic Online", rss: "https://www.graphic.com.gh/feed", domain: "graphic.com.gh" },
-  { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
+  { name: "Ghana Business News", rss: "https://www.ghanabusinessnews.com/feed/", domain: "ghanabusinessnews.com" },
   { name: "Citi Newsroom", rss: "https://citinewsroom.com/feed/", domain: "citinewsroom.com" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
@@ -1868,6 +1868,21 @@ serve(async (req) => {
     }
 
     // ============================================
+    // PHASE 0: PICK UP PENDING_AI ARTICLES FROM PREVIOUS RUNS
+    // These are overflow articles that couldn't be processed due to CPU limits
+    // ============================================
+    const { data: pendingAiArticles } = await supabase
+      .from("newsroom_articles")
+      .select("*")
+      .eq("processing_status", "pending_ai")
+      .order("created_at", { ascending: true })
+      .limit(AI_BATCH_SIZE);
+
+    if (pendingAiArticles && pendingAiArticles.length > 0) {
+      console.log(`Found ${pendingAiArticles.length} pending_ai articles from previous runs — processing first`);
+    }
+
+    // ============================================
     // REPROCESS PENDING MODE (unchanged from original)
     // ============================================
     if (isReprocess) {
@@ -2442,6 +2457,24 @@ serve(async (req) => {
     }).eq("id", run.id);
 
     // ============================================
+    // BATCH CAP: Only process AI_BATCH_SIZE articles, mark overflow as pending_ai
+    // ============================================
+    const aiBatchItems = toProcess.slice(0, AI_BATCH_SIZE);
+    const overflowItems = toProcess.slice(AI_BATCH_SIZE);
+
+    if (overflowItems.length > 0) {
+      console.log(`⏳ ${overflowItems.length} articles exceed batch cap — marking as pending_ai for next run`);
+      for (let i = AI_BATCH_SIZE; i < toProcess.length; i++) {
+        const newsroomRecord = insertedNews?.[i];
+        if (newsroomRecord) {
+          await supabase.from("newsroom_articles").update({
+            processing_status: "pending_ai",
+          }).eq("id", newsroomRecord.id);
+        }
+      }
+    }
+
+    // ============================================
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -2456,7 +2489,7 @@ serve(async (req) => {
       // Screen headlines in batches of 10 using flash-lite (cheapest model)
       // before spending on per-article rewrites with standard model
       // ============================================
-      const nonAutoPassItems = toProcess.filter(item => {
+      const nonAutoPassItems = aiBatchItems.filter(item => {
         const domain = sourceNameToDomain.get(item.source_name);
         return !domain || !AUTO_PASS_DOMAINS.has(domain);
       });
@@ -2480,8 +2513,8 @@ serve(async (req) => {
         console.log(`Batch filter results: ${passCount} PASS, ${failCount} FAIL`);
       }
 
-      for (let i = 0; i < toProcess.length; i++) {
-        const item = toProcess[i];
+      for (let i = 0; i < aiBatchItems.length; i++) {
+        const item = aiBatchItems[i];
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
 
@@ -2497,7 +2530,7 @@ serve(async (req) => {
             continue;
           }
 
-          console.log(`\n=== Processing article ${i + 1}/${toProcess.length}: "${item.title.substring(0, 60)}..." ===`);
+          console.log(`\n=== Processing article ${i + 1}/${aiBatchItems.length}: "${item.title.substring(0, 60)}..." ===`);
 
           // 1. Fetch full page HTML for body content
           let sourceHtml = "";
@@ -2951,9 +2984,88 @@ Return ONLY valid JSON with these exact keys:
           publishErrors.push(`Error: ${item.title.substring(0, 40)}`);
         }
       }
+
+      // ============================================
+      // PROCESS PENDING_AI FROM PREVIOUS RUNS
+      // ============================================
+      const remainingBatchSlots = AI_BATCH_SIZE - aiBatchItems.length;
+      const pendingToProcess = (pendingAiArticles || []).slice(0, Math.max(0, remainingBatchSlots));
+      
+      if (pendingToProcess.length > 0) {
+        console.log(`\n=== Processing ${pendingToProcess.length} pending_ai articles from previous runs ===`);
+        
+        for (const pendingItem of pendingToProcess) {
+          try {
+            console.log(`\n=== Pending_ai: "${pendingItem.original_headline.substring(0, 60)}..." ===`);
+            
+            let sourceHtml = "";
+            if (pendingItem.source_url) {
+              try {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), 15000);
+                const pageResp = await fetch(pendingItem.source_url, {
+                  signal: controller.signal,
+                  headers: { "User-Agent": "StatsGH-Newsroom/2.0", "Accept": "text/html" },
+                });
+                clearTimeout(tid);
+                if (pageResp.ok) sourceHtml = await pageResp.text();
+              } catch (_e) { /* ignore fetch errors */ }
+            }
+
+            let articleText = pendingItem.original_summary || pendingItem.original_headline;
+            if (sourceHtml && sourceHtml.length > articleText.length) {
+              const cleaned = sourceHtml
+                .replace(/<script[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style[\s\S]*?<\/style>/gi, " ")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ").trim();
+              if (cleaned.length > articleText.length) articleText = cleaned;
+            }
+
+            const slug = pendingItem.original_headline
+              .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80) + "-" + Date.now();
+            const categorySlug = pendingItem.category_hint || "top-stories";
+            const categoryId = await ensureCategoryExists(supabase, categorySlug);
+
+            const { data: newArticle, error: artError } = await supabase
+              .from("articles")
+              .insert({
+                title: pendingItem.original_headline,
+                slug,
+                body: articleText.length > 100 ? `<p>${articleText.substring(0, 2000)}</p>` : `<p>${pendingItem.original_headline}</p>`,
+                summary: (pendingItem.original_summary || pendingItem.original_headline).substring(0, 300),
+                author_name: "StatsGH Newsroom",
+                section: categorySlug,
+                category_slug: categorySlug,
+                category_id: categoryId,
+                is_published: true,
+                published_at: pendingItem.published_at || new Date().toISOString(),
+                is_wire: true,
+                status: "published",
+              })
+              .select().single();
+
+            if (artError) throw artError;
+
+            await supabase.from("newsroom_articles").update({
+              processing_status: "published",
+              generated_article_id: newArticle.id,
+            }).eq("id", pendingItem.id);
+
+            publishedCount++;
+            console.log(`✅ PUBLISHED (pending_ai): "${pendingItem.original_headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+          } catch (e) {
+            console.error(`Error processing pending_ai:`, e);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: e instanceof Error ? e.message : "Unknown error",
+            }).eq("id", pendingItem.id);
+          }
+        }
+      }
     }
 
-    console.log(`\n=== Run complete: ${publishedCount} published out of ${toProcess.length} candidates ===`);
+    console.log(`\n=== Run complete: ${publishedCount} published out of ${aiBatchItems.length} processed (${overflowItems.length} deferred as pending_ai) ===`);
     if (publishErrors.length > 0) {
       console.log(`Errors: ${publishErrors.join("; ")}`);
     }
@@ -2972,6 +3084,8 @@ Return ONLY valid JSON with these exact keys:
         daily_limit: DAILY_PUBLISH_LIMIT,
         opinion_limit: DAILY_OPINION_LIMIT,
         candidates: toProcess.length,
+        ai_batch_processed: aiBatchItems.length,
+        deferred_pending_ai: overflowItems.length,
         published: publishedCount,
         optimizations: {
           pre_filter_blocked: preFilterBlockedCount,
@@ -2990,7 +3104,8 @@ Return ONLY valid JSON with these exact keys:
       sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
       articles_published: publishedCount,
-      articles_failed: toProcess.length - publishedCount,
+      articles_deferred: overflowItems.length,
+      articles_failed: aiBatchItems.length - publishedCount,
       time_window_hours: timeWindowHours,
       daily_limit: DAILY_PUBLISH_LIMIT,
       opinion_limit: DAILY_OPINION_LIMIT,
