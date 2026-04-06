@@ -1868,6 +1868,21 @@ serve(async (req) => {
     }
 
     // ============================================
+    // PHASE 0: PICK UP PENDING_AI ARTICLES FROM PREVIOUS RUNS
+    // These are overflow articles that couldn't be processed due to CPU limits
+    // ============================================
+    const { data: pendingAiArticles } = await supabase
+      .from("newsroom_articles")
+      .select("*")
+      .eq("processing_status", "pending_ai")
+      .order("created_at", { ascending: true })
+      .limit(AI_BATCH_SIZE);
+
+    if (pendingAiArticles && pendingAiArticles.length > 0) {
+      console.log(`Found ${pendingAiArticles.length} pending_ai articles from previous runs — processing first`);
+    }
+
+    // ============================================
     // REPROCESS PENDING MODE (unchanged from original)
     // ============================================
     if (isReprocess) {
