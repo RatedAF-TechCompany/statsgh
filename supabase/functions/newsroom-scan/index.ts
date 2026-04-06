@@ -3005,6 +3005,8 @@ Return ONLY valid JSON with these exact keys:
         daily_limit: DAILY_PUBLISH_LIMIT,
         opinion_limit: DAILY_OPINION_LIMIT,
         candidates: toProcess.length,
+        ai_batch_processed: aiBatchItems.length,
+        deferred_pending_ai: overflowItems.length,
         published: publishedCount,
         optimizations: {
           pre_filter_blocked: preFilterBlockedCount,
@@ -3023,7 +3025,8 @@ Return ONLY valid JSON with these exact keys:
       sources_checked: RSS_SOURCES.length,
       articles_found: insertedNews?.length || 0,
       articles_published: publishedCount,
-      articles_failed: toProcess.length - publishedCount,
+      articles_deferred: overflowItems.length,
+      articles_failed: aiBatchItems.length - publishedCount,
       time_window_hours: timeWindowHours,
       daily_limit: DAILY_PUBLISH_LIMIT,
       opinion_limit: DAILY_OPINION_LIMIT,
