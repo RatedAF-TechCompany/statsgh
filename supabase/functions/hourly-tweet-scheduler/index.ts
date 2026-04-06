@@ -607,7 +607,7 @@ serve(async (req) => {
       await supabase.from("tweet_scheduler_state").update(updateData).eq("id", 1);
 
       await supabase.from("tweet_scheduler_logs").insert({
-        tweet_text: selectedTweet.text,
+        tweet_text: finalText,
         category: selectedTweet.category,
         status: "success",
         tweet_id: postResult.tweetId,
