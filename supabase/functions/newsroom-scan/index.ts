@@ -2457,6 +2457,24 @@ serve(async (req) => {
     }).eq("id", run.id);
 
     // ============================================
+    // BATCH CAP: Only process AI_BATCH_SIZE articles, mark overflow as pending_ai
+    // ============================================
+    const aiBatchItems = toProcess.slice(0, AI_BATCH_SIZE);
+    const overflowItems = toProcess.slice(AI_BATCH_SIZE);
+
+    if (overflowItems.length > 0) {
+      console.log(`⏳ ${overflowItems.length} articles exceed batch cap — marking as pending_ai for next run`);
+      for (let i = AI_BATCH_SIZE; i < toProcess.length; i++) {
+        const newsroomRecord = insertedNews?.[i];
+        if (newsroomRecord) {
+          await supabase.from("newsroom_articles").update({
+            processing_status: "pending_ai",
+          }).eq("id", newsroomRecord.id);
+        }
+      }
+    }
+
+    // ============================================
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -2471,7 +2489,7 @@ serve(async (req) => {
       // Screen headlines in batches of 10 using flash-lite (cheapest model)
       // before spending on per-article rewrites with standard model
       // ============================================
-      const nonAutoPassItems = toProcess.filter(item => {
+      const nonAutoPassItems = aiBatchItems.filter(item => {
         const domain = sourceNameToDomain.get(item.source_name);
         return !domain || !AUTO_PASS_DOMAINS.has(domain);
       });
@@ -2495,7 +2513,7 @@ serve(async (req) => {
         console.log(`Batch filter results: ${passCount} PASS, ${failCount} FAIL`);
       }
 
-      for (let i = 0; i < toProcess.length; i++) {
+      for (let i = 0; i < aiBatchItems.length; i++) {
         const item = toProcess[i];
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
