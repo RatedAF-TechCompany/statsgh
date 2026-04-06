@@ -2986,7 +2986,7 @@ Return ONLY valid JSON with these exact keys:
       }
     }
 
-    console.log(`\n=== Run complete: ${publishedCount} published out of ${toProcess.length} candidates ===`);
+    console.log(`\n=== Run complete: ${publishedCount} published out of ${aiBatchItems.length} processed (${overflowItems.length} deferred as pending_ai) ===`);
     if (publishErrors.length > 0) {
       console.log(`Errors: ${publishErrors.join("; ")}`);
     }
