@@ -568,8 +568,8 @@ serve(async (req) => {
       });
     }
 
-    // ── Append date context and post to X ──
-    const finalText = appendDateContext(selectedTweet.text, selectedTweet.data_date);
+    // ── Post tweet exactly as stored ──
+    const finalText = selectedTweet.text;
     let postResult = await postTweet(finalText);
 
     // Retry once after short delay if failed
