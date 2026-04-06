@@ -8,27 +8,19 @@ const corsHeaders = {
 
 // Curated watchlist of known Ghana news RSS feeds to try auto-adding
 const DISCOVERY_WATCHLIST = [
-  { name: "Africa Briefing Ghana", rss_url: "https://africabriefing.org/category/west-africa/ghana/feed/" },
+  { name: "Graphic Online", rss_url: "https://www.graphic.com.gh/feed" },
+  { name: "Citi Newsroom", rss_url: "https://citinewsroom.com/feed/" },
+  { name: "GhanaWeb General", rss_url: "https://www.ghanaweb.com/GhanaHomePage/rss" },
+  { name: "Ghana News Agency", rss_url: "https://gna.org.gh/feed/" },
+  { name: "Peace FM Online", rss_url: "https://www.peacefmonline.com/feed/" },
+  { name: "Adom Online", rss_url: "https://www.adomonline.com/feed/" },
   { name: "Business & Financial Times", rss_url: "https://thebftonline.com/category/news/feed/" },
   { name: "Chronicle Ghana", rss_url: "https://thechronicle.com.gh/feed/" },
-  { name: "ClassFM Business", rss_url: "https://www.classfmonline.com/business/feed/" },
-  { name: "Daily Graphic Online", rss_url: "https://www.graphic.com.gh/news/feed/" },
-  { name: "DailyHerald Ghana", rss_url: "https://dailyheraldgh.com/feed/" },
-  { name: "Energy Ghana", rss_url: "https://energyghana.com/feed/" },
-  { name: "Ghanaian Observer", rss_url: "https://www.ghanaianobserver.com/feed/" },
-  { name: "GhanaWeb General", rss_url: "https://www.ghanaweb.com/GhanaHomePage/NewsArchive/rss.xml" },
-  { name: "Graphic Online General", rss_url: "https://www.graphic.com.gh/feed/" },
   { name: "Herald Ghana", rss_url: "https://theheraldghana.com/feed/" },
   { name: "JoyNews Online", rss_url: "https://www.myjoyonline.com/news/feed/" },
-  { name: "Kumasi24", rss_url: "https://kumasi24.com/feed/" },
   { name: "MyNewsGh", rss_url: "https://www.mynewsgh.com/feed/" },
   { name: "Norvan Reports", rss_url: "https://norvanreports.com/feed/" },
-  { name: "Oil City Ghana", rss_url: "https://oilcityghana.com/feed/" },
-  { name: "Peacefm Politics", rss_url: "https://www.peacefmonline.com/pages/politics/rss.xml" },
-  { name: "Prime News Ghana", rss_url: "https://www.primenewsghana.com/feed/" },
-  { name: "The Independent Ghana", rss_url: "https://theindependentghana.com/feed/" },
   { name: "Today Ghana", rss_url: "https://www.todaygh.com/feed/" },
-  { name: "UTV Ghana Online", rss_url: "https://www.utvghana.com/feed/" },
 ];
 
 async function testRssFeed(url: string, timeoutMs = 10000): Promise<{ ok: boolean; itemCount: number; error?: string }> {
