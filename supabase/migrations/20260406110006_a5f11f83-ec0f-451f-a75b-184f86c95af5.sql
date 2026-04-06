@@ -1,0 +1,1 @@
+ALTER TABLE public.tweet_bank_items ADD COLUMN IF NOT EXISTS data_date text;
