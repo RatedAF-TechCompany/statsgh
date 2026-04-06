@@ -64,8 +64,7 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
   // National sources
-  { name: "Graphic Online", rss: "https://www.graphic.com.gh/feed", domain: "graphic.com.gh" },
-  { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
+  { name: "Ghana Business News", rss: "https://www.ghanabusinessnews.com/feed/", domain: "ghanabusinessnews.com" },
   { name: "Citi Newsroom", rss: "https://citinewsroom.com/feed/", domain: "citinewsroom.com" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
