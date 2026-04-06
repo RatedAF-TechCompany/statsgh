@@ -617,7 +617,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         tweet_id: postResult.tweetId,
-        text: selectedTweet.text,
+        text: finalText,
         queue_remaining: updateData.queue_hashes?.length ?? newQueue.length,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } else {
