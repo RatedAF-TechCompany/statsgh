@@ -86,9 +86,42 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
 // ── Numeric detection ──
 
 const NUMERIC_REGEX = /[0-9]+/;
+const STAT_REGEX = /[0-9%$₵¢£€]/;
 
 function containsNumericStatistic(text: string): boolean {
   return NUMERIC_REGEX.test(text);
+}
+
+// ── Date context helpers ──
+
+function getDefaultDataDate(): string {
+  // Last completed month
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function appendDateContext(text: string, dataDate: string | null): string {
+  // Only append if tweet contains a statistic
+  if (!STAT_REGEX.test(text)) return text;
+
+  const dateStr = dataDate || getDefaultDataDate();
+  const suffix = ` (as of ${dateStr}).`;
+
+  // Remove trailing period if present, then append
+  const base = text.endsWith(".") ? text.slice(0, -1) : text;
+  const combined = base + suffix;
+
+  if (combined.length <= 280) return combined;
+
+  // Trim base to fit within 280
+  const maxBase = 280 - suffix.length;
+  // Trim to last full word
+  let trimmed = base.slice(0, maxBase);
+  const lastSpace = trimmed.lastIndexOf(" ");
+  if (lastSpace > maxBase * 0.5) trimmed = trimmed.slice(0, lastSpace);
+  return trimmed + suffix;
 }
 
 // ── AI-powered tweet condensation ──
@@ -429,14 +462,14 @@ serve(async (req) => {
       hashBatches.push(queueHashArray.slice(i, i + BATCH_SIZE));
     }
     
-    let queueItems: Array<{ hash: string; text: string; category: string }> = [];
+    let queueItems: Array<{ hash: string; text: string; category: string; data_date: string | null }> = [];
     for (const batch of hashBatches) {
       const { data: batchItems } = await supabase
         .from("tweet_bank_items")
-        .select("hash, text, category")
+        .select("hash, text, category, data_date")
         .eq("is_active", true)
         .in("hash", batch);
-      if (batchItems) queueItems = queueItems.concat(batchItems);
+      if (batchItems) queueItems = queueItems.concat(batchItems as any);
       // Stop once we have enough candidates
       if (queueItems.length >= 50) break;
     }
@@ -453,7 +486,7 @@ serve(async (req) => {
     }
 
     // Try to find a valid tweet via smart selection
-    let selectedTweet: { hash: string; text: string; category: string } | null = null;
+    let selectedTweet: { hash: string; text: string; category: string; data_date: string | null } | null = null;
     const tried = new Set<string>();
     const maxAttempts = Math.min(queueItems.length, 20);
 
@@ -535,14 +568,15 @@ serve(async (req) => {
       });
     }
 
-    // ── Post to X ──
-    let postResult = await postTweet(selectedTweet.text);
+    // ── Append date context and post to X ──
+    const finalText = appendDateContext(selectedTweet.text, selectedTweet.data_date);
+    let postResult = await postTweet(finalText);
 
     // Retry once after short delay if failed
     if (!postResult.success) {
       console.log("First attempt failed, retrying in 5s...", postResult.error);
       await new Promise(r => setTimeout(r, 5000));
-      postResult = await postTweet(selectedTweet.text);
+      postResult = await postTweet(finalText);
     }
 
     if (postResult.success) {
@@ -573,7 +607,7 @@ serve(async (req) => {
       await supabase.from("tweet_scheduler_state").update(updateData).eq("id", 1);
 
       await supabase.from("tweet_scheduler_logs").insert({
-        tweet_text: selectedTweet.text,
+        tweet_text: finalText,
         category: selectedTweet.category,
         status: "success",
         tweet_id: postResult.tweetId,
@@ -583,7 +617,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         tweet_id: postResult.tweetId,
-        text: selectedTweet.text,
+        text: finalText,
         queue_remaining: updateData.queue_hashes?.length ?? newQueue.length,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } else {

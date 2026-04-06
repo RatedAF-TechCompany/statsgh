@@ -1891,6 +1891,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          data_date: string | null
           hash: string
           id: string
           is_active: boolean
@@ -1900,6 +1901,7 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          data_date?: string | null
           hash: string
           id?: string
           is_active?: boolean
@@ -1909,6 +1911,7 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          data_date?: string | null
           hash?: string
           id?: string
           is_active?: boolean
