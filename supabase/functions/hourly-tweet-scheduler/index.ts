@@ -462,14 +462,14 @@ serve(async (req) => {
       hashBatches.push(queueHashArray.slice(i, i + BATCH_SIZE));
     }
     
-    let queueItems: Array<{ hash: string; text: string; category: string }> = [];
+    let queueItems: Array<{ hash: string; text: string; category: string; data_date: string | null }> = [];
     for (const batch of hashBatches) {
       const { data: batchItems } = await supabase
         .from("tweet_bank_items")
-        .select("hash, text, category")
+        .select("hash, text, category, data_date")
         .eq("is_active", true)
         .in("hash", batch);
-      if (batchItems) queueItems = queueItems.concat(batchItems);
+      if (batchItems) queueItems = queueItems.concat(batchItems as any);
       // Stop once we have enough candidates
       if (queueItems.length >= 50) break;
     }
