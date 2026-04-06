@@ -42,7 +42,7 @@ const AUTO_PASS_DOMAINS = new Set<string>([
 
 // "Fast publish" outlets: trusted sources but STILL must pass qualifying number rules
 const FAST_PUBLISH_DOMAINS = new Set<string>([
-  "graphic.com.gh",
+  "ghanabusinessnews.com",
   "ceditalk.com",
   "myjoyonline.com",
   "3news.com",
