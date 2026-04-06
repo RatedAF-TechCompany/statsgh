@@ -2181,31 +2181,9 @@ serve(async (req) => {
       
       // V2.1: Headline check already done before page fetch (moved up for optimization)
       
-      // For non-opinion: body must meet qualifying number requirements (auto-pass sources skip)
-      if (!isAutoPass && !isOpinion) {
-        if (!numberAnalysis.passes) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INSUFFICIENT_QUALIFYING_NUMBERS,
-            numberAnalysis.detail, { 
-              pubDateParsed: pubDate, 
-              fullText: fullText.substring(0, 500),
-              numbersFound: numberAnalysis.numbersFoundAll,
-              numbersFoundQualifying: numberAnalysis.numbersFoundQualifying,
-              excludedNumbers: numberAnalysis.excludedNumbers
-            });
-          continue;
-        }
-      } else if (!isAutoPass && isOpinion) {
-        // V2.0: Opinion articles must have at least 1 qualifying number
-        if (numberAnalysis.qualifyingCount < 1) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.OPINION_NO_QUALIFYING_NUMBER,
-            `Opinion article must have at least 1 qualifying numeric anchor. Found ${numberAnalysis.qualifyingCount} qualifying numbers.`,
-            { 
-              pubDateParsed: pubDate,
-              numbersFound: numberAnalysis.numbersFoundAll,
-              excludedNumbers: numberAnalysis.excludedNumbers
-            });
-          continue;
-        }
+      // V6.0: Numbers are a scoring signal, not a gate — log but don't reject
+      if (!isAutoPass && !numberAnalysis.passes) {
+        console.log(`⚠ Low numeric content: "${article.title.substring(0, 60)}..." — ${numberAnalysis.detail} (proceeding anyway)`);
       }
 
       // V2.0: Generate dedupe key using QUALIFYING numbers only
@@ -2256,12 +2234,12 @@ serve(async (req) => {
         continue;
       }
 
-      // V5.0: Two-tier deduplication
-      // Tier 1: Fast title-keyword overlap (3+ shared content words in title = immediate reject)
-      // Tier 2: Composite semantic similarity on title+summary
-      const KEYWORD_OVERLAP_MIN = 3; // 3+ shared title keywords = same story
-      const SEMANTIC_THRESHOLD = 0.25; // composite threshold for title+summary
-      const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      // V6.0: Two-tier deduplication — relaxed
+      // Tier 1: Fast title-keyword overlap (5+ shared content words in title = immediate reject)
+      // Tier 2: Composite semantic similarity on title+summary (90% threshold)
+      const KEYWORD_OVERLAP_MIN = 5; // 5+ shared title keywords = same story
+      const SEMANTIC_THRESHOLD = 0.90; // composite threshold for title+summary (was 0.25)
+      const cutoff48h = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h lookback (was 48h)
       const candidateText = [article.title, article.summary || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
@@ -2707,63 +2685,107 @@ Return ONLY valid JSON with these exact keys:
             }),
           });
 
+          let useRssFallback = false;
+
           if (!aiResp.ok) {
             const errText = await aiResp.text();
-            console.error(`AI call failed (${aiResp.status}): ${errText.substring(0, 200)}`);
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `AI error ${aiResp.status}: ${errText.substring(0, 200)}`,
-            }).eq("id", newsroomRecord.id);
-            publishErrors.push(`AI ${aiResp.status} for "${item.title.substring(0, 40)}"`);
-            continue;
+            console.log(`AI call failed (${aiResp.status}): ${errText.substring(0, 200)} — using RSS fallback`);
+            useRssFallback = true;
           }
 
-          const aiData = await aiResp.json();
-          const aiContent = aiData.choices?.[0]?.message?.content;
+          let aiContent: string | null = null;
+          if (!useRssFallback) {
+            const aiData = await aiResp.json();
+            aiContent = aiData.choices?.[0]?.message?.content;
 
-          if (!aiContent) {
-            console.error("No content in AI response");
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "Empty AI response",
-            }).eq("id", newsroomRecord.id);
-            continue;
+            if (!aiContent) {
+              console.log("Empty AI response — using RSS fallback");
+              useRssFallback = true;
+            } else if (aiContent.trim().toLowerCase().startsWith("rejected")) {
+              console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — using RSS fallback instead of dropping`);
+              useRssFallback = true;
+            }
           }
 
-          // Check if AI rejected the story
-          if (aiContent.trim().toLowerCase().startsWith("rejected")) {
-            console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — ${aiContent.trim().substring(0, 100)}`);
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `AI editorial rejection: ${aiContent.trim().substring(0, 200)}`,
-            }).eq("id", newsroomRecord.id);
-            continue;
-          }
-
-          // Parse JSON from AI response
+          // Parse JSON from AI response OR build RSS fallback
           let generated: any;
-          try {
-            const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("No JSON found");
-            generated = JSON.parse(jsonMatch[0]);
-          } catch (parseErr) {
-            console.error("Failed to parse AI response:", parseErr, aiContent.substring(0, 300));
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "AI response JSON parse failed",
-            }).eq("id", newsroomRecord.id);
-            publishErrors.push(`Parse error for "${item.title.substring(0, 40)}"`);
-            continue;
-          }
 
-          // Validate required fields
-          if (!generated.headline || !generated.body_html || !generated.slug) {
-            console.error("Missing required fields in AI output");
-            await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "AI output missing headline/body/slug",
-            }).eq("id", newsroomRecord.id);
-            continue;
+          if (useRssFallback) {
+            // V6.0 FALLBACK: Publish a clean version from RSS data
+            const fallbackSlug = item.title
+              .toLowerCase()
+              .replace(/[^a-z0-9\s]/g, "")
+              .replace(/\s+/g, "-")
+              .substring(0, 80);
+            const fallbackBody = item.description
+              ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
+              : `<p>${item.title}</p>`;
+            const fallbackSummary = item.description
+              ? item.description.substring(0, 300)
+              : item.title;
+            
+            generated = {
+              headline: item.title,
+              subtitle: null,
+              summary: fallbackSummary,
+              seo_description: fallbackSummary.substring(0, 155),
+              body_html: fallbackBody,
+              slug: fallbackSlug,
+              category_slug: DEFAULT_CATEGORY,
+              author_name: item.source_name,
+              tags: [],
+              twitter_post: null,
+              instagram_post: null,
+            };
+            console.log(`📋 RSS fallback article: "${item.title.substring(0, 60)}..."`);
+          } else {
+            try {
+              const jsonMatch = aiContent!.match(/\{[\s\S]*\}/);
+              if (!jsonMatch) throw new Error("No JSON found");
+              generated = JSON.parse(jsonMatch[0]);
+            } catch (parseErr) {
+              // Parse failed — use RSS fallback instead of dropping
+              console.log(`AI JSON parse failed, using RSS fallback: ${parseErr}`);
+              const fallbackSlug = item.title
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, "")
+                .replace(/\s+/g, "-")
+                .substring(0, 80);
+              const fallbackBody = item.description
+                ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
+                : `<p>${item.title}</p>`;
+              const fallbackSummary = item.description
+                ? item.description.substring(0, 300)
+                : item.title;
+              
+              generated = {
+                headline: item.title,
+                subtitle: null,
+                summary: fallbackSummary,
+                seo_description: fallbackSummary.substring(0, 155),
+                body_html: fallbackBody,
+                slug: fallbackSlug,
+                category_slug: DEFAULT_CATEGORY,
+                author_name: item.source_name,
+                tags: [],
+                twitter_post: null,
+                instagram_post: null,
+              };
+            }
+
+            // Validate required fields — fallback if missing
+            if (!generated.headline || !generated.body_html || !generated.slug) {
+              console.log("Missing required fields in AI output, using RSS fallback");
+              const fallbackSlug = item.title
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, "")
+                .replace(/\s+/g, "-")
+                .substring(0, 80);
+              generated.headline = generated.headline || item.title;
+              generated.body_html = generated.body_html || `<p>${item.description || item.title}</p>`;
+              generated.slug = generated.slug || fallbackSlug;
+              generated.summary = generated.summary || item.description || item.title;
+            }
           }
 
           // Clean fields
