@@ -568,8 +568,9 @@ serve(async (req) => {
       });
     }
 
-    // ── Post to X ──
-    let postResult = await postTweet(selectedTweet.text);
+    // ── Append date context and post to X ──
+    const finalText = appendDateContext(selectedTweet.text, selectedTweet.data_date);
+    let postResult = await postTweet(finalText);
 
     // Retry once after short delay if failed
     if (!postResult.success) {
