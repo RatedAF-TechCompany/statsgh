@@ -2984,6 +2984,85 @@ Return ONLY valid JSON with these exact keys:
           publishErrors.push(`Error: ${item.title.substring(0, 40)}`);
         }
       }
+
+      // ============================================
+      // PROCESS PENDING_AI FROM PREVIOUS RUNS
+      // ============================================
+      const remainingBatchSlots = AI_BATCH_SIZE - aiBatchItems.length;
+      const pendingToProcess = (pendingAiArticles || []).slice(0, Math.max(0, remainingBatchSlots));
+      
+      if (pendingToProcess.length > 0) {
+        console.log(`\n=== Processing ${pendingToProcess.length} pending_ai articles from previous runs ===`);
+        
+        for (const pendingItem of pendingToProcess) {
+          try {
+            console.log(`\n=== Pending_ai: "${pendingItem.original_headline.substring(0, 60)}..." ===`);
+            
+            let sourceHtml = "";
+            if (pendingItem.source_url) {
+              try {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), 15000);
+                const pageResp = await fetch(pendingItem.source_url, {
+                  signal: controller.signal,
+                  headers: { "User-Agent": "StatsGH-Newsroom/2.0", "Accept": "text/html" },
+                });
+                clearTimeout(tid);
+                if (pageResp.ok) sourceHtml = await pageResp.text();
+              } catch (_e) { /* ignore fetch errors */ }
+            }
+
+            let articleText = pendingItem.original_summary || pendingItem.original_headline;
+            if (sourceHtml && sourceHtml.length > articleText.length) {
+              const cleaned = sourceHtml
+                .replace(/<script[\s\S]*?<\/script>/gi, " ")
+                .replace(/<style[\s\S]*?<\/style>/gi, " ")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ").trim();
+              if (cleaned.length > articleText.length) articleText = cleaned;
+            }
+
+            const slug = pendingItem.original_headline
+              .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80) + "-" + Date.now();
+            const categorySlug = pendingItem.category_hint || "top-stories";
+            const categoryId = await ensureCategoryExists(supabase, categorySlug);
+
+            const { data: newArticle, error: artError } = await supabase
+              .from("articles")
+              .insert({
+                title: pendingItem.original_headline,
+                slug,
+                body: articleText.length > 100 ? `<p>${articleText.substring(0, 2000)}</p>` : `<p>${pendingItem.original_headline}</p>`,
+                summary: (pendingItem.original_summary || pendingItem.original_headline).substring(0, 300),
+                author_name: "StatsGH Newsroom",
+                section: categorySlug,
+                category_slug: categorySlug,
+                category_id: categoryId,
+                is_published: true,
+                published_at: pendingItem.published_at || new Date().toISOString(),
+                is_wire: true,
+                status: "published",
+              })
+              .select().single();
+
+            if (artError) throw artError;
+
+            await supabase.from("newsroom_articles").update({
+              processing_status: "published",
+              generated_article_id: newArticle.id,
+            }).eq("id", pendingItem.id);
+
+            publishedCount++;
+            console.log(`✅ PUBLISHED (pending_ai): "${pendingItem.original_headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+          } catch (e) {
+            console.error(`Error processing pending_ai:`, e);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: e instanceof Error ? e.message : "Unknown error",
+            }).eq("id", pendingItem.id);
+          }
+        }
+      }
     }
 
     console.log(`\n=== Run complete: ${publishedCount} published out of ${aiBatchItems.length} processed (${overflowItems.length} deferred as pending_ai) ===`);
