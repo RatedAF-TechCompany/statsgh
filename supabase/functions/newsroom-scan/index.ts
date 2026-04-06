@@ -2514,7 +2514,7 @@ serve(async (req) => {
       }
 
       for (let i = 0; i < aiBatchItems.length; i++) {
-        const item = toProcess[i];
+        const item = aiBatchItems[i];
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
 
@@ -2530,7 +2530,7 @@ serve(async (req) => {
             continue;
           }
 
-          console.log(`\n=== Processing article ${i + 1}/${toProcess.length}: "${item.title.substring(0, 60)}..." ===`);
+          console.log(`\n=== Processing article ${i + 1}/${aiBatchItems.length}: "${item.title.substring(0, 60)}..." ===`);
 
           // 1. Fetch full page HTML for body content
           let sourceHtml = "";
