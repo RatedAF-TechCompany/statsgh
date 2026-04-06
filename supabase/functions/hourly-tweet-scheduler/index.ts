@@ -486,7 +486,7 @@ serve(async (req) => {
     }
 
     // Try to find a valid tweet via smart selection
-    let selectedTweet: { hash: string; text: string; category: string } | null = null;
+    let selectedTweet: { hash: string; text: string; category: string; data_date: string | null } | null = null;
     const tried = new Set<string>();
     const maxAttempts = Math.min(queueItems.length, 20);
 
