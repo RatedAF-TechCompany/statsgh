@@ -48,7 +48,10 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
   "starrfm.com.gh",
   "ghanaweb.com",
   "citibusinessnews.com",
+  "citinewsroom.com",
   "gna.org.gh",
+  "peacefmonline.com",
+  "adomonline.com",
   // Kumasi/Regional sources
   "kumasimail.com",
   "kessbenonline.com",
@@ -60,14 +63,20 @@ const FAST_PUBLISH_DOMAINS = new Set<string>([
 // Ghana business news sources with RSS feeds
 const RSS_SOURCES = [
   // National sources
+  { name: "Graphic Online", rss: "https://www.graphic.com.gh/feed", domain: "graphic.com.gh" },
   { name: "Graphic Online Business", rss: "https://www.graphic.com.gh/business/business-news.html?format=feed&type=rss", domain: "graphic.com.gh" },
+  { name: "Citi Newsroom", rss: "https://citinewsroom.com/feed/", domain: "citinewsroom.com" },
   { name: "CediTalk", rss: "https://www.ceditalk.com/feed/", domain: "ceditalk.com" },
   { name: "JoyBusiness", rss: "https://www.myjoyonline.com/business/feed/", domain: "myjoyonline.com" },
   { name: "MyJoyOnline News", rss: "https://www.myjoyonline.com/feed/", domain: "myjoyonline.com" },
   { name: "3News Ghana", rss: "https://3news.com/feed/", domain: "3news.com" },
   { name: "Starr FM Business", rss: "https://starrfm.com.gh/category/business/feed/", domain: "starrfm.com.gh" },
   { name: "Citi Business News", rss: "https://citibusinessnews.com/feed/", domain: "citibusinessnews.com" },
+  { name: "Ghana News Agency", rss: "https://gna.org.gh/feed/", domain: "gna.org.gh" },
   { name: "Ghana News Agency Business", rss: "https://gna.org.gh/category/business/feed/", domain: "gna.org.gh" },
+  { name: "GhanaWeb General", rss: "https://www.ghanaweb.com/GhanaHomePage/rss", domain: "ghanaweb.com" },
+  { name: "Peace FM Online", rss: "https://www.peacefmonline.com/feed/", domain: "peacefmonline.com" },
+  { name: "Adom Online", rss: "https://www.adomonline.com/feed/", domain: "adomonline.com" },
   // Kumasi/Regional sources
   { name: "Kumasi Mail", rss: "https://kumasimail.com/feed/", domain: "kumasimail.com" },
   { name: "Kessben Online", rss: "https://kessbenonline.com/feed/", domain: "kessbenonline.com" },
