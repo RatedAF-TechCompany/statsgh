@@ -30,7 +30,8 @@ function collapseImmediateWordRepeats(input: string): string {
 // ============================================
 const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 999; // No per-run cap
+const DEFAULT_MAX_ARTICLES_PER_RUN = 8; // Cap at 8 to stay within CPU limits
+const AI_BATCH_SIZE = 8; // Max articles to process through AI per invocation
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
 
 // "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
