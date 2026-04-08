@@ -1,3 +1,52 @@
+export const SITE_SECTIONS = [
+  { label: "Top Stories", slug: "top-stories", href: "/" },
+  { label: "Economy", slug: "economy", href: "/economy" },
+  { label: "Markets & Data", slug: "markets-data", href: "/markets-data" },
+  { label: "Business", slug: "business", href: "/business" },
+  { label: "Politics & Policy", slug: "politics-policy", href: "/politics-policy" },
+  { label: "Energy & Resources", slug: "energy-resources", href: "/energy-resources" },
+  { label: "Agriculture", slug: "agriculture", href: "/agriculture" },
+  { label: "Technology", slug: "technology", href: "/technology" },
+  { label: "Companies", slug: "companies", href: "/companies" },
+  { label: "Opinion & Analysis", slug: "opinion-analysis", href: "/opinion-analysis" },
+  { label: "Research", slug: "research", href: "/research" },
+  { label: "World", slug: "world", href: "/world" },
+] as const;
+
+// Map old category slugs to new sections
+export const CATEGORY_TO_SECTION: Record<string, string> = {
+  "macroeconomy": "economy",
+  "markets": "markets-data",
+  "public-finance": "economy",
+  "banking-and-finance": "business",
+  "energy-and-utilities": "energy-resources",
+  "trade-and-industry": "business",
+  "corporate-ghana": "companies",
+  "agriculture-and-commodities": "agriculture",
+  "infrastructure-and-transport": "business",
+  "data-and-research": "research",
+  "regulation-and-policy": "politics-policy",
+  "technology-and-digital-economy": "technology",
+  "labour-and-jobs": "economy",
+  "regional-economy": "world",
+  "ghanacrimes": "top-stories",
+};
+
+export const SECTION_LABEL: Record<string, string> = Object.fromEntries(
+  SITE_SECTIONS.map(s => [s.slug, s.label])
+);
+
+// Get section label for a category_slug
+export const getSectionLabel = (categorySlug: string): string => {
+  const sectionSlug = CATEGORY_TO_SECTION[categorySlug] || "top-stories";
+  return SECTION_LABEL[sectionSlug] || "Top Stories";
+};
+
+export const getSectionSlug = (categorySlug: string): string => {
+  return CATEGORY_TO_SECTION[categorySlug] || "top-stories";
+};
+
+// Keep old exports for backward compatibility
 export const SITE_NAVIGATION = {
   name: "StatsGH",
   defaultCountry: "Ghana",

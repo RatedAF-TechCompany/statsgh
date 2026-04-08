@@ -57,7 +57,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        "ft-maroon": "hsl(var(--ft-maroon))",
+        "ft-maroon": "hsl(var(--ft-teal))",
+        "ft-teal": "hsl(var(--ft-teal))",
+        "ft-gold": "hsl(var(--ft-gold))",
+        "ft-slate": "hsl(var(--ft-slate))",
         "accent-green": "hsl(var(--accent-green))",
       },
       borderRadius: {

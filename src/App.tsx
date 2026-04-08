@@ -83,6 +83,18 @@ const App = () => (
           <Route path="/calendar" element={<EconomicCalendar />} />
           <Route path="/editorial-standards" element={<EditorialStandards />} />
           <Route path="/dashboards/commodities" element={<CommodityTracker />} />
+          {/* Section routes */}
+          <Route path="/economy" element={<Category />} />
+          <Route path="/markets-data" element={<Category />} />
+          <Route path="/business" element={<Category />} />
+          <Route path="/politics-policy" element={<Category />} />
+          <Route path="/energy-resources" element={<Category />} />
+          <Route path="/agriculture" element={<Category />} />
+          <Route path="/technology" element={<Category />} />
+          <Route path="/companies" element={<Category />} />
+          <Route path="/opinion-analysis" element={<Category />} />
+          <Route path="/research" element={<Category />} />
+          <Route path="/world" element={<Category />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}
