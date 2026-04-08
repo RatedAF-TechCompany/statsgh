@@ -3041,6 +3041,20 @@ Return ONLY valid JSON with these exact keys:
             const categorySlug = pendingItem.category_hint || "top-stories";
             const categoryId = await ensureCategoryExists(supabase, categorySlug);
 
+            // Title quality gate for pending_ai fallback
+            const pendingTitle = pendingItem.original_headline || "";
+            const MALFORMED_CHARS_P = /[@#$\\|^]/;
+            const FRONT_PAGES_P = /front\s*pages?:/i;
+            const EXCESSIVE_CAPS_P = /[A-Z]{4,}/;
+            if (MALFORMED_CHARS_P.test(pendingTitle) || FRONT_PAGES_P.test(pendingTitle) || pendingTitle.length < 20 || EXCESSIVE_CAPS_P.test(pendingTitle)) {
+              console.log(`❌ REJECTED pending_ai (MALFORMED_TITLE): "${pendingTitle.substring(0, 60)}"`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: "MALFORMED_TITLE",
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
               .insert({
