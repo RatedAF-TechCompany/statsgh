@@ -41,7 +41,7 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
   const smallStories = articles.slice(1, 4);
 
   return (
-    <div className="py-8 border-b border-[#E8D9C5]">
+    <div className="pt-8 pb-8 border-t border-[#E8D9C5]">
       {/* Section label */}
       <div className="flex items-center justify-between mb-5">
         <button
