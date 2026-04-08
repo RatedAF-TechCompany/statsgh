@@ -81,9 +81,9 @@ const Home = () => {
             {/* Zone A — Hero */}
             {leadArticle && (
               <div className="py-8 border-b border-[#E8D9C5]">
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_38%] min-h-[320px] gap-0">
+              <div className="grid grid-cols-1 lg:grid-cols-[58%_42%] items-start gap-0">
                   <article
-                    className="cursor-pointer group flex flex-col justify-center pr-6"
+                    className="cursor-pointer group flex flex-col justify-start pr-6"
                     onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
                   >
                     <span className="section-label">
@@ -122,11 +122,11 @@ const Home = () => {
             {/* Zone B — Secondary stories */}
             {secondaryArticles.length > 0 && (
               <div className="py-6 border-b border-[#E8D9C5]">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:divide-x md:divide-[#E8D9C5]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-stretch">
                   {secondaryArticles.map((article, i) => (
                     <article
                       key={article.id}
-                      className={`cursor-pointer group ${i === 0 ? "md:pr-6" : "md:pl-6"} ${i > 0 ? "mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-[#E8D9C5]" : ""}`}
+                      className={`cursor-pointer group flex flex-col ${i === 0 ? "md:pr-6 md:border-r md:border-[#E8D9C5]" : "md:pl-6"} ${i > 0 ? "mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-[#E8D9C5]" : ""}`}
                       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
                     >
                       <span className="section-label">
