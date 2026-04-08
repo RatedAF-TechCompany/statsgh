@@ -1,62 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* StatsGH Design System - Based on JSON spec */
-
 @layer base {
   :root {
-    /* FT-inspired color scheme */
-    --background: 40 34% 93%; /* #F7F1E1 cream */
-    --foreground: 0 0% 0%; /* #000000 black */
+    /* FT-inspired colour system */
+    --background: 33 100% 94%;        /* #FFF1E0 */
+    --foreground: 18 8% 18%;          /* #33302E */
     
-    /* Divider and borders */
-    --border: 35 28% 81%; /* #E0CDB5 light brown */
+    --card: 33 100% 98%;              /* #FFFAF4 */
+    --card-foreground: 18 8% 18%;     /* #33302E */
     
-    /* Text colors */
-    --primary-text: 0 0% 0%;
-    --muted-foreground: 27 6% 38%; /* #5F5A56 muted brown */
+    --popover: 33 100% 98%;
+    --popover-foreground: 18 8% 18%;
     
-    /* Red accent for categories */
-    --category-red: 346 100% 39%; /* #C70033 */
+    --primary: 183 83% 26%;           /* #0D7680 teal */
+    --primary-foreground: 33 100% 94%;
     
-    /* FT maroon for text */
-    --ft-maroon: 334 100% 30%; /* #9A0044 */
+    --secondary: 40 35% 54%;          /* #C9A84C gold */
+    --secondary-foreground: 18 8% 18%;
     
-    /* Card styling */
-    --card: 40 34% 93%;
-    --card-foreground: 0 0% 0%;
+    --muted: 33 47% 90%;              /* light cream */
+    --muted-foreground: 22 7% 37%;    /* #66605A */
     
-    /* Input and interactive elements */
-    --input: 35 28% 81%;
-    --ring: 0 0% 0%;
+    --accent: 33 47% 90%;
+    --accent-foreground: 18 8% 18%;
     
-    /* Secondary actions */
-    --secondary: 35 28% 81%;
-    --secondary-foreground: 0 0% 0%;
+    --destructive: 0 100% 40%;        /* #CC0000 */
+    --destructive-foreground: 0 0% 100%;
     
-    /* Muted backgrounds */
-    --muted: 35 20% 90%;
+    --border: 32 33% 85%;             /* #E8D9C5 */
+    --input: 32 33% 85%;
+    --ring: 183 83% 26%;
     
-    /* Popover */
-    --popover: 40 34% 93%;
-    --popover-foreground: 0 0% 0%;
+    /* Brand tokens */
+    --ft-teal: 183 83% 26%;           /* #0D7680 */
+    --ft-gold: 40 35% 54%;            /* #C9A84C */
+    --ft-slate: 18 8% 18%;            /* #33302E */
+    --ft-cream: 33 100% 94%;          /* #FFF1E0 */
+    --ft-warm-white: 33 100% 98%;     /* #FFFAF4 */
+    --ft-divider: 32 33% 85%;         /* #E8D9C5 */
+    --ft-muted: 22 7% 37%;            /* #66605A */
+    --ft-green: 160 100% 32%;         /* #00A36C */
+    --ft-red: 0 100% 40%;             /* #CC0000 */
     
-    /* Primary/Accent */
-    --primary: 0 0% 0%;
-    --primary-foreground: 40 34% 93%;
-    --accent: 35 28% 81%;
-    --accent-foreground: 0 0% 0%;
-    
-    /* Destructive */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 40 34% 93%;
-    
-    /* Accent colors */
-    --accent-green: 142 76% 36%;
+    /* Legacy compat */
+    --ft-maroon: 183 83% 26%;         /* now maps to teal */
+    --accent-green: 160 100% 32%;
     
     --radius: 0rem;
   }
@@ -69,58 +63,75 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.65;
   }
 }
 
 @layer utilities {
-  .font-serif {
-    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+  .font-headline {
+    font-family: 'Playfair Display', Georgia, serif;
   }
   
-  .font-sans {
+  .font-serif {
+    font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  
+  .font-sans,
+  .font-ui {
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+  
+  .section-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--ft-teal));
+    font-weight: 600;
   }
 }
 
 @layer components {
-  /* Article prose typography */
+  /* Article prose */
   .prose {
     color: hsl(var(--foreground));
-    line-height: 1.75;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.7;
   }
   
   .prose p {
     margin-top: 1.25em;
     margin-bottom: 1.25em;
-    line-height: 1.75;
   }
   
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-    color: hsl(var(--ft-maroon));
-    font-weight: 600;
-    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+    color: hsl(var(--foreground));
+    font-weight: 700;
+    font-family: 'Playfair Display', Georgia, serif;
     margin-top: 1.5em;
     margin-bottom: 0.75em;
-    line-height: 1.3;
+    line-height: 1.25;
   }
   
-  .prose h2 {
-    font-size: 1.5em;
-  }
-  
-  .prose h3 {
-    font-size: 1.25em;
-  }
+  .prose h2 { font-size: 1.5em; }
+  .prose h3 { font-size: 1.25em; }
   
   .prose strong {
-    font-weight: 600;
+    font-weight: 700;
     color: hsl(var(--foreground));
   }
   
   .prose a {
-    color: hsl(var(--ft-maroon));
+    color: hsl(var(--ft-teal));
     text-decoration: underline;
+    transition: color 200ms;
+  }
+  
+  .prose a:hover {
+    color: hsl(183 83% 20%);
   }
   
   .prose ul, .prose ol {
@@ -136,39 +147,24 @@
   
   .prose blockquote {
     font-style: italic;
-    border-left: 3px solid hsl(var(--ft-maroon));
+    font-family: 'Playfair Display', Georgia, serif;
+    border-left: 3px solid hsl(var(--ft-gold));
     padding-left: 1em;
     margin: 1.5em 0;
     color: hsl(var(--muted-foreground));
   }
 
-  /* Pen-style number highlighting in article content */
   .prose .number-highlight {
-    position: relative;
-    display: inline-block;
-    padding: 0.1em 0.3em;
-    margin: 0 0.1em;
-    background: hsl(334 60% 96%); /* Very faint maroon tint */
-    border-radius: 3px;
-    box-shadow: 0 0 0 1px hsla(334, 100%, 30%, 0.15);
-    font-weight: 500;
-    transition: all 0.2s ease;
+    font-weight: 700;
   }
-  
-  .prose .number-highlight::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%) scaleX(0.95);
-    width: 100%;
-    height: 1px;
-    background: hsla(334, 100%, 30%, 0.3);
-    border-radius: 50%;
+
+  /* Skeleton loader colour override */
+  .skeleton-ft {
+    background: hsl(var(--ft-divider));
   }
-  
-  .prose .number-highlight:hover {
-    background: hsl(334 60% 94%);
-    box-shadow: 0 0 0 1.5px hsla(334, 100%, 30%, 0.25);
-  }
+}
+
+/* Smooth hover transitions globally */
+a, button {
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
 }
