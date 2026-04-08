@@ -97,20 +97,21 @@
   /* Article prose */
   .prose {
     color: hsl(var(--foreground));
-    font-family: 'Source Serif 4', Georgia, serif;
+    font-family: 'PT Serif', Georgia, serif;
     font-size: 17px;
-    line-height: 1.7;
+    line-height: 1.75;
   }
   
   .prose p {
-    margin-top: 1.25em;
-    margin-bottom: 1.25em;
+    margin-top: 1.4em;
+    margin-bottom: 1.4em;
   }
   
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
     color: hsl(var(--foreground));
     font-weight: 700;
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Lora', Georgia, serif;
+    letter-spacing: -0.01em;
     margin-top: 1.5em;
     margin-bottom: 0.75em;
     line-height: 1.25;
@@ -147,7 +148,7 @@
   
   .prose blockquote {
     font-style: italic;
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Lora', Georgia, serif;
     border-left: 3px solid hsl(var(--ft-gold));
     padding-left: 1em;
     margin: 1.5em 0;
