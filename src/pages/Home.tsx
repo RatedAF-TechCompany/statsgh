@@ -105,7 +105,7 @@ const Home = () => {
                   {/* Hero image — 40% width, flush right */}
                   {leadArticle.hero_image_url && (
                     <div
-                      className="lg:col-span-4 cursor-pointer"
+                      className="cursor-pointer"
                       onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
                     >
                       <img
