@@ -83,13 +83,13 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
   return { success: true, tweetId: data?.data?.id };
 }
 
-// ── Numeric detection ──
+// ── Stat content detection (hard gate) ──
 
-const NUMERIC_REGEX = /[0-9]+/;
-const STAT_REGEX = /[0-9%$₵¢£€]/;
+const STAT_REGEX = /[0-9%$₵¢£€]|GHS|USD|GH¢/;
+const QUANTITY_WORDS = /\b(million|billion|thousand|tonnes|barrels|litres|km|MW|GW)\b/i;
 
-function containsNumericStatistic(text: string): boolean {
-  return NUMERIC_REGEX.test(text);
+function containsStatContent(text: string): boolean {
+  return STAT_REGEX.test(text) || QUANTITY_WORDS.test(text);
 }
 
 // (Date suffix logic removed — tweets post exactly as stored)
@@ -176,7 +176,7 @@ Original: ${text}`;
     // Validate the condensed result
     if (cleaned.length > 150) return null;
     if (!cleaned.endsWith(".")) return null;
-    if (!containsNumericStatistic(cleaned)) return null;
+    if (!containsStatContent(cleaned)) return null;
     const validation = validateTweet(cleaned);
     if (!validation.valid) return null;
 
@@ -251,7 +251,7 @@ const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for",
 
 function validateTweet(text: string): { valid: boolean; reason?: string } {
   // Must contain at least one number
-  if (!containsNumericStatistic(text)) return { valid: false, reason: "no_numeric_statistic" };
+  if (!containsStatContent(text)) return { valid: false, reason: "NO_STAT_CONTENT" };
   if (text.length > 150) return { valid: false, reason: "over_150_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
@@ -304,7 +304,7 @@ serve(async (req) => {
         }
         if (!text) continue;
         // Skip tweets with no numeric statistic
-        if (!containsNumericStatistic(text)) continue;
+        if (!containsStatContent(text)) continue;
         // Pre-condense tweets over 140 chars at save time
         if (text.length > 150) {
           const condensed = await condenseTweet(text);
@@ -470,12 +470,12 @@ serve(async (req) => {
       let tweetText = candidate.text;
 
       // Check numeric requirement
-      if (!containsNumericStatistic(tweetText)) {
+      if (!containsStatContent(tweetText)) {
         await supabase.from("tweet_scheduler_logs").insert({
           tweet_text: tweetText,
           category: candidate.category,
           status: "skipped",
-          reason: "no_numeric_statistic",
+          reason: "NO_STAT_CONTENT",
           cycle_id: cycleId,
         });
         queueHashes = queueHashes.filter(h => h !== candidate.hash);
