@@ -81,9 +81,9 @@ const Home = () => {
             {/* Zone A — Hero */}
             {leadArticle && (
               <div className="py-8 border-b border-[#E8D9C5]">
-                <div className="grid grid-cols-1 lg:grid-cols-10 min-h-[320px]">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_38%] min-h-[320px] gap-0">
                   <article
-                    className="lg:col-span-6 cursor-pointer group flex flex-col justify-center pr-6"
+                    className="cursor-pointer group flex flex-col justify-center pr-6"
                     onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
                   >
                     <span className="section-label">
@@ -132,7 +132,7 @@ const Home = () => {
                       <span className="section-label">
                         {getSectionLabel(article.category_slug)}
                       </span>
-                      <h2 className="font-headline text-[22px] md:text-[26px] font-bold leading-snug text-[#33302E] group-hover:text-[#0D7680] transition-colors mt-1">
+                      <h2 className="font-headline text-[26px] font-semibold leading-[1.2] text-[#33302E] group-hover:text-[#0D7680] transition-colors mt-1">
                         {article.title}
                       </h2>
                       {article.summary && (
