@@ -3,6 +3,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+// Clean display name mapping for commodity keys
+const COMMODITY_DISPLAY_NAMES: Record<string, string> = {
+  oil_brent: "Brent Crude",
+  brent: "Brent Crude",
+  oil_wti: "WTI Crude",
+  wti: "WTI Crude",
+  cocoa: "Cocoa",
+  gold: "Gold",
+  natural_gas: "Nat Gas",
+  nat_gas: "Nat Gas",
+  crude_oil: "Crude Oil",
+};
+
+function cleanCommodityName(raw: string): string {
+  const lower = raw.toLowerCase().trim();
+  if (COMMODITY_DISPLAY_NAMES[lower]) return COMMODITY_DISPLAY_NAMES[lower];
+  for (const [key, display] of Object.entries(COMMODITY_DISPLAY_NAMES)) {
+    if (lower.includes(key) || key.includes(lower)) return display;
+  }
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 const DataRail = () => {
   const navigate = useNavigate();
@@ -113,7 +134,7 @@ const DataRail = () => {
           <div className="space-y-0">
             {(commodities || []).slice(0, 4).map((c) => (
               <div key={c.id} className="flex items-center justify-between py-2 border-b border-[#E8D9C5]">
-                <span className="font-ui text-xs font-medium text-[#33302E]">{c.commodity}</span>
+                <span className="font-ui text-xs font-medium text-[#33302E]">{cleanCommodityName(c.commodity)}</span>
                 <div className="flex items-center gap-2">
                   <span className="font-ui text-sm font-semibold text-[#33302E]">
                     ${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
