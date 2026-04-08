@@ -2894,7 +2894,21 @@ Return ONLY valid JSON with these exact keys:
             authorName = authorMatch[1];
           }
 
-          // 6. Insert into articles table
+          // 6. Title quality gate — reject malformed titles
+          const titleToCheck = generated.headline || "";
+          const MALFORMED_CHARS = /[@#$\\|^]/;
+          const FRONT_PAGES = /front\s*pages?:/i;
+          const EXCESSIVE_CAPS = /[A-Z]{4,}/;
+          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || EXCESSIVE_CAPS.test(titleToCheck)) {
+            console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "MALFORMED_TITLE",
+            }).eq("id", item._newsroomArticleId);
+            continue;
+          }
+
+          // 7. Insert into articles table
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
