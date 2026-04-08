@@ -39,7 +39,8 @@ async function condenseTweetText(text: string): Promise<string | null> {
       const aiData = await aiRes.json();
       const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
       console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false})`);
-      if (condensed && condensed.length <= 150 && isCompleteSentence(condensed)) return condensed;
+      if (condensed && condensed.toUpperCase() === "SKIP") { console.log("AI returned SKIP — no usable stat"); return null; }
+      if (condensed && condensed.length <= 240 && isCompleteSentence(condensed)) return condensed;
 
     } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
   }
