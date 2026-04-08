@@ -251,7 +251,7 @@ const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for",
 
 function validateTweet(text: string): { valid: boolean; reason?: string } {
   // Must contain at least one number
-  if (!containsStatContent(text)) return { valid: false, reason: "no_numeric_statistic" };
+  if (!containsStatContent(text)) return { valid: false, reason: "NO_STAT_CONTENT" };
   if (text.length > 150) return { valid: false, reason: "over_150_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
@@ -475,7 +475,7 @@ serve(async (req) => {
           tweet_text: tweetText,
           category: candidate.category,
           status: "skipped",
-          reason: "no_numeric_statistic",
+          reason: "NO_STAT_CONTENT",
           cycle_id: cycleId,
         });
         queueHashes = queueHashes.filter(h => h !== candidate.hash);
