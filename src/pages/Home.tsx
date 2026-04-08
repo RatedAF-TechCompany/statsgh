@@ -81,15 +81,15 @@ const Home = () => {
             {/* Zone A — Hero */}
             {leadArticle && (
               <div className="py-8 border-b border-[#E8D9C5]">
-                <div className="grid grid-cols-1 lg:grid-cols-6 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-10 min-h-[320px]">
                   <article
-                    className="lg:col-span-4 cursor-pointer group"
+                    className="lg:col-span-6 cursor-pointer group flex flex-col justify-center pr-6"
                     onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
                   >
                     <span className="section-label">
                       {getSectionLabel(leadArticle.category_slug)}
                     </span>
-                    <h1 className="font-headline text-[32px] md:text-[44px] font-bold leading-[1.1] text-[#33302E] group-hover:text-[#0D7680] transition-colors mt-2">
+                    <h1 className="font-headline text-[36px] md:text-[48px] font-bold leading-[1.08] text-[#33302E] group-hover:text-[#0D7680] transition-colors mt-2">
                       {leadArticle.title}
                     </h1>
                     {leadArticle.summary && (
@@ -102,16 +102,16 @@ const Home = () => {
                     </span>
                   </article>
 
-                  {/* Hero image */}
+                  {/* Hero image — 40% width, flush right */}
                   {leadArticle.hero_image_url && (
                     <div
-                      className="lg:col-span-2 cursor-pointer"
+                      className="lg:col-span-4 cursor-pointer"
                       onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
                     >
                       <img
                         src={leadArticle.hero_image_url}
                         alt={leadArticle.title}
-                        className="w-full aspect-[4/3] object-cover"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   )}

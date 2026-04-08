@@ -23,7 +23,31 @@ interface IndicatorItem {
   label: string;
   value: string;
   change: number | null;
-  isGold?: boolean;
+}
+
+// Clean display name mapping for commodity keys
+const COMMODITY_DISPLAY_NAMES: Record<string, string> = {
+  oil_brent: "Brent Crude",
+  brent: "Brent Crude",
+  oil_wti: "WTI Crude",
+  wti: "WTI Crude",
+  cocoa: "Cocoa",
+  gold: "Gold",
+  natural_gas: "Nat Gas",
+  nat_gas: "Nat Gas",
+  crude_oil: "Crude Oil",
+};
+
+function cleanCommodityName(raw: string): string {
+  const lower = raw.toLowerCase().trim();
+  // Check exact match first
+  if (COMMODITY_DISPLAY_NAMES[lower]) return COMMODITY_DISPLAY_NAMES[lower];
+  // Check substring match
+  for (const [key, display] of Object.entries(COMMODITY_DISPLAY_NAMES)) {
+    if (lower.includes(key) || key.includes(lower)) return display;
+  }
+  // Fallback: title-case the raw name
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 const EconomicIndicatorStrip = () => {
@@ -37,7 +61,6 @@ const EconomicIndicatorStrip = () => {
         .order("fetched_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      // Dedupe by base_currency, keep latest
       const seen = new Set<string>();
       return (data || []).filter((r) => {
         const key = r.base_currency || "";
@@ -83,23 +106,13 @@ const EconomicIndicatorStrip = () => {
     }
   });
 
-  // Commodities
-  const wantedCommodities = [
-    { key: "Gold", label: "Gold" },
-    { key: "Cocoa", label: "Cocoa" },
-    { key: "Crude Oil", label: "Crude Oil" },
-  ];
-  wantedCommodities.forEach(({ key, label }) => {
-    const c = commodities?.find(
-      (cm) => cm.commodity.toLowerCase().includes(key.toLowerCase())
-    );
-    if (c) {
-      items.push({
-        label,
-        value: `$${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-        change: c.change_percent,
-      });
-    }
+  // Commodities — use clean display names
+  (commodities || []).forEach((c) => {
+    items.push({
+      label: cleanCommodityName(c.commodity),
+      value: `$${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      change: c.change_percent,
+    });
   });
 
   const isLoading = !currencies && !commodities;

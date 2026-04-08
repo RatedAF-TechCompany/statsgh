@@ -2894,7 +2894,21 @@ Return ONLY valid JSON with these exact keys:
             authorName = authorMatch[1];
           }
 
-          // 6. Insert into articles table
+          // 6. Title quality gate — reject malformed titles
+          const titleToCheck = generated.headline || "";
+          const MALFORMED_CHARS = /[@#$\\|^]/;
+          const FRONT_PAGES = /front\s*pages?:/i;
+          const EXCESSIVE_CAPS = /[A-Z]{4,}/;
+          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || EXCESSIVE_CAPS.test(titleToCheck)) {
+            console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: "MALFORMED_TITLE",
+            }).eq("id", item._newsroomArticleId);
+            continue;
+          }
+
+          // 7. Insert into articles table
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3026,6 +3040,20 @@ Return ONLY valid JSON with these exact keys:
               .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80) + "-" + Date.now();
             const categorySlug = pendingItem.category_hint || "top-stories";
             const categoryId = await ensureCategoryExists(supabase, categorySlug);
+
+            // Title quality gate for pending_ai fallback
+            const pendingTitle = pendingItem.original_headline || "";
+            const MALFORMED_CHARS_P = /[@#$\\|^]/;
+            const FRONT_PAGES_P = /front\s*pages?:/i;
+            const EXCESSIVE_CAPS_P = /[A-Z]{4,}/;
+            if (MALFORMED_CHARS_P.test(pendingTitle) || FRONT_PAGES_P.test(pendingTitle) || pendingTitle.length < 20 || EXCESSIVE_CAPS_P.test(pendingTitle)) {
+              console.log(`❌ REJECTED pending_ai (MALFORMED_TITLE): "${pendingTitle.substring(0, 60)}"`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: "MALFORMED_TITLE",
+              }).eq("id", pendingItem.id);
+              continue;
+            }
 
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
