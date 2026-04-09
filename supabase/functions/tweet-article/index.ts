@@ -19,6 +19,12 @@ function isCompleteSentence(text: string): boolean {
   return true;
 }
 
+// ── Present perfect tense validator ──
+function hasPresentPerfectTense(text: string): boolean {
+  const first60 = text.substring(0, 60).toLowerCase();
+  return first60.includes(" has ") || first60.includes(" have ");
+}
+
 async function condenseTweetText(text: string): Promise<string | null> {
   const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_KEY) { console.error("LOVABLE_API_KEY not set"); return null; }
@@ -30,7 +36,29 @@ async function condenseTweetText(text: string): Promise<string | null> {
         headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
            body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: `You are StatsGH, Ghana's premier data journalism account. Write a single tweet of maximum 240 characters about this article. The tweet MUST include at least one specific number, percentage, currency figure, or measurable quantity from the article. Lead with the stat, not the actor. Do not use reported speech constructions like "X has said" or "Y has announced". Write in declarative, factual style. Sentence case only — capitalize only proper nouns.\n\nExample good tweet: "Ghana inflation falls to 23.2% in February 2026, down from 54% peak in 2022."\nExample bad tweet: "Bank of Ghana has announced new measures to tackle inflation."\n\nRULES:\n- MUST contain at least one number, percentage, or currency figure\n- Lead with the statistic\n- Maximum 240 characters\n- Must end with a period\n- No emojis, hashtags, links, or dashes\n- Sentence case (not title case)\n- Use "GHS" for Ghana cedi values\n- If the article contains no usable statistic, respond with SKIP\n- Output ONLY the tweet or SKIP\n\nOriginal: ${text}` }],
+          messages: [{ role: "user", content: `You are StatsGH, Ghana's premier data journalism account. Write a single tweet of maximum 240 characters about this article. The tweet MUST include at least one specific number, percentage, currency figure, or measurable quantity from the article.
+
+TENSE RULE (CRITICAL — MUST FOLLOW):
+- The tweet MUST be written in present perfect tense: [Subject] has/have [past participle] [rest of sentence].
+- The subject should be the main actor in the article (a company, institution, government, country, or person).
+- Example correct form: "Ghana has secured $500 million from the World Bank for infrastructure development."
+- Example correct form: "Cocoa prices have risen 15% in Q1 2026 to $8,200 per tonne."
+- Example wrong form: "Ghana secures $500 million." (simple present — WRONG)
+- Example wrong form: "Ghana secured $500 million." (simple past — WRONG)
+- Never use simple present tense or simple past tense.
+- Always lead with the subject, then "has" or "have", then the past participle.
+
+RULES:
+- MUST contain at least one number, percentage, or currency figure
+- Maximum 240 characters
+- Must end with a period
+- No emojis, hashtags, links, or dashes
+- Sentence case (not title case) — capitalize only proper nouns
+- Use "GHS" for Ghana cedi values
+- If the article contains no usable statistic, respond with SKIP
+- Output ONLY the tweet or SKIP
+
+Original: ${text}` }],
           max_tokens: 100,
           temperature: attempt === 0 ? 0.3 : 0.5,
         }),
@@ -38,12 +66,19 @@ async function condenseTweetText(text: string): Promise<string | null> {
       if (!aiRes.ok) { console.error(`AI attempt ${attempt} failed: ${aiRes.status}`); continue; }
       const aiData = await aiRes.json();
       const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
-      console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false})`);
+      console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false}, tense=${condensed ? hasPresentPerfectTense(condensed) : false})`);
       if (condensed && condensed.toUpperCase() === "SKIP") { console.log("AI returned SKIP — no usable stat"); return null; }
-      if (condensed && condensed.length <= 240 && isCompleteSentence(condensed)) return condensed;
+      if (condensed && condensed.length <= 240 && isCompleteSentence(condensed)) {
+        if (!hasPresentPerfectTense(condensed)) {
+          console.log(`[tweet-article] Attempt ${attempt}: WRONG_TENSE — "${condensed}"`);
+          continue;
+        }
+        return condensed;
+      }
 
     } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
   }
+  console.log("[tweet-article] condenseTweetText failed after 2 attempts (WRONG_TENSE or other)");
   return null;
 }
 
@@ -359,14 +394,15 @@ serve(async (req) => {
         tweetText = `${tweetText} ${articleUrl}`;
       }
     } else {
-      // Enforce 150 char limit and completeness via AI — NO naive truncation
-      if (tweetText.length > 150 || !isCompleteSentence(tweetText)) {
+      // Enforce 150 char limit, completeness, and present perfect tense via AI
+      if (tweetText.length > 150 || !isCompleteSentence(tweetText) || !hasPresentPerfectTense(tweetText)) {
         const condensed = await condenseTweetText(tweetText);
         if (condensed) {
           tweetText = condensed;
         } else {
+          console.log(`[tweet-article] WRONG_TENSE or condense failure for article ${articleId}`);
           return new Response(
-            JSON.stringify({ error: "Could not condense tweet to a complete sentence under 150 chars" }),
+            JSON.stringify({ error: "Could not generate a valid present-perfect-tense tweet", reason: "WRONG_TENSE" }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }

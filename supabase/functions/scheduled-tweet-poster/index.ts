@@ -92,6 +92,12 @@ function containsStatContent(text: string): boolean {
   return STAT_REGEX.test(text) || QUANTITY_WORDS.test(text);
 }
 
+// ── Present perfect tense validator ──
+function hasPresentPerfectTense(text: string): boolean {
+  const first60 = text.substring(0, 60).toLowerCase();
+  return first60.includes(" has ") || first60.includes(" have ");
+}
+
 // ── AI condensation ──
 
 async function condenseTweet(text: string): Promise<string | null> {
@@ -99,6 +105,14 @@ async function condenseTweet(text: string): Promise<string | null> {
   if (!LOVABLE_API_KEY) { console.error("[scheduled-tweet-poster] LOVABLE_API_KEY not set"); return null; }
 
   const prompt = `Rewrite into ONE complete English sentence UNDER 150 characters. The tweet MUST contain at least one number.
+
+TENSE RULE (CRITICAL — MUST FOLLOW):
+- The tweet MUST be written in present perfect tense: [Subject] has/have [past participle] [rest of sentence].
+- Example correct form: Ghana has secured $500 million from the World Bank for infrastructure improvements in roads and energy.
+- Example wrong form: Ghana secures $500 million.
+- Example wrong form: Ghana secured $500 million.
+- Example wrong form: Ghana has said it will secure.
+- Always lead with the subject, then "has" or "have", then the past participle.
 
 SENTENCE CASE RULES (CRITICAL):
 - Write as a normal English sentence, NOT a headline.
@@ -116,39 +130,48 @@ STRICT RULES:
 
 Original: ${text}`;
 
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 100,
-        temperature: 0.3,
-      }),
-    });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 100,
+          temperature: attempt === 0 ? 0.3 : 0.5,
+        }),
+      });
 
-    if (!res.ok) { console.error("[scheduled-tweet-poster] AI condensation failed:", res.status); return null; }
+      if (!res.ok) { console.error(`[scheduled-tweet-poster] AI attempt ${attempt} failed:`, res.status); continue; }
 
-    const data = await res.json();
-    const condensed = data.choices?.[0]?.message?.content?.trim();
-    if (!condensed) return null;
+      const data = await res.json();
+      const condensed = data.choices?.[0]?.message?.content?.trim();
+      if (!condensed) continue;
 
-    const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
-    if (cleaned.length > 150) return null;
-    if (!cleaned.endsWith(".")) return null;
-    if (!containsStatContent(cleaned)) return null;
-    const validation = validateTweet(cleaned);
-    if (!validation.valid) return null;
+      const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
+      if (cleaned.length > 150) continue;
+      if (!cleaned.endsWith(".")) continue;
+      if (!containsStatContent(cleaned)) continue;
+      const validation = validateTweet(cleaned);
+      if (!validation.valid) continue;
 
-    return cleaned;
-  } catch (err) {
-    console.error("[scheduled-tweet-poster] AI condensation error:", err);
-    return null;
+      if (!hasPresentPerfectTense(cleaned)) {
+        console.log(`[scheduled-tweet-poster] Attempt ${attempt}: WRONG_TENSE — "${cleaned}"`);
+        continue;
+      }
+
+      return cleaned;
+    } catch (err) {
+      console.error(`[scheduled-tweet-poster] AI attempt ${attempt} error:`, err);
+    }
   }
+
+  console.log(`[scheduled-tweet-poster] condenseTweet failed after 2 attempts (WRONG_TENSE or other)`);
+  return null;
 }
 
 // ── Time helpers for Africa/Accra (UTC+0) ──
