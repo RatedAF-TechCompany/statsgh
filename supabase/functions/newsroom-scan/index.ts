@@ -2948,8 +2948,11 @@ Return ONLY valid JSON with these exact keys:
           const titleToCheck = generated.headline || "";
           const MALFORMED_CHARS = /[@#$\\|^]/;
           const FRONT_PAGES = /front\s*pages?:/i;
-          const EXCESSIVE_CAPS = /[A-Z]{4,}/;
-          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || EXCESSIVE_CAPS.test(titleToCheck)) {
+          // Only reject if >50% of words are ALL CAPS (allows acronyms like NPRA, GNPC, PIAC)
+          const words = titleToCheck.split(/\s+/);
+          const allCapsWords = words.filter(w => w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w));
+          const excessiveCaps = allCapsWords.length > words.length * 0.5;
+          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || excessiveCaps) {
             console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
