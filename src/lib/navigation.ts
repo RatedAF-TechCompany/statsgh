@@ -1,3 +1,5 @@
+import { getSectionForCategory } from "@/lib/sectionMapping";
+
 export const SITE_SECTIONS = [
   { label: "Top Stories", slug: "top-stories", href: "/" },
   { label: "Economy", slug: "economy", href: "/economy" },
@@ -13,40 +15,23 @@ export const SITE_SECTIONS = [
   { label: "World", slug: "world", href: "/world" },
 ] as const;
 
-// Map old category slugs to new sections
-export const CATEGORY_TO_SECTION: Record<string, string> = {
-  "macroeconomy": "economy",
-  "markets": "markets-data",
-  "public-finance": "economy",
-  "banking-and-finance": "business",
-  "energy-and-utilities": "energy-resources",
-  "trade-and-industry": "business",
-  "corporate-ghana": "companies",
-  "agriculture-and-commodities": "agriculture",
-  "infrastructure-and-transport": "business",
-  "data-and-research": "research",
-  "regulation-and-policy": "politics-policy",
-  "technology-and-digital-economy": "technology",
-  "labour-and-jobs": "economy",
-  "regional-economy": "world",
-  "ghanacrimes": "top-stories",
-};
-
 export const SECTION_LABEL: Record<string, string> = Object.fromEntries(
   SITE_SECTIONS.map(s => [s.slug, s.label])
 );
 
 // Get section label for a category_slug
 export const getSectionLabel = (categorySlug: string): string => {
-  const sectionSlug = CATEGORY_TO_SECTION[categorySlug] || "top-stories";
+  const sectionSlug = getSectionForCategory(categorySlug);
   return SECTION_LABEL[sectionSlug] || "Top Stories";
 };
 
 export const getSectionSlug = (categorySlug: string): string => {
-  return CATEGORY_TO_SECTION[categorySlug] || "top-stories";
+  return getSectionForCategory(categorySlug);
 };
 
 // Keep old exports for backward compatibility
+export const CATEGORY_TO_SECTION: Record<string, string> = {};
+
 export const SITE_NAVIGATION = {
   name: "StatsGH",
   defaultCountry: "Ghana",
@@ -91,7 +76,20 @@ export const CATEGORY_MAPPING = {
   "technology-and-digital-economy": "Technology and Digital Economy",
   "labour-and-jobs": "Labour and Jobs",
   "regional-economy": "Regional Economy",
-  "ghanacrimes": "GhanaCrimes"
+  "ghanacrimes": "GhanaCrimes",
+  // Section-level labels
+  "top-stories": "Top Stories",
+  "economy": "Economy",
+  "markets-data": "Markets & Data",
+  "business": "Business",
+  "politics-policy": "Politics & Policy",
+  "energy-resources": "Energy & Resources",
+  "agriculture": "Agriculture",
+  "technology": "Technology",
+  "companies": "Companies",
+  "opinion-analysis": "Opinion & Analysis",
+  "research": "Research",
+  "world": "World",
 } as const;
 
 export type CategorySlug = keyof typeof CATEGORY_MAPPING;

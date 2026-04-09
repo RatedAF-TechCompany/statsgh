@@ -24,7 +24,28 @@ function collapseImmediateWordRepeats(input: string): string {
   return s;
 }
 
-// ============================================
+// Section mapping — mirrors src/lib/sectionMapping.ts
+const SECTION_TO_CATEGORIES: Record<string, string[]> = {
+  'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news'],
+  'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy'],
+  'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities'],
+  'business': ['banking-and-finance', 'trade-and-industry', 'infrastructure-and-transport', 'business', 'corporate', 'sme'],
+  'politics-policy': ['regulation-and-policy', 'politics-policy', 'politics', 'governance', 'parliament'],
+  'energy-resources': ['energy-and-utilities', 'energy-resources', 'energy', 'oil-gas', 'mining', 'utilities'],
+  'agriculture': ['agriculture-and-commodities', 'agriculture', 'farming', 'cocoa', 'food'],
+  'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms'],
+  'companies': ['corporate-ghana', 'companies', 'corporate', 'banking', 'insurance'],
+  'opinion-analysis': ['opinion-analysis', 'opinion', 'analysis', 'commentary', 'editorial'],
+  'research': ['data-and-research', 'research', 'academic', 'report', 'survey'],
+  'world': ['regional-economy', 'world', 'africa', 'international', 'global'],
+};
+function getSectionForCategory(categorySlug: string): string {
+  for (const [section, categories] of Object.entries(SECTION_TO_CATEGORIES)) {
+    if (categories.includes(categorySlug)) return section;
+  }
+  return 'top-stories';
+}
+
 // STATSGH NEWSROOM MASTER CONFIGURATION V2.0
 // Major refactor: Qualifying numbers, not just any numbers
 // ============================================
@@ -2891,7 +2912,7 @@ Return ONLY valid JSON with these exact keys:
               title: generated.headline,
               slug: uniqueSlug,
               category_slug: categorySlug,
-              section: categorySlug,
+              section: getSectionForCategory(categorySlug),
               summary: generated.summary || "",
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description || null,
@@ -3171,7 +3192,7 @@ Return ONLY valid JSON with these exact keys:
                 seo_description: pendingGenerated.seo_description || null,
                 meta_title: pendingGenerated.headline || pendingItem.original_headline,
                 author_name: pendingGenerated.author_name || "StatsGH Newsroom",
-                section: finalCategorySlug,
+                section: getSectionForCategory(finalCategorySlug),
                 category_slug: finalCategorySlug,
                 category_id: finalCategoryId,
                 is_published: true,

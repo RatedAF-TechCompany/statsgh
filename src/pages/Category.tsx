@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
+import { getCategoriesForSection } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
 
 const ARTICLES_PER_PAGE = 20;
@@ -28,22 +29,26 @@ const Category = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
+  const categorySlugs = categoryParam ? getCategoriesForSection(categoryParam) : [];
+
   const { data: articlesData, isLoading } = useQuery({
     queryKey: ["category-articles", categoryParam, currentPage],
     queryFn: async () => {
       const from = (currentPage - 1) * ARTICLES_PER_PAGE;
       const to = from + ARTICLES_PER_PAGE - 1;
+
+      // Query by both category_slug (mapped values) AND section column for full coverage
       const { data, error } = await supabase
         .from("articles")
         .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
-        .eq("category_slug", categoryParam)
+        .or(`category_slug.in.(${categorySlugs.map(s => `"${s}"`).join(',')}),section.eq.${categoryParam}`)
         .order("published_at", { ascending: false })
         .range(from, to);
       if (error) throw error;
       return data;
     },
-    enabled: !!categoryParam,
+    enabled: categorySlugs.length > 0,
   });
 
   const articles = articlesData || [];
