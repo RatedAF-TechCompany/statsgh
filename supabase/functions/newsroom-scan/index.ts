@@ -2961,6 +2961,9 @@ Return ONLY valid JSON with these exact keys:
           // 8. Insert into articles table
           // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
+          const baseSlug = (generated.slug || generated.headline || item.title)
+            .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
+          const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
