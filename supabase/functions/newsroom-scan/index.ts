@@ -2014,16 +2014,17 @@ serve(async (req) => {
     }> = [];
 
     const sourcesToFetch = isBackfill
-      ? RSS_SOURCES.filter((s) => {
-          const isFast = FAST_PUBLISH_DOMAINS.has(s.domain);
-          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || s.domain.includes(targetSource.toLowerCase());
+      ? cappedSources.filter((s: any) => {
+          const domain = sourceNameToDomain.get(s.name) || "";
+          const isFast = FAST_PUBLISH_DOMAINS.has(domain);
+          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || domain.includes(targetSource.toLowerCase());
           return isFast && matchesTarget;
         })
-      : RSS_SOURCES;
+      : cappedSources;
 
-    const feedPromises = sourcesToFetch.map(async (source) => {
-      console.log(`Fetching RSS from ${source.name}: ${source.rss}`);
-      const xml = await fetchRssFeed(source.rss);
+    const feedPromises = sourcesToFetch.map(async (source: any) => {
+      console.log(`Fetching RSS from ${source.name}: ${source.rss_url}`);
+      const xml = await fetchRssFeed(source.rss_url);
       if (xml) {
         const items = parseRssXml(xml, source.name);
         console.log(`${source.name}: Found ${items.length} items`);
