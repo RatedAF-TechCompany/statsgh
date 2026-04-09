@@ -2236,11 +2236,24 @@ serve(async (req) => {
       // Previously rejected articles without numbers in headline (HEADLINE_NO_NUMBER)
       // Now we only check body-level number quality after fetching full text
 
+      // Early exit: if we already have enough qualifying articles, stop processing
+      if (qualifyingArticles.length >= maxArticlesPerRun) {
+        console.log(`Reached max qualifying articles (${maxArticlesPerRun}), stopping candidate processing`);
+        break;
+      }
+
+      // CPU budget guard: stop fetching full pages after cap reached
+      if (pageFetchCount >= MAX_PAGE_FETCHES_PER_RUN) {
+        console.log(`Page fetch cap reached (${MAX_PAGE_FETCHES_PER_RUN}), skipping remaining candidates`);
+        break;
+      }
+
       // Fetch full text for content analysis (only for articles that passed headline check)
       let fullText = rssText;
       let fullPageHtml: string | null = null;
       
       console.log(`Fetching full page for: ${article.link}`);
+      pageFetchCount++;
       const pageText = await fetchFullPageText(article.link);
       
       if (pageText) {
