@@ -51,10 +51,10 @@ function getSectionForCategory(categorySlug: string): string {
 // ============================================
 const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 8; // Cap at 8 to stay within CPU limits
-const AI_BATCH_SIZE = 8; // Max articles to process through AI per invocation
+const DEFAULT_MAX_ARTICLES_PER_RUN = 16; // V4.0: Increased to 16 (4 runs/hr × 16 = 64/hr)
+const AI_BATCH_SIZE = 16; // V4.0: Increased from 8 to 16 for 15-min scan cadence
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
-const MAX_PAGE_FETCHES_PER_RUN = 20; // Hard cap on full-page fetches to stay within CPU time
+const MAX_PAGE_FETCHES_PER_RUN = 30; // V4.0: Increased from 20 to handle more sources
 
 // "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
 const AUTO_PASS_DOMAINS = new Set<string>([
@@ -1859,8 +1859,8 @@ serve(async (req) => {
     console.log(`Loaded ${activeDbSources.length} active sources from database`);
 
     // Priority rotation: Tier 1-2 every run, Tier 3-6 every 2nd run, Tier 7-10 every 3rd run
-    const runCount = Date.now(); // Use timestamp as pseudo run counter
-    const runMod = Math.floor(runCount / (60 * 60 * 1000)) % 3; // changes every hour, cycles 0-1-2
+    const runCount = Date.now();
+    const runMod = Math.floor(runCount / (15 * 60 * 1000)) % 3; // V4.0: changes every 15 min, cycles 0-1-2
     
     const sourcesThisRun = activeDbSources.filter((s: any) => {
       const tier = s.priority_tier || 5;
@@ -1869,8 +1869,8 @@ serve(async (req) => {
       return runMod === 0; // every 3rd run
     });
 
-    // Cap at 50 sources per run
-    const MAX_SOURCES_PER_RUN = 15;
+    // V4.0: Increased cap from 15 to 30 sources per run
+    const MAX_SOURCES_PER_RUN = 30;
     const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
     console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
 
@@ -1887,8 +1887,11 @@ serve(async (req) => {
 
     // Track which sources are international (tier 9) for Ghana relevance filtering
     const internationalSources = new Set<string>();
+    // Track Tier 1 sources for fast-track (skip Ghana relevance filter entirely)
+    const tier1Sources = new Set<string>();
     for (const s of cappedSources) {
       if ((s.priority_tier || 5) >= 9) internationalSources.add(s.name);
+      if ((s.priority_tier || 5) <= 1) tier1Sources.add(s.name);
     }
 
     const isFastPublishSource = (sourceName: string): boolean => {
@@ -1900,6 +1903,11 @@ serve(async (req) => {
     const isAutoPassSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
       return domain ? AUTO_PASS_DOMAINS.has(domain) : false;
+    };
+    
+    // V4.0: Tier 1 fast-track — skip Ghana relevance filter entirely
+    const isTier1Source = (sourceName: string): boolean => {
+      return tier1Sources.has(sourceName);
     };
 
     const isOpinionSource = (sourceName: string): boolean => {
@@ -2044,22 +2052,33 @@ serve(async (req) => {
         })
       : cappedSources;
 
-    const feedPromises = sourcesToFetch.map(async (source: any) => {
-      console.log(`Fetching RSS from ${source.name}: ${source.rss_url}`);
-      const xml = await fetchRssFeed(source.rss_url);
-      if (xml) {
-        const items = parseRssXml(xml, source.name);
-        console.log(`${source.name}: Found ${items.length} items`);
-        await updateSourceHealth(supabase, source.name, true, items.length);
-        return items;
-      } else {
-        await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
-      }
-      return [];
-    });
+    // V4.0: PARALLEL RSS FETCHING — batch by tier for maximum speed
+    const tier12Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) <= 2);
+    const tier36Sources = sourcesToFetch.filter((s: any) => { const t = s.priority_tier || 5; return t >= 3 && t <= 6; });
+    const tier710Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) >= 7);
 
-    const feedResults = await Promise.all(feedPromises);
-    feedResults.forEach(items => allArticles.push(...items));
+    const fetchBatch = async (batch: any[]) => {
+      const results = await Promise.allSettled(batch.map(async (source: any) => {
+        const xml = await fetchRssFeed(source.rss_url);
+        if (xml) {
+          const items = parseRssXml(xml, source.name);
+          await updateSourceHealth(supabase, source.name, true, items.length);
+          return items;
+        } else {
+          await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
+          return [];
+        }
+      }));
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    };
+
+    console.log(`Fetching RSS in parallel: Tier 1-2 (${tier12Sources.length}), Tier 3-6 (${tier36Sources.length}), Tier 7-10 (${tier710Sources.length})`);
+    const [batch1, batch2, batch3] = await Promise.all([
+      fetchBatch(tier12Sources),
+      fetchBatch(tier36Sources),
+      fetchBatch(tier710Sources),
+    ]);
+    allArticles.push(...batch1, ...batch2, ...batch3);
 
     console.log(`Total RSS items fetched: ${allArticles.length}`);
 
@@ -2160,8 +2179,9 @@ serve(async (req) => {
         }
       }
 
+      // V4.0: Tier 1 sources fast-track — skip Ghana relevance filter entirely
       // Ghana relevance filter for international sources (tier 9+)
-      if (internationalSources.has(article.source_name)) {
+      if (!isTier1Source(article.source_name) && internationalSources.has(article.source_name)) {
         const ghanaTerms = /\b(ghana|ghanaian|accra|ghs|cedi|gse|bog|bank\s+of\s+ghana|cocobod|gra|mof|gipc)\b/i;
         const textToCheck = `${article.title} ${article.description || ""}`;
         if (!ghanaTerms.test(textToCheck)) {
@@ -2222,8 +2242,8 @@ serve(async (req) => {
         continue;
       }
 
-      // V2.0: Score-based Ghana relevance check (auto-pass sources skip this)
-      if (!isAutoPass) {
+      // V2.0: Score-based Ghana relevance check (auto-pass and Tier 1 sources skip this)
+      if (!isAutoPass && !isTier1Source(article.source_name)) {
         const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
         if (!ghanaCheck.passes) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
@@ -2346,28 +2366,27 @@ serve(async (req) => {
         continue;
       }
 
-      // V6.0: Two-tier deduplication — relaxed
-      // Tier 1: Fast title-keyword overlap (5+ shared content words in title = immediate reject)
-      // Tier 2: Composite semantic similarity on title+summary (90% threshold)
-      const KEYWORD_OVERLAP_MIN = 5; // 5+ shared title keywords = same story
-      const SEMANTIC_THRESHOLD = 0.90; // composite threshold for title+summary (was 0.25)
-      const cutoff48h = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h lookback (was 48h)
+      // V4.0: Smart dedup windows — 4h for exact title, 12h for semantic
+      const KEYWORD_OVERLAP_MIN = 5;
+      const SEMANTIC_THRESHOLD = 0.90;
+      const cutoffExact = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(); // 4h for title match
+      const cutoffSemantic = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h for semantic
       const candidateText = [article.title, article.summary || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
-      // Fetch ALL recent articles (including drafts from pipeline)
+      // Fetch recent articles using the SHORTER window for title keyword match
       const { data: recentArticles } = await supabase
         .from("articles")
-        .select("id, title, summary")
-        .gte("created_at", cutoff48h)
+        .select("id, title, summary, created_at")
+        .gte("created_at", cutoffExact)
         .order("created_at", { ascending: false })
         .limit(100);
 
-      // Fetch recent newsroom articles
+      // Fetch recent newsroom articles using the LONGER window for semantic match
       const { data: recentNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline, original_summary")
-        .gte("created_at", cutoff48h)
+        .select("id, original_headline, original_summary, created_at")
+        .gte("created_at", cutoffSemantic)
         .order("created_at", { ascending: false })
         .limit(80);
 
@@ -2496,8 +2515,21 @@ serve(async (req) => {
       });
     }
 
-    // Sort by date and limit
-    qualifyingArticles.sort((a, b) => b._pubDateParsed.getTime() - a._pubDateParsed.getTime());
+    // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
+    qualifyingArticles.sort((a, b) => {
+      const tierA = sourceTierMap.get(a.source_name) || 5;
+      const tierB = sourceTierMap.get(b.source_name) || 5;
+      // Tier 1 sources first
+      if (tierA <= 1 && tierB > 1) return -1;
+      if (tierB <= 1 && tierA > 1) return 1;
+      // Then by recency
+      const timeDiff = b._pubDateParsed.getTime() - a._pubDateParsed.getTime();
+      if (Math.abs(timeDiff) > 5 * 60 * 1000) return timeDiff; // >5 min difference matters
+      // Then by having numbers in headline
+      const aHasNums = a._numbersFoundQualifying.length > 0 ? -1 : 0;
+      const bHasNums = b._numbersFoundQualifying.length > 0 ? -1 : 0;
+      return aHasNums - bHasNums;
+    });
 
     // ── Cross-source headline dedup (80% word overlap) ──
     // Keep the article from the higher-priority tier source
@@ -2772,7 +2804,11 @@ Return ONLY valid JSON with these exact keys:
 "instagram_post": ""
 }`;
 
-          console.log("Calling AI for article restructuring...");
+          // V4.0: MODEL TIERING — breaking news (published <30 min ago) uses flash-lite for speed
+          const sourcePubAge = Date.now() - item._pubDateParsed.getTime();
+          const isBreakingNews = sourcePubAge < 30 * 60 * 1000 && isTier1Source(item.source_name);
+          const aiModel = isBreakingNews ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
+          console.log(`Calling AI (${aiModel}${isBreakingNews ? " BREAKING" : ""}) for article restructuring...`);
           const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -2780,7 +2816,7 @@ Return ONLY valid JSON with these exact keys:
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
+              model: aiModel,
               messages: [
                 { role: "user", content: aiPrompt },
               ],
@@ -2921,6 +2957,8 @@ Return ONLY valid JSON with these exact keys:
           }
 
           // 8. Insert into articles table
+          // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
+          // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -2935,8 +2973,10 @@ Return ONLY valid JSON with these exact keys:
               author_name: authorName,
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
+              source_published_at: item._pubDateParsed.toISOString(),
               is_published: true,
               is_wire: false,
+              is_breaking: isBreakingNews,
               word_count: wordCount,
               dedupe_key: item._dedupeKey,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),

@@ -13,6 +13,7 @@ interface LeadStoryProps {
     hero_image_url?: string | null;
     published_at?: string | null;
     word_count?: number | null;
+    is_breaking?: boolean;
   };
 }
 
@@ -49,6 +50,11 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
         </div>
       )}
       <div className="space-y-2">
+        {article.is_breaking && (
+          <span className="inline-block bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
+            Breaking
+          </span>
+        )}
         <p className="font-sans text-xs uppercase tracking-wider text-ft-maroon font-semibold">
           {categoryLabel}
         </p>
