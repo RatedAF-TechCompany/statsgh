@@ -1,0 +1,1 @@
+ALTER TABLE public.newsroom_sources ADD COLUMN IF NOT EXISTS priority_tier integer NOT NULL DEFAULT 5;

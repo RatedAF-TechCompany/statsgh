@@ -1824,10 +1824,50 @@ serve(async (req) => {
     
     const targetSource = body.targetSource ?? body.target_source ?? null;
 
+    // ============================================
+    // LOAD SOURCES FROM DATABASE WITH PRIORITY ROTATION
+    // ============================================
+    const { data: dbSources } = await supabase
+      .from("newsroom_sources")
+      .select("name, rss_url, priority_tier, last_success_at, is_active")
+      .eq("is_active", true)
+      .order("last_success_at", { ascending: true, nullsFirst: true });
+
+    const activeDbSources = dbSources || [];
+    console.log(`Loaded ${activeDbSources.length} active sources from database`);
+
+    // Priority rotation: Tier 1-2 every run, Tier 3-6 every 2nd run, Tier 7-10 every 3rd run
+    const runCount = Date.now(); // Use timestamp as pseudo run counter
+    const runMod = Math.floor(runCount / (60 * 60 * 1000)) % 3; // changes every hour, cycles 0-1-2
+    
+    const sourcesThisRun = activeDbSources.filter((s: any) => {
+      const tier = s.priority_tier || 5;
+      if (tier <= 2) return true; // always
+      if (tier <= 6) return runMod % 2 === 0; // every 2nd run
+      return runMod === 0; // every 3rd run
+    });
+
+    // Cap at 50 sources per run
+    const MAX_SOURCES_PER_RUN = 50;
+    const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
+    console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
+
+    // Build domain lookup from DB sources
     const sourceNameToDomain = new Map<string, string>();
-    for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
+    for (const s of cappedSources) {
+      try {
+        const domain = new URL(s.rss_url).hostname.replace(/^www\./, "");
+        sourceNameToDomain.set(s.name, domain);
+      } catch { /* skip invalid URLs */ }
+    }
     sourceNameToDomain.set("GhanaWeb Business", "ghanaweb.com");
     sourceNameToDomain.set("GhanaWeb Opinions", "ghanaweb.com");
+
+    // Track which sources are international (tier 9) for Ghana relevance filtering
+    const internationalSources = new Set<string>();
+    for (const s of cappedSources) {
+      if ((s.priority_tier || 5) >= 9) internationalSources.add(s.name);
+    }
 
     const isFastPublishSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
@@ -1974,16 +2014,17 @@ serve(async (req) => {
     }> = [];
 
     const sourcesToFetch = isBackfill
-      ? RSS_SOURCES.filter((s) => {
-          const isFast = FAST_PUBLISH_DOMAINS.has(s.domain);
-          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || s.domain.includes(targetSource.toLowerCase());
+      ? cappedSources.filter((s: any) => {
+          const domain = sourceNameToDomain.get(s.name) || "";
+          const isFast = FAST_PUBLISH_DOMAINS.has(domain);
+          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || domain.includes(targetSource.toLowerCase());
           return isFast && matchesTarget;
         })
-      : RSS_SOURCES;
+      : cappedSources;
 
-    const feedPromises = sourcesToFetch.map(async (source) => {
-      console.log(`Fetching RSS from ${source.name}: ${source.rss}`);
-      const xml = await fetchRssFeed(source.rss);
+    const feedPromises = sourcesToFetch.map(async (source: any) => {
+      console.log(`Fetching RSS from ${source.name}: ${source.rss_url}`);
+      const xml = await fetchRssFeed(source.rss_url);
       if (xml) {
         const items = parseRssXml(xml, source.name);
         console.log(`${source.name}: Found ${items.length} items`);
@@ -2092,6 +2133,17 @@ serve(async (req) => {
           preFilterBlockedCount++;
           await logCandidate(supabase, run.id, article, "rejected", "PRE_FILTER_BLOCKED",
             `Headline matched blocklist term: "${blockCheck.matchedTerm}"`, {});
+          continue;
+        }
+      }
+
+      // Ghana relevance filter for international sources (tier 9+)
+      if (internationalSources.has(article.source_name)) {
+        const ghanaTerms = /\b(ghana|ghanaian|accra|ghs|cedi|gse|bog|bank\s+of\s+ghana|cocobod|gra|mof|gipc)\b/i;
+        const textToCheck = `${article.title} ${article.description || ""}`;
+        if (!ghanaTerms.test(textToCheck)) {
+          await logCandidate(supabase, run.id, article, "rejected", "NO_GHANA_RELEVANCE",
+            `International source with no Ghana mention`, {});
           continue;
         }
       }
@@ -2388,7 +2440,7 @@ serve(async (req) => {
         completed_at: new Date().toISOString(),
         metadata: { 
           method: "rss-feeds", 
-          sources_checked: RSS_SOURCES.length, 
+          sources_checked: cappedSources.length, 
           time_window: timeWindowHours,
           version: "2.0",
           qualifying_number_rules: true
@@ -2399,7 +2451,7 @@ serve(async (req) => {
         success: true,
         run_id: run.id,
         method: "rss-feeds-v2",
-        sources_checked: RSS_SOURCES.length,
+        sources_checked: cappedSources.length,
         articles_found: 0,
         articles_created: 0,
         message: "No qualifying articles found with sufficient data quality",
@@ -2410,9 +2462,48 @@ serve(async (req) => {
 
     // Sort by date and limit
     qualifyingArticles.sort((a, b) => b._pubDateParsed.getTime() - a._pubDateParsed.getTime());
-    
+
+    // ── Cross-source headline dedup (80% word overlap) ──
+    // Keep the article from the higher-priority tier source
+    const sourceTierMap = new Map<string, number>();
+    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+
+    const headlineDeduped: typeof qualifyingArticles = [];
+    for (const article of qualifyingArticles) {
+      const articleWords = extractKeywords(article.title);
+      let isDup = false;
+      for (const kept of headlineDeduped) {
+        const keptWords = extractKeywords(kept.title);
+        const smaller = Math.min(articleWords.size, keptWords.size);
+        if (smaller === 0) continue;
+        let overlap = 0;
+        for (const w of articleWords) { if (keptWords.has(w)) overlap++; }
+        const overlapPct = overlap / smaller;
+        if (overlapPct >= 0.80) {
+          // Keep the one from higher-priority (lower tier number) source
+          const articleTier = sourceTierMap.get(article.source_name) || 5;
+          const keptTier = sourceTierMap.get(kept.source_name) || 5;
+          if (articleTier < keptTier) {
+            // Replace the kept one with this higher-priority source
+            const idx = headlineDeduped.indexOf(kept);
+            headlineDeduped[idx] = article;
+            console.log(`🔄 Headline dedup: replaced "${kept.title.substring(0, 50)}..." (tier ${keptTier}) with tier ${articleTier}`);
+          } else {
+            console.log(`🔄 Headline dedup: dropped "${article.title.substring(0, 50)}..." (tier ${articleTier}, kept tier ${keptTier})`);
+          }
+          isDup = true;
+          break;
+        }
+      }
+      if (!isDup) headlineDeduped.push(article);
+    }
+
+    if (qualifyingArticles.length !== headlineDeduped.length) {
+      console.log(`Headline dedup removed ${qualifyingArticles.length - headlineDeduped.length} cross-source duplicates`);
+    }
+
     const remainingDailySlots = DAILY_PUBLISH_LIMIT - currentDailyCount;
-    const toProcess = qualifyingArticles.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
+    const toProcess = headlineDeduped.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
 
     console.log(`Processing ${toProcess.length} articles (limited by daily cap: ${remainingDailySlots} remaining)`);
 
@@ -3126,7 +3217,7 @@ Return ONLY valid JSON with these exact keys:
       completed_at: new Date().toISOString(),
       metadata: { 
         method: "rss-feeds-v3-optimized", 
-        sources_checked: RSS_SOURCES.length, 
+        sources_checked: cappedSources.length, 
         time_window: timeWindowHours,
         version: "3.0",
         qualifying_number_rules: true,
@@ -3150,7 +3241,7 @@ Return ONLY valid JSON with these exact keys:
       run_id: run.id,
       method: "rss-feeds-v3-optimized",
       version: "3.0",
-      sources_checked: RSS_SOURCES.length,
+      sources_checked: cappedSources.length,
       articles_found: insertedNews?.length || 0,
       articles_published: publishedCount,
       articles_deferred: overflowItems.length,
