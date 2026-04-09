@@ -2804,7 +2804,11 @@ Return ONLY valid JSON with these exact keys:
 "instagram_post": ""
 }`;
 
-          console.log("Calling AI for article restructuring...");
+          // V4.0: MODEL TIERING — breaking news (published <30 min ago) uses flash-lite for speed
+          const sourcePubAge = Date.now() - item._pubDateParsed.getTime();
+          const isBreakingNews = sourcePubAge < 30 * 60 * 1000 && isTier1Source(item.source_name);
+          const aiModel = isBreakingNews ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
+          console.log(`Calling AI (${aiModel}${isBreakingNews ? " BREAKING" : ""}) for article restructuring...`);
           const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -2812,7 +2816,7 @@ Return ONLY valid JSON with these exact keys:
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
+              model: aiModel,
               messages: [
                 { role: "user", content: aiPrompt },
               ],
