@@ -1859,8 +1859,8 @@ serve(async (req) => {
     console.log(`Loaded ${activeDbSources.length} active sources from database`);
 
     // Priority rotation: Tier 1-2 every run, Tier 3-6 every 2nd run, Tier 7-10 every 3rd run
-    const runCount = Date.now(); // Use timestamp as pseudo run counter
-    const runMod = Math.floor(runCount / (60 * 60 * 1000)) % 3; // changes every hour, cycles 0-1-2
+    const runCount = Date.now();
+    const runMod = Math.floor(runCount / (15 * 60 * 1000)) % 3; // V4.0: changes every 15 min, cycles 0-1-2
     
     const sourcesThisRun = activeDbSources.filter((s: any) => {
       const tier = s.priority_tier || 5;
@@ -1869,8 +1869,8 @@ serve(async (req) => {
       return runMod === 0; // every 3rd run
     });
 
-    // Cap at 50 sources per run
-    const MAX_SOURCES_PER_RUN = 15;
+    // V4.0: Increased cap from 15 to 30 sources per run
+    const MAX_SOURCES_PER_RUN = 30;
     const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
     console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
 
