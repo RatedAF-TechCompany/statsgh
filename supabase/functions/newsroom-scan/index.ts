@@ -54,6 +54,7 @@ const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
 const DEFAULT_MAX_ARTICLES_PER_RUN = 8; // Cap at 8 to stay within CPU limits
 const AI_BATCH_SIZE = 8; // Max articles to process through AI per invocation
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
+const MAX_PAGE_FETCHES_PER_RUN = 20; // Hard cap on full-page fetches to stay within CPU time
 
 // "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
 const AUTO_PASS_DOMAINS = new Set<string>([
@@ -1869,7 +1870,7 @@ serve(async (req) => {
     });
 
     // Cap at 50 sources per run
-    const MAX_SOURCES_PER_RUN = 50;
+    const MAX_SOURCES_PER_RUN = 15;
     const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
     console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
 
@@ -2127,6 +2128,7 @@ serve(async (req) => {
     console.log(`Opinion articles in last 24h: ${currentOpinionCount}/${DAILY_OPINION_LIMIT}`);
 
     let articlesCreatedThisRun = 0;
+    let pageFetchCount = 0; // Track full-page fetches to stay within CPU budget
     // In-memory set of accepted titles this run to prevent within-run duplicates
     const acceptedTitlesThisRun: string[] = [];
 
@@ -2234,11 +2236,24 @@ serve(async (req) => {
       // Previously rejected articles without numbers in headline (HEADLINE_NO_NUMBER)
       // Now we only check body-level number quality after fetching full text
 
+      // Early exit: if we already have enough qualifying articles, stop processing
+      if (qualifyingArticles.length >= maxArticlesPerRun) {
+        console.log(`Reached max qualifying articles (${maxArticlesPerRun}), stopping candidate processing`);
+        break;
+      }
+
+      // CPU budget guard: stop fetching full pages after cap reached
+      if (pageFetchCount >= MAX_PAGE_FETCHES_PER_RUN) {
+        console.log(`Page fetch cap reached (${MAX_PAGE_FETCHES_PER_RUN}), skipping remaining candidates`);
+        break;
+      }
+
       // Fetch full text for content analysis (only for articles that passed headline check)
       let fullText = rssText;
       let fullPageHtml: string | null = null;
       
       console.log(`Fetching full page for: ${article.link}`);
+      pageFetchCount++;
       const pageText = await fetchFullPageText(article.link);
       
       if (pageText) {

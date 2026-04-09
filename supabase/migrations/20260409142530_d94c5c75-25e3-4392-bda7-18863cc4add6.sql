@@ -1,0 +1,1 @@
+UPDATE public.newsroom_runs SET status = 'failed', error_message = 'CPU Time exceeded - auto-closed', completed_at = now() WHERE status = 'running' AND started_at < now() - interval '30 minutes';
