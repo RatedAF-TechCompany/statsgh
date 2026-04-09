@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          resolved_at: string | null
+          source_name: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          resolved_at?: string | null
+          source_name?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          resolved_at?: string | null
+          source_name?: string | null
+        }
+        Relationships: []
+      }
       article_indicators: {
         Row: {
           article_id: string
@@ -218,6 +245,7 @@ export type Database = {
           id: string
           instagram_comment: string | null
           instagram_compressed: string | null
+          is_breaking: boolean
           is_most_read: boolean
           is_published: boolean
           is_wire: boolean
@@ -227,6 +255,7 @@ export type Database = {
           section: string
           seo_description: string | null
           slug: string
+          source_published_at: string | null
           status: string | null
           subtitle: string | null
           summary: string
@@ -250,6 +279,7 @@ export type Database = {
           id?: string
           instagram_comment?: string | null
           instagram_compressed?: string | null
+          is_breaking?: boolean
           is_most_read?: boolean
           is_published?: boolean
           is_wire?: boolean
@@ -259,6 +289,7 @@ export type Database = {
           section: string
           seo_description?: string | null
           slug: string
+          source_published_at?: string | null
           status?: string | null
           subtitle?: string | null
           summary: string
@@ -282,6 +313,7 @@ export type Database = {
           id?: string
           instagram_comment?: string | null
           instagram_compressed?: string | null
+          is_breaking?: boolean
           is_most_read?: boolean
           is_published?: boolean
           is_wire?: boolean
@@ -291,6 +323,7 @@ export type Database = {
           section?: string
           seo_description?: string | null
           slug?: string
+          source_published_at?: string | null
           status?: string | null
           subtitle?: string | null
           summary?: string
