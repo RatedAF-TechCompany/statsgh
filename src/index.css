@@ -94,17 +94,20 @@
 }
 
 @layer components {
-  /* Article prose */
-  .prose {
-    color: hsl(var(--foreground));
+  /* Article body — editorial styling */
+  .prose,
+  [data-article-body] {
+    color: #33302E;
     font-family: 'PT Serif', Georgia, serif;
     font-size: 17px;
     line-height: 1.75;
   }
   
-  .prose p {
-    margin-top: 1.4em;
+  .prose p,
+  [data-article-body] p {
+    margin-top: 0;
     margin-bottom: 1.4em;
+    color: #33302E;
   }
   
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
