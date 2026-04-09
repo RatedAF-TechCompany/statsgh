@@ -2137,6 +2137,17 @@ serve(async (req) => {
         }
       }
 
+      // Ghana relevance filter for international sources (tier 9+)
+      if (internationalSources.has(article.source_name)) {
+        const ghanaTerms = /\b(ghana|ghanaian|accra|ghs|cedi|gse|bog|bank\s+of\s+ghana|cocobod|gra|mof|gipc)\b/i;
+        const textToCheck = `${article.title} ${article.description || ""}`;
+        if (!ghanaTerms.test(textToCheck)) {
+          await logCandidate(supabase, run.id, article, "rejected", "NO_GHANA_RELEVANCE",
+            `International source with no Ghana mention`, {});
+          continue;
+        }
+      }
+
       // Check daily limit
       if ((currentDailyCount + articlesCreatedThisRun) >= DAILY_PUBLISH_LIMIT) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DAILY_LIMIT_REACHED,
