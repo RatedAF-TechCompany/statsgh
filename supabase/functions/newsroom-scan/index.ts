@@ -1870,7 +1870,7 @@ serve(async (req) => {
     });
 
     // Cap at 50 sources per run
-    const MAX_SOURCES_PER_RUN = 50;
+    const MAX_SOURCES_PER_RUN = 15;
     const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
     console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
 
