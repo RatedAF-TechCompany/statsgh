@@ -224,6 +224,28 @@ serve(async (req) => {
       });
     }
 
+    // ── 3-HOUR FRESHNESS GATE ──
+    // Articles older than 3 hours are not tweeted — discard immediately.
+    {
+      const { data: freshCheck } = await supabase
+        .from("articles")
+        .select("published_at")
+        .eq("id", articleId)
+        .single();
+
+      if (freshCheck?.published_at) {
+        const publishedAt = new Date(freshCheck.published_at).getTime();
+        const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+        if (publishedAt < threeHoursAgo) {
+          console.log(`[tweet-article] SKIPPED_TOO_OLD: article ${articleId} published at ${freshCheck.published_at}`);
+          return new Response(
+            JSON.stringify({ success: false, skipped: true, reason: "SKIPPED_TOO_OLD", message: "Article published more than 3 hours ago" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // Fetch article
     const { data: article, error: articleError } = await supabase
       .from("articles")

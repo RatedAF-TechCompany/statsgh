@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ── OAuth helpers (same as tweet-article) ──
+// ── OAuth helpers ──
 
 function percentEncode(str: string): string {
   return encodeURIComponent(str).replace(
@@ -83,7 +83,7 @@ async function postTweet(text: string): Promise<{ success: boolean; tweetId?: st
   return { success: true, tweetId: data?.data?.id };
 }
 
-// ── Stat content detection (hard gate) ──
+// ── Stat content detection ──
 
 const STAT_REGEX = /[0-9%$₵¢£€]|GHS|USD|GH¢/;
 const QUANTITY_WORDS = /\b(million|billion|thousand|tonnes|barrels|litres|km|MW|GW)\b/i;
@@ -92,16 +92,11 @@ function containsStatContent(text: string): boolean {
   return STAT_REGEX.test(text) || QUANTITY_WORDS.test(text);
 }
 
-// (Date suffix logic removed — tweets post exactly as stored)
-
-// ── AI-powered tweet condensation ──
+// ── AI condensation ──
 
 async function condenseTweet(text: string): Promise<string | null> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    console.error("LOVABLE_API_KEY not set, cannot condense tweet");
-    return null;
-  }
+  if (!LOVABLE_API_KEY) { console.error("[scheduled-tweet-poster] LOVABLE_API_KEY not set"); return null; }
 
   const prompt = `Rewrite into ONE complete English sentence UNDER 150 characters. The tweet MUST contain at least one number.
 
@@ -109,39 +104,14 @@ SENTENCE CASE RULES (CRITICAL):
 - Write as a normal English sentence, NOT a headline.
 - Only the first word of the sentence gets a capital letter.
 - Only capitalize proper nouns (names, places, institutions, organizations).
-- Do NOT use title case or capitalize every word.
-
-PREFERRED structure:
-Authority / subject + action + key event + location.
-Example: "Police have arrested a man for stealing vehicle parts at a mechanic shop in Tema."
-Example: "30,000 students may re-sit WASSCE mathematics under new education ministry plan."
-
-ALTERNATIVE structure:
-Subject + reported verb + number.
-Example: "Stanbic Bank Ghana has arranged $205 million financing for Engineers and Planners."
-
-Allowed verbs: has, have, said, reported, recorded, approved, allocated, secured, increased, reduced, launched, announced, adopted.
-
-The sentence MUST read like a reported news statement, NOT a headline.
-
-Correct: "Ghana has adopted digital and geospatial systems for the 2030 census."
-Incorrect: "Ghana Adopts Digital AI And Geospatial Tech For 2030 Census."
 
 STRICT RULES:
 - The tweet MUST contain at least one number (digits, percentages, currency values, years)
-- If possible, place the number at the BEGINNING of the tweet
-- Use reported past or present perfect tense (has/have/reported/recorded/announced)
-- NEVER write headline-style present tense (adopts, launches, approves, cuts)
-- NEVER use title case — only capitalize proper nouns
-- Sentence must be a COMPLETE grammatical statement
 - Maximum 150 characters
 - Must end with a period
-- The word before the period must be a noun, verb, or number
-- NEVER end with: the, a, an, to, in, on, at, of, for, and, or, by, with, from, this, that
 - No emojis, hashtags, links, or dashes
-- Tone must be factual, neutral and journalistic — avoid dramatic language
+- Sentence case (not title case)
 - Use "GHS" for Ghana cedi values
-- Use numbers whenever possible
 - Output ONLY the sentence
 
 Original: ${text}`;
@@ -161,19 +131,13 @@ Original: ${text}`;
       }),
     });
 
-    if (!res.ok) {
-      console.error("AI condensation failed:", res.status);
-      return null;
-    }
+    if (!res.ok) { console.error("[scheduled-tweet-poster] AI condensation failed:", res.status); return null; }
 
     const data = await res.json();
     const condensed = data.choices?.[0]?.message?.content?.trim();
     if (!condensed) return null;
 
-    // Strip any quotes the model might wrap around the output
     const cleaned = condensed.replace(/^["']|["']$/g, "").trim();
-
-    // Validate the condensed result
     if (cleaned.length > 150) return null;
     if (!cleaned.endsWith(".")) return null;
     if (!containsStatContent(cleaned)) return null;
@@ -182,7 +146,7 @@ Original: ${text}`;
 
     return cleaned;
   } catch (err) {
-    console.error("AI condensation error:", err);
+    console.error("[scheduled-tweet-poster] AI condensation error:", err);
     return null;
   }
 }
@@ -190,22 +154,15 @@ Original: ${text}`;
 // ── Time helpers for Africa/Accra (UTC+0) ──
 
 function getAccraHour(): number {
-  const now = new Date();
-  // Africa/Accra is UTC+0 (GMT), no DST
-  return now.getUTCHours();
+  return new Date().getUTCHours();
 }
 
 function isInQuietHours(quietStart: string, quietEnd: string): boolean {
   const hour = getAccraHour();
   const [startH] = quietStart.split(":").map(Number);
   const [endH] = quietEnd.split(":").map(Number);
-
-  if (startH <= endH) {
-    return hour >= startH && hour < endH;
-  } else {
-    // wraps midnight, e.g. 23:00 - 06:00
-    return hour >= startH || hour < endH;
-  }
+  if (startH <= endH) return hour >= startH && hour < endH;
+  return hour >= startH || hour < endH;
 }
 
 // ── Smart selection ──
@@ -217,7 +174,6 @@ const OFF_HIGH = ["demographics", "tech", "education", "health"];
 function getCategoryWeight(category: string, hour: number): number {
   const cat = category.toLowerCase();
   if (hour >= 7 && hour < 20) {
-    // business hours
     if (BUSINESS_HIGH.includes(cat)) return 3;
     if (BUSINESS_MED.includes(cat)) return 2;
     return 1;
@@ -231,10 +187,7 @@ function getCategoryWeight(category: string, hour: number): number {
 function weightedRandomSelect(items: Array<{ hash: string; text: string; category: string }>): { hash: string; text: string; category: string } | null {
   if (items.length === 0) return null;
   const hour = getAccraHour();
-  const weighted: Array<{ item: typeof items[0]; weight: number }> = items.map(item => ({
-    item,
-    weight: getCategoryWeight(item.category, hour),
-  }));
+  const weighted = items.map(item => ({ item, weight: getCategoryWeight(item.category, hour) }));
   const totalWeight = weighted.reduce((sum, w) => sum + w.weight, 0);
   let rand = Math.random() * totalWeight;
   for (const w of weighted) {
@@ -246,18 +199,15 @@ function weightedRandomSelect(items: Array<{ hash: string; text: string; categor
 
 // ── Validation ──
 
-// Words that should never end a sentence (before the period) — signals truncation
 const DANGLING_ENDINGS = new Set(["the","a","an","to","in","on","at","of","for","and","or","by","with","from","its","their","his","her","our","your","this","that","which","who","whom","whose","into","over","per","as","but","than","also"]);
 
 function validateTweet(text: string): { valid: boolean; reason?: string } {
-  // Must contain at least one number
   if (!containsStatContent(text)) return { valid: false, reason: "NO_STAT_CONTENT" };
   if (text.length > 150) return { valid: false, reason: "over_150_chars" };
   if (text.includes("#")) return { valid: false, reason: "contains_hashtag" };
   if (text.match(/https?:\/\//)) return { valid: false, reason: "contains_link" };
   if (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u)) return { valid: false, reason: "contains_emoji" };
   if (text.includes("—") || text.includes("–")) return { valid: false, reason: "contains_long_dash" };
-  // Check for truncated/incomplete sentences
   if (text.endsWith(".")) {
     const words = text.replace(/\.$/, "").trim().split(/\s+/);
     const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, "");
@@ -267,6 +217,12 @@ function validateTweet(text: string): { valid: boolean; reason?: string } {
   if (!text.endsWith(".")) return { valid: false, reason: "missing_period" };
   return { valid: true };
 }
+
+// ════════════════════════════════════════════
+// SCHEDULED TWEET POSTER — EVERGREEN ONLY
+// Posts from tweet_bank_items (pure stat tweets, no article links).
+// Runs every 4 hours via pg_cron.
+// ════════════════════════════════════════════
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -279,7 +235,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = body.action || "scheduled"; // scheduled | post_now | reset_cycle | save_tweets
+    const action = body.action || "scheduled";
     const overrideQuiet = body.override_quiet === true;
 
     // ── Save tweets action ──
@@ -303,17 +259,11 @@ serve(async (req) => {
           text = tagMatch[2].trim();
         }
         if (!text) continue;
-        // Skip tweets with no numeric statistic
         if (!containsStatContent(text)) continue;
-        // Pre-condense tweets over 140 chars at save time
         if (text.length > 150) {
           const condensed = await condenseTweet(text);
-          if (condensed) {
-            text = condensed;
-          }
-          // If condensation fails, still save original - it'll be condensed at post time
+          if (condensed) text = condensed;
         }
-        // compute hash
         const encoder = new TextEncoder();
         const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(text));
         const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -321,7 +271,6 @@ serve(async (req) => {
         items.push({ text, category, hash });
       }
 
-      // Upsert
       for (const item of items) {
         await supabase.from("tweet_bank_items").upsert(
           { text: item.text, category: item.category, hash: item.hash, is_active: true },
@@ -329,7 +278,6 @@ serve(async (req) => {
         );
       }
 
-      // Rebuild queue
       await rebuildQueue(supabase);
 
       return new Response(JSON.stringify({ success: true, count: items.length }), {
@@ -367,7 +315,6 @@ serve(async (req) => {
 
     // ── Scheduled or Post Now ──
 
-    // Get state
     const { data: state, error: stateError } = await supabase
       .from("tweet_scheduler_state")
       .select("*")
@@ -378,14 +325,12 @@ serve(async (req) => {
       throw new Error("Failed to read scheduler state: " + (stateError?.message || "no state row"));
     }
 
-    // If scheduled and not enabled, exit
     if (action === "scheduled" && !state.is_enabled) {
       return new Response(JSON.stringify({ skipped: true, reason: "scheduler_disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check quiet hours
     if (state.quiet_hours_enabled && !overrideQuiet && isInQuietHours(state.quiet_start, state.quiet_end)) {
       await supabase.from("tweet_scheduler_logs").insert({
         status: "skipped",
@@ -397,12 +342,10 @@ serve(async (req) => {
       });
     }
 
-    // Get queue
     let queueHashes: string[] = state.queue_hashes || [];
     let cycleId = state.cycle_id;
     let postedHashes: string[] = state.posted_hashes || [];
 
-    // If queue empty, start new cycle
     if (queueHashes.length === 0) {
       const rebuildResult = await rebuildQueue(supabase);
       if (rebuildResult) {
@@ -414,16 +357,14 @@ serve(async (req) => {
 
     if (queueHashes.length === 0) {
       await supabase.from("tweet_scheduler_logs").insert({
-        status: "skipped",
-        reason: "no_valid_tweet",
-        cycle_id: cycleId,
+        status: "skipped", reason: "no_valid_tweet", cycle_id: cycleId,
       });
       return new Response(JSON.stringify({ skipped: true, reason: "no_tweets_in_queue" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch tweet items for the queue - use batched lookups to avoid URL length limits
+    // Fetch queue items in batches
     const queueSet = new Set(queueHashes);
     const BATCH_SIZE = 50;
     const hashBatches: string[][] = [];
@@ -431,7 +372,7 @@ serve(async (req) => {
     for (let i = 0; i < queueHashArray.length; i += BATCH_SIZE) {
       hashBatches.push(queueHashArray.slice(i, i + BATCH_SIZE));
     }
-    
+
     let queueItems: Array<{ hash: string; text: string; category: string; data_date: string | null }> = [];
     for (const batch of hashBatches) {
       const { data: batchItems } = await supabase
@@ -440,15 +381,12 @@ serve(async (req) => {
         .eq("is_active", true)
         .in("hash", batch);
       if (batchItems) queueItems = queueItems.concat(batchItems as any);
-      // Stop once we have enough candidates
       if (queueItems.length >= 50) break;
     }
 
     if (!queueItems || queueItems.length === 0) {
       await supabase.from("tweet_scheduler_logs").insert({
-        status: "skipped",
-        reason: "no_valid_tweet",
-        cycle_id: cycleId,
+        status: "skipped", reason: "no_valid_tweet", cycle_id: cycleId,
       });
       return new Response(JSON.stringify({ skipped: true, reason: "no_active_tweets_match_queue" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -469,46 +407,33 @@ serve(async (req) => {
 
       let tweetText = candidate.text;
 
-      // Check numeric requirement
       if (!containsStatContent(tweetText)) {
         await supabase.from("tweet_scheduler_logs").insert({
-          tweet_text: tweetText,
-          category: candidate.category,
-          status: "skipped",
-          reason: "NO_STAT_CONTENT",
-          cycle_id: cycleId,
+          tweet_text: tweetText, category: candidate.category,
+          status: "skipped", reason: "NO_STAT_CONTENT", cycle_id: cycleId,
         });
         queueHashes = queueHashes.filter(h => h !== candidate.hash);
         postedHashes = [...postedHashes, candidate.hash];
         continue;
       }
 
-      // Validate
       const validation = validateTweet(tweetText);
       if (!validation.valid) {
         await supabase.from("tweet_scheduler_logs").insert({
-          tweet_text: tweetText,
-          category: candidate.category,
-          status: "skipped",
-          reason: validation.reason,
-          cycle_id: cycleId,
+          tweet_text: tweetText, category: candidate.category,
+          status: "skipped", reason: validation.reason, cycle_id: cycleId,
         });
-        // Remove from queue
         queueHashes = queueHashes.filter(h => h !== candidate.hash);
         postedHashes = [...postedHashes, candidate.hash];
         continue;
       }
 
-      // Check length - use AI to condense if over 150
       if (tweetText.length > 150) {
         const condensed = await condenseTweet(tweetText);
         if (!condensed) {
           await supabase.from("tweet_scheduler_logs").insert({
-            tweet_text: candidate.text,
-            category: candidate.category,
-            status: "skipped",
-            reason: "too_long_condense_failed",
-            cycle_id: cycleId,
+            tweet_text: candidate.text, category: candidate.category,
+            status: "skipped", reason: "too_long_condense_failed", cycle_id: cycleId,
           });
           queueHashes = queueHashes.filter(h => h !== candidate.hash);
           postedHashes = [...postedHashes, candidate.hash];
@@ -522,35 +447,30 @@ serve(async (req) => {
     }
 
     if (!selectedTweet) {
-      // Update state with any removed items
       await supabase.from("tweet_scheduler_state").update({
-        queue_hashes: queueHashes,
-        posted_hashes: postedHashes,
+        queue_hashes: queueHashes, posted_hashes: postedHashes,
       }).eq("id", 1);
 
       await supabase.from("tweet_scheduler_logs").insert({
-        status: "skipped",
-        reason: "no_valid_tweet",
-        cycle_id: cycleId,
+        status: "skipped", reason: "no_valid_tweet", cycle_id: cycleId,
       });
       return new Response(JSON.stringify({ skipped: true, reason: "no_valid_tweet_after_filtering" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── Post tweet exactly as stored ──
+    // ── Post tweet ──
     const finalText = selectedTweet.text;
+    console.log(`[scheduled-tweet-poster] Posting: "${finalText}"`);
     let postResult = await postTweet(finalText);
 
-    // Retry once after short delay if failed
     if (!postResult.success) {
-      console.log("First attempt failed, retrying in 5s...", postResult.error);
+      console.log("[scheduled-tweet-poster] First attempt failed, retrying in 5s...", postResult.error);
       await new Promise(r => setTimeout(r, 5000));
       postResult = await postTweet(finalText);
     }
 
     if (postResult.success) {
-      // Success: update state
       const newPosted = [...postedHashes, selectedTweet.hash];
       const newQueue = queueHashes.filter(h => h !== selectedTweet!.hash);
 
@@ -562,7 +482,6 @@ serve(async (req) => {
         fail_count_24h: 0,
       };
 
-      // If queue now empty, start new cycle
       if (newQueue.length === 0) {
         const { data: activeItems } = await supabase
           .from("tweet_bank_items")
@@ -577,44 +496,34 @@ serve(async (req) => {
       await supabase.from("tweet_scheduler_state").update(updateData).eq("id", 1);
 
       await supabase.from("tweet_scheduler_logs").insert({
-        tweet_text: finalText,
-        category: selectedTweet.category,
-        status: "success",
-        tweet_id: postResult.tweetId,
+        tweet_text: finalText, category: selectedTweet.category,
+        status: "success", tweet_id: postResult.tweetId,
         cycle_id: updateData.cycle_id || cycleId,
       });
 
       return new Response(JSON.stringify({
-        success: true,
-        tweet_id: postResult.tweetId,
-        text: finalText,
-        queue_remaining: updateData.queue_hashes?.length ?? newQueue.length,
+        success: true, tweet_id: postResult.tweetId,
+        text: finalText, queue_remaining: updateData.queue_hashes?.length ?? newQueue.length,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } else {
-      // Failed after retry
       const now = new Date().toISOString();
       await supabase.from("tweet_scheduler_state").update({
         last_error_at: now,
         fail_count_24h: (state.fail_count_24h || 0) + 1,
-        queue_hashes: queueHashes,
-        posted_hashes: postedHashes,
+        queue_hashes: queueHashes, posted_hashes: postedHashes,
       }).eq("id", 1);
 
       await supabase.from("tweet_scheduler_logs").insert({
-        tweet_text: selectedTweet.text,
-        category: selectedTweet.category,
-        status: "failed",
-        error_message: postResult.error,
-        cycle_id: cycleId,
+        tweet_text: selectedTweet.text, category: selectedTweet.category,
+        status: "failed", error_message: postResult.error, cycle_id: cycleId,
       });
 
-      return new Response(JSON.stringify({
-        success: false,
-        error: postResult.error,
-      }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: postResult.error }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
   } catch (err) {
-    console.error("Tweet scheduler error:", err);
+    console.error("[scheduled-tweet-poster] Error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -643,7 +552,6 @@ async function rebuildQueue(supabase: any): Promise<{ queueHashes: string[]; cyc
   let cycleId = state.cycle_id;
   let postedHashes = state.posted_hashes || [];
 
-  // If all posted, start new cycle
   if (queueHashes.length === 0 && allHashes.length > 0) {
     cycleId = crypto.randomUUID();
     postedHashes = [];
