@@ -2366,12 +2366,11 @@ serve(async (req) => {
         continue;
       }
 
-      // V6.0: Two-tier deduplication — relaxed
-      // Tier 1: Fast title-keyword overlap (5+ shared content words in title = immediate reject)
-      // Tier 2: Composite semantic similarity on title+summary (90% threshold)
-      const KEYWORD_OVERLAP_MIN = 5; // 5+ shared title keywords = same story
-      const SEMANTIC_THRESHOLD = 0.90; // composite threshold for title+summary (was 0.25)
-      const cutoff48h = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h lookback (was 48h)
+      // V4.0: Smart dedup windows — 4h for exact title, 12h for semantic
+      const KEYWORD_OVERLAP_MIN = 5;
+      const SEMANTIC_THRESHOLD = 0.90;
+      const cutoffExact = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(); // 4h for title match
+      const cutoffSemantic = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h for semantic
       const candidateText = [article.title, article.summary || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
