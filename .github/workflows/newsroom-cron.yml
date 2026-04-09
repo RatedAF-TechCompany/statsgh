@@ -2,8 +2,8 @@ name: Newsroom Scheduled Scan
 
 on:
   schedule:
-    # Run every hour at minute 15 (reduced from every 2h for GH Actions, pg_cron handles primary)
-    - cron: '15 */1 * * *'
+    # Run every 15 minutes to match pg_cron frequency
+    - cron: '*/15 * * * *'
   workflow_dispatch: # Allow manual trigger from GitHub Actions UI
 
 jobs:
