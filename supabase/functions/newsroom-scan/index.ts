@@ -1824,10 +1824,50 @@ serve(async (req) => {
     
     const targetSource = body.targetSource ?? body.target_source ?? null;
 
+    // ============================================
+    // LOAD SOURCES FROM DATABASE WITH PRIORITY ROTATION
+    // ============================================
+    const { data: dbSources } = await supabase
+      .from("newsroom_sources")
+      .select("name, rss_url, priority_tier, last_success_at, is_active")
+      .eq("is_active", true)
+      .order("last_success_at", { ascending: true, nullsFirst: true });
+
+    const activeDbSources = dbSources || [];
+    console.log(`Loaded ${activeDbSources.length} active sources from database`);
+
+    // Priority rotation: Tier 1-2 every run, Tier 3-6 every 2nd run, Tier 7-10 every 3rd run
+    const runCount = Date.now(); // Use timestamp as pseudo run counter
+    const runMod = Math.floor(runCount / (60 * 60 * 1000)) % 3; // changes every hour, cycles 0-1-2
+    
+    const sourcesThisRun = activeDbSources.filter((s: any) => {
+      const tier = s.priority_tier || 5;
+      if (tier <= 2) return true; // always
+      if (tier <= 6) return runMod % 2 === 0; // every 2nd run
+      return runMod === 0; // every 3rd run
+    });
+
+    // Cap at 50 sources per run
+    const MAX_SOURCES_PER_RUN = 50;
+    const cappedSources = sourcesThisRun.slice(0, MAX_SOURCES_PER_RUN);
+    console.log(`Sources this run: ${cappedSources.length} (tier filter from ${activeDbSources.length} active, cap ${MAX_SOURCES_PER_RUN})`);
+
+    // Build domain lookup from DB sources
     const sourceNameToDomain = new Map<string, string>();
-    for (const s of RSS_SOURCES) sourceNameToDomain.set(s.name, s.domain);
+    for (const s of cappedSources) {
+      try {
+        const domain = new URL(s.rss_url).hostname.replace(/^www\./, "");
+        sourceNameToDomain.set(s.name, domain);
+      } catch { /* skip invalid URLs */ }
+    }
     sourceNameToDomain.set("GhanaWeb Business", "ghanaweb.com");
     sourceNameToDomain.set("GhanaWeb Opinions", "ghanaweb.com");
+
+    // Track which sources are international (tier 9) for Ghana relevance filtering
+    const internationalSources = new Set<string>();
+    for (const s of cappedSources) {
+      if ((s.priority_tier || 5) >= 9) internationalSources.add(s.name);
+    }
 
     const isFastPublishSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
