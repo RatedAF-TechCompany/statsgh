@@ -10,6 +10,7 @@ import { SectionBlock } from "@/components/home/SectionBlock";
 import DataRail from "@/components/home/DataRail";
 import { Button } from "@/components/ui/button";
 import { SITE_SECTIONS, getSectionLabel, getSectionSlug } from "@/lib/navigation";
+import { getSectionForCategory } from "@/lib/sectionMapping";
 
 const ARTICLES_PER_PAGE = 40;
 
@@ -43,7 +44,7 @@ const Home = () => {
   // Group remaining articles by section
   const sectionArticles: Record<string, typeof restArticles> = {};
   restArticles.forEach((a) => {
-    const sec = getSectionSlug(a.category_slug);
+    const sec = getSectionForCategory(a.category_slug);
     if (!sectionArticles[sec]) sectionArticles[sec] = [];
     sectionArticles[sec].push(a);
   });
