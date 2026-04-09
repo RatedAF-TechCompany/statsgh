@@ -394,14 +394,15 @@ serve(async (req) => {
         tweetText = `${tweetText} ${articleUrl}`;
       }
     } else {
-      // Enforce 150 char limit and completeness via AI — NO naive truncation
-      if (tweetText.length > 150 || !isCompleteSentence(tweetText)) {
+      // Enforce 150 char limit, completeness, and present perfect tense via AI
+      if (tweetText.length > 150 || !isCompleteSentence(tweetText) || !hasPresentPerfectTense(tweetText)) {
         const condensed = await condenseTweetText(tweetText);
         if (condensed) {
           tweetText = condensed;
         } else {
+          console.log(`[tweet-article] WRONG_TENSE or condense failure for article ${articleId}`);
           return new Response(
-            JSON.stringify({ error: "Could not condense tweet to a complete sentence under 150 chars" }),
+            JSON.stringify({ error: "Could not generate a valid present-perfect-tense tweet", reason: "WRONG_TENSE" }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
