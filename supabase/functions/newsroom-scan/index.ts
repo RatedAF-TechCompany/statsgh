@@ -2462,9 +2462,48 @@ serve(async (req) => {
 
     // Sort by date and limit
     qualifyingArticles.sort((a, b) => b._pubDateParsed.getTime() - a._pubDateParsed.getTime());
-    
+
+    // ── Cross-source headline dedup (80% word overlap) ──
+    // Keep the article from the higher-priority tier source
+    const sourceTierMap = new Map<string, number>();
+    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+
+    const headlineDeduped: typeof qualifyingArticles = [];
+    for (const article of qualifyingArticles) {
+      const articleWords = extractKeywords(article.title);
+      let isDup = false;
+      for (const kept of headlineDeduped) {
+        const keptWords = extractKeywords(kept.title);
+        const smaller = Math.min(articleWords.size, keptWords.size);
+        if (smaller === 0) continue;
+        let overlap = 0;
+        for (const w of articleWords) { if (keptWords.has(w)) overlap++; }
+        const overlapPct = overlap / smaller;
+        if (overlapPct >= 0.80) {
+          // Keep the one from higher-priority (lower tier number) source
+          const articleTier = sourceTierMap.get(article.source_name) || 5;
+          const keptTier = sourceTierMap.get(kept.source_name) || 5;
+          if (articleTier < keptTier) {
+            // Replace the kept one with this higher-priority source
+            const idx = headlineDeduped.indexOf(kept);
+            headlineDeduped[idx] = article;
+            console.log(`🔄 Headline dedup: replaced "${kept.title.substring(0, 50)}..." (tier ${keptTier}) with tier ${articleTier}`);
+          } else {
+            console.log(`🔄 Headline dedup: dropped "${article.title.substring(0, 50)}..." (tier ${articleTier}, kept tier ${keptTier})`);
+          }
+          isDup = true;
+          break;
+        }
+      }
+      if (!isDup) headlineDeduped.push(article);
+    }
+
+    if (qualifyingArticles.length !== headlineDeduped.length) {
+      console.log(`Headline dedup removed ${qualifyingArticles.length - headlineDeduped.length} cross-source duplicates`);
+    }
+
     const remainingDailySlots = DAILY_PUBLISH_LIMIT - currentDailyCount;
-    const toProcess = qualifyingArticles.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
+    const toProcess = headlineDeduped.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
 
     console.log(`Processing ${toProcess.length} articles (limited by daily cap: ${remainingDailySlots} remaining)`);
 
