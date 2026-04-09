@@ -3245,7 +3245,7 @@ Return ONLY valid JSON with these exact keys:
             const slug = (pendingGenerated.slug || pendingItem.original_headline
               .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80)) + "-" + Date.now();
             const finalCategorySlug = pendingGenerated.category_slug || categorySlug;
-            const finalCategoryId = await ensureCategoryExists(supabase, finalCategorySlug);
+            await ensureCategoryExists(supabase, finalCategorySlug);
 
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
@@ -3260,7 +3260,6 @@ Return ONLY valid JSON with these exact keys:
                 author_name: pendingGenerated.author_name || "StatsGH Newsroom",
                 section: getSectionForCategory(finalCategorySlug),
                 category_slug: finalCategorySlug,
-                category_id: finalCategoryId,
                 is_published: true,
                 published_at: pendingItem.published_at || new Date().toISOString(),
                 is_wire: true,
