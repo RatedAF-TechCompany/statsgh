@@ -2587,117 +2587,50 @@ serve(async (req) => {
           }
 
           // 2. Call AI to restructure into article + generate metadata
-          const aiPrompt = `You are the Editor in Chief of StatsGH.
+          const aiPrompt = `You are a senior editor at Ghana's most respected data journalism publication. Your job is to write a complete, accurate news article of at least 400 words based on the source material provided.
 
-Your role is both gatekeeper and editor. You must first decide if a story meets StatsGH publication standards. If it passes, you then rewrite it into a professional data driven economic report.
+Write clearly enough that a 12-year-old can understand every word you use. Write with the authority and precision of the Financial Times.
 
-STEP 1 – EDITORIAL FILTER
+STRUCTURE (follow this exactly):
+1. Lead paragraph (2-3 sentences): State the core fact immediately. What happened, who did it, what is the number or outcome. No scene-setting. No "In a recent development". No throat-clearing.
+2. Supporting detail (3-4 sentences): Expand with the most important supporting detail — why it happened, what triggered it, who is affected.
+3. Broader context (3-4 sentences): How does this fit into the broader Ghana economic or political story. Reference relevant data, trends, or prior events.
+4. Attribution (2-3 sentences): Quote or attributed statement if available in the source. If none available, add expert or institutional context.
+5. Implications (2-3 sentences): What happens next — implications, what to watch, what decision-makers or markets will respond to.
 
-Before writing anything, evaluate the story.
+WRITING RULES:
+- Short sentences. Maximum 25 words per sentence.
+- Never use jargon without immediately explaining it in plain English in the same sentence.
+- Use active voice. Never passive where active is possible.
+- Numbers always in figures not words — write 500 million not five hundred million.
+- Ghana cedi always written as GHS followed by the figure — GHS 4.2 billion.
+- Never start a sentence with However, Furthermore, Additionally, Moreover, or In conclusion.
+- Every paragraph must contain at least one specific fact, figure, name, or date.
+- No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
+- No emojis, no decorative sections, ASCII characters only.
+- Do not write a summary. Write a complete article. Minimum 400 words.
 
-Publish ONLY if it meets at least one of these:
-- Contains meaningful economic or financial data
-- Affects markets, inflation, currency, trade, debt, banking, taxation, jobs or public finance
-- Has clear business or investor impact
-- Signals structural reform or economic risk
-- Involves large monetary values
-- Has measurable national or regional economic effect
+EDITORIAL FILTER:
+Before writing, evaluate the story. Publish ONLY if it has economic/financial substance, affects markets, currency, banking, taxation, jobs, public finance, or involves large monetary values.
+If the story fails the filter, return exactly: Rejected – Does not meet StatsGH economic impact threshold.
 
-Reject stories that are:
-- Political rhetoric without data
-- Ceremonial events without economic impact
-- Pure opinion pieces
-- Promotional PR without numbers
-- Repetitive with no new data
-
-If the story fails the filter, return exactly:
-
-Rejected – Does not meet StatsGH economic impact threshold.
-
-Do not return JSON in rejection case.
-
-STEP 2 – WRITING STANDARD
-
-Tone
-- Calm
-- Analytical
-- Neutral
-- Written like an Economist or Bloomberg journalist stationed in Ghana
-
-Language
-- Very basic English
-- Short sentences
-- Simple words
-- Readable by a 10 year old
-- Explain complex ideas simply
-
-Structure
-1. What happened
-2. Why it matters economically
-3. The key numbers
-4. The risks or implications
-5. Comparison to past data where relevant
-
-Length Rules
-- Maximum 450 words
-- Designed for 2 minute read
-- Short paragraphs
-- No decorative sections
-- No emojis
-- ASCII characters only
-
-Headline Rules
-- No colons
-- No long dashes
-- No dates in headline
+HEADLINE RULES:
+- No colons, no long dashes, no dates in headline
 - Include a key number if relevant
 - Keep factual and direct
 
-Data Rules
-- Use GHS for currency
-- Percentages must appear as 70%
-- Do not invent statistics
-- Add relevant background if necessary
-- Avoid speculation
-- If data cannot be verified, omit it
+SOCIAL MEDIA:
+Twitter (twitter_post): Maximum 160 characters. Must use present perfect tense: [Subject] has/have [past participle] [rest]. Must use "GHS" for currency. No hashtags, no emojis.
+Instagram (instagram_post): Slightly longer. Must end with: Visit StatsGH.com to read more.
 
-Social Media Rules
+INPUT:
+SOURCE HEADLINE: ${item.title}
+SOURCE: ${item.source_name}
+SOURCE URL: ${item.link}
+SOURCE TEXT: ${articleText.substring(0, 6000)}
 
-Twitter (twitter_post)
-- Maximum 160 characters
-- Must be written in full reported sentence form
-- Must start with the institution, company, or subject name
-- Must use active voice with has/said/will/recorded + action/result + key number
-- Must use "GHS" for currency
-- No headline fragments
-- No emojis
-- No hashtags
-- Must read like Bloomberg or Financial Times reported speech, not a headline
-- Example: "Ghana Water has deployed 200 staff to recover GHS866m debt as 51.6% of water goes unpaid."
-
-Instagram
-- Slightly longer than Twitter
-- Must end with
-Visit StatsGH.com to read more.
-
-INPUT
-
-SOURCE HEADLINE
-${item.title}
-
-SOURCE
-${item.source_name}
-
-SOURCE URL
-${item.link}
-
-SOURCE TEXT
-${articleText.substring(0, 6000)}
-
-OUTPUT
-
+OUTPUT:
 Return ONLY valid JSON with these exact keys:
-
 {
 "headline": "",
 "subtitle": "",
@@ -2830,71 +2763,23 @@ Return ONLY valid JSON with these exact keys:
             }
           }
 
-          // Clean fields
-          generated.headline = collapseImmediateWordRepeats(generated.headline);
-          generated.summary = collapseImmediateWordRepeats(generated.summary || "");
-          if (generated.summary.length > 400) generated.summary = generated.summary.substring(0, 397) + "...";
-          if (generated.seo_description?.length > 155) generated.seo_description = generated.seo_description.substring(0, 152) + "...";
-
-          // Validate category
-          const categorySlug = PREFERRED_CATEGORIES.includes(generated.category_slug) 
-            ? generated.category_slug 
-            : (item._isOpinion ? "opinion" : DEFAULT_CATEGORY);
-
-          // Ensure category exists
-          await ensureCategoryExists(supabase, categorySlug);
-
-          // Make slug unique with timestamp
-          const uniqueSlug = `${generated.slug.substring(0, 80)}-${Date.now()}`;
-
-          // 3. Handle hero image
-          let heroImageUrl: string | null = null;
-
-          // PRIORITY 0: Known image overrides (curated photos & institution logos)
-          const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
-            "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-            "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-            "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-            "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-          };
-
-          const contentToCheck = `${generated.headline} ${articleText}`.toLowerCase();
-          for (const [overrideKey, overrideImageUrl] of Object.entries(KNOWN_IMAGE_OVERRIDES)) {
-            if (contentToCheck.includes(overrideKey)) {
-              heroImageUrl = overrideImageUrl;
-              console.log(`✓ Using known image override for "${overrideKey}": ${heroImageUrl}`);
-              break;
-            }
-          }
-
-          // Try extracting from source HTML if no override matched
-          if (!heroImageUrl && sourceHtml) {
-            heroImageUrl = await extractImageFromSourceHtml(sourceHtml, item.link);
-            if (heroImageUrl) {
-              const uploadedUrl = await fetchAndUploadImage(heroImageUrl, supabase, uniqueSlug);
-              heroImageUrl = uploadedUrl;
-            }
-          }
-
-          // Fallback: generate photo-style AI image (must look like real editorial photography)
-          if (!heroImageUrl) {
-            const sectorContext = getPhotoKeywords(categorySlug);
-            const photoPrompt = `${generated.headline}. Setting: Ghana, West Africa. Environment: ${sectorContext}. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-            heroImageUrl = await generateAiImage(photoPrompt, supabase, uniqueSlug);
-          }
-
-          // 4. Calculate word count from body
+          // 6. WORD COUNT GATE — minimum 350 words
           const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          const wordCount = bodyText.split(/\s+/).length;
+          const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-          // 5. Check author patterns
-          let authorName = generated.author_name || "StatsGH Newsroom";
-          const authorMatch = articleText.match(/\bby\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/);
-          if (authorMatch && authorMatch[1] !== "StatsGH") {
-            authorName = authorMatch[1];
+          if (wordCount < 350) {
+            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 350)`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `TOO_SHORT: ${wordCount} words (minimum 350)`,
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
+            continue;
           }
 
-          // 6. Title quality gate — reject malformed titles
+          console.log(`Word count: ${wordCount} — passes minimum (350)`);
+
+          // 7. Title quality gate — reject malformed titles
           const titleToCheck = generated.headline || "";
           const MALFORMED_CHARS = /[@#$\\|^]/;
           const FRONT_PAGES = /front\s*pages?:/i;
@@ -2908,7 +2793,7 @@ Return ONLY valid JSON with these exact keys:
             continue;
           }
 
-          // 7. Insert into articles table
+          // 8. Insert into articles table
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3063,6 +2948,19 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
+            // Word count gate for pending_ai fallback — minimum 350 words
+            const pendingBodyText = articleText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            const pendingWordCount = pendingBodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
+
+            if (pendingWordCount < 350) {
+              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 350)`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 350)`,
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
               .insert({
@@ -3077,6 +2975,7 @@ Return ONLY valid JSON with these exact keys:
                 is_published: true,
                 published_at: pendingItem.published_at || new Date().toISOString(),
                 is_wire: true,
+                word_count: pendingWordCount,
                 status: "published",
               })
               .select().single();
