@@ -3137,7 +3137,7 @@ WRITING RULES:
 - Every paragraph must contain at least one specific fact, figure, name, or date.
 - No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
 - No emojis, no decorative sections, ASCII characters only.
-- Do not write a summary. Write a complete article. Minimum 400 words.
+- Do not write a summary. Write a complete article. MANDATORY MINIMUM: 450 words. Articles under 400 words will be rejected. Expand with context, background, and implications until you reach at least 450 words. Count your words before responding.
 
 HEADLINE RULES:
 - No colons, no long dashes, no dates in headline
