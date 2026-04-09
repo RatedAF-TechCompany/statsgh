@@ -2957,6 +2957,8 @@ Return ONLY valid JSON with these exact keys:
           }
 
           // 8. Insert into articles table
+          // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
+          // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -2971,8 +2973,10 @@ Return ONLY valid JSON with these exact keys:
               author_name: authorName,
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
+              source_published_at: item._pubDateParsed.toISOString(),
               is_published: true,
               is_wire: false,
+              is_breaking: isBreakingNews,
               word_count: wordCount,
               dedupe_key: item._dedupeKey,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
