@@ -54,6 +54,7 @@ const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
 const DEFAULT_MAX_ARTICLES_PER_RUN = 8; // Cap at 8 to stay within CPU limits
 const AI_BATCH_SIZE = 8; // Max articles to process through AI per invocation
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
+const MAX_PAGE_FETCHES_PER_RUN = 20; // Hard cap on full-page fetches to stay within CPU time
 
 // "Auto-pass" outlets: fully trusted — bypass ALL editorial filters (crime, politics, number requirements)
 const AUTO_PASS_DOMAINS = new Set<string>([
