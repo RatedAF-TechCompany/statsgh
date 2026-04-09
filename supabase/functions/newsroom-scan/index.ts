@@ -1887,8 +1887,11 @@ serve(async (req) => {
 
     // Track which sources are international (tier 9) for Ghana relevance filtering
     const internationalSources = new Set<string>();
+    // Track Tier 1 sources for fast-track (skip Ghana relevance filter entirely)
+    const tier1Sources = new Set<string>();
     for (const s of cappedSources) {
       if ((s.priority_tier || 5) >= 9) internationalSources.add(s.name);
+      if ((s.priority_tier || 5) <= 1) tier1Sources.add(s.name);
     }
 
     const isFastPublishSource = (sourceName: string): boolean => {
@@ -1900,6 +1903,11 @@ serve(async (req) => {
     const isAutoPassSource = (sourceName: string): boolean => {
       const domain = sourceNameToDomain.get(sourceName);
       return domain ? AUTO_PASS_DOMAINS.has(domain) : false;
+    };
+    
+    // V4.0: Tier 1 fast-track — skip Ghana relevance filter entirely
+    const isTier1Source = (sourceName: string): boolean => {
+      return tier1Sources.has(sourceName);
     };
 
     const isOpinionSource = (sourceName: string): boolean => {
