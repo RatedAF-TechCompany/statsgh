@@ -2128,6 +2128,7 @@ serve(async (req) => {
     console.log(`Opinion articles in last 24h: ${currentOpinionCount}/${DAILY_OPINION_LIMIT}`);
 
     let articlesCreatedThisRun = 0;
+    let pageFetchCount = 0; // Track full-page fetches to stay within CPU budget
     // In-memory set of accepted titles this run to prevent within-run duplicates
     const acceptedTitlesThisRun: string[] = [];
 
