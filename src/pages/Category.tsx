@@ -36,11 +36,13 @@ const Category = () => {
     queryFn: async () => {
       const from = (currentPage - 1) * ARTICLES_PER_PAGE;
       const to = from + ARTICLES_PER_PAGE - 1;
+
+      // Query by both category_slug (mapped values) AND section column for full coverage
       const { data, error } = await supabase
         .from("articles")
         .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
         .eq("is_published", true)
-        .in("category_slug", categorySlugs)
+        .or(`category_slug.in.(${categorySlugs.map(s => `"${s}"`).join(',')}),section.eq.${categoryParam}`)
         .order("published_at", { ascending: false })
         .range(from, to);
       if (error) throw error;
