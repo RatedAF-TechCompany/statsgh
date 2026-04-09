@@ -2515,6 +2515,10 @@ serve(async (req) => {
       });
     }
 
+    // Build tier map for priority sorting and dedup
+    const sourceTierMap = new Map<string, number>();
+    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+
     // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
     qualifyingArticles.sort((a, b) => {
       const tierA = sourceTierMap.get(a.source_name) || 5;
@@ -2533,8 +2537,6 @@ serve(async (req) => {
 
     // ── Cross-source headline dedup (80% word overlap) ──
     // Keep the article from the higher-priority tier source
-    const sourceTierMap = new Map<string, number>();
-    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
 
     const headlineDeduped: typeof qualifyingArticles = [];
     for (const article of qualifyingArticles) {
