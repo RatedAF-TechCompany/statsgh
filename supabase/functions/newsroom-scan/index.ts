@@ -2948,6 +2948,19 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
+            // Word count gate for pending_ai fallback — minimum 350 words
+            const pendingBodyText = articleText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            const pendingWordCount = pendingBodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
+
+            if (pendingWordCount < 350) {
+              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 350)`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 350)`,
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
               .insert({
@@ -2962,6 +2975,7 @@ Return ONLY valid JSON with these exact keys:
                 is_published: true,
                 published_at: pendingItem.published_at || new Date().toISOString(),
                 is_wire: true,
+                word_count: pendingWordCount,
                 status: "published",
               })
               .select().single();
