@@ -2052,22 +2052,33 @@ serve(async (req) => {
         })
       : cappedSources;
 
-    const feedPromises = sourcesToFetch.map(async (source: any) => {
-      console.log(`Fetching RSS from ${source.name}: ${source.rss_url}`);
-      const xml = await fetchRssFeed(source.rss_url);
-      if (xml) {
-        const items = parseRssXml(xml, source.name);
-        console.log(`${source.name}: Found ${items.length} items`);
-        await updateSourceHealth(supabase, source.name, true, items.length);
-        return items;
-      } else {
-        await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
-      }
-      return [];
-    });
+    // V4.0: PARALLEL RSS FETCHING — batch by tier for maximum speed
+    const tier12Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) <= 2);
+    const tier36Sources = sourcesToFetch.filter((s: any) => { const t = s.priority_tier || 5; return t >= 3 && t <= 6; });
+    const tier710Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) >= 7);
 
-    const feedResults = await Promise.all(feedPromises);
-    feedResults.forEach(items => allArticles.push(...items));
+    const fetchBatch = async (batch: any[]) => {
+      const results = await Promise.allSettled(batch.map(async (source: any) => {
+        const xml = await fetchRssFeed(source.rss_url);
+        if (xml) {
+          const items = parseRssXml(xml, source.name);
+          await updateSourceHealth(supabase, source.name, true, items.length);
+          return items;
+        } else {
+          await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
+          return [];
+        }
+      }));
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    };
+
+    console.log(`Fetching RSS in parallel: Tier 1-2 (${tier12Sources.length}), Tier 3-6 (${tier36Sources.length}), Tier 7-10 (${tier710Sources.length})`);
+    const [batch1, batch2, batch3] = await Promise.all([
+      fetchBatch(tier12Sources),
+      fetchBatch(tier36Sources),
+      fetchBatch(tier710Sources),
+    ]);
+    allArticles.push(...batch1, ...batch2, ...batch3);
 
     console.log(`Total RSS items fetched: ${allArticles.length}`);
 
