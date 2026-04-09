@@ -849,7 +849,7 @@ Return ONLY valid JSON:
             title: generated.headline,
             slug: uniqueSlug,
             category_slug: categorySlug,
-            section: categorySlug,
+            section: getSectionForCat(categorySlug),
             summary: generated.summary || "",
             subtitle: generated.subtitle || null,
             seo_description: generated.seo_description || null,
