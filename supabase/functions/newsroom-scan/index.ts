@@ -2374,19 +2374,19 @@ serve(async (req) => {
       const candidateText = [article.title, article.summary || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
-      // Fetch ALL recent articles (including drafts from pipeline)
+      // Fetch recent articles using the SHORTER window for title keyword match
       const { data: recentArticles } = await supabase
         .from("articles")
-        .select("id, title, summary")
-        .gte("created_at", cutoff48h)
+        .select("id, title, summary, created_at")
+        .gte("created_at", cutoffExact)
         .order("created_at", { ascending: false })
         .limit(100);
 
-      // Fetch recent newsroom articles
+      // Fetch recent newsroom articles using the LONGER window for semantic match
       const { data: recentNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline, original_summary")
-        .gte("created_at", cutoff48h)
+        .select("id, original_headline, original_summary, created_at")
+        .gte("created_at", cutoffSemantic)
         .order("created_at", { ascending: false })
         .limit(80);
 
