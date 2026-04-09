@@ -2242,8 +2242,8 @@ serve(async (req) => {
         continue;
       }
 
-      // V2.0: Score-based Ghana relevance check (auto-pass sources skip this)
-      if (!isAutoPass) {
+      // V2.0: Score-based Ghana relevance check (auto-pass and Tier 1 sources skip this)
+      if (!isAutoPass && !isTier1Source(article.source_name)) {
         const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
         if (!ghanaCheck.passes) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
