@@ -2928,15 +2928,15 @@ Return ONLY valid JSON with these exact keys:
             }
           }
 
-          // 6. WORD COUNT GATE — minimum 350 words
+          // 6. WORD COUNT GATE — minimum 250 words
           const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
           const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-          if (wordCount < 350) {
-            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 350)`);
+          if (wordCount < 250) {
+            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 250)`);
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
-              error_message: `TOO_SHORT: ${wordCount} words (minimum 350)`,
+              error_message: `TOO_SHORT: ${wordCount} words (minimum 250)`,
             }).eq("id", newsroomRecord.id);
             publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
             continue;
@@ -3220,15 +3220,15 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
-            // Word count gate — minimum 350 words on AI-generated body
+            // Word count gate — minimum 250 words on AI-generated body
             const pendingBodyText = (pendingGenerated.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
             const pendingWordCount = pendingBodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-            if (pendingWordCount < 350) {
-              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 350)`);
+            if (pendingWordCount < 250) {
+              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 250)`);
               await supabase.from("newsroom_articles").update({
                 processing_status: "failed",
-                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 350)`,
+                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 250)`,
               }).eq("id", pendingItem.id);
               continue;
             }
