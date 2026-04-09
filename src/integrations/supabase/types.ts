@@ -1767,6 +1767,7 @@ export type Database = {
           last_item_at: string | null
           last_success_at: string | null
           name: string
+          priority_tier: number
           rss_url: string
           total_items_accepted: number | null
           total_items_seen: number | null
@@ -1783,6 +1784,7 @@ export type Database = {
           last_item_at?: string | null
           last_success_at?: string | null
           name: string
+          priority_tier?: number
           rss_url: string
           total_items_accepted?: number | null
           total_items_seen?: number | null
@@ -1799,6 +1801,7 @@ export type Database = {
           last_item_at?: string | null
           last_success_at?: string | null
           name?: string
+          priority_tier?: number
           rss_url?: string
           total_items_accepted?: number | null
           total_items_seen?: number | null
