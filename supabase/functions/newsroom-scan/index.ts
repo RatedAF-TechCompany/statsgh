@@ -2926,11 +2926,9 @@ Return ONLY valid JSON with these exact keys:
                 .replace(/<style[\s\S]*?<\/style>/gi, " ")
                 .replace(/<[^>]+>/g, " ")
                 .replace(/\s+/g, " ").trim();
-              if (cleaned.length > articleText.length) articleText = cleaned;
+              if (cleaned.length > articleText.length) articleText = cleaned.substring(0, 8000);
             }
 
-            const slug = pendingItem.original_headline
-              .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80) + "-" + Date.now();
             const categorySlug = pendingItem.category_hint || "top-stories";
             const categoryId = await ensureCategoryExists(supabase, categorySlug);
 
@@ -2948,8 +2946,113 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
-            // Word count gate for pending_ai fallback — minimum 350 words
-            const pendingBodyText = articleText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            // ── Run through the SAME AI editorial prompt as the main path ──
+            const pendingAiPrompt = `You are a senior editor at Ghana's most respected data journalism publication. Your job is to write a complete, accurate news article of at least 400 words based on the source material provided.
+
+Write clearly enough that a 12-year-old can understand every word you use. Write with the authority and precision of the Financial Times.
+
+STRUCTURE (follow this exactly):
+1. Lead paragraph (2-3 sentences): State the core fact immediately. What happened, who did it, what is the number or outcome. No scene-setting. No "In a recent development". No throat-clearing.
+2. Supporting detail (3-4 sentences): Expand with the most important supporting detail — why it happened, what triggered it, who is affected.
+3. Broader context (3-4 sentences): How does this fit into the broader Ghana economic or political story. Reference relevant data, trends, or prior events.
+4. Attribution (2-3 sentences): Quote or attributed statement if available in the source. If none available, add expert or institutional context.
+5. Implications (2-3 sentences): What happens next — implications, what to watch, what decision-makers or markets will respond to.
+
+WRITING RULES:
+- Short sentences. Maximum 25 words per sentence.
+- Never use jargon without immediately explaining it in plain English in the same sentence.
+- Use active voice. Never passive where active is possible.
+- Numbers always in figures not words — write 500 million not five hundred million.
+- Ghana cedi always written as GHS followed by the figure — GHS 4.2 billion.
+- Never start a sentence with However, Furthermore, Additionally, Moreover, or In conclusion.
+- Every paragraph must contain at least one specific fact, figure, name, or date.
+- No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
+- No emojis, no decorative sections, ASCII characters only.
+- Do not write a summary. Write a complete article. Minimum 400 words.
+
+HEADLINE RULES:
+- No colons, no long dashes, no dates in headline
+- Include a key number if relevant
+- Keep factual and direct
+
+SOCIAL MEDIA:
+Twitter (twitter_post): Maximum 160 characters. Must use present perfect tense: [Subject] has/have [past participle] [rest]. Must use "GHS" for currency. No hashtags, no emojis.
+Instagram (instagram_post): Slightly longer. Must end with: Visit StatsGH.com to read more.
+
+INPUT:
+SOURCE HEADLINE: ${pendingItem.original_headline}
+SOURCE: ${pendingItem.source_name}
+SOURCE URL: ${pendingItem.source_url || "N/A"}
+SOURCE TEXT: ${articleText.substring(0, 6000)}
+
+OUTPUT:
+Return ONLY valid JSON with these exact keys:
+{
+"headline": "",
+"subtitle": "",
+"summary": "",
+"seo_description": "",
+"body_html": "",
+"slug": "",
+"category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
+"author_name": "",
+"tags": [],
+"twitter_post": "",
+"instagram_post": ""
+}`;
+
+            console.log("Calling AI for pending_ai article restructuring...");
+            const pendingAiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${lovableApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [{ role: "user", content: pendingAiPrompt }],
+              }),
+            });
+
+            if (!pendingAiResp.ok) {
+              const errText = await pendingAiResp.text();
+              console.log(`❌ AI call failed for pending_ai (${pendingAiResp.status}): ${errText.substring(0, 200)}`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: `AI_CALL_FAILED: ${pendingAiResp.status}`,
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
+            const pendingAiData = await pendingAiResp.json();
+            const pendingAiContent = pendingAiData.choices?.[0]?.message?.content;
+
+            if (!pendingAiContent || pendingAiContent.trim().toLowerCase().startsWith("rejected")) {
+              console.log(`❌ AI rejected/empty for pending_ai: "${pendingTitle.substring(0, 60)}..."`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: pendingAiContent ? "AI_REJECTED" : "AI_EMPTY_RESPONSE",
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
+            // Parse AI JSON response
+            let pendingGenerated: any;
+            try {
+              const jsonMatch = pendingAiContent.match(/\{[\s\S]*\}/);
+              if (!jsonMatch) throw new Error("No JSON found in AI response");
+              pendingGenerated = JSON.parse(jsonMatch[0]);
+            } catch (parseErr) {
+              console.log(`❌ Failed to parse AI JSON for pending_ai: "${pendingTitle.substring(0, 60)}..."`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "failed",
+                error_message: "AI_JSON_PARSE_FAILED",
+              }).eq("id", pendingItem.id);
+              continue;
+            }
+
+            // Word count gate — minimum 350 words on AI-generated body
+            const pendingBodyText = (pendingGenerated.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
             const pendingWordCount = pendingBodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
             if (pendingWordCount < 350) {
@@ -2961,22 +3064,33 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
+            const slug = (pendingGenerated.slug || pendingItem.original_headline
+              .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80)) + "-" + Date.now();
+            const finalCategorySlug = pendingGenerated.category_slug || categorySlug;
+            const finalCategoryId = await ensureCategoryExists(supabase, finalCategorySlug);
+
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
               .insert({
-                title: pendingItem.original_headline,
+                title: pendingGenerated.headline || pendingItem.original_headline,
                 slug,
-                body: articleText.length > 100 ? `<p>${articleText.substring(0, 2000)}</p>` : `<p>${pendingItem.original_headline}</p>`,
-                summary: (pendingItem.original_summary || pendingItem.original_headline).substring(0, 300),
-                author_name: "StatsGH Newsroom",
-                section: categorySlug,
-                category_slug: categorySlug,
-                category_id: categoryId,
+                body: pendingGenerated.body_html,
+                summary: (pendingGenerated.summary || pendingItem.original_summary || pendingItem.original_headline).substring(0, 300),
+                subtitle: pendingGenerated.subtitle || null,
+                seo_description: pendingGenerated.seo_description || null,
+                meta_title: pendingGenerated.headline || pendingItem.original_headline,
+                author_name: pendingGenerated.author_name || "StatsGH Newsroom",
+                section: finalCategorySlug,
+                category_slug: finalCategorySlug,
+                category_id: finalCategoryId,
                 is_published: true,
                 published_at: pendingItem.published_at || new Date().toISOString(),
                 is_wire: true,
                 word_count: pendingWordCount,
                 status: "published",
+                tags: pendingGenerated.tags || [],
+                twitter_post: pendingGenerated.twitter_post || null,
+                instagram_comment: pendingGenerated.instagram_post || null,
               })
               .select().single();
 
@@ -2988,7 +3102,7 @@ Return ONLY valid JSON with these exact keys:
             }).eq("id", pendingItem.id);
 
             publishedCount++;
-            console.log(`✅ PUBLISHED (pending_ai): "${pendingItem.original_headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+            console.log(`✅ PUBLISHED (pending_ai): "${(pendingGenerated.headline || pendingItem.original_headline).substring(0, 60)}..." (${pendingWordCount} words, id: ${newArticle.id})`);
           } catch (e) {
             console.error(`Error processing pending_ai:`, e);
             await supabase.from("newsroom_articles").update({
