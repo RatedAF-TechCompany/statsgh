@@ -112,7 +112,7 @@ const TweetScheduler = () => {
 
   const saveTweetsMutation = useMutation({
     mutationFn: async (lines: string[]) => {
-      const { data, error } = await supabase.functions.invoke("hourly-tweet-scheduler", {
+      const { data, error } = await supabase.functions.invoke("scheduled-tweet-poster", {
         body: { action: "save_tweets", lines },
       });
       if (error) throw error;

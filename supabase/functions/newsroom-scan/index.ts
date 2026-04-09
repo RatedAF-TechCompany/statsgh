@@ -2971,20 +2971,28 @@ Return ONLY valid JSON with these exact keys:
             console.log(`Indicator extraction error: ${e}`);
           }
 
-          // 9. Auto-tweet the article (fire-and-forget)
+          // 9. Auto-tweet the article immediately (synchronous, no queue)
           try {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-            fetch(`${supabaseUrl}/functions/v1/tweet-article`, {
+            const tweetRes = await fetch(`${supabaseUrl}/functions/v1/tweet-article`, {
               method: "POST",
               headers: {
                 "Authorization": `Bearer ${supabaseKey}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ articleId: newArticle.id }),
-            }).catch(e => console.log(`Auto-tweet trigger failed: ${e}`));
+            });
+            const tweetResult = await tweetRes.json().catch(() => ({}));
+            if (tweetRes.ok && tweetResult.success) {
+              console.log(`Auto-tweet posted for article ${newArticle.id}: ${tweetResult.tweetId || 'ok'}`);
+            } else if (tweetResult.skipped) {
+              console.log(`Auto-tweet skipped for article ${newArticle.id}: ${tweetResult.reason || tweetResult.message}`);
+            } else {
+              console.log(`Auto-tweet failed for article ${newArticle.id}: ${tweetResult.error || tweetRes.status} — discarding, no retry`);
+            }
           } catch (e) {
-            console.log(`Auto-tweet error: ${e}`);
+            console.log(`Auto-tweet error (discarded, no retry): ${e}`);
           }
 
         } catch (itemError) {
