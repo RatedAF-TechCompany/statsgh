@@ -2515,6 +2515,10 @@ serve(async (req) => {
       });
     }
 
+    // Build tier map for priority sorting and dedup
+    const sourceTierMap = new Map<string, number>();
+    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+
     // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
     qualifyingArticles.sort((a, b) => {
       const tierA = sourceTierMap.get(a.source_name) || 5;
@@ -2533,8 +2537,6 @@ serve(async (req) => {
 
     // ── Cross-source headline dedup (80% word overlap) ──
     // Keep the article from the higher-priority tier source
-    const sourceTierMap = new Map<string, number>();
-    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
 
     const headlineDeduped: typeof qualifyingArticles = [];
     for (const article of qualifyingArticles) {
@@ -2767,7 +2769,7 @@ WRITING RULES:
 - Every paragraph must contain at least one specific fact, figure, name, or date.
 - No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
 - No emojis, no decorative sections, ASCII characters only.
-- Do not write a summary. Write a complete article. Minimum 400 words.
+- Do not write a summary. Write a complete article. MANDATORY MINIMUM: 450 words. Articles under 400 words will be rejected. Expand with context, background, and implications until you reach at least 450 words. Count your words before responding.
 
 EDITORIAL FILTER:
 Before writing, evaluate the story. Publish ONLY if it has economic/financial substance, affects markets, currency, banking, taxation, jobs, public finance, or involves large monetary values.
@@ -2926,15 +2928,15 @@ Return ONLY valid JSON with these exact keys:
             }
           }
 
-          // 6. WORD COUNT GATE — minimum 350 words
+          // 6. WORD COUNT GATE — minimum 250 words
           const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
           const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-          if (wordCount < 350) {
-            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 350)`);
+          if (wordCount < 250) {
+            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 250)`);
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
-              error_message: `TOO_SHORT: ${wordCount} words (minimum 350)`,
+              error_message: `TOO_SHORT: ${wordCount} words (minimum 250)`,
             }).eq("id", newsroomRecord.id);
             publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
             continue;
@@ -2959,6 +2961,9 @@ Return ONLY valid JSON with these exact keys:
           // 8. Insert into articles table
           // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
+          const baseSlug = (generated.slug || generated.headline || item.title)
+            .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
+          const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3135,7 +3140,7 @@ WRITING RULES:
 - Every paragraph must contain at least one specific fact, figure, name, or date.
 - No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
 - No emojis, no decorative sections, ASCII characters only.
-- Do not write a summary. Write a complete article. Minimum 400 words.
+- Do not write a summary. Write a complete article. MANDATORY MINIMUM: 450 words. Articles under 400 words will be rejected. Expand with context, background, and implications until you reach at least 450 words. Count your words before responding.
 
 HEADLINE RULES:
 - No colons, no long dashes, no dates in headline
@@ -3218,15 +3223,15 @@ Return ONLY valid JSON with these exact keys:
               continue;
             }
 
-            // Word count gate — minimum 350 words on AI-generated body
+            // Word count gate — minimum 250 words on AI-generated body
             const pendingBodyText = (pendingGenerated.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
             const pendingWordCount = pendingBodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-            if (pendingWordCount < 350) {
-              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 350)`);
+            if (pendingWordCount < 250) {
+              console.log(`❌ REJECTED pending_ai (TOO_SHORT_FALLBACK): "${pendingTitle.substring(0, 60)}..." — ${pendingWordCount} words (min 250)`);
               await supabase.from("newsroom_articles").update({
                 processing_status: "failed",
-                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 350)`,
+                error_message: `TOO_SHORT_FALLBACK: ${pendingWordCount} words (minimum 250)`,
               }).eq("id", pendingItem.id);
               continue;
             }
