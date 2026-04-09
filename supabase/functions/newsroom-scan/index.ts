@@ -2948,8 +2948,11 @@ Return ONLY valid JSON with these exact keys:
           const titleToCheck = generated.headline || "";
           const MALFORMED_CHARS = /[@#$\\|^]/;
           const FRONT_PAGES = /front\s*pages?:/i;
-          const EXCESSIVE_CAPS = /[A-Z]{4,}/;
-          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || EXCESSIVE_CAPS.test(titleToCheck)) {
+          // Only reject if >50% of words are ALL CAPS (allows acronyms like NPRA, GNPC, PIAC)
+          const words = titleToCheck.split(/\s+/);
+          const allCapsWords = words.filter(w => w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w));
+          const excessiveCaps = allCapsWords.length > words.length * 0.5;
+          if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || excessiveCaps) {
             console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
@@ -2961,9 +2964,12 @@ Return ONLY valid JSON with these exact keys:
           // 8. Insert into articles table
           // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
+          const categorySlug = generated.category_slug || item._categoryHint || "top-stories";
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
+          // Ensure category exists in DB (we only use the slug, not a UUID)
+          await ensureCategoryExists(supabase, categorySlug);
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -2975,8 +2981,8 @@ Return ONLY valid JSON with these exact keys:
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description || null,
               body: generated.body_html,
-              author_name: authorName,
-              hero_image_url: heroImageUrl,
+              author_name: generated.author_name || "StatsGH Newsroom",
+              hero_image_url: generated.hero_image_url || null,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),
               is_published: true,
@@ -3239,7 +3245,7 @@ Return ONLY valid JSON with these exact keys:
             const slug = (pendingGenerated.slug || pendingItem.original_headline
               .toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 80)) + "-" + Date.now();
             const finalCategorySlug = pendingGenerated.category_slug || categorySlug;
-            const finalCategoryId = await ensureCategoryExists(supabase, finalCategorySlug);
+            await ensureCategoryExists(supabase, finalCategorySlug);
 
             const { data: newArticle, error: artError } = await supabase
               .from("articles")
@@ -3254,7 +3260,6 @@ Return ONLY valid JSON with these exact keys:
                 author_name: pendingGenerated.author_name || "StatsGH Newsroom",
                 section: getSectionForCategory(finalCategorySlug),
                 category_slug: finalCategorySlug,
-                category_id: finalCategoryId,
                 is_published: true,
                 published_at: pendingItem.published_at || new Date().toISOString(),
                 is_wire: true,
