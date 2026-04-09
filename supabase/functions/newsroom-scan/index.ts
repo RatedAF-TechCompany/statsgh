@@ -2515,8 +2515,21 @@ serve(async (req) => {
       });
     }
 
-    // Sort by date and limit
-    qualifyingArticles.sort((a, b) => b._pubDateParsed.getTime() - a._pubDateParsed.getTime());
+    // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
+    qualifyingArticles.sort((a, b) => {
+      const tierA = sourceTierMap.get(a.source_name) || 5;
+      const tierB = sourceTierMap.get(b.source_name) || 5;
+      // Tier 1 sources first
+      if (tierA <= 1 && tierB > 1) return -1;
+      if (tierB <= 1 && tierA > 1) return 1;
+      // Then by recency
+      const timeDiff = b._pubDateParsed.getTime() - a._pubDateParsed.getTime();
+      if (Math.abs(timeDiff) > 5 * 60 * 1000) return timeDiff; // >5 min difference matters
+      // Then by having numbers in headline
+      const aHasNums = a._numbersFoundQualifying.length > 0 ? -1 : 0;
+      const bHasNums = b._numbersFoundQualifying.length > 0 ? -1 : 0;
+      return aHasNums - bHasNums;
+    });
 
     // ── Cross-source headline dedup (80% word overlap) ──
     // Keep the article from the higher-priority tier source
