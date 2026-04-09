@@ -2179,8 +2179,9 @@ serve(async (req) => {
         }
       }
 
+      // V4.0: Tier 1 sources fast-track — skip Ghana relevance filter entirely
       // Ghana relevance filter for international sources (tier 9+)
-      if (internationalSources.has(article.source_name)) {
+      if (!isTier1Source(article.source_name) && internationalSources.has(article.source_name)) {
         const ghanaTerms = /\b(ghana|ghanaian|accra|ghs|cedi|gse|bog|bank\s+of\s+ghana|cocobod|gra|mof|gipc)\b/i;
         const textToCheck = `${article.title} ${article.description || ""}`;
         if (!ghanaTerms.test(textToCheck)) {
