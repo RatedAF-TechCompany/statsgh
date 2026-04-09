@@ -2440,7 +2440,7 @@ serve(async (req) => {
         completed_at: new Date().toISOString(),
         metadata: { 
           method: "rss-feeds", 
-          sources_checked: RSS_SOURCES.length, 
+          sources_checked: cappedSources.length, 
           time_window: timeWindowHours,
           version: "2.0",
           qualifying_number_rules: true
@@ -2451,7 +2451,7 @@ serve(async (req) => {
         success: true,
         run_id: run.id,
         method: "rss-feeds-v2",
-        sources_checked: RSS_SOURCES.length,
+        sources_checked: cappedSources.length,
         articles_found: 0,
         articles_created: 0,
         message: "No qualifying articles found with sufficient data quality",
@@ -3217,7 +3217,7 @@ Return ONLY valid JSON with these exact keys:
       completed_at: new Date().toISOString(),
       metadata: { 
         method: "rss-feeds-v3-optimized", 
-        sources_checked: RSS_SOURCES.length, 
+        sources_checked: cappedSources.length, 
         time_window: timeWindowHours,
         version: "3.0",
         qualifying_number_rules: true,
@@ -3241,7 +3241,7 @@ Return ONLY valid JSON with these exact keys:
       run_id: run.id,
       method: "rss-feeds-v3-optimized",
       version: "3.0",
-      sources_checked: RSS_SOURCES.length,
+      sources_checked: cappedSources.length,
       articles_found: insertedNews?.length || 0,
       articles_published: publishedCount,
       articles_deferred: overflowItems.length,
