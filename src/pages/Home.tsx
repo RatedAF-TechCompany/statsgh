@@ -41,10 +41,11 @@ const Home = () => {
   const secondaryArticles = allArticles.slice(1, 3);
   const restArticles = allArticles.slice(3);
 
-  // Group remaining articles by section
+  // Group remaining articles by section — use the section column directly,
+  // falling back to mapping from category_slug
   const sectionArticles: Record<string, typeof restArticles> = {};
   restArticles.forEach((a) => {
-    const sec = getSectionForCategory(a.category_slug);
+    const sec = a.section || getSectionForCategory(a.category_slug);
     if (!sectionArticles[sec]) sectionArticles[sec] = [];
     sectionArticles[sec].push(a);
   });
