@@ -13,6 +13,7 @@ interface LeadStoryProps {
     hero_image_url?: string | null;
     published_at?: string | null;
     word_count?: number | null;
+    is_breaking?: boolean;
   };
 }
 
