@@ -7,6 +7,27 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function getSectionForCat(categorySlug: string): string {
+  const map: Record<string, string[]> = {
+    'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy'],
+    'business': ['banking-and-finance', 'trade-and-industry', 'infrastructure-and-transport', 'business', 'corporate', 'sme'],
+    'energy-resources': ['energy-and-utilities', 'energy-resources', 'energy', 'oil-gas', 'mining', 'utilities'],
+    'agriculture': ['agriculture-and-commodities', 'agriculture', 'farming', 'cocoa', 'food'],
+    'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms'],
+    'companies': ['corporate-ghana', 'companies', 'corporate', 'banking', 'insurance'],
+    'research': ['data-and-research', 'research', 'academic', 'report', 'survey'],
+    'world': ['regional-economy', 'world', 'africa', 'international', 'global'],
+    'politics-policy': ['regulation-and-policy', 'politics-policy', 'politics', 'governance', 'parliament'],
+    'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities'],
+    'opinion-analysis': ['opinion-analysis', 'opinion', 'analysis', 'commentary', 'editorial'],
+    'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news'],
+  };
+  for (const [section, cats] of Object.entries(map)) {
+    if (cats.includes(categorySlug)) return section;
+  }
+  return 'top-stories';
+}
+
 // ============================================
 // STATSGH RESEARCH SCANNER
 // Scans academic and thesis repositories for Ghana-related research
