@@ -2763,71 +2763,23 @@ Return ONLY valid JSON with these exact keys:
             }
           }
 
-          // Clean fields
-          generated.headline = collapseImmediateWordRepeats(generated.headline);
-          generated.summary = collapseImmediateWordRepeats(generated.summary || "");
-          if (generated.summary.length > 400) generated.summary = generated.summary.substring(0, 397) + "...";
-          if (generated.seo_description?.length > 155) generated.seo_description = generated.seo_description.substring(0, 152) + "...";
-
-          // Validate category
-          const categorySlug = PREFERRED_CATEGORIES.includes(generated.category_slug) 
-            ? generated.category_slug 
-            : (item._isOpinion ? "opinion" : DEFAULT_CATEGORY);
-
-          // Ensure category exists
-          await ensureCategoryExists(supabase, categorySlug);
-
-          // Make slug unique with timestamp
-          const uniqueSlug = `${generated.slug.substring(0, 80)}-${Date.now()}`;
-
-          // 3. Handle hero image
-          let heroImageUrl: string | null = null;
-
-          // PRIORITY 0: Known image overrides (curated photos & institution logos)
-          const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
-            "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-            "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-            "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-            "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-          };
-
-          const contentToCheck = `${generated.headline} ${articleText}`.toLowerCase();
-          for (const [overrideKey, overrideImageUrl] of Object.entries(KNOWN_IMAGE_OVERRIDES)) {
-            if (contentToCheck.includes(overrideKey)) {
-              heroImageUrl = overrideImageUrl;
-              console.log(`✓ Using known image override for "${overrideKey}": ${heroImageUrl}`);
-              break;
-            }
-          }
-
-          // Try extracting from source HTML if no override matched
-          if (!heroImageUrl && sourceHtml) {
-            heroImageUrl = await extractImageFromSourceHtml(sourceHtml, item.link);
-            if (heroImageUrl) {
-              const uploadedUrl = await fetchAndUploadImage(heroImageUrl, supabase, uniqueSlug);
-              heroImageUrl = uploadedUrl;
-            }
-          }
-
-          // Fallback: generate photo-style AI image (must look like real editorial photography)
-          if (!heroImageUrl) {
-            const sectorContext = getPhotoKeywords(categorySlug);
-            const photoPrompt = `${generated.headline}. Setting: Ghana, West Africa. Environment: ${sectorContext}. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-            heroImageUrl = await generateAiImage(photoPrompt, supabase, uniqueSlug);
-          }
-
-          // 4. Calculate word count from body
+          // 6. WORD COUNT GATE — minimum 350 words
           const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          const wordCount = bodyText.split(/\s+/).length;
+          const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-          // 5. Check author patterns
-          let authorName = generated.author_name || "StatsGH Newsroom";
-          const authorMatch = articleText.match(/\bby\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/);
-          if (authorMatch && authorMatch[1] !== "StatsGH") {
-            authorName = authorMatch[1];
+          if (wordCount < 350) {
+            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 350)`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `TOO_SHORT: ${wordCount} words (minimum 350)`,
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
+            continue;
           }
 
-          // 6. Title quality gate — reject malformed titles
+          console.log(`Word count: ${wordCount} — passes minimum (350)`);
+
+          // 7. Title quality gate — reject malformed titles
           const titleToCheck = generated.headline || "";
           const MALFORMED_CHARS = /[@#$\\|^]/;
           const FRONT_PAGES = /front\s*pages?:/i;
@@ -2841,7 +2793,7 @@ Return ONLY valid JSON with these exact keys:
             continue;
           }
 
-          // 7. Insert into articles table
+          // 8. Insert into articles table
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
