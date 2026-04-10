@@ -281,6 +281,28 @@ serve(async (req) => {
       }
     }
 
+    // ── 3-HOUR MINIMUM GAP GATE (shared clock with scheduled-tweet-poster) ──
+    {
+      const { data: tweetState } = await supabase
+        .from("tweet_scheduler_state")
+        .select("last_posted_at")
+        .eq("id", 1)
+        .single();
+
+      if (tweetState?.last_posted_at) {
+        const lastPostedMs = new Date(tweetState.last_posted_at).getTime();
+        const elapsedMinutes = (Date.now() - lastPostedMs) / 60000;
+        if (elapsedMinutes < 180) {
+          const minutesRemaining = Math.ceil(180 - elapsedMinutes);
+          console.log(`[tweet-article] TOO_SOON: ${Math.floor(elapsedMinutes)}min since last tweet, ${minutesRemaining}min remaining. Discarding article ${articleId}.`);
+          return new Response(
+            JSON.stringify({ success: false, skipped: true, reason: "TOO_SOON", message: `Last tweet was ${Math.floor(elapsedMinutes)}min ago, need 180min gap. ${minutesRemaining}min remaining.` }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // Fetch article
     const { data: article, error: articleError } = await supabase
       .from("articles")
