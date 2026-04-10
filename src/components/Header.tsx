@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_SECTIONS } from "@/lib/navigation";
 import { useRef } from "react";
+import EconomicIndicatorStrip from "@/components/home/EconomicIndicatorStrip";
 
-export const Header = () => {
+export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const navRef = useRef<HTMLDivElement>(null);
@@ -54,35 +55,47 @@ export const Header = () => {
     return location.pathname.startsWith(href);
   };
 
+  const today = new Date();
+  const dateString = today.toLocaleDateString("en-GB", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <header className="sticky top-0 z-50">
-      {/* Tier 1 — Dark slate strip */}
-      <div className="bg-[#33302E] text-[#FFF1E0]">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-12">
-          {/* Logo */}
+      {/* Ticker — above everything */}
+      {showTicker && <EconomicIndicatorStrip />}
+
+      {/* Masthead — centered logo */}
+      <div className="bg-[#FFF1E0] border-b border-[#ccc]">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-14">
+          {/* Left: date */}
+          <span className="hidden md:block font-ui text-[11px] text-[#66605A] whitespace-nowrap">
+            {dateString}
+          </span>
+          <div className="md:hidden w-10" />
+
+          {/* Centre: logo */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 hover:opacity-90"
+            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 hover:opacity-90"
           >
-            <img src={statsghLogo} alt="StatsGH" className="h-6" />
-            <span className="font-headline text-xl font-bold text-[#C9A84C]">
+            <img src={statsghLogo} alt="StatsGH" className="h-7" />
+            <span className="font-headline text-xl font-bold text-[#33302E]">
               StatsGH
             </span>
           </button>
 
-          {/* Centre tagline — hidden on mobile */}
-          <span className="hidden md:block font-ui text-[11px] text-[#FFF1E0]/70 tracking-wide">
-            Ghana's Premier Data Journalism Platform
-          </span>
-
-          {/* Right actions */}
+          {/* Right: actions */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/search")}
               className="p-2 hover:opacity-80"
               aria-label="Search"
             >
-              <Search size={18} className="text-[#FFF1E0]" />
+              <Search size={18} className="text-[#33302E]" />
             </button>
 
             {session ? (
@@ -93,20 +106,20 @@ export const Header = () => {
                     className="p-2 hover:opacity-80"
                     title="Dashboard"
                   >
-                    <LayoutDashboard size={18} className="text-[#FFF1E0]" />
+                    <LayoutDashboard size={18} className="text-[#33302E]" />
                   </button>
                 )}
                 <button
                   onClick={() => navigate("/saved")}
                   className="p-2 hover:opacity-80"
                 >
-                  <User size={18} className="text-[#FFF1E0]" />
+                  <User size={18} className="text-[#33302E]" />
                 </button>
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:opacity-80"
                 >
-                  <LogOut size={16} className="text-[#FFF1E0]" />
+                  <LogOut size={16} className="text-[#33302E]" />
                 </button>
               </>
             ) : (
@@ -122,8 +135,8 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Tier 2 — Section nav */}
-      <div className="bg-[#FFF1E0] border-b border-[#E8D9C5]">
+      {/* Section nav */}
+      <div className="bg-[#FFF1E0] border-b border-[#ccc]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6">
           <nav
             ref={navRef}
