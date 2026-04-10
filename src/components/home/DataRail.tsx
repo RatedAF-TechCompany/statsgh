@@ -3,17 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// Clean display name mapping for commodity keys
+
 const COMMODITY_DISPLAY_NAMES: Record<string, string> = {
-  oil_brent: "Brent Crude",
-  brent: "Brent Crude",
-  oil_wti: "WTI Crude",
-  wti: "WTI Crude",
-  cocoa: "Cocoa",
-  gold: "Gold",
-  natural_gas: "Nat Gas",
-  nat_gas: "Nat Gas",
-  crude_oil: "Crude Oil",
+  oil_brent: "Brent Crude", brent: "Brent Crude", oil_wti: "WTI Crude", wti: "WTI Crude",
+  cocoa: "Cocoa", gold: "Gold", natural_gas: "Nat Gas", nat_gas: "Nat Gas", crude_oil: "Crude Oil",
 };
 
 function cleanCommodityName(raw: string): string {
@@ -31,20 +24,12 @@ const DataRail = () => {
   const { data: currencies, isLoading: currLoading } = useQuery({
     queryKey: ["rail-currencies"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("currency_rates")
+      const { data, error } = await supabase.from("currency_rates")
         .select("id, base_currency, target_currency, rate, change_percent")
-        .eq("target_currency", "GHS")
-        .order("fetched_at", { ascending: false })
-        .limit(10);
+        .eq("target_currency", "GHS").order("fetched_at", { ascending: false }).limit(10);
       if (error) throw error;
       const seen = new Set<string>();
-      return (data || []).filter((r) => {
-        const key = r.base_currency || "";
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      return (data || []).filter((r) => { const k = r.base_currency || ""; if (seen.has(k)) return false; seen.add(k); return true; });
     },
     refetchInterval: 60000,
   });
@@ -52,18 +37,12 @@ const DataRail = () => {
   const { data: commodities, isLoading: comLoading } = useQuery({
     queryKey: ["rail-commodities"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("commodity_prices")
+      const { data, error } = await supabase.from("commodity_prices")
         .select("id, commodity, price, change_percent, currency")
-        .order("fetched_at", { ascending: false })
-        .limit(20);
+        .order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
       const seen = new Set<string>();
-      return (data || []).filter((c) => {
-        if (seen.has(c.commodity)) return false;
-        seen.add(c.commodity);
-        return true;
-      });
+      return (data || []).filter((c) => { if (seen.has(c.commodity)) return false; seen.add(c.commodity); return true; });
     },
     refetchInterval: 60000,
   });
@@ -71,11 +50,9 @@ const DataRail = () => {
   const { data: gseIndex } = useQuery({
     queryKey: ["rail-gse"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("gse_stocks")
+      const { data, error } = await supabase.from("gse_stocks")
         .select("symbol, current_price, change_percent")
-        .order("market_cap", { ascending: false })
-        .limit(5);
+        .order("market_cap", { ascending: false }).limit(5);
       if (error) throw error;
       return data;
     },
@@ -84,122 +61,92 @@ const DataRail = () => {
 
   const isLoading = currLoading || comLoading;
 
+  const ChangeIndicator = ({ change }: { change: number | null }) => {
+    if (change === null || change === undefined) return null;
+    return (
+      <span className={`flex items-center gap-0.5 font-ui text-[11px] ${change > 0 ? "text-[#00A36C]" : change < 0 ? "text-[#CC0000]" : "text-[#999]"}`}>
+        {change > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+        {change > 0 ? "+" : ""}{change.toFixed(1)}%
+      </span>
+    );
+  };
+
   return (
-    <aside className="sticky top-[88px]">
-      <h2 className="font-ui text-[11px] font-bold tracking-[0.15em] uppercase text-[#C9A84C] mb-4 border-b border-[#C9A84C] pb-2">
-        Ghana At A Glance
-      </h2>
-
-      {/* Exchange Rates */}
-      <div className="mb-6">
-        <h3 className="font-ui text-xs font-semibold text-[#33302E] mb-3">Exchange Rates</h3>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full skeleton-ft" />)}
-          </div>
-        ) : (
-          <div className="space-y-0">
-            {(currencies || []).slice(0, 4).map((rate) => (
-              <div key={rate.id} className="flex items-center justify-between py-2 border-b border-[#E8D9C5]">
-                <span className="font-ui text-xs font-medium text-[#33302E]">
-                  {rate.base_currency}/GHS
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-ui text-sm font-semibold text-[#33302E]">
-                    {rate.rate.toFixed(2)}
-                  </span>
-                  {rate.change_percent !== null && (
-                    <span className={`flex items-center gap-0.5 font-ui text-[11px] ${
-                      rate.change_percent > 0 ? "text-[#00A36C]" : rate.change_percent < 0 ? "text-[#CC0000]" : "text-[#66605A]"
-                    }`}>
-                      {rate.change_percent > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                      {rate.change_percent > 0 ? "+" : ""}{rate.change_percent.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Commodities */}
-      <div className="mb-6">
-        <h3 className="font-ui text-xs font-semibold text-[#33302E] mb-3">Commodities</h3>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full skeleton-ft" />)}
-          </div>
-        ) : (
-          <div className="space-y-0">
-            {(commodities || []).slice(0, 4).map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b border-[#E8D9C5]">
-                <span className="font-ui text-xs font-medium text-[#33302E]">{cleanCommodityName(c.commodity)}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-ui text-sm font-semibold text-[#33302E]">
-                    ${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </span>
-                  {c.change_percent !== null && (
-                    <span className={`flex items-center gap-0.5 font-ui text-[11px] ${
-                      c.change_percent > 0 ? "text-[#00A36C]" : c.change_percent < 0 ? "text-[#CC0000]" : "text-[#66605A]"
-                    }`}>
-                      {c.change_percent > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                      {c.change_percent > 0 ? "+" : ""}{c.change_percent.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* GSE Top Movers */}
-      {gseIndex && gseIndex.length > 0 && (
-        <div className="mb-6">
-          <h3 className="font-ui text-xs font-semibold text-[#33302E] mb-3">GSE Stocks</h3>
-          <div className="space-y-0">
-            {gseIndex.map((stock) => (
-              <div key={stock.symbol} className="flex items-center justify-between py-2 border-b border-[#E8D9C5]">
-                <span className="font-ui text-xs font-medium text-[#33302E]">{stock.symbol}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-ui text-sm font-semibold text-[#33302E]">
-                    ₵{stock.current_price.toFixed(2)}
-                  </span>
-                  {stock.change_percent !== null && (
-                    <span className={`flex items-center gap-0.5 font-ui text-[11px] ${
-                      stock.change_percent > 0 ? "text-[#00A36C]" : stock.change_percent < 0 ? "text-[#CC0000]" : "text-[#66605A]"
-                    }`}>
-                      {stock.change_percent > 0 ? "+" : ""}{stock.change_percent.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => navigate("/dashboards/gse")}
-            className="font-ui text-xs text-[#0D7680] hover:underline mt-2 block"
-          >
-            Full GSE dashboard →
-          </button>
+    <aside className="sticky top-[130px]">
+      {/* Ghana At A Glance */}
+      <div className="mb-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex-1 h-px bg-[#e8e8e8]" />
+          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#33302E]">Ghana At A Glance</span>
+          <div className="flex-1 h-px bg-[#e8e8e8]" />
         </div>
-      )}
+
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-7 w-full" />)}</div>
+        ) : (
+          <>
+            {/* Exchange Rates */}
+            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Exchange Rates</h3>
+            <div className="space-y-0 mb-4">
+              {(currencies || []).slice(0, 4).map((rate) => (
+                <div key={rate.id} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
+                  <span className="font-ui text-[11px] font-medium text-[#33302E]">{rate.base_currency}/GHS</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-ui text-[12px] font-semibold text-[#33302E]">{rate.rate.toFixed(2)}</span>
+                    <ChangeIndicator change={rate.change_percent} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Commodities */}
+            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Commodities</h3>
+            <div className="space-y-0 mb-4">
+              {(commodities || []).slice(0, 4).map((c) => (
+                <div key={c.id} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
+                  <span className="font-ui text-[11px] font-medium text-[#33302E]">{cleanCommodityName(c.commodity)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-ui text-[12px] font-semibold text-[#33302E]">${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <ChangeIndicator change={c.change_percent} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* GSE */}
+            {gseIndex && gseIndex.length > 0 && (
+              <>
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">GSE Stocks</h3>
+                <div className="space-y-0 mb-3">
+                  {gseIndex.map((s) => (
+                    <div key={s.symbol} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
+                      <span className="font-ui text-[11px] font-medium text-[#33302E]">{s.symbol}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-ui text-[12px] font-semibold text-[#33302E]">₵{s.current_price.toFixed(2)}</span>
+                        <ChangeIndicator change={s.change_percent} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate("/dashboards/gse")} className="font-ui text-[11px] text-[#0D7680] hover:underline">
+                  Full GSE dashboard →
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Quick Links */}
-      <div>
-        <h3 className="font-ui text-xs font-semibold text-[#33302E] mb-3">Explore</h3>
-        <div className="space-y-2">
+      <div className="border-t border-[#e8e8e8] pt-4">
+        <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Explore</h3>
+        <div className="space-y-1.5">
           {[
             { label: "All Data Indicators", href: "/data" },
             { label: "Economic Calendar", href: "/calendar" },
             { label: "Finance Dashboard", href: "/dashboards/finance" },
           ].map((link) => (
-            <button
-              key={link.href}
-              onClick={() => navigate(link.href)}
-              className="block font-ui text-xs text-[#0D7680] hover:underline"
-            >
+            <button key={link.href} onClick={() => navigate(link.href)} className="block font-ui text-[11px] text-[#0D7680] hover:underline">
               {link.label}
             </button>
           ))}
