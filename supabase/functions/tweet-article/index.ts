@@ -240,6 +240,7 @@ serve(async (req) => {
           
           const tid = tData?.data?.id;
           await supabase.from("articles").update({ twitter_post: `POSTED:${tid}|${text}` }).eq("id", aid);
+          await supabase.from("tweet_scheduler_state").update({ last_posted_at: new Date().toISOString() }).eq("id", 1);
           results.push({ articleId: aid, success: true, tweetId: tid, message: text });
           
           // 90s delay between tweets
@@ -275,6 +276,28 @@ serve(async (req) => {
           console.log(`[tweet-article] SKIPPED_TOO_OLD: article ${articleId} published at ${freshCheck.published_at}`);
           return new Response(
             JSON.stringify({ success: false, skipped: true, reason: "SKIPPED_TOO_OLD", message: "Article published more than 3 hours ago" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
+    // ── 3-HOUR MINIMUM GAP GATE (shared clock with scheduled-tweet-poster) ──
+    {
+      const { data: tweetState } = await supabase
+        .from("tweet_scheduler_state")
+        .select("last_posted_at")
+        .eq("id", 1)
+        .single();
+
+      if (tweetState?.last_posted_at) {
+        const lastPostedMs = new Date(tweetState.last_posted_at).getTime();
+        const elapsedMinutes = (Date.now() - lastPostedMs) / 60000;
+        if (elapsedMinutes < 180) {
+          const minutesRemaining = Math.ceil(180 - elapsedMinutes);
+          console.log(`[tweet-article] TOO_SOON: ${Math.floor(elapsedMinutes)}min since last tweet, ${minutesRemaining}min remaining. Discarding article ${articleId}.`);
+          return new Response(
+            JSON.stringify({ success: false, skipped: true, reason: "TOO_SOON", message: `Last tweet was ${Math.floor(elapsedMinutes)}min ago, need 180min gap. ${minutesRemaining}min remaining.` }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -473,6 +496,12 @@ serve(async (req) => {
         twitter_post: `POSTED:${tweetId}|${tweetText}`,
       })
       .eq("id", articleId);
+
+    // ── Update shared clock: last_posted_at ──
+    await supabase
+      .from("tweet_scheduler_state")
+      .update({ last_posted_at: new Date().toISOString() })
+      .eq("id", 1);
 
     return new Response(
       JSON.stringify({

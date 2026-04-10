@@ -365,6 +365,24 @@ serve(async (req) => {
       });
     }
 
+    // ── 3-HOUR MINIMUM GAP GATE ──
+    if (state.last_posted_at) {
+      const lastPostedMs = new Date(state.last_posted_at).getTime();
+      const elapsedMinutes = (Date.now() - lastPostedMs) / 60000;
+      if (elapsedMinutes < 180) {
+        const minutesRemaining = Math.ceil(180 - elapsedMinutes);
+        console.log(`[scheduled-tweet-poster] TOO_SOON: ${Math.floor(elapsedMinutes)}min since last tweet, ${minutesRemaining}min remaining`);
+        await supabase.from("tweet_scheduler_logs").insert({
+          status: "skipped",
+          reason: `TOO_SOON: ${minutesRemaining}min remaining`,
+          cycle_id: state.cycle_id,
+        });
+        return new Response(JSON.stringify({ skipped: true, reason: "TOO_SOON", minutes_remaining: minutesRemaining }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     let queueHashes: string[] = state.queue_hashes || [];
     let cycleId = state.cycle_id;
     let postedHashes: string[] = state.posted_hashes || [];
