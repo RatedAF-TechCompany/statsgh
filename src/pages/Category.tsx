@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -25,7 +25,10 @@ const getTimeAgo = (publishedAt: string | null) => {
 
 const Category = () => {
   const { categorySlug, slug } = useParams();
-  const categoryParam = categorySlug || slug;
+  const location = useLocation();
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const fallbackSlug = pathSegments[0] === "category" ? pathSegments[1] : pathSegments[0];
+  const categoryParam = categorySlug || slug || fallbackSlug;
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
