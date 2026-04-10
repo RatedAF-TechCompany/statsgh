@@ -1,15 +1,15 @@
 export const SECTION_TO_CATEGORIES: Record<string, string[]> = {
-  'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news'],
-  'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy'],
-  'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities'],
-  'business': ['banking-and-finance', 'trade-and-industry', 'infrastructure-and-transport', 'business', 'corporate', 'sme'],
+  'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news', 'security-governance'],
+  'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy', 'economy-inflation', 'labour-salaries', 'population'],
+  'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities', 'financial-markets', 'capital-markets', 'gse', 'currency'],
+  'business': ['banking-and-finance', 'trade-and-industry', 'infrastructure-and-transport', 'business', 'corporate', 'sme', 'trade-investment', 'infrastructure-transport'],
   'politics-policy': ['regulation-and-policy', 'politics-policy', 'politics', 'governance', 'parliament'],
-  'energy-resources': ['energy-and-utilities', 'energy-resources', 'energy', 'oil-gas', 'mining', 'utilities'],
-  'agriculture': ['agriculture-and-commodities', 'agriculture', 'farming', 'cocoa', 'food'],
-  'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms'],
+  'energy-resources': ['energy-and-utilities', 'energy-resources', 'energy', 'oil-gas', 'mining', 'utilities', 'mining-and-resources', 'environment-climate'],
+  'agriculture': ['agriculture-and-commodities', 'agriculture', 'farming', 'cocoa', 'food', 'agriculture-food'],
+  'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms', 'technology-innovation'],
   'companies': ['corporate-ghana', 'companies', 'corporate', 'banking', 'insurance'],
   'opinion-analysis': ['opinion-analysis', 'opinion', 'analysis', 'commentary', 'editorial'],
-  'research': ['data-and-research', 'research', 'academic', 'report', 'survey'],
+  'research': ['data-and-research', 'research', 'academic', 'report', 'survey', 'health-data', 'education'],
   'world': ['regional-economy', 'world', 'africa', 'international', 'global'],
 };
 
