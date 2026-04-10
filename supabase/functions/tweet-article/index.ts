@@ -496,6 +496,12 @@ serve(async (req) => {
       })
       .eq("id", articleId);
 
+    // ── Update shared clock: last_posted_at ──
+    await supabase
+      .from("tweet_scheduler_state")
+      .update({ last_posted_at: new Date().toISOString() })
+      .eq("id", 1);
+
     return new Response(
       JSON.stringify({
         success: true,
