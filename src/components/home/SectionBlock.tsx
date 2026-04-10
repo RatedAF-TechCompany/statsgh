@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getSectionLabel } from "@/lib/navigation";
+import { FTSectionLabel } from "./FTSectionLabel";
+import { StoryItem } from "./StoryItem";
 
 interface Article {
   id: string;
@@ -13,19 +11,10 @@ interface Article {
   hero_image_url: string | null;
   published_at: string | null;
   word_count: number | null;
+  author_name?: string | null;
+  is_breaking?: boolean;
+  section?: string | null;
 }
-
-const getTimeAgo = (publishedAt: string | null) => {
-  if (!publishedAt) return "";
-  const now = new Date();
-  const published = new Date(publishedAt);
-  const minutesAgo = Math.floor((now.getTime() - published.getTime()) / (1000 * 60));
-  if (minutesAgo < 60) return `${minutesAgo}m ago`;
-  const hoursAgo = Math.floor(minutesAgo / 60);
-  if (hoursAgo < 24) return `${hoursAgo}h ago`;
-  const daysAgo = Math.floor(hoursAgo / 24);
-  return `${daysAgo}d ago`;
-};
 
 interface SectionBlockProps {
   sectionLabel: string;
@@ -35,68 +24,47 @@ interface SectionBlockProps {
 
 export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlockProps) => {
   const navigate = useNavigate();
-  if (articles.length === 0) return null;
+  // Minimum 4 articles to render a section
+  if (articles.length < 4) return null;
 
   const lead = articles[0];
-  const smallStories = articles.slice(1, 4);
+  const supporting = articles.slice(1, 7); // up to 6 supporting
 
   return (
-    <div className="pt-8 pb-8 border-t border-[#E8D9C5]">
-      {/* Section label */}
-      <div className="flex items-center justify-between mb-5">
+    <div className="py-6 border-t border-[#e8e8e8]">
+      <FTSectionLabel label={sectionLabel} onClick={() => navigate(`/${sectionSlug}`)} />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-0">
+        {/* Lead story — spans first column */}
+        <div className="md:col-span-1">
+          <StoryItem
+            article={lead}
+            variant="secondary"
+            showImage={!!lead.hero_image_url}
+            showSummary
+          />
+        </div>
+
+        {/* Supporting stories — 2 columns */}
+        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-0">
+          {supporting.map((article) => (
+            <StoryItem
+              key={article.id}
+              article={article}
+              variant="compact"
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-3">
         <button
           onClick={() => navigate(`/${sectionSlug}`)}
-          className="section-label border-b border-[#0D7680] pb-1"
-        >
-          {sectionLabel}
-        </button>
-        <button
-          onClick={() => navigate(`/${sectionSlug}`)}
-          className="font-ui text-xs text-[#0D7680] hover:underline"
+          className="font-ui text-[12px] text-[#0D7680] hover:underline"
         >
           More {sectionLabel} →
         </button>
       </div>
-
-      {/* Lead story */}
-      <article
-        className="cursor-pointer group mb-5"
-        onClick={() => navigate(`/${lead.category_slug}/${lead.slug}`)}
-      >
-        <h3 className="font-headline text-2xl font-bold leading-snug text-[#33302E] group-hover:text-[#0D7680] transition-colors">
-          {lead.title}
-        </h3>
-        {lead.summary && (
-          <p className="font-serif text-[15px] text-[#66605A] mt-2 line-clamp-2 leading-relaxed">
-            {lead.summary}
-          </p>
-        )}
-        {lead.published_at && (
-          <span className="font-ui text-xs text-[#66605A] mt-2 block">
-            {getTimeAgo(lead.published_at)}
-          </span>
-        )}
-      </article>
-
-      {/* 3 smaller stories */}
-      {smallStories.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {smallStories.map((article) => (
-            <article
-              key={article.id}
-              className="cursor-pointer group"
-              onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
-            >
-              <span className="section-label text-[10px]">
-                {getSectionLabel(article.category_slug)}
-              </span>
-              <h4 className="font-headline text-base font-semibold leading-snug text-[#33302E] group-hover:text-[#0D7680] transition-colors mt-1">
-                {article.title}
-              </h4>
-            </article>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
