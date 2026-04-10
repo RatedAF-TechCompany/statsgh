@@ -240,6 +240,7 @@ serve(async (req) => {
           
           const tid = tData?.data?.id;
           await supabase.from("articles").update({ twitter_post: `POSTED:${tid}|${text}` }).eq("id", aid);
+          await supabase.from("tweet_scheduler_state").update({ last_posted_at: new Date().toISOString() }).eq("id", 1);
           results.push({ articleId: aid, success: true, tweetId: tid, message: text });
           
           // 90s delay between tweets
