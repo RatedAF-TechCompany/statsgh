@@ -69,7 +69,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
       {showTicker && <EconomicIndicatorStrip />}
 
       {/* Masthead — centered logo */}
-      <div className="bg-[#FFF1E0] border-b border-[#ccc]">
+      <div className="bg-[#FFC107] border-b border-[#ccc]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-14">
           {/* Left: date */}
           <span className="hidden md:block font-ui text-[11px] text-[#66605A] whitespace-nowrap">
@@ -136,7 +136,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
       </div>
 
       {/* Section nav */}
-      <div className="bg-[#FFF1E0] border-b border-[#ccc]">
+      <div className="bg-[#FFC107] border-b border-[#ccc]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6">
           <nav
             ref={navRef}
