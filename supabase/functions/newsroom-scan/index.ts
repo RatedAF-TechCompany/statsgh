@@ -2751,6 +2751,23 @@ serve(async (req) => {
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
 
+        // ============================================
+        // GATE 2 (V5.0): STALE_BEFORE_AI — Re-check freshness right before
+        // sending to Gemini. Catches items that entered the queue when fresh
+        // but are now stale by the time AI processes them.
+        // ============================================
+        {
+          const ageMin = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
+          if (ageMin > FRESHNESS_MAX_AGE_MINUTES) {
+            console.log(`STALE_BEFORE_AI: "${item.title.substring(0, 60)}" — ${Math.round(ageMin)} min old`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "rejected",
+              error_message: `STALE_BEFORE_AI: source ${Math.round(ageMin)} min old`,
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+        }
+
         try {
           // Optimization #2: Check batch editorial filter result (skip expensive rewrite if failed)
           const batchResult = batchFilterResults.get(item.title);
