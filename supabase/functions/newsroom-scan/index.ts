@@ -3050,10 +3050,26 @@ Return ONLY valid JSON with these exact keys:
             continue;
           }
 
+          // ============================================
+          // GATE 3 (V5.0): STALE_BEFORE_PUBLISH — Final freshness check before
+          // inserting into articles. Last line of defence: never publish stale.
+          // ============================================
+          {
+            const ageMinPub = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
+            if (ageMinPub > FRESHNESS_MAX_AGE_MINUTES) {
+              console.log(`STALE_BEFORE_PUBLISH: "${item.title.substring(0, 60)}" — ${Math.round(ageMinPub)} min old`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "rejected",
+                error_message: `STALE_BEFORE_PUBLISH: source ${Math.round(ageMinPub)} min old`,
+              }).eq("id", newsroomRecord.id);
+              continue;
+            }
+          }
+
           // 8. Insert into articles table
           // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
-          const categorySlug = generated.category_slug || item._categoryHint || "top-stories";
+          const categorySlug = generated.category_slug || (item as any)._categoryHint || "top-stories";
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
