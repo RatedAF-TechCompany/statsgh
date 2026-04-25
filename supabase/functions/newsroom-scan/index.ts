@@ -397,6 +397,12 @@ const REJECTION_CODES = {
   // Time window
   OUTSIDE_TIME_WINDOW: "OUTSIDE_TIME_WINDOW",
   PUBDATE_PARSE_FAILED: "PUBDATE_PARSE_FAILED",
+  // Freshness (V5.0 ironclad guardrails — 3h max from source pubDate)
+  REJECTED_STALE: "REJECTED_STALE",
+  STALE_BEFORE_AI: "STALE_BEFORE_AI",
+  STALE_BEFORE_PUBLISH: "STALE_BEFORE_PUBLISH",
+  STALE_IN_PENDING_QUEUE: "STALE_IN_PENDING_QUEUE",
+  INVALID_PUBDATE: "INVALID_PUBDATE",
   // Relevance
   NOT_BUSINESS: "NOT_BUSINESS",
   NOT_GHANA_RELEVANT: "NOT_GHANA_RELEVANT",
@@ -431,6 +437,11 @@ const REJECTION_CODES = {
   // Daily limits
   DAILY_LIMIT_REACHED: "DAILY_LIMIT_REACHED",
 } as const;
+
+// V5.0: Maximum age (in minutes) of source pubDate for an article to be considered fresh
+const FRESHNESS_MAX_AGE_MINUTES = 180; // 3 hours
+// Reject items whose pubDate is in the future by more than this (clock skew tolerance)
+const FRESHNESS_FUTURE_TOLERANCE_MINUTES = 60; // 1 hour
 
 // ============================================
 // QUALIFYING NUMBER CLASSIFICATION (V2.0)
