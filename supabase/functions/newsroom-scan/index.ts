@@ -2441,7 +2441,7 @@ serve(async (req) => {
       const SEMANTIC_THRESHOLD = 0.90;
       const cutoffExact = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(); // 4h for title match
       const cutoffSemantic = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(); // 12h for semantic
-      const candidateText = [article.title, article.summary || ""].join(" ");
+      const candidateText = [article.title, (article as any).summary || article.description || ""].join(" ");
       const candidateTitleKeywords = extractKeywords(article.title);
       
       // Fetch recent articles using the SHORTER window for title keyword match
@@ -2568,7 +2568,11 @@ serve(async (req) => {
           sources_checked: cappedSources.length, 
           time_window: timeWindowHours,
           version: "2.0",
-          qualifying_number_rules: true
+          qualifying_number_rules: true,
+          // V5.0 freshness reporting
+          stale_rejected_count: staleRejectedCount,
+          invalid_pubdate_count: invalidPubDateCount,
+          freshness_max_age_minutes: FRESHNESS_MAX_AGE_MINUTES,
         }
       }).eq("id", run.id);
 
@@ -2579,7 +2583,9 @@ serve(async (req) => {
         sources_checked: cappedSources.length,
         articles_found: 0,
         articles_created: 0,
-        message: "No qualifying articles found with sufficient data quality",
+        stale_rejected: staleRejectedCount,
+        invalid_pubdate: invalidPubDateCount,
+        message: `No qualifying articles found. ${staleRejectedCount} rejected as stale, ${invalidPubDateCount} invalid pubDate.`,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -3039,14 +3045,14 @@ Return ONLY valid JSON with these exact keys:
           const FRONT_PAGES = /front\s*pages?:/i;
           // Only reject if >50% of words are ALL CAPS (allows acronyms like NPRA, GNPC, PIAC)
           const words = titleToCheck.split(/\s+/);
-          const allCapsWords = words.filter(w => w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w));
+          const allCapsWords = words.filter((w: string) => w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w));
           const excessiveCaps = allCapsWords.length > words.length * 0.5;
           if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || excessiveCaps) {
             console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
             await supabase.from("newsroom_articles").update({
               processing_status: "failed",
               error_message: "MALFORMED_TITLE",
-            }).eq("id", item._newsroomArticleId);
+            }).eq("id", newsroomRecord.id);
             continue;
           }
 
@@ -3438,6 +3444,10 @@ Return ONLY valid JSON with these exact keys:
         ai_batch_processed: aiBatchItems.length,
         deferred_pending_ai: overflowItems.length,
         published: publishedCount,
+        // V5.0 freshness reporting
+        stale_rejected_count: staleRejectedCount,
+        invalid_pubdate_count: invalidPubDateCount,
+        freshness_max_age_minutes: FRESHNESS_MAX_AGE_MINUTES,
         optimizations: {
           pre_filter_blocked: preFilterBlockedCount,
           source_skipped: sourceSkippedCount,
