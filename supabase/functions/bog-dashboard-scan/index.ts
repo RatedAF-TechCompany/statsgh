@@ -201,7 +201,7 @@ async function fetchWorldBankLatest(wbCode: string): Promise<{ value: number; pe
   }
 }
 
-async function fetchFromDB(supabase: ReturnType<typeof createClient>, dbSlug: string): Promise<{ value: number; period: string } | null> {
+async function fetchFromDB(supabase: any, dbSlug: string): Promise<{ value: number; period: string } | null> {
   try {
     // Get latest data point for this indicator from our own DB
     const { data, error } = await supabase
@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
 // ── Update main data_points table ─────────────────────────────────────────
 
 async function updateMainDataPoints(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   dbSlug: string,
   result: { value: number; period: string }
 ) {
