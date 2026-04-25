@@ -3185,6 +3185,26 @@ Return ONLY valid JSON with these exact keys:
         console.log(`\n=== Processing ${pendingToProcess.length} pending_ai articles from previous runs ===`);
         
         for (const pendingItem of pendingToProcess) {
+          // ============================================
+          // GATE 4 (V5.0): STALE_IN_PENDING_QUEUE — pending_ai items must be
+          // re-checked for source pubDate freshness before AI processing.
+          // ============================================
+          {
+            const srcPub = pendingItem.source_published_at
+              ? new Date(pendingItem.source_published_at)
+              : (pendingItem.published_at ? new Date(pendingItem.published_at) : null);
+            if (srcPub && !isNaN(srcPub.getTime())) {
+              const ageMinPending = (Date.now() - srcPub.getTime()) / (1000 * 60);
+              if (ageMinPending > FRESHNESS_MAX_AGE_MINUTES) {
+                console.log(`STALE_IN_PENDING_QUEUE: "${(pendingItem.original_headline || "").substring(0, 60)}" — ${Math.round(ageMinPending)} min old`);
+                await supabase.from("newsroom_articles").update({
+                  processing_status: "rejected",
+                  error_message: `STALE_IN_PENDING_QUEUE: source ${Math.round(ageMinPending)} min old`,
+                }).eq("id", pendingItem.id);
+                continue;
+              }
+            }
+          }
           try {
             console.log(`\n=== Pending_ai: "${pendingItem.original_headline.substring(0, 60)}..." ===`);
             
