@@ -2654,6 +2654,8 @@ serve(async (req) => {
       original_summary: item.description || "",
       source_url: item.link,
       published_at: item._pubDateParsed.toISOString(),
+      // V5.0: Always store the source RSS pubDate for downstream freshness gates
+      source_published_at: item._pubDateParsed.toISOString(),
       category_hint: null,
       dedupe_key: item._dedupeKey,
       processing_status: "pending",
