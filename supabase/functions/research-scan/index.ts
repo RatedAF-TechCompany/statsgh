@@ -656,7 +656,9 @@ serve(async (req) => {
           decision: "accepted",
           dedupe_key: dedupeKey,
           newsroom_article_id: newsRecord.id,
-        }).catch(e => console.log(`Candidate log error: ${e}`));
+        }).then(({ error }: { error: any }) => {
+          if (error) console.log(`Candidate log error: ${error.message}`);
+        });
 
         // AI rewrite prompt
         const aiPrompt = `You are the Editor in Chief of StatsGH, a data-driven news platform about Ghana's economy.
