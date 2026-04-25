@@ -1584,6 +1584,7 @@ export type Database = {
           review_reason: string | null
           run_id: string | null
           source_name: string
+          source_published_at: string | null
           source_url: string | null
         }
         Insert: {
@@ -1602,6 +1603,7 @@ export type Database = {
           review_reason?: string | null
           run_id?: string | null
           source_name: string
+          source_published_at?: string | null
           source_url?: string | null
         }
         Update: {
@@ -1620,6 +1622,7 @@ export type Database = {
           review_reason?: string | null
           run_id?: string | null
           source_name?: string
+          source_published_at?: string | null
           source_url?: string | null
         }
         Relationships: [
@@ -1804,6 +1807,7 @@ export type Database = {
           rss_url: string
           total_items_accepted: number | null
           total_items_seen: number | null
+          trust_pub_date: boolean
           updated_at: string | null
         }
         Insert: {
@@ -1821,6 +1825,7 @@ export type Database = {
           rss_url: string
           total_items_accepted?: number | null
           total_items_seen?: number | null
+          trust_pub_date?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -1838,6 +1843,7 @@ export type Database = {
           rss_url?: string
           total_items_accepted?: number | null
           total_items_seen?: number | null
+          trust_pub_date?: boolean
           updated_at?: string | null
         }
         Relationships: []

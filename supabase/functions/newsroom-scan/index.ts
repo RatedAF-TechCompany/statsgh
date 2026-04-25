@@ -397,6 +397,12 @@ const REJECTION_CODES = {
   // Time window
   OUTSIDE_TIME_WINDOW: "OUTSIDE_TIME_WINDOW",
   PUBDATE_PARSE_FAILED: "PUBDATE_PARSE_FAILED",
+  // Freshness (V5.0 ironclad guardrails — 3h max from source pubDate)
+  REJECTED_STALE: "REJECTED_STALE",
+  STALE_BEFORE_AI: "STALE_BEFORE_AI",
+  STALE_BEFORE_PUBLISH: "STALE_BEFORE_PUBLISH",
+  STALE_IN_PENDING_QUEUE: "STALE_IN_PENDING_QUEUE",
+  INVALID_PUBDATE: "INVALID_PUBDATE",
   // Relevance
   NOT_BUSINESS: "NOT_BUSINESS",
   NOT_GHANA_RELEVANT: "NOT_GHANA_RELEVANT",
@@ -431,6 +437,11 @@ const REJECTION_CODES = {
   // Daily limits
   DAILY_LIMIT_REACHED: "DAILY_LIMIT_REACHED",
 } as const;
+
+// V5.0: Maximum age (in minutes) of source pubDate for an article to be considered fresh
+const FRESHNESS_MAX_AGE_MINUTES = 180; // 3 hours
+// Reject items whose pubDate is in the future by more than this (clock skew tolerance)
+const FRESHNESS_FUTURE_TOLERANCE_MINUTES = 60; // 1 hour
 
 // ============================================
 // QUALIFYING NUMBER CLASSIFICATION (V2.0)
@@ -2155,8 +2166,67 @@ serve(async (req) => {
     const highRejectionSources = await getHighRejectionSources(supabase);
     let preFilterBlockedCount = 0;
     let sourceSkippedCount = 0;
+    // V5.0: Counter for items rejected at the earliest RSS-parse stage as stale
+    let staleRejectedCount = 0;
+    let invalidPubDateCount = 0;
+
+    // V5.0: Build a quick lookup of trust_pub_date per source name
+    const sourceTrustMap = new Map<string, boolean>();
+    for (const s of ((cappedSources || []) as any[])) {
+      sourceTrustMap.set(s.name, s.trust_pub_date !== false);
+    }
 
     for (const article of allArticles) {
+      // ============================================
+      // GATE 1 (V5.0): EARLIEST FRESHNESS CHECK — runs BEFORE any other filter.
+      // An article is fresh only if its source RSS pubDate is within
+      // FRESHNESS_MAX_AGE_MINUTES (180 min / 3h) of now. Items older than that
+      // are permanently rejected here — never published, never tweeted, never
+      // queued as pending_ai.
+      // ============================================
+      const trustPubDate = sourceTrustMap.get(article.source_name) !== false;
+      let parsedPubDate: Date | null = null;
+      try {
+        parsedPubDate = new Date(article.pubDate);
+        if (isNaN(parsedPubDate.getTime())) parsedPubDate = null;
+      } catch {
+        parsedPubDate = null;
+      }
+
+      if (!parsedPubDate) {
+        if (trustPubDate) {
+          invalidPubDateCount++;
+          console.log(`INVALID_PUBDATE: "${(article.title || "").substring(0, 60)}" — could not parse "${article.pubDate}" (source: ${article.source_name})`);
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INVALID_PUBDATE,
+            `Unparseable RSS pubDate: ${article.pubDate}`, { pubDateParsed: null });
+          continue;
+        } else {
+          // Trust=false → use now() as freshness reference (item just first seen)
+          parsedPubDate = new Date();
+        }
+      }
+
+      const ageMinutes = (Date.now() - parsedPubDate.getTime()) / (1000 * 60);
+
+      // Reject items dated more than 1h in the future (clock skew)
+      if (ageMinutes < -FRESHNESS_FUTURE_TOLERANCE_MINUTES) {
+        invalidPubDateCount++;
+        console.log(`INVALID_PUBDATE (future): "${(article.title || "").substring(0, 60)}" — ${Math.round(-ageMinutes)} min in future (source: ${article.source_name})`);
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INVALID_PUBDATE,
+          `pubDate is ${Math.round(-ageMinutes)} min in the future`, { pubDateParsed: parsedPubDate });
+        continue;
+      }
+
+      // Hard freshness gate
+      if (ageMinutes > FRESHNESS_MAX_AGE_MINUTES) {
+        staleRejectedCount++;
+        console.log(`REJECTED_STALE: "${(article.title || "").substring(0, 60)}" — ${Math.round(ageMinutes)} min old (source: ${article.source_name})`);
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.REJECTED_STALE,
+          `Source pubDate ${Math.round(ageMinutes)} min old (max ${FRESHNESS_MAX_AGE_MINUTES} min)`,
+          { pubDateParsed: parsedPubDate });
+        continue;
+      }
+
       const isFast = isFastPublishSource(article.source_name);
       const isAutoPass = isAutoPassSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
@@ -2584,6 +2654,8 @@ serve(async (req) => {
       original_summary: item.description || "",
       source_url: item.link,
       published_at: item._pubDateParsed.toISOString(),
+      // V5.0: Always store the source RSS pubDate for downstream freshness gates
+      source_published_at: item._pubDateParsed.toISOString(),
       category_hint: null,
       dedupe_key: item._dedupeKey,
       processing_status: "pending",
@@ -2678,6 +2750,23 @@ serve(async (req) => {
         const item = aiBatchItems[i];
         const newsroomRecord = insertedNews?.[i];
         if (!newsroomRecord) continue;
+
+        // ============================================
+        // GATE 2 (V5.0): STALE_BEFORE_AI — Re-check freshness right before
+        // sending to Gemini. Catches items that entered the queue when fresh
+        // but are now stale by the time AI processes them.
+        // ============================================
+        {
+          const ageMin = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
+          if (ageMin > FRESHNESS_MAX_AGE_MINUTES) {
+            console.log(`STALE_BEFORE_AI: "${item.title.substring(0, 60)}" — ${Math.round(ageMin)} min old`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "rejected",
+              error_message: `STALE_BEFORE_AI: source ${Math.round(ageMin)} min old`,
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+        }
 
         try {
           // Optimization #2: Check batch editorial filter result (skip expensive rewrite if failed)
@@ -2961,10 +3050,26 @@ Return ONLY valid JSON with these exact keys:
             continue;
           }
 
+          // ============================================
+          // GATE 3 (V5.0): STALE_BEFORE_PUBLISH — Final freshness check before
+          // inserting into articles. Last line of defence: never publish stale.
+          // ============================================
+          {
+            const ageMinPub = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
+            if (ageMinPub > FRESHNESS_MAX_AGE_MINUTES) {
+              console.log(`STALE_BEFORE_PUBLISH: "${item.title.substring(0, 60)}" — ${Math.round(ageMinPub)} min old`);
+              await supabase.from("newsroom_articles").update({
+                processing_status: "rejected",
+                error_message: `STALE_BEFORE_PUBLISH: source ${Math.round(ageMinPub)} min old`,
+              }).eq("id", newsroomRecord.id);
+              continue;
+            }
+          }
+
           // 8. Insert into articles table
           // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
-          const categorySlug = generated.category_slug || item._categoryHint || "top-stories";
+          const categorySlug = generated.category_slug || (item as any)._categoryHint || "top-stories";
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
@@ -3080,6 +3185,26 @@ Return ONLY valid JSON with these exact keys:
         console.log(`\n=== Processing ${pendingToProcess.length} pending_ai articles from previous runs ===`);
         
         for (const pendingItem of pendingToProcess) {
+          // ============================================
+          // GATE 4 (V5.0): STALE_IN_PENDING_QUEUE — pending_ai items must be
+          // re-checked for source pubDate freshness before AI processing.
+          // ============================================
+          {
+            const srcPub = pendingItem.source_published_at
+              ? new Date(pendingItem.source_published_at)
+              : (pendingItem.published_at ? new Date(pendingItem.published_at) : null);
+            if (srcPub && !isNaN(srcPub.getTime())) {
+              const ageMinPending = (Date.now() - srcPub.getTime()) / (1000 * 60);
+              if (ageMinPending > FRESHNESS_MAX_AGE_MINUTES) {
+                console.log(`STALE_IN_PENDING_QUEUE: "${(pendingItem.original_headline || "").substring(0, 60)}" — ${Math.round(ageMinPending)} min old`);
+                await supabase.from("newsroom_articles").update({
+                  processing_status: "rejected",
+                  error_message: `STALE_IN_PENDING_QUEUE: source ${Math.round(ageMinPending)} min old`,
+                }).eq("id", pendingItem.id);
+                continue;
+              }
+            }
+          }
           try {
             console.log(`\n=== Pending_ai: "${pendingItem.original_headline.substring(0, 60)}..." ===`);
             
