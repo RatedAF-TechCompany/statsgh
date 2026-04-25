@@ -2568,7 +2568,11 @@ serve(async (req) => {
           sources_checked: cappedSources.length, 
           time_window: timeWindowHours,
           version: "2.0",
-          qualifying_number_rules: true
+          qualifying_number_rules: true,
+          // V5.0 freshness reporting
+          stale_rejected_count: staleRejectedCount,
+          invalid_pubdate_count: invalidPubDateCount,
+          freshness_max_age_minutes: FRESHNESS_MAX_AGE_MINUTES,
         }
       }).eq("id", run.id);
 
@@ -2579,7 +2583,9 @@ serve(async (req) => {
         sources_checked: cappedSources.length,
         articles_found: 0,
         articles_created: 0,
-        message: "No qualifying articles found with sufficient data quality",
+        stale_rejected: staleRejectedCount,
+        invalid_pubdate: invalidPubDateCount,
+        message: `No qualifying articles found. ${staleRejectedCount} rejected as stale, ${invalidPubDateCount} invalid pubDate.`,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
