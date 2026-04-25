@@ -2172,7 +2172,7 @@ serve(async (req) => {
 
     // V5.0: Build a quick lookup of trust_pub_date per source name
     const sourceTrustMap = new Map<string, boolean>();
-    for (const s of (cappedSources || [])) {
+    for (const s of ((cappedSources || []) as any[])) {
       sourceTrustMap.set(s.name, s.trust_pub_date !== false);
     }
 
