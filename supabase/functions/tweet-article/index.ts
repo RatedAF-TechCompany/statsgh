@@ -163,7 +163,7 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       isServiceRole ? serviceRoleKey! : Deno.env.get("SUPABASE_ANON_KEY")!,
-      isServiceRole ? {} : { global: { headers: { Authorization: authHeader } } }
+      isServiceRole ? {} : { global: { headers: { Authorization: authHeader || "" } } }
     );
 
     if (!isServiceRole) {
@@ -246,7 +246,7 @@ serve(async (req) => {
           // 90s delay between tweets
           if (i < articleIds.length - 1) await new Promise(r => setTimeout(r, 90_000));
         } catch (err) {
-          results.push({ articleId: aid, success: false, error: err.message });
+          results.push({ articleId: aid, success: false, error: err instanceof Error ? err.message : String(err) });
         }
       }
       
@@ -260,19 +260,36 @@ serve(async (req) => {
       });
     }
 
-    // ── 3-HOUR FRESHNESS GATE ──
-    // Articles older than 3 hours are not tweeted — discard immediately.
+    // ── GATE 5 (V5.0): 3-HOUR SOURCE FRESHNESS GATE ──
+    // Articles whose ORIGINAL SOURCE was published more than 3 hours ago
+    // are not tweeted — discard immediately. This is in addition to the
+    // existing check on published_at (which protects against stale republishes).
     {
       const { data: freshCheck } = await supabase
         .from("articles")
-        .select("published_at")
+        .select("published_at, source_published_at")
         .eq("id", articleId)
         .single();
 
+      const threeHoursMs = 3 * 60 * 60 * 1000;
+      const now = Date.now();
+
+      // Check 1: source_published_at (Gate 5 — primary)
+      if ((freshCheck as any)?.source_published_at) {
+        const srcPub = new Date((freshCheck as any).source_published_at).getTime();
+        if (now - srcPub > threeHoursMs) {
+          console.log(`[tweet-article] SKIPPED_STALE_SOURCE: article ${articleId} source pubDate ${(freshCheck as any).source_published_at} (${Math.round((now - srcPub) / 60000)} min old)`);
+          return new Response(
+            JSON.stringify({ success: false, skipped: true, reason: "SKIPPED_STALE_SOURCE", message: "Source published more than 3 hours ago" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // Check 2: published_at (legacy guard)
       if (freshCheck?.published_at) {
         const publishedAt = new Date(freshCheck.published_at).getTime();
-        const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
-        if (publishedAt < threeHoursAgo) {
+        if (now - publishedAt > threeHoursMs) {
           console.log(`[tweet-article] SKIPPED_TOO_OLD: article ${articleId} published at ${freshCheck.published_at}`);
           return new Response(
             JSON.stringify({ success: false, skipped: true, reason: "SKIPPED_TOO_OLD", message: "Article published more than 3 hours ago" }),
