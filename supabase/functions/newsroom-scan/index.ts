@@ -2166,8 +2166,67 @@ serve(async (req) => {
     const highRejectionSources = await getHighRejectionSources(supabase);
     let preFilterBlockedCount = 0;
     let sourceSkippedCount = 0;
+    // V5.0: Counter for items rejected at the earliest RSS-parse stage as stale
+    let staleRejectedCount = 0;
+    let invalidPubDateCount = 0;
+
+    // V5.0: Build a quick lookup of trust_pub_date per source name
+    const sourceTrustMap = new Map<string, boolean>();
+    for (const s of (cappedSources || [])) {
+      sourceTrustMap.set(s.name, s.trust_pub_date !== false);
+    }
 
     for (const article of allArticles) {
+      // ============================================
+      // GATE 1 (V5.0): EARLIEST FRESHNESS CHECK — runs BEFORE any other filter.
+      // An article is fresh only if its source RSS pubDate is within
+      // FRESHNESS_MAX_AGE_MINUTES (180 min / 3h) of now. Items older than that
+      // are permanently rejected here — never published, never tweeted, never
+      // queued as pending_ai.
+      // ============================================
+      const trustPubDate = sourceTrustMap.get(article.source_name) !== false;
+      let parsedPubDate: Date | null = null;
+      try {
+        parsedPubDate = new Date(article.pubDate);
+        if (isNaN(parsedPubDate.getTime())) parsedPubDate = null;
+      } catch {
+        parsedPubDate = null;
+      }
+
+      if (!parsedPubDate) {
+        if (trustPubDate) {
+          invalidPubDateCount++;
+          console.log(`INVALID_PUBDATE: "${(article.title || "").substring(0, 60)}" — could not parse "${article.pubDate}" (source: ${article.source_name})`);
+          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INVALID_PUBDATE,
+            `Unparseable RSS pubDate: ${article.pubDate}`, { pubDateParsed: null });
+          continue;
+        } else {
+          // Trust=false → use now() as freshness reference (item just first seen)
+          parsedPubDate = new Date();
+        }
+      }
+
+      const ageMinutes = (Date.now() - parsedPubDate.getTime()) / (1000 * 60);
+
+      // Reject items dated more than 1h in the future (clock skew)
+      if (ageMinutes < -FRESHNESS_FUTURE_TOLERANCE_MINUTES) {
+        invalidPubDateCount++;
+        console.log(`INVALID_PUBDATE (future): "${(article.title || "").substring(0, 60)}" — ${Math.round(-ageMinutes)} min in future (source: ${article.source_name})`);
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.INVALID_PUBDATE,
+          `pubDate is ${Math.round(-ageMinutes)} min in the future`, { pubDateParsed: parsedPubDate });
+        continue;
+      }
+
+      // Hard freshness gate
+      if (ageMinutes > FRESHNESS_MAX_AGE_MINUTES) {
+        staleRejectedCount++;
+        console.log(`REJECTED_STALE: "${(article.title || "").substring(0, 60)}" — ${Math.round(ageMinutes)} min old (source: ${article.source_name})`);
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.REJECTED_STALE,
+          `Source pubDate ${Math.round(ageMinutes)} min old (max ${FRESHNESS_MAX_AGE_MINUTES} min)`,
+          { pubDateParsed: parsedPubDate });
+        continue;
+      }
+
       const isFast = isFastPublishSource(article.source_name);
       const isAutoPass = isAutoPassSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
