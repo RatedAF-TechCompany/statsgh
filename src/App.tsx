@@ -38,6 +38,7 @@ import EconomicCalendar from "./pages/EconomicCalendar";
 import EditorialStandards from "./pages/EditorialStandards";
 import CommodityTracker from "./pages/CommodityTracker";
 import TweetScheduler from "./pages/TweetScheduler";
+import { CanonicalManager } from "./hooks/useCanonical";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <CanonicalManager />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/verify-comment" element={<VerifyComment />} />
