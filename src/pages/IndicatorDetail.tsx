@@ -179,6 +179,25 @@ const IndicatorDetail = () => {
     URL.revokeObjectURL(url);
   };
 
+  usePageMeta({
+    title: indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
+    description: indicator
+      ? (indicator.description || `Live data and historical chart for ${indicator.name} in Ghana.`).slice(0, 158)
+      : undefined,
+    jsonLd: indicator
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: indicator.name,
+          description: indicator.description || `Ghana indicator: ${indicator.name}`,
+          creator: { "@type": "Organization", name: "StatsGH" },
+          keywords: ["Ghana", indicator.name, indicator.topic?.name].filter(Boolean),
+          measurementTechnique: indicator.unit || undefined,
+        }
+      : undefined,
+  });
+
+
   if (indicatorLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -204,31 +223,11 @@ const IndicatorDetail = () => {
     );
   }
 
-  const indicatorTitle = `${indicator.name} — Ghana Data | StatsGH`;
-  const indicatorDesc = indicator.description
-    ? `${indicator.description}`.slice(0, 158)
-    : `Live data and historical chart for ${indicator.name} in Ghana. Source-cited indicator from StatsGH.`;
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      {(() => {
-        usePageMeta({
-          title: indicatorTitle.slice(0, 60),
-          description: indicatorDesc,
-          jsonLd: {
-            "@context": "https://schema.org",
-            "@type": "Dataset",
-            name: indicator.name,
-            description: indicator.description || `Ghana indicator: ${indicator.name}`,
-            url: typeof window !== "undefined" ? window.location.href : undefined,
-            creator: { "@type": "Organization", name: "StatsGH" },
-            keywords: ["Ghana", indicator.name, indicator.topic?.name].filter(Boolean),
-            measurementTechnique: indicator.unit || undefined,
-          },
-        });
-        return null;
-      })()}
+
+
 
 
       <main className="container mx-auto px-4 py-8">
