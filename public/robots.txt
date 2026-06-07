@@ -24,7 +24,6 @@ Allow: /
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /auth
-Disallow: /calendar
 Disallow: /dashboard
 Disallow: /reader
 Disallow: /reader/*
