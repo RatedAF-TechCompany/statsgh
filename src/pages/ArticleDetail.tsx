@@ -18,6 +18,7 @@ import {
   BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { format } from "date-fns";
+import { JournalistByline } from "@/components/JournalistByline";
 
 const ArticleDetail = () => {
   const { articleSlug: slug, categorySlug } = useParams();
