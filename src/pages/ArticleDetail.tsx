@@ -18,6 +18,7 @@ import {
   BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { format } from "date-fns";
+import { JournalistByline } from "@/components/JournalistByline";
 
 const ArticleDetail = () => {
   const { articleSlug: slug, categorySlug } = useParams();
@@ -302,7 +303,8 @@ const ArticleDetail = () => {
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-ui text-[13px] text-[#66605A]" itemProp="author">
-                  StatsGH Newsroom
+                  <JournalistByline name={article.author_name} />
+                  {" "}|{" "}StatsGH
                   {article.published_at && (
                     <> | <time dateTime={article.published_at} itemProp="datePublished">
                       {format(new Date(article.published_at), "MMMM d, yyyy")}

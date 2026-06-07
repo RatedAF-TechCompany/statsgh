@@ -9,6 +9,30 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Journalist byline assignment (mirrors public.assign_journalist) ──
+function poolForCategory(categorySlug: string): string[] {
+  const c = (categorySlug || "").toLowerCase();
+  if (/economy|macroeconomy|public-finance|labour/.test(c)) return ["Ama Mensah", "Nana Yaw Amoako", "Adwoa Mensah-Bonsu"];
+  if (/markets|stocks|forex|commodities/.test(c)) return ["Abena Owusu", "Dr. Nana Asare"];
+  if (/business|banking|corporate|trade|industry/.test(c)) return ["Kwesi Boateng", "Kwame Kusi"];
+  if (/politics|policy|regulation|governance/.test(c)) return ["Kofi Asante", "Nana Yaw Amoako", "Grace Adjei"];
+  if (/energy|mining|oil|utilities/.test(c)) return ["Samuel Darko", "Akosua Boateng", "Yaw Osei"];
+  if (/agriculture|cocoa|farming|food/.test(c)) return ["Miriam Ankomah", "Benjamin Owusu-Ansah"];
+  if (/technology|digital|fintech|telecoms/.test(c)) return ["Ransford Acheampong", "Efua Sarpong"];
+  if (/research|academic/.test(c)) return ["Abena Frimpong", "Dr. Nana Asare"];
+  if (/data/.test(c)) return ["Dr. Nana Asare"];
+  if (/world|africa|international/.test(c)) return ["Nii Armah Tetteh"];
+  return ["Ekow Quansah", "Esi Larbi"];
+}
+function assignJournalist(categorySlug: string, seed: string): string {
+  const pool = poolForCategory(categorySlug);
+  if (pool.length === 1) return pool[0];
+  let h = 5381;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) | 0;
+  return pool[Math.abs(h) % pool.length];
+}
+
+
 // Remove accidental duplicated words/phrases like "not not" or "not. not".
 // Collapses immediate repeated tokens (case-insensitive). Keeps numbers intact.
 function collapseImmediateWordRepeats(input: string): string {
@@ -3092,7 +3116,7 @@ Return ONLY valid JSON with these exact keys:
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description || null,
               body: generated.body_html,
-              author_name: generated.author_name || "StatsGH Newsroom",
+              author_name: assignJournalist(categorySlug, uniqueSlug),
               hero_image_url: generated.hero_image_url || null,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),
@@ -3388,7 +3412,7 @@ Return ONLY valid JSON with these exact keys:
                 subtitle: pendingGenerated.subtitle || null,
                 seo_description: pendingGenerated.seo_description || null,
                 meta_title: pendingGenerated.headline || pendingItem.original_headline,
-                author_name: pendingGenerated.author_name || "StatsGH Newsroom",
+                author_name: assignJournalist(finalCategorySlug, slug),
                 section: getSectionForCategory(finalCategorySlug),
                 category_slug: finalCategorySlug,
                 is_published: true,

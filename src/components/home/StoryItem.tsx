@@ -91,11 +91,14 @@ export const StoryItem = ({
             </p>
           )}
 
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-1.5 mt-1.5">
             {article.author_name && (
               <span className="font-ui text-[11px] text-[#999]">
                 {article.author_name}
               </span>
+            )}
+            {article.author_name && article.published_at && (
+              <span className="font-ui text-[11px] text-[#999]">·</span>
             )}
             {article.published_at && (
               <span className="font-ui text-[11px] text-[#999]">
