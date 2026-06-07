@@ -20,6 +20,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  usePageMeta({ robots: "noindex, nofollow" });
+
   // Fetch invitation details if token is present
   const { data: invitation } = useQuery({
     queryKey: ["invitation", inviteToken],
