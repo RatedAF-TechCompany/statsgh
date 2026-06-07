@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const VerifyComment = () => {
   const [searchParams] = useSearchParams();

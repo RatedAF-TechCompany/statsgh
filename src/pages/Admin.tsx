@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { PlusCircle, FileText, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const Admin = () => {
   const navigate = useNavigate();
