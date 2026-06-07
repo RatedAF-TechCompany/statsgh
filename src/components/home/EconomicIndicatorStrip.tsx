@@ -115,6 +115,17 @@ const EconomicIndicatorStrip = () => {
     });
   });
 
+  // Validation: drop any item whose label is empty, pure numeric, or whose value isn't a valid string
+  const validItems = items.filter((it) => {
+    const label = (it.label || "").trim();
+    if (!label) return false;
+    if (/^\d+(\.\d+)?$/.test(label)) return false;
+    if (!it.value || typeof it.value !== "string") return false;
+    return true;
+  });
+  items.length = 0;
+  items.push(...validItems);
+
   const isLoading = !currencies && !commodities;
 
   if (isLoading) {
