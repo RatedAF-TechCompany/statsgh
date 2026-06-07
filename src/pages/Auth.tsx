@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { logAuditEvent } from "@/lib/audit";
 import statsghLogo from "@/assets/statsgh-logo.png";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,8 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  usePageMeta({ robots: "noindex, nofollow" });
 
   // Fetch invitation details if token is present
   const { data: invitation } = useQuery({

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect } from "react";
 import { format } from "date-fns";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +18,8 @@ import {
 
 const Saved = () => {
   const navigate = useNavigate();
+
+  usePageMeta({ robots: "noindex, nofollow" });
 
   const { data: session } = useQuery({
     queryKey: ["session"],

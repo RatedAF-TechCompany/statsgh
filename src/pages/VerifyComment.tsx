@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const VerifyComment = () => {
   const [searchParams] = useSearchParams();
@@ -11,6 +12,8 @@ const VerifyComment = () => {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [articleId, setArticleId] = useState<string | null>(null);
+
+  usePageMeta({ robots: "noindex, nofollow" });
 
   useEffect(() => {
     const verifyComment = async () => {

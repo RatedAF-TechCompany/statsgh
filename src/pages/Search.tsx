@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search as SearchIcon, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 interface Article {
   id: string;
@@ -24,6 +25,8 @@ const Search = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  usePageMeta({ robots: "noindex, nofollow" });
 
   useEffect(() => {
     const delaySearch = setTimeout(() => {

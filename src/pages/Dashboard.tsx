@@ -24,9 +24,12 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  usePageMeta({ robots: "noindex, nofollow" });
 
   const { data: session } = useQuery({
     queryKey: ["session"],
