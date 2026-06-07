@@ -13,6 +13,8 @@ const VerifyComment = () => {
   const [message, setMessage] = useState("");
   const [articleId, setArticleId] = useState<string | null>(null);
 
+  usePageMeta({ robots: "noindex, nofollow" });
+
   useEffect(() => {
     const verifyComment = async () => {
       const code = searchParams.get("code");

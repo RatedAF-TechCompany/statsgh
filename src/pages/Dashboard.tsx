@@ -29,6 +29,8 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 const Dashboard = () => {
   const navigate = useNavigate();
 
+  usePageMeta({ robots: "noindex, nofollow" });
+
   const { data: session } = useQuery({
     queryKey: ["session"],
     queryFn: async () => {

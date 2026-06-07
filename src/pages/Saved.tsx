@@ -19,6 +19,8 @@ import {
 const Saved = () => {
   const navigate = useNavigate();
 
+  usePageMeta({ robots: "noindex, nofollow" });
+
   const { data: session } = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
