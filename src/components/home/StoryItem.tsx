@@ -65,7 +65,17 @@ export const StoryItem = ({
             Breaking
           </span>
         )}
-        {isNew(article.published_at ?? null) && !article.is_breaking && (
+        {article.section === "analysis" && (
+          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D7680] border border-[#0D7680] px-1.5 py-px">
+            Analysis
+          </span>
+        )}
+        {article.section === "financial-literacy" && (
+          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#C9A84C] border border-[#C9A84C] px-1.5 py-px">
+            Explainer
+          </span>
+        )}
+        {isNew(article.published_at ?? null) && !article.is_breaking && article.section !== "analysis" && (
           <span className="font-ui text-[10px] font-bold uppercase text-[#0D7680]">
             New
           </span>

@@ -97,6 +97,8 @@ const App = () => (
           <Route path="/opinion-analysis" element={<Category />} />
           <Route path="/research" element={<Category />} />
           <Route path="/world" element={<Category />} />
+          <Route path="/analysis" element={<Category />} />
+          <Route path="/financial-literacy" element={<Category />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
           {/* Legacy redirects */}
