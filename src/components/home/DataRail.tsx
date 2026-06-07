@@ -64,7 +64,7 @@ const DataRail = () => {
   const ChangeIndicator = ({ change }: { change: number | null }) => {
     if (change === null || change === undefined) return null;
     return (
-      <span className={`flex items-center gap-0.5 font-ui text-[11px] ${change > 0 ? "text-[#00A36C]" : change < 0 ? "text-[#CC0000]" : "text-[#999]"}`}>
+      <span className={`flex items-center gap-0.5 font-ui text-[11px] ${change > 0 ? "text-[#00A36C]" : change < 0 ? "text-[#CC0000]" : "text-[#66605A]"}`}>
         {change > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
         {change > 0 ? "+" : ""}{change.toFixed(1)}%
       </span>
@@ -86,7 +86,7 @@ const DataRail = () => {
         ) : (
           <>
             {/* Exchange Rates */}
-            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Exchange Rates</h3>
+            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-2">Exchange Rates</h3>
             <div className="space-y-0 mb-4">
               {(currencies || []).slice(0, 4).map((rate) => (
                 <div key={rate.id} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
@@ -100,7 +100,7 @@ const DataRail = () => {
             </div>
 
             {/* Commodities */}
-            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Commodities</h3>
+            <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-2">Commodities</h3>
             <div className="space-y-0 mb-4">
               {(commodities || []).slice(0, 4).map((c) => (
                 <div key={c.id} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
@@ -116,7 +116,7 @@ const DataRail = () => {
             {/* GSE */}
             {gseIndex && gseIndex.length > 0 && (
               <>
-                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">GSE Stocks</h3>
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-2">GSE Stocks</h3>
                 <div className="space-y-0 mb-3">
                   {gseIndex.map((s) => (
                     <div key={s.symbol} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
@@ -139,7 +139,7 @@ const DataRail = () => {
 
       {/* Quick Links */}
       <div className="border-t border-[#e8e8e8] pt-4">
-        <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-2">Explore</h3>
+        <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-2">Explore</h3>
         <div className="space-y-1.5">
           {[
             { label: "All Data Indicators", href: "/data" },

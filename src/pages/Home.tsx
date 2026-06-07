@@ -146,7 +146,7 @@ const Home = () => {
 
                 {/* Col 4: Data widget */}
                 <div className="md:col-span-1 border-l border-[#e8e8e8] pl-5 hidden md:block">
-                  <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#999] mb-3">
+                  <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-3">
                     Markets Snapshot
                   </h3>
                   <DataWidget />
@@ -278,7 +278,7 @@ const DataWidget = () => {
           <div className="flex items-center gap-1.5">
             <span className="font-ui text-[12px] font-semibold text-[#33302E]">{item.value}</span>
             {item.change !== null && (
-              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#CC0000]" : "text-[#999]"}`}>
+              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#CC0000]" : "text-[#66605A]"}`}>
                 {(item.change ?? 0) > 0 ? "+" : ""}{(item.change ?? 0).toFixed(1)}%
               </span>
             )}
