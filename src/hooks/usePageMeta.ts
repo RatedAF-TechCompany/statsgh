@@ -25,7 +25,7 @@ function setMeta(selector: string, attr: string, value: string, create: () => HT
  * Use alongside CanonicalManager (which handles canonical + og:url).
  */
 export function usePageMeta(meta: PageMeta) {
-  const { title, description, ogTitle, ogDescription, ogImage, ogType, jsonLd } = meta;
+  const { title, description, ogTitle, ogDescription, ogImage, ogType, jsonLd, robots } = meta;
 
   useEffect(() => {
     if (title) document.title = title;
@@ -87,6 +87,20 @@ export function usePageMeta(meta: PageMeta) {
       });
     }
 
+    // Robots meta tag
+    if (robots) {
+      setMeta('meta[name="robots"]', "content", robots, () => {
+        const m = document.createElement("meta");
+        m.setAttribute("name", "robots");
+        return m;
+      });
+      setMeta('meta[name="googlebot"]', "content", robots, () => {
+        const m = document.createElement("meta");
+        m.setAttribute("name", "googlebot");
+        return m;
+      });
+    }
+
     // JSON-LD injected per-route, removed on unmount/change
     const addedScripts: HTMLScriptElement[] = [];
     if (jsonLd) {
@@ -104,5 +118,5 @@ export function usePageMeta(meta: PageMeta) {
     return () => {
       addedScripts.forEach((s) => s.remove());
     };
-  }, [title, description, ogTitle, ogDescription, ogImage, ogType, JSON.stringify(jsonLd)]);
+  }, [title, description, ogTitle, ogDescription, ogImage, ogType, robots, JSON.stringify(jsonLd)]);
 }
