@@ -26,6 +26,8 @@ const Search = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  usePageMeta({ robots: "noindex, nofollow" });
+
   useEffect(() => {
     const delaySearch = setTimeout(() => {
       if (searchQuery.trim().length >= 2) {
