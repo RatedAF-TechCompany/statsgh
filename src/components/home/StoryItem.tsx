@@ -103,15 +103,15 @@ export const StoryItem = ({
 
           <div className="flex items-center gap-1.5 mt-1.5">
             {article.author_name && (
-              <span className="font-ui text-[11px] text-[#999]">
+              <span className="font-ui text-[11px] text-[#66605A]">
                 {article.author_name}
               </span>
             )}
             {article.author_name && article.published_at && (
-              <span className="font-ui text-[11px] text-[#999]">·</span>
+              <span className="font-ui text-[11px] text-[#66605A]">·</span>
             )}
             {article.published_at && (
-              <span className="font-ui text-[11px] text-[#999]">
+              <span className="font-ui text-[11px] text-[#66605A]">
                 {getTimeAgo(article.published_at)}
               </span>
             )}
@@ -122,10 +122,13 @@ export const StoryItem = ({
           <img
             src={article.hero_image_url}
             alt=""
+            loading="lazy"
+            decoding="async"
+            width={variant === "lead" ? 480 : 80}
+            height={variant === "lead" ? 270 : 80}
             className={`object-cover flex-shrink-0 ${
-              variant === "lead" ? "w-full max-h-[160px] mt-3" : "w-20 h-20"
+              variant === "lead" ? "w-full mt-3 aspect-[16/9]" : "w-20 h-20"
             }`}
-            style={variant === "lead" ? {} : { maxHeight: 80 }}
           />
         )}
       </div>

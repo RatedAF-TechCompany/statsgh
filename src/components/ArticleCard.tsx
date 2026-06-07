@@ -116,6 +116,10 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
             <img
               src={article.hero_image_url}
               alt={article.title}
+              width={120}
+              height={80}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           </div>
