@@ -244,6 +244,7 @@ const ArticleDetail = () => {
           onClick={handleShare}
           className="w-10 h-10 flex items-center justify-center border border-[#E8D9C5] bg-[#FFFAF4] hover:bg-[#E8D9C5] transition-colors"
           title="Share"
+          aria-label="Share article"
         >
           <Share2 size={16} className="text-[#33302E]" />
         </button>
@@ -251,6 +252,8 @@ const ArticleDetail = () => {
           onClick={() => toggleBookmark.mutate()}
           className="w-10 h-10 flex items-center justify-center border border-[#E8D9C5] bg-[#FFFAF4] hover:bg-[#E8D9C5] transition-colors"
           title="Save"
+          aria-label={isBookmarked ? "Remove from saved articles" : "Save article"}
+          aria-pressed={isBookmarked}
         >
           <Bookmark size={16} className="text-[#33302E]" fill={isBookmarked ? "#33302E" : "none"} />
         </button>
@@ -317,10 +320,15 @@ const ArticleDetail = () => {
               </div>
               {/* Mobile share buttons */}
               <div className="flex items-center gap-1 lg:hidden">
-                <button onClick={handleShare} className="p-2 hover:opacity-70">
+                <button onClick={handleShare} className="p-2 hover:opacity-70" aria-label="Share article">
                   <Share2 size={16} className="text-[#66605A]" />
                 </button>
-                <button onClick={() => toggleBookmark.mutate()} className="p-2 hover:opacity-70">
+                <button
+                  onClick={() => toggleBookmark.mutate()}
+                  className="p-2 hover:opacity-70"
+                  aria-label={isBookmarked ? "Remove from saved articles" : "Save article"}
+                  aria-pressed={isBookmarked}
+                >
                   <Bookmark size={16} className="text-[#66605A]" fill={isBookmarked ? "#33302E" : "none"} />
                 </button>
               </div>
