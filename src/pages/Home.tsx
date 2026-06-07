@@ -11,6 +11,7 @@ import { FTSectionLabel } from "@/components/home/FTSectionLabel";
 import { StoryItem } from "@/components/home/StoryItem";
 import { SITE_SECTIONS, getSectionLabel } from "@/lib/navigation";
 import { getSectionForCategory } from "@/lib/sectionMapping";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const ARTICLES_LIMIT = 200; // fetch enough for 60+ visible stories
 
@@ -61,8 +62,33 @@ const Home = () => {
     day: "numeric",
   });
 
+  usePageMeta({
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "StatsGH",
+        url: "https://statsgh.com",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://statsgh.com/search?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "StatsGH",
+        url: "https://statsgh.com",
+        logo: "https://statsgh.com/social/statsgh-og-1200x630.png",
+        sameAs: ["https://twitter.com/StatsGH"],
+      },
+    ],
+  });
+
   return (
     <div className="min-h-screen bg-white">
+      <h1 className="sr-only">StatsGH — Ghana's Premier Data Journalism Platform</h1>
       <Header showTicker />
 
       {/* Date strip */}

@@ -36,6 +36,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 interface DataPoint {
   id: string;
@@ -178,6 +179,25 @@ const IndicatorDetail = () => {
     URL.revokeObjectURL(url);
   };
 
+  usePageMeta({
+    title: indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
+    description: indicator
+      ? (indicator.description || `Live data and historical chart for ${indicator.name} in Ghana.`).slice(0, 158)
+      : undefined,
+    jsonLd: indicator
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: indicator.name,
+          description: indicator.description || `Ghana indicator: ${indicator.name}`,
+          creator: { "@type": "Organization", name: "StatsGH" },
+          keywords: ["Ghana", indicator.name, indicator.topic?.name].filter(Boolean),
+          measurementTechnique: indicator.unit || undefined,
+        }
+      : undefined,
+  });
+
+
   if (indicatorLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -206,6 +226,9 @@ const IndicatorDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+
+
 
       <main className="container mx-auto px-4 py-8">
         {/* Navigation */}

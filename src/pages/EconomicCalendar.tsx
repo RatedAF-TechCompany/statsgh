@@ -16,6 +16,7 @@ import {
   Timer,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow, isThisWeek } from "date-fns";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const IMPACT_COLORS: Record<string, string> = {
   high: "bg-red-100 text-red-800 border-red-200",
@@ -31,6 +32,12 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const EconomicCalendar = () => {
+  usePageMeta({
+    title: "Economic Calendar — Ghana Data Releases | StatsGH",
+    description:
+      "Upcoming Ghana economic releases, central-bank meetings, and policy events. Track data drops from Bank of Ghana and Ghana Statistical Service.",
+  });
+
   const navigate = useNavigate();
 
   const { data: events, isLoading } = useQuery({

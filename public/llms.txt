@@ -1,0 +1,30 @@
+# StatsGH
+
+> Ghana's premier data journalism platform — accurate, data-driven reporting on Ghana's economy, markets, and public policy.
+
+StatsGH publishes original analysis of Ghana's economic indicators, financial markets, government policy, and demographic trends. The newsroom combines automated data pipelines from official sources (Bank of Ghana, Ghana Statistical Service, Ghana Stock Exchange) with editorial coverage.
+
+For machine-readable article content, use the article-reader endpoint which returns full server-rendered HTML:
+https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
+
+## Pages
+
+- [Home](/): Latest news and data from Ghana
+- [Economy](/economy): Economic news, GDP, inflation, fiscal policy
+- [Markets](/markets): Ghana Stock Exchange, currency, commodities
+- [Business](/business): Business and corporate news
+- [Politics](/politics): Government, elections, policy
+- [Energy](/energy): Power sector, oil and gas
+- [Agriculture](/agriculture): Cocoa, farming, commodity prices
+- [Topics](/topics): All editorial topics
+- [Data Indicators](/data): Live economic and statistical indicators
+- [Dashboards](/dashboards): Interactive dashboards (GSE, commodities, calendar)
+- [GSE](/dashboards/gse): Ghana Stock Exchange tracker
+- [Commodities](/dashboards/commodities): Commodity price tracker
+- [Economic Calendar](/dashboards/calendar): Upcoming economic events
+- [Search](/search): Search articles
+
+## Sitemaps
+
+- [Main sitemap](https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap)
+- [News sitemap](https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap)

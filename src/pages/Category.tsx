@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
 import { getCategoriesForSection } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -62,6 +63,16 @@ const Category = () => {
 
   const leadArticle = articles[0];
   const restArticles = articles.slice(1);
+
+  usePageMeta({
+    title: categoryLabel
+      ? `${categoryLabel} — News and Data from Ghana | StatsGH`
+      : "StatsGH",
+    description: categoryLabel
+      ? `Latest ${categoryLabel.toLowerCase()} news, analysis, and data from Ghana. Data-driven reporting from StatsGH.`
+      : undefined,
+    ogType: "website",
+  });
 
   return (
     <div className="min-h-screen bg-[#FFF1E0]">

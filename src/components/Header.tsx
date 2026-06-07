@@ -105,6 +105,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                     onClick={() => navigate("/dashboard")}
                     className="p-2 hover:opacity-80"
                     title="Dashboard"
+                    aria-label="Open dashboard"
                   >
                     <LayoutDashboard size={18} className="text-[#33302E]" />
                   </button>
@@ -112,12 +113,14 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                 <button
                   onClick={() => navigate("/saved")}
                   className="p-2 hover:opacity-80"
+                  aria-label="Saved articles and account"
                 >
                   <User size={18} className="text-[#33302E]" />
                 </button>
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:opacity-80"
+                  aria-label="Log out"
                 >
                   <LogOut size={16} className="text-[#33302E]" />
                 </button>
