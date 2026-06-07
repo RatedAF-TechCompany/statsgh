@@ -45,6 +45,10 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
           <img 
             src={article.hero_image_url} 
             alt={article.title}
+            width={800}
+            height={450}
+            loading="eager"
+            decoding="async"
             className="w-full aspect-[16/9] object-cover group-hover:scale-[1.02] transition-transform duration-300"
           />
         </div>

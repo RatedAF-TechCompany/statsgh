@@ -56,6 +56,10 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
             <img 
               src={article.hero_image_url} 
               alt=""
+              width={80}
+              height={80}
+              loading="lazy"
+              decoding="async"
               className="w-20 h-20 object-cover flex-shrink-0"
             />
           )}
@@ -90,6 +94,10 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
           <img 
             src={article.hero_image_url} 
             alt=""
+            width={400}
+            height={300}
+            loading="lazy"
+            decoding="async"
             className="w-full aspect-[4/3] object-cover group-hover:scale-[1.02] transition-transform duration-300"
           />
         </div>
