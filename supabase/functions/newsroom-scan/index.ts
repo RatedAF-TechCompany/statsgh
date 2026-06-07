@@ -59,8 +59,10 @@ const SECTION_TO_CATEGORIES: Record<string, string[]> = {
   'agriculture': ['agriculture-and-commodities', 'agriculture', 'farming', 'cocoa', 'food'],
   'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms'],
   'companies': ['corporate-ghana', 'companies', 'corporate', 'banking', 'insurance'],
-  'opinion-analysis': ['opinion-analysis', 'opinion', 'analysis', 'commentary', 'editorial'],
+  'analysis': ['analysis', 'long-form', 'deep-dive'],
+  'opinion-analysis': ['opinion-analysis', 'opinion', 'commentary', 'editorial'],
   'research': ['data-and-research', 'research', 'academic', 'report', 'survey'],
+  'financial-literacy': ['financial-literacy', 'explainer', 'personal-finance', 'literacy'],
   'world': ['regional-economy', 'world', 'africa', 'international', 'global'],
 };
 function getSectionForCategory(categorySlug: string): string {

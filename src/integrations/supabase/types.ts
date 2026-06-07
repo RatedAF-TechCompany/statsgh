@@ -1491,6 +1491,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          photo_url: string | null
           specialization: string
         }
         Insert: {
@@ -1500,6 +1501,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          photo_url?: string | null
           specialization: string
         }
         Update: {
@@ -1509,6 +1511,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          photo_url?: string | null
           specialization?: string
         }
         Relationships: []
