@@ -8,6 +8,7 @@ interface PageMeta {
   ogImage?: string;
   ogType?: string;
   jsonLd?: object | object[];
+  robots?: string;
 }
 
 function setMeta(selector: string, attr: string, value: string, create: () => HTMLElement) {
