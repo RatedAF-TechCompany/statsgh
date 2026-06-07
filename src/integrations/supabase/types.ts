@@ -1483,6 +1483,36 @@ export type Database = {
         }
         Relationships: []
       }
+      journalists: {
+        Row: {
+          bio: string | null
+          byline_name: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          specialization: string
+        }
+        Insert: {
+          bio?: string | null
+          byline_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          specialization: string
+        }
+        Update: {
+          bio?: string | null
+          byline_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          specialization?: string
+        }
+        Relationships: []
+      }
       media: {
         Row: {
           alt_text: string | null
@@ -2210,6 +2240,10 @@ export type Database = {
       }
     }
     Functions: {
+      assign_journalist: {
+        Args: { p_article_id: string; p_category: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
