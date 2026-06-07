@@ -27,10 +27,10 @@ export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: P
     queryFn: async () => {
       const { data } = await supabase
         .from("journalists")
-        .select("byline_name, specialization, bio, photo_url")
+        .select("byline_name, specialization, bio, photo_url" as any)
         .eq("byline_name", display)
         .maybeSingle();
-      return data as { byline_name: string; specialization: string | null; bio: string | null; photo_url: string | null } | null;
+      return data as unknown as { byline_name: string; specialization: string | null; bio: string | null; photo_url: string | null } | null;
     },
   });
 
