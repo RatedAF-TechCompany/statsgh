@@ -150,6 +150,8 @@ const Dashboards = () => {
         </header>
 
         {/* Dashboards Grid */}
+        <section aria-labelledby="dashboards-heading">
+        <h2 id="dashboards-heading" className="sr-only">Available Dashboards</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {DASHBOARDS.map((dashboard) => {
             const Icon = dashboard.icon;
