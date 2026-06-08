@@ -39,8 +39,9 @@ Disallow: /*.php$
 
 # Sitemaps
 Sitemap: https://statsgh.com/sitemap.xml
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap
-Sitemap: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap
+# Sitemaps
+Sitemap: https://statsgh.com/sitemap.xml
+Sitemap: https://statsgh.com/news-sitemap.xml
 
 # Machine-readable article endpoint (returns full HTML, no JS required):
 # GET https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
