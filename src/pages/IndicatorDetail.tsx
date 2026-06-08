@@ -182,10 +182,13 @@ const IndicatorDetail = () => {
   };
 
   usePageMeta({
-    title: indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
+    title: indicatorMissing
+      ? "Indicator not found | StatsGH"
+      : indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
     description: indicator
       ? (indicator.description || `Live data and historical chart for ${indicator.name} in Ghana.`).slice(0, 158)
       : undefined,
+    robots: indicatorMissing ? "noindex, follow" : undefined,
     jsonLd: indicator
       ? {
           "@context": "https://schema.org",
