@@ -2933,9 +2933,14 @@ Return ONLY valid JSON with these exact keys:
 "instagram_post": ""
 }`;
 
-          // V4.0: MODEL TIERING — breaking news (published <30 min ago) uses flash-lite for speed
-          const sourcePubAge = Date.now() - item._pubDateParsed.getTime();
-          const isBreakingNews = sourcePubAge < 30 * 60 * 1000 && isTier1Source(item.source_name);
+          const sourcePubDate = item._pubDateParsed.toISOString();
+          const source = { priority_tier: sourceTierMap.get(item.source_name) || 5 };
+          const headline = item.title || "";
+          const ageMinutes = (Date.now() - new Date(sourcePubDate).getTime()) / (1000 * 60);
+          const isTierOne = source.priority_tier === 1;
+          const headlineLower = headline.toLowerCase();
+          const hasBreakingKeyword = BREAKING_KEYWORDS.some(kw => headlineLower.includes(kw));
+          const isBreakingNews = ageMinutes <= 30 && isTierOne && hasBreakingKeyword;
           const aiModel = isBreakingNews ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}${isBreakingNews ? " BREAKING" : ""}) for article restructuring...`);
           const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -3105,8 +3110,8 @@ Return ONLY valid JSON with these exact keys:
           }
 
           // 8. Insert into articles table
-          // V4.0: published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
-          // V4.0: is_breaking = true if Tier 1 source and published <30 min ago at source
+          // published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
+          // is_breaking requires all three: source age <=30 min, Tier 1 source, urgent headline keyword.
           const categorySlug = generated.category_slug || (item as any)._categoryHint || "top-stories";
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
