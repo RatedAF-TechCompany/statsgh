@@ -26,7 +26,11 @@ const Search = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  usePageMeta({ robots: "noindex, nofollow" });
+  usePageMeta({
+    title: "Search Articles | StatsGH",
+    description: "Search StatsGH's archive of data journalism articles on Ghana's economy, markets, and public policy.",
+    robots: "noindex, nofollow",
+  });
 
   useEffect(() => {
     const delaySearch = setTimeout(() => {

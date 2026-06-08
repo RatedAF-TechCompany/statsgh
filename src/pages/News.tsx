@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { formatTime } from "@/components/ReadingTime";
 import { Clock } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const News = () => {
   const navigate = useNavigate();

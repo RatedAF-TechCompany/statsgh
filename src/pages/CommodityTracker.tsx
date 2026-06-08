@@ -19,6 +19,7 @@ import {
   Globe,
 } from "lucide-react";
 import { format } from "date-fns";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const COMMODITY_ICONS: Record<string, typeof Wheat> = {
   cocoa: Wheat,
