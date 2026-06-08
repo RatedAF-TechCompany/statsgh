@@ -146,9 +146,9 @@ const Home = () => {
 
                 {/* Col 4: Data widget */}
                 <div className="md:col-span-1 border-l border-[#e8e8e8] pl-5 hidden md:block">
-                  <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-3">
+                  <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-3">
                     Markets Snapshot
-                  </h3>
+                  </h2>
                   <DataWidget />
                 </div>
               </div>
