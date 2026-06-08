@@ -79,13 +79,15 @@ const IndicatorDetail = () => {
           default_geography:geographies!indicators_default_geography_id_fkey(id, name, code)
         `)
         .eq("slug", slug)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     },
     enabled: !!slug,
   });
+
+  const indicatorMissing = !indicatorLoading && !indicator;
 
   // Fetch available series for this indicator
   const { data: series } = useQuery({
