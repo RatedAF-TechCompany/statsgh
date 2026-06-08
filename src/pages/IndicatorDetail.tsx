@@ -439,15 +439,15 @@ const IndicatorDetail = () => {
           <TabsContent value="definition" className="mt-4">
             <Card>
               <CardContent className="pt-6 prose prose-sm max-w-none">
-                <h3 className="flex items-center gap-2">
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <Info className="h-4 w-4" />
                   Definition
-                </h3>
+                </h2>
                 <p>{indicator.definition || "Definition not yet available."}</p>
 
                 {indicator.caveats && (
                   <>
-                    <h3>Caveats and Limitations</h3>
+                    <h2 className="text-lg font-semibold">Caveats and Limitations</h2>
                     <p>{indicator.caveats}</p>
                   </>
                 )}
@@ -469,7 +469,7 @@ const IndicatorDetail = () => {
           <TabsContent value="methodology" className="mt-4">
             <Card>
               <CardContent className="pt-6 prose prose-sm max-w-none">
-                <h3>Methodology</h3>
+                <h2 className="text-lg font-semibold">Methodology</h2>
                 <p>{indicator.methodology || "Methodology documentation not yet available."}</p>
               </CardContent>
             </Card>
