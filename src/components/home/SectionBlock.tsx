@@ -34,12 +34,14 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
     <div className="py-6 border-t border-[#e8e8e8]">
       {/* Section header — label left, More link right, inline */}
       <div className="flex items-center justify-between mb-4 gap-3">
-        <button
-          onClick={() => navigate(`/${sectionSlug}`)}
-          className="font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#33302E] hover:text-[#0D7680] transition-colors"
-        >
-          {sectionLabel}
-        </button>
+        <h2 className="m-0 p-0">
+          <button
+            onClick={() => navigate(`/${sectionSlug}`)}
+            className="font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#33302E] hover:text-[#0D7680] transition-colors bg-transparent border-0 p-0"
+          >
+            {sectionLabel}
+          </button>
+        </h2>
         <div className="flex-1 h-px bg-[#e8e8e8]" />
         <button
           onClick={() => navigate(`/${sectionSlug}`)}

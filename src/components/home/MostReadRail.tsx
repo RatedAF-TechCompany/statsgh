@@ -57,9 +57,9 @@ const MostReadRail = () => {
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-3">
         <div className="flex-1 h-px bg-[#e8e8e8]" />
-        <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#33302E]">
+        <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#33302E] m-0">
           Most Read
-        </span>
+        </h2>
         <div className="flex-1 h-px bg-[#e8e8e8]" />
       </div>
 
