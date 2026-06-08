@@ -19,6 +19,7 @@ import {
   Globe,
 } from "lucide-react";
 import { format } from "date-fns";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const COMMODITY_ICONS: Record<string, typeof Wheat> = {
   cocoa: Wheat,
@@ -43,6 +44,12 @@ const CURRENCY_FLAGS: Record<string, string> = {
 
 const CommodityTracker = () => {
   const navigate = useNavigate();
+
+  usePageMeta({
+    title: "Commodity & Currency Tracker | StatsGH",
+    description:
+      "Live commodity prices and exchange rates impacting Ghana's economy. Track cocoa, gold, oil, and cedi rates.",
+  });
 
   const { data: commodities, isLoading: commoditiesLoading } = useQuery({
     queryKey: ["commodity-prices"],

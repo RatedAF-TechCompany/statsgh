@@ -9,12 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { formatTime } from "@/components/ReadingTime";
 import { Clock } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 const News = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  usePageMeta({
+    title: "News — Latest Ghana Data Journalism | StatsGH",
+    description:
+      "Browse the latest data journalism, economic analysis, and breaking news from Ghana. Filter by category.",
+  });
 
   // Fetch categories
   const { data: categories } = useQuery({
