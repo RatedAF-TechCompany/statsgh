@@ -30,6 +30,11 @@ const getTimeAgo = (publishedAt: string | null) => {
   return `${daysAgo}d ago`;
 };
 
+const isNew = (publishedAt: string | null) => {
+  if (!publishedAt) return false;
+  return Date.now() - new Date(publishedAt).getTime() < 2 * 60 * 60 * 1000;
+};
+
 export const LeadStory = ({ article }: LeadStoryProps) => {
   const navigate = useNavigate();
   const categoryLabel = CATEGORY_MAPPING[article.category_slug as keyof typeof CATEGORY_MAPPING] || article.category_slug;
@@ -57,6 +62,11 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
         {article.is_breaking && (
           <span className="inline-block bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
             Breaking
+          </span>
+        )}
+        {isNew(article.published_at ?? null) && (
+          <span className="inline-block text-[#0D7680] text-[10px] font-bold uppercase tracking-widest">
+            New
           </span>
         )}
         <p className="font-sans text-xs uppercase tracking-wider text-ft-maroon font-semibold">
