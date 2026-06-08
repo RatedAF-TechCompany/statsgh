@@ -10,6 +10,7 @@ import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
 import { getCategoriesForSection } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import NotFound from "./NotFound";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -80,7 +81,6 @@ const Category = () => {
   });
 
   if (isUnknownSection) {
-    const NotFound = require("./NotFound").default;
     return <NotFound />;
   }
 
