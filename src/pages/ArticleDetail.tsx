@@ -379,7 +379,7 @@ const ArticleDetail = () => {
           {/* Video */}
           {article.video_url && (
             <div className="mb-10">
-              <h3 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Video</h3>
+              <h2 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Video</h2>
               <div className="aspect-video"><iframe src={article.video_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
             </div>
           )}
@@ -387,7 +387,7 @@ const ArticleDetail = () => {
           {/* Audio */}
           {article.audio_url && (
             <div className="mb-10">
-              <h3 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Listen</h3>
+              <h2 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Listen</h2>
               <audio controls className="w-full"><source src={article.audio_url} type="audio/mpeg" /></audio>
             </div>
           )}
@@ -396,13 +396,13 @@ const ArticleDetail = () => {
         {/* Data Citations */}
         {((linkedIndicators && linkedIndicators.length > 0) || (linkedSources && linkedSources.length > 0)) && (
           <aside className="my-12 border-t border-b border-[#E8D9C5] py-8">
-            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#33302E]">
+            <h2 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#33302E]">
               <Database className="h-5 w-5 text-[#66605A]" />
               Data sources
-            </h3>
+            </h2>
             {linkedIndicators && linkedIndicators.length > 0 && (
               <div className="mb-8">
-                <h4 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#66605A] mb-4 flex items-center gap-2">
+                <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#66605A] mb-4 flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5" /> Indicators cited
                 </h4>
                 <div className="space-y-3">
