@@ -36,6 +36,7 @@ const EconomicCalendar = () => {
     title: "Economic Calendar — Ghana Data Releases | StatsGH",
     description:
       "Upcoming Ghana economic releases, central-bank meetings, and policy events. Track data drops from Bank of Ghana and Ghana Statistical Service.",
+    ogType: "website",
   });
 
   const navigate = useNavigate();

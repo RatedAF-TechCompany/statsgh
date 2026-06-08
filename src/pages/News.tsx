@@ -21,6 +21,7 @@ const News = () => {
     title: "News — Latest Ghana Data Journalism | StatsGH",
     description:
       "Browse the latest data journalism, economic analysis, and breaking news from Ghana. Filter by category.",
+    ogType: "website",
   });
 
   // Fetch categories

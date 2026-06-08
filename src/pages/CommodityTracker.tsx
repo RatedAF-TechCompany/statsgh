@@ -49,6 +49,7 @@ const CommodityTracker = () => {
     title: "Commodity & Currency Tracker | StatsGH",
     description:
       "Live commodity prices and exchange rates impacting Ghana's economy. Track cocoa, gold, oil, and cedi rates.",
+    ogType: "website",
   });
 
   const { data: commodities, isLoading: commoditiesLoading } = useQuery({
