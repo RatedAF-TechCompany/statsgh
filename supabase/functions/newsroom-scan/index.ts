@@ -2933,16 +2933,8 @@ Return ONLY valid JSON with these exact keys:
 "instagram_post": ""
 }`;
 
-          const sourcePubDate = item._pubDateParsed.toISOString();
-          const source = { priority_tier: sourceTierMap.get(item.source_name) || 5 };
-          const headline = item.title || "";
-          const ageMinutes = (Date.now() - new Date(sourcePubDate).getTime()) / (1000 * 60);
-          const isTierOne = source.priority_tier === 1;
-          const headlineLower = headline.toLowerCase();
-          const hasBreakingKeyword = BREAKING_KEYWORDS.some(kw => headlineLower.includes(kw));
-          const isBreakingNews = ageMinutes <= 30 && isTierOne && hasBreakingKeyword;
-          const aiModel = isBreakingNews ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash";
-          console.log(`Calling AI (${aiModel}${isBreakingNews ? " BREAKING" : ""}) for article restructuring...`);
+          const aiModel = "google/gemini-2.5-flash";
+          console.log(`Calling AI (${aiModel}) for article restructuring...`);
           const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -3118,6 +3110,14 @@ Return ONLY valid JSON with these exact keys:
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
           // Ensure category exists in DB (we only use the slug, not a UUID)
           await ensureCategoryExists(supabase, categorySlug);
+          const sourcePubDate = item._pubDateParsed.toISOString();
+          const source = { priority_tier: sourceTierMap.get(item.source_name) || 5 };
+          const headline = generated.headline || item.title || "";
+          const ageMinutes = (Date.now() - new Date(sourcePubDate).getTime()) / (1000 * 60);
+          const isTierOne = source.priority_tier === 1;
+          const headlineLower = headline.toLowerCase();
+          const hasBreakingKeyword = BREAKING_KEYWORDS.some(kw => headlineLower.includes(kw));
+          const isBreaking = ageMinutes <= 30 && isTierOne && hasBreakingKeyword;
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3135,7 +3135,7 @@ Return ONLY valid JSON with these exact keys:
               source_published_at: item._pubDateParsed.toISOString(),
               is_published: true,
               is_wire: false,
-              is_breaking: isBreakingNews,
+              is_breaking: isBreaking,
               word_count: wordCount,
               dedupe_key: item._dedupeKey,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
