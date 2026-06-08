@@ -7,6 +7,7 @@ const Topics = () => {
     title: "Topics — Explore Data and Research | StatsGH",
     description:
       "Browse StatsGH coverage by topic: economy, markets, energy, agriculture, demographics, politics, and more. Data-driven reporting on Ghana.",
+    ogType: "website",
   });
 
   return (
