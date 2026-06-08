@@ -32,7 +32,7 @@ const getTimeAgo = (publishedAt: string | null) => {
 
 const isNew = (publishedAt: string | null) => {
   if (!publishedAt) return false;
-  return Date.now() - new Date(publishedAt).getTime() < 30 * 60 * 1000;
+  return Date.now() - new Date(publishedAt).getTime() < 2 * 60 * 60 * 1000;
 };
 
 export const StoryItem = ({
@@ -75,7 +75,7 @@ export const StoryItem = ({
             Explainer
           </span>
         )}
-        {isNew(article.published_at ?? null) && !article.is_breaking && article.section !== "analysis" && (
+        {isNew(article.published_at ?? null) && (
           <span className="font-ui text-[10px] font-bold uppercase text-[#0D7680]">
             New
           </span>
