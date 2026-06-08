@@ -469,6 +469,12 @@ const FRESHNESS_MAX_AGE_MINUTES = 180; // 3 hours
 // Reject items whose pubDate is in the future by more than this (clock skew tolerance)
 const FRESHNESS_FUTURE_TOLERANCE_MINUTES = 60; // 1 hour
 
+const BREAKING_KEYWORDS = [
+  'breaking', 'just in', 'urgent', 'emergency', 'killed', 'dead', 'crash', 'explosion',
+  'arrested', 'sentenced', 'resigned', 'dismissed', 'fired', 'collapsed', 'crisis',
+  'coup', 'attack', 'flood', 'fire', 'disaster'
+];
+
 // ============================================
 // QUALIFYING NUMBER CLASSIFICATION (V2.0)
 // Not all numbers are equal - dates, times, IDs don't count
