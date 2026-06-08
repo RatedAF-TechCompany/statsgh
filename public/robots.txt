@@ -30,6 +30,12 @@ Disallow: /reader/*
 Disallow: /saved
 Disallow: /search
 Disallow: /verify-comment
+# Legacy WordPress paths (site migrated off WP) — stop re-crawling 404s
+Disallow: /wp-content/
+Disallow: /wp-admin/
+Disallow: /wp-includes/
+Disallow: /index.php
+Disallow: /*.php$
 
 # Sitemaps
 Sitemap: https://statsgh.com/sitemap.xml
