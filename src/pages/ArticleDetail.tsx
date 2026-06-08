@@ -404,7 +404,7 @@ const ArticleDetail = () => {
               <div className="mb-8">
                 <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#66605A] mb-4 flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5" /> Indicators cited
-                </h4>
+                </h3>
                 <div className="space-y-3">
                   {linkedIndicators.map((item: any) => (
                     <div key={item.id} className="flex items-start justify-between p-4 bg-[#FFFAF4] border border-[#E8D9C5]">
