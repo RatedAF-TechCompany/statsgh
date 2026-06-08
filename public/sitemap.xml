@@ -6,6 +6,11 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://statsgh.com/search</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://statsgh.com/top-stories</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -84,6 +89,24 @@
     <loc>https://statsgh.com/charts-explainers</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://statsgh.com/regulation-and-policy/ghana-government-to-audit-building-permits-mq5myu4s/</loc>
+    <lastmod>2026-06-08T20:00:58.693151+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://statsgh.com/regulation-and-policy/canada-tightens-food-import-rules-fifa-world-cup-2026-mq5mymwc/</loc>
+    <lastmod>2026-06-08T20:00:49.351449+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://statsgh.com/public-finance/ges-releases-academic-intervention-fund-75-percent-teachers-mq5mygb9/</loc>
+    <lastmod>2026-06-08T20:00:40.78337+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://statsgh.com/agriculture-and-commodities/west-africa-rice-self-sufficiency-2035-ghana-agriconnect-mq5lw7uk/</loc>
@@ -6063,24 +6086,6 @@
   </url>
   <url>
     <loc>https://statsgh.com/regulation-and-policy/interior-minister-decries-alarming-drug-use-among-ghanaian-youth-mpw5n1o3/</loc>
-    <lastmod>2026-06-08T18:45:43.136538+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://statsgh.com/regional-economy/volta-region-most-peaceful-ghana-mpw5mxby/</loc>
-    <lastmod>2026-06-08T18:45:43.136538+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://statsgh.com/macroeconomy/finance-minister-invites-investors-as-ghana-economy-recovers-mpw5mtiy/</loc>
-    <lastmod>2026-06-08T18:45:43.136538+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://statsgh.com/regional-economy/ghana-south-africa-relations-remain-intact-despite-mahama-statement-mpw5motm/</loc>
     <lastmod>2026-06-08T18:45:43.136538+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>

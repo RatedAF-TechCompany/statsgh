@@ -74,6 +74,11 @@ async function main() {
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>${BASE_URL}/search</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
 ${CATEGORIES.map(
   (cat) => `  <url>
     <loc>${BASE_URL}/${cat}</loc>
