@@ -121,7 +121,28 @@ const ArticleDetail = () => {
 
   // SEO meta tags
   React.useEffect(() => {
+    // Noindex when the slug doesn't resolve to a published article
+    if (!isLoading && !article) {
+      let robotsTag = document.querySelector('meta[name="robots"]');
+      if (!robotsTag) {
+        robotsTag = document.createElement('meta');
+        robotsTag.setAttribute('name', 'robots');
+        document.head.appendChild(robotsTag);
+      }
+      robotsTag.setAttribute('content', 'noindex, follow');
+      document.title = 'Article not found | StatsGH';
+      return () => {
+        document.title = 'StatsGH';
+        robotsTag?.parentNode?.removeChild(robotsTag);
+      };
+    }
+
     if (article) {
+      // Ensure any prior noindex from a missing-article render is cleared
+      const existingRobots = document.querySelector('meta[name="robots"]');
+      if (existingRobots && existingRobots.getAttribute('content')?.includes('noindex')) {
+        existingRobots.parentNode?.removeChild(existingRobots);
+      }
       const canonicalUrl = `https://statsgh.com/${article.category_slug}/${article.slug}`;
       const baseUrl = "https://statsgh.com";
       const makeAbsoluteUrl = (url: string | null) => {
@@ -175,7 +196,7 @@ const ArticleDetail = () => {
 
       return () => { document.title = 'StatsGH'; };
     }
-  }, [article]);
+  }, [article, isLoading]);
 
   const handleShare = async () => {
     const url = `https://statsgh.com/${article?.category_slug}/${article?.slug}`;

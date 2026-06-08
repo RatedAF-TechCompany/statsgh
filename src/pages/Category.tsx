@@ -10,6 +10,7 @@ import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
 import { getCategoriesForSection } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import NotFound from "./NotFound";
 
 const ARTICLES_PER_PAGE = 20;
 
@@ -64,15 +65,24 @@ const Category = () => {
   const leadArticle = articles[0];
   const restArticles = articles.slice(1);
 
+  const isUnknownSection = !!categoryParam && categorySlugs.length === 0;
+
   usePageMeta({
-    title: categoryLabel
-      ? `${categoryLabel} — News and Data from Ghana | StatsGH`
-      : "StatsGH",
-    description: categoryLabel
+    title: isUnknownSection
+      ? "Page not found | StatsGH"
+      : categoryLabel
+        ? `${categoryLabel} — News and Data from Ghana | StatsGH`
+        : "StatsGH",
+    description: categoryLabel && !isUnknownSection
       ? `Latest ${categoryLabel.toLowerCase()} news, analysis, and data from Ghana. Data-driven reporting from StatsGH.`
       : undefined,
     ogType: "website",
+    robots: isUnknownSection ? "noindex, follow" : undefined,
   });
+
+  if (isUnknownSection) {
+    return <NotFound />;
+  }
 
   return (
     <div className="min-h-screen bg-[#FFF1E0]">

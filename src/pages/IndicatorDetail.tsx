@@ -79,13 +79,15 @@ const IndicatorDetail = () => {
           default_geography:geographies!indicators_default_geography_id_fkey(id, name, code)
         `)
         .eq("slug", slug)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     },
     enabled: !!slug,
   });
+
+  const indicatorMissing = !indicatorLoading && !indicator;
 
   // Fetch available series for this indicator
   const { data: series } = useQuery({
@@ -180,10 +182,13 @@ const IndicatorDetail = () => {
   };
 
   usePageMeta({
-    title: indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
+    title: indicatorMissing
+      ? "Indicator not found | StatsGH"
+      : indicator?.name ? `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60) : undefined,
     description: indicator
       ? (indicator.description || `Live data and historical chart for ${indicator.name} in Ghana.`).slice(0, 158)
       : undefined,
+    robots: indicatorMissing ? "noindex, follow" : undefined,
     jsonLd: indicator
       ? {
           "@context": "https://schema.org",
