@@ -277,7 +277,9 @@ const IndicatorDetail = () => {
 
         {/* Key Stats */}
         {latestValue && (
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <section aria-labelledby="key-stats-heading" className="mb-8">
+          <h2 id="key-stats-heading" className="sr-only">Key Statistics</h2>
+          <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground">
@@ -354,6 +356,7 @@ const IndicatorDetail = () => {
               </CardContent>
             </Card>
           </div>
+          </section>
         )}
 
         {/* Geography Selector */}

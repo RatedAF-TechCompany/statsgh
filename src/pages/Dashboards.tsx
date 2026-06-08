@@ -187,6 +187,7 @@ const Dashboards = () => {
             );
           })}
         </div>
+        </section>
 
         {/* Request Section */}
         <section className="mt-12 text-center">
