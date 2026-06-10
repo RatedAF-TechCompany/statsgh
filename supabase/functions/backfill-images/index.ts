@@ -3,207 +3,196 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Stock photo keywords by category
-const CATEGORY_PHOTO_KEYWORDS: Record<string, string[]> = {
-  "economy-inflation": ["africa,money", "ghana,market", "africa,currency", "africa,shopping"],
-  "public-finance": ["africa,government,building", "africa,parliament", "ghana,office", "africa,meeting"],
-  "labour-salaries": ["africa,workers", "ghana,office", "africa,factory", "africa,employees"],
-  "agriculture-food": ["ghana,farming", "africa,agriculture", "africa,market,food", "ghana,crops"],
-  "energy-resources": ["africa,energy", "ghana,power", "africa,oil", "africa,solar"],
-  "trade-investment": ["africa,port", "ghana,shipping", "africa,business", "africa,trade"],
-  "health-data": ["africa,hospital", "ghana,healthcare", "africa,medical", "africa,clinic"],
-  "education": ["africa,school", "ghana,classroom", "africa,students", "africa,university"],
-  "infrastructure-transport": ["ghana,road", "africa,construction", "africa,bridge", "ghana,transport"],
-  "security-governance": ["africa,government", "ghana,police", "africa,security", "africa,parliament"],
-  "technology-innovation": ["africa,technology", "ghana,computer", "africa,startup", "africa,mobile"],
-  "environment-climate": ["ghana,nature", "africa,environment", "africa,climate", "africa,forest"],
-  "population": ["ghana,city", "africa,people", "africa,urban", "ghana,community"],
-  "business": ["africa,business", "ghana,office", "africa,entrepreneur", "africa,meeting"],
-  "top-stories": ["ghana,city", "africa,news", "ghana,accra", "africa,people"],
-  "charts-explainers": ["africa,data", "africa,office", "africa,computer", "africa,meeting"],
-};
+// ---------- Query derivation ----------
+const STOPWORDS = new Set([
+  "the","a","an","and","or","but","of","to","in","on","for","with","at","by","from",
+  "is","are","was","were","be","been","being","as","that","this","it","its","into",
+  "ghana","ghana's","ghanaian","new","says","said","after","over","amid","up","down",
+]);
 
-const DEFAULT_PHOTO_KEYWORDS = ["ghana", "africa,business", "africa,city", "africa,people"];
-
-function getPhotoKeywords(category: string): string {
-  const keywords = CATEGORY_PHOTO_KEYWORDS[category] || DEFAULT_PHOTO_KEYWORDS;
-  return keywords[Math.floor(Math.random() * keywords.length)];
+function deriveQuery(title: string, category: string): string {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !STOPWORDS.has(w))
+    .slice(0, 3);
+  if (words.length) return words.join(" ");
+  return (category || "ghana business").replace(/-/g, " ");
 }
 
-// Generate AI image using Lovable AI (Gemini)
-async function generateAiImage(
-  prompt: string,
-  supabase: any,
-  articleSlug: string
-): Promise<string | null> {
+// ---------- Free source: Openverse ----------
+// https://api.openverse.engineering/v1/images/ — CC-licensed, no key
+async function fetchOpenverse(query: string): Promise<{ url: string; creator: string } | null> {
   try {
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      console.log('LOVABLE_API_KEY not configured, skipping AI image');
-      return null;
-    }
-    
-    console.log(`Generating AI image for: ${articleSlug}`);
-    
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a photorealistic, professional editorial photograph for a news article. 
-Style: Documentary journalism, high quality, 16:9 aspect ratio, professional lighting.
-Subject: ${prompt}
-Requirements: No text, no logos, no watermarks, no faces that look AI-generated. 
-The image should look like it was taken by a professional photojournalist in Ghana or Africa.`
-          }
-        ],
-        modalities: ['image', 'text']
-      })
-    });
-    
-    if (!response.ok) {
-      console.log(`AI image generation failed: ${response.status}`);
-      return null;
-    }
-    
-    const data = await response.json();
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    if (!imageData || !imageData.startsWith('data:image')) {
-      console.log('No valid image in AI response');
-      return null;
-    }
-    
-    // Extract base64 data
-    const base64Match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!base64Match) {
-      console.log('Could not parse AI image data');
-      return null;
-    }
-    
-    const [, format, base64Data] = base64Match;
-    const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    
-    const ext = format === 'png' ? 'png' : 'jpg';
-    const contentType = `image/${format === 'png' ? 'png' : 'jpeg'}`;
-    const imagePath = `newsroom/${articleSlug}-ai.${ext}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(imagePath, bytes, { contentType, upsert: true });
-    
-    if (uploadError) {
-      console.error('AI image upload error:', uploadError);
-      return null;
-    }
-    
-    const { data: publicUrl } = supabase.storage
-      .from('media')
-      .getPublicUrl(imagePath);
-    
-    console.log(`AI image generated and uploaded: ${publicUrl.publicUrl}`);
-    return publicUrl.publicUrl;
-  } catch (error) {
-    console.log(`AI image error: ${error instanceof Error ? error.message : 'Unknown'}`);
+    const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license_type=commercial&aspect_ratio=wide&size=large&page_size=5`;
+    const res = await fetch(url, { headers: { "User-Agent": "StatsGH/1.0 (editorial)" } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hit = (data.results || []).find((r: any) => r.url && (r.width ?? 0) >= 700);
+    if (!hit) return null;
+    return { url: hit.url, creator: hit.creator || "Unknown" };
+  } catch (e) {
+    console.log("Openverse error:", (e as Error).message);
     return null;
   }
 }
 
+// ---------- Free source: Wikimedia Commons ----------
+// MediaWiki search API → file info; no key required
+async function fetchWikimedia(query: string): Promise<{ url: string; creator: string } | null> {
+  try {
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(
+      query + " filetype:bitmap"
+    )}&srnamespace=6&srlimit=10&origin=*`;
+    const sres = await fetch(searchUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
+    if (!sres.ok) return null;
+    const sdata = await sres.json();
+    const hits = sdata.query?.search || [];
+    for (const hit of hits) {
+      const title = hit.title;
+      const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&titles=${encodeURIComponent(
+        title
+      )}&iiprop=url|size|extmetadata&origin=*`;
+      const ires = await fetch(infoUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
+      if (!ires.ok) continue;
+      const idata = await ires.json();
+      const pages = idata.query?.pages || {};
+      const page: any = Object.values(pages)[0];
+      const info = page?.imageinfo?.[0];
+      if (!info) continue;
+      const w = info.width || 0;
+      const h = info.height || 0;
+      if (w < 700 || h < 1) continue;
+      const ratio = w / h;
+      if (ratio < 1.2 || ratio > 2.5) continue;
+      const creator = (info.extmetadata?.Artist?.value || "Wikimedia").replace(/<[^>]+>/g, "").trim();
+      return { url: info.url, creator };
+    }
+    return null;
+  } catch (e) {
+    console.log("Wikimedia error:", (e as Error).message);
+    return null;
+  }
+}
+
+// ---------- AI fallback ----------
+async function generateAiImage(prompt: string, supabase: any, slug: string): Promise<string | null> {
+  try {
+    const key = Deno.env.get("LOVABLE_API_KEY");
+    if (!key) return null;
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: `Conceptual editorial photograph for a business news article. Subject: ${prompt}. Single real-world object on a seamless solid colour studio background, shallow depth of field, directional lighting, photorealistic, 16:9. Absolutely no text, no logos, no people.`,
+          },
+        ],
+        modalities: ["image", "text"],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const m = imageData?.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!m) return null;
+    const [, fmt, b64] = m;
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const ext = fmt === "png" ? "png" : "jpg";
+    const path = `newsroom/${slug}-ai.${ext}`;
+    const { error } = await supabase.storage
+      .from("media")
+      .upload(path, bytes, { contentType: `image/${ext === "jpg" ? "jpeg" : "png"}`, upsert: true });
+    if (error) return null;
+    return supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Main ----------
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
     const body = await req.json().catch(() => ({}));
     const limit = Number(body.limit ?? 10);
+    const force = Boolean(body.force ?? false);
 
-    // Find articles without images
-    const { data: articles, error } = await supabase
+    let q = supabase
       .from("articles")
-      .select("id, title, slug, section, category_slug")
-      .is("hero_image_url", null)
+      .select("id, title, slug, section, category_slug, hero_image_url")
       .eq("is_published", true)
       .order("published_at", { ascending: false })
       .limit(limit);
+    if (!force) q = q.is("hero_image_url", null);
 
+    const { data: articles, error } = await q;
     if (error) throw error;
 
-    console.log(`Found ${articles?.length || 0} articles without images`);
+    const counts = { openverse: 0, wikimedia: 0, ai: 0, none: 0 };
+    const results: any[] = [];
 
-    let updated = 0;
-    const results: Array<{ id: string; title: string; image_url: string | null; source: string }> = [];
+    for (const a of articles || []) {
+      const query = deriveQuery(a.title, a.category_slug || a.section || "");
+      let url: string | null = null;
+      let source = "none";
+      let caption = "";
 
-    for (const article of articles || []) {
-      console.log(`Processing: ${article.title}`);
-      
-      let heroImageUrl: string | null = null;
-      let imageSource = "none";
-
-      // Generate AI image directly (Unsplash Source API is deprecated)
-      console.log(`Generating AI image for: ${article.slug}`);
-      
-      const imagePrompt = `Professional editorial photograph: ${article.title}. African business context, Ghana, documentary style.`;
-      heroImageUrl = await generateAiImage(imagePrompt, supabase, article.slug);
-      
-      if (heroImageUrl) {
-        imageSource = "ai-generated";
-      }
-
-      // Update article with image
-      if (heroImageUrl) {
-        const { error: updateError } = await supabase
-          .from("articles")
-          .update({ hero_image_url: heroImageUrl })
-          .eq("id", article.id);
-
-        if (!updateError) {
-          updated++;
-          console.log(`✓ Updated article: ${article.title}`);
+      const ov = await fetchOpenverse(query);
+      if (ov) {
+        url = ov.url;
+        source = "openverse";
+        caption = `Photo: ${ov.creator} / Openverse`;
+        counts.openverse++;
+      } else {
+        const wm = await fetchWikimedia(query);
+        if (wm) {
+          url = wm.url;
+          source = "wikimedia";
+          caption = `Photo: ${wm.creator} / Wikimedia Commons`;
+          counts.wikimedia++;
         } else {
-          console.error(`Update error for ${article.id}:`, updateError);
+          const ai = await generateAiImage(a.title, supabase, a.slug);
+          if (ai) {
+            url = ai;
+            source = "ai_illustration";
+            caption = "Photo illustration: StatsGH";
+            counts.ai++;
+          } else {
+            counts.none++;
+          }
         }
       }
 
-      results.push({
-        id: article.id,
-        title: article.title,
-        image_url: heroImageUrl,
-        source: imageSource,
-      });
-
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (url) {
+        await supabase
+          .from("articles")
+          .update({ hero_image_url: url, image_source: source, image_caption: caption })
+          .eq("id", a.id);
+      }
+      results.push({ id: a.id, title: a.title, source, query });
+      await new Promise((r) => setTimeout(r, 300));
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        articles_processed: articles?.length || 0,
-        articles_updated: updated,
-        results,
-      }),
+      JSON.stringify({ success: true, processed: results.length, counts, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
-    console.error("Backfill error:", error);
+  } catch (e) {
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
+      JSON.stringify({ success: false, error: (e as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
