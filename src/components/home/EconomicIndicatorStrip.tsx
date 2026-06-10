@@ -169,7 +169,7 @@ const EconomicIndicatorStrip = () => {
                       item.change > 0
                         ? "text-[#00A36C]"
                         : item.change < 0
-                        ? "text-[#8B0000]"
+                        ? "text-[#E3120B]"
                         : "text-white/80"
                     }`}
                   >

@@ -13,7 +13,7 @@ export default {
       },
     },
     fontFamily: {
-      headline: ['Playfair Display', 'Georgia', 'serif'],
+      headline: ['Source Serif 4', 'Georgia', 'serif'],
       serif: ['Source Serif 4', 'Georgia', 'serif'],
       ui: ['Inter', 'system-ui', 'sans-serif'],
       sans: ['Inter', 'system-ui', 'sans-serif'],

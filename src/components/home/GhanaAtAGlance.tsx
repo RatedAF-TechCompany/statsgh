@@ -105,7 +105,7 @@ const GhanaAtAGlance = () => {
   const hasMore = allCards.length > INITIAL_CARDS_MOBILE;
 
   return (
-    <section className="bg-white py-8 border-y border-[#E5E2DC]">
+    <section className="bg-white py-8 border-y border-[#D9D9D9]">
       <div className="max-w-7xl mx-auto px-4">
         {/* Section header */}
         <div className="flex items-center justify-between mb-5">
@@ -114,7 +114,7 @@ const GhanaAtAGlance = () => {
             <h2 className="font-headline text-[22px] font-bold text-[#121212]">
               Ghana key indicators
             </h2>
-            <p className="font-ui text-[12px] text-[#8A8A8A] mt-1">
+            <p className="font-ui text-[12px] text-[#757575] mt-1">
               Live official stats from GSS and Bank of Ghana
             </p>
           </div>

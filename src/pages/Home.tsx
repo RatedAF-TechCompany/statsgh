@@ -92,9 +92,9 @@ const Home = () => {
       <Header showTicker />
 
       {/* Date strip */}
-      <div className="border-b border-[#E5E2DC]">
+      <div className="border-b border-[#D9D9D9]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-2">
-          <span className="font-ui text-[12px] text-[#555555]">
+          <span className="font-ui text-[12px] text-[#5B5B5B]">
             {dateStr} <span className="text-[#ccc] mx-2">|</span> Ghana's Premier Data Journalism Platform
           </span>
         </div>
@@ -114,12 +114,12 @@ const Home = () => {
         ) : (
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
-            <div className="py-6 border-b border-[#E5E2DC]">
+            <div className="py-6 border-b border-[#D9D9D9]">
               <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
 
-              <div className="grid grid-cols-1 md:grid-cols-[45%_1fr_1fr] gap-x-6 gap-y-6">
-                {/* Lead — 45% with large image */}
-                <div className="min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                {/* Lead spans 2 columns — image-left/text-right inside */}
+                <div className="min-w-0 md:col-span-2">
                   {leadStory && (
                     <StoryItem
                       article={leadStory}
@@ -131,16 +131,9 @@ const Home = () => {
                   )}
                 </div>
 
-                {/* Col 2 — secondary with 80px thumbs */}
-                <div className="min-w-0 md:border-l md:border-[#E5E2DC] md:pl-6 -mt-4 md:mt-0">
-                  {col2Stories.map((a) => (
-                    <StoryItem key={a.id} article={a} variant="secondary" showImage />
-                  ))}
-                </div>
-
-                {/* Col 3 — secondary with 80px thumbs */}
-                <div className="min-w-0 md:border-l md:border-[#E5E2DC] md:pl-6 -mt-4 md:mt-0">
-                  {col3Stories.map((a) => (
+                {/* Right column — stacked secondaries with thumbs */}
+                <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6">
+                  {[...col2Stories, ...col3Stories].slice(0, 4).map((a) => (
                     <StoryItem key={a.id} article={a} variant="secondary" showImage />
                   ))}
                 </div>
@@ -149,7 +142,7 @@ const Home = () => {
 
             {/* ═══ ZONE B — SPOTLIGHT ═══ */}
             {spotlightStories.length >= 3 && (
-              <div className="py-5 border-b border-[#E5E2DC]">
+              <div className="py-5 border-b border-[#D9D9D9]">
                 <FTSectionLabel
                   label={getSectionLabel(spotlightStories[0].category_slug)}
                   onClick={() => navigate(`/${getSectionForCategory(spotlightStories[0].category_slug)}`)}
@@ -158,7 +151,7 @@ const Home = () => {
                   {spotlightStories.map((a, i) => (
                     <div
                       key={a.id}
-                      className={`${i > 0 ? "md:border-l md:border-[#E5E2DC] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
+                      className={`${i > 0 ? "md:border-l md:border-[#D9D9D9] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
                     >
                       <StoryItem
                         article={a}
@@ -198,7 +191,7 @@ const Home = () => {
             </div>
 
             {/* Mobile: right rail content at bottom */}
-            <div className="lg:hidden py-6 border-t border-[#E5E2DC]">
+            <div className="lg:hidden py-6 border-t border-[#D9D9D9]">
               <MostReadRail />
               <DataRail />
             </div>
@@ -266,12 +259,12 @@ const DataWidget = () => {
   return (
     <div className="space-y-0">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between py-1.5 border-t border-[#E5E2DC]">
+        <div key={i} className="flex items-center justify-between py-1.5 border-t border-[#D9D9D9]">
           <span className="font-ui text-[11px] font-medium text-[#121212]">{item.label}</span>
           <div className="flex items-center gap-1.5">
             <span className="font-ui text-[12px] font-semibold text-[#121212]">{item.value}</span>
             {item.change !== null && (
-              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#8B0000]" : "text-[#555555]"}`}>
+              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#E3120B]" : "text-[#5B5B5B]"}`}>
                 {(item.change ?? 0) > 0 ? "+" : ""}{(item.change ?? 0).toFixed(1)}%
               </span>
             )}

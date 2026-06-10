@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
 
 interface SidebarSectionProps {
   title: string;
@@ -10,14 +9,17 @@ interface SidebarSectionProps {
 
 export const SidebarSection = ({ title, children, onViewAll, viewAllLabel = "View all" }: SidebarSectionProps) => {
   return (
-    <section className="border-t border-[#121212] pt-3 mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="kicker">{title}</h2>
-        {onViewAll && (
-          <button onClick={onViewAll} className="kicker flex items-center gap-1">
-            {viewAllLabel} →
-          </button>
-        )}
+    <section className="mb-8">
+      <div className="mb-3">
+        <span className="rubric-bar" />
+        <div className="flex items-end justify-between">
+          <h2 className="font-ui text-[16px] font-bold text-[#0D0D0D] leading-none">{title}</h2>
+          {onViewAll && (
+            <button onClick={onViewAll} className="font-ui text-[12px] font-medium text-[#E3120B] hover:underline">
+              {viewAllLabel} →
+            </button>
+          )}
+        </div>
       </div>
       {children}
     </section>

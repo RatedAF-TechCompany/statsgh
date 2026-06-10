@@ -51,14 +51,14 @@ function svgDataUri(label: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
     <defs>
       <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-        <line x1="0" y1="0" x2="0" y2="6" stroke="#EDE9E0" stroke-width="1"/>
+        <line x1="0" y1="0" x2="0" y2="6" stroke="#EFEFEF" stroke-width="1"/>
       </pattern>
     </defs>
-    <rect width="600" height="400" fill="#F5F2EC"/>
+    <rect width="600" height="400" fill="#F5F5F5"/>
     <rect width="600" height="400" fill="url(#hatch)"/>
-    <rect x="40" y="40" width="80" height="3" fill="#8B0000"/>
-    <text x="40" y="80" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="2" fill="#8B0000" text-transform="uppercase">${label.toUpperCase()}</text>
-    <text x="40" y="370" font-family="Playfair Display, Georgia, serif" font-size="28" font-weight="700" fill="#121212">StatsGH</text>
+    <rect x="40" y="40" width="24" height="2" fill="#E3120B"/>
+    <text x="40" y="78" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" fill="#E3120B">${label}</text>
+    <text x="40" y="370" font-family="Source Serif 4, Georgia, serif" font-size="28" font-weight="700" fill="#0D0D0D">StatsGH</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }

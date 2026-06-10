@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Source+Serif+4:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,47 +6,47 @@
 
 @layer base {
   :root {
-    /* New Yorker–inspired editorial palette */
+    /* Economist-inspired palette */
     --background: 0 0% 100%;            /* #FFFFFF */
-    --foreground: 0 0% 7%;              /* #121212 */
+    --foreground: 0 0% 5%;              /* #0D0D0D */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
+    --card-foreground: 0 0% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 0 100% 27%;              /* #8B0000 deep red */
+    --primary: 2 92% 47%;               /* #E3120B Economist red */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 43 89% 38%;            /* #B8860B gold (markers only) */
-    --secondary-foreground: 0 0% 7%;
+    --secondary: 0 0% 36%;              /* #5B5B5B */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 36 17% 88%;                /* #E5E2DC warm grey */
-    --muted-foreground: 0 0% 33%;       /* #555555 deks */
+    --muted: 0 0% 85%;                  /* #D9D9D9 */
+    --muted-foreground: 0 0% 36%;       /* #5B5B5B */
 
-    --accent: 36 17% 88%;
-    --accent-foreground: 0 0% 7%;
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 5%;
 
-    --destructive: 0 100% 27%;
+    --destructive: 2 92% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 17% 88%;               /* #E5E2DC hairline */
-    --input: 36 17% 88%;
-    --ring: 0 100% 27%;
+    --border: 0 0% 85%;                 /* #D9D9D9 */
+    --input: 0 0% 85%;
+    --ring: 2 92% 47%;
 
-    /* Brand tokens — kept names for compat, remapped to new palette */
-    --ft-teal: 0 100% 27%;              /* now #8B0000 */
-    --ft-maroon: 0 100% 27%;            /* #8B0000 */
-    --ft-gold: 43 89% 38%;              /* #B8860B */
-    --ft-slate: 0 0% 7%;                /* #121212 */
-    --ft-cream: 0 0% 100%;              /* #FFFFFF */
+    /* Brand tokens (legacy names, remapped) */
+    --ft-teal: 2 92% 47%;               /* #E3120B */
+    --ft-maroon: 2 92% 47%;
+    --ft-gold: 0 0% 36%;
+    --ft-slate: 0 0% 7%;
+    --ft-cream: 0 0% 100%;
     --ft-warm-white: 0 0% 100%;
-    --ft-divider: 36 17% 88%;           /* #E5E2DC */
-    --ft-muted: 0 0% 33%;                /* #555555 */
-    --ft-byline: 0 0% 54%;               /* #8A8A8A */
-    --ft-green: 137 67% 30%;             /* #1A7F37 */
-    --ft-red: 3 60% 48%;                 /* #C8332B */
+    --ft-divider: 0 0% 85%;
+    --ft-muted: 0 0% 36%;
+    --ft-byline: 0 0% 46%;              /* #757575 */
+    --ft-green: 137 67% 30%;            /* #1A7F37 */
+    --ft-red: 3 60% 48%;                /* #C8332B */
 
     --accent-green: 137 67% 30%;
 
@@ -61,18 +61,14 @@
     @apply bg-background text-foreground;
     font-family: 'Source Serif 4', Georgia, serif;
     font-size: 17px;
-    line-height: 1.65;
-    color: #121212;
+    line-height: 1.55;
+    color: #0D0D0D;
     -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer utilities {
-  .font-headline {
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
-  }
-
+  .font-headline,
   .font-serif {
     font-family: 'Source Serif 4', Georgia, serif;
   }
@@ -82,43 +78,65 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* Editorial kicker — the only persistent colour accent */
+  /* Rubric (Economist signature) — red bar + label */
+  .rubric {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #E3120B;
+    line-height: 1;
+    display: inline-block;
+  }
+  .rubric-bar {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: #E3120B;
+    margin-bottom: 8px;
+  }
+
+  /* Legacy kicker — now Economist rubric style */
   .kicker {
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #8B0000;
+    font-size: 12px;
+    font-weight: 700;
+    color: #E3120B;
+    text-transform: none;
+    letter-spacing: 0;
   }
-  .kicker:hover { text-decoration: underline; }
+  .kicker:hover { text-decoration: none; }
 
   .section-label {
     font-family: 'Inter', system-ui, sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #8B0000;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
+    color: #E3120B;
+    text-transform: none;
+    letter-spacing: 0;
   }
 
-  /* Headline hover signature */
+  /* Headline — underline on hover, no colour change */
   .headline-link {
-    color: #121212;
-    transition: color 150ms ease;
+    color: #0D0D0D;
+    transition: text-decoration-color 150ms ease;
   }
-  .headline-link:hover { color: #8B0000; }
+  .headline-link:hover {
+    text-decoration: underline;
+    text-decoration-color: #0D0D0D;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
 }
 
 @layer components {
-  /* Article body — editorial */
+  /* Article body */
   .prose,
   [data-article-body] {
-    color: #1A1A1A;
+    color: #121212;
     font-family: 'Source Serif 4', Georgia, serif;
     font-size: 18px;
-    line-height: 1.7;
-    max-width: 680px;
+    line-height: 1.65;
+    max-width: 660px;
     margin-left: auto;
     margin-right: auto;
   }
@@ -126,59 +144,69 @@
   .prose p,
   [data-article-body] p {
     margin-top: 0;
-    margin-bottom: 1.4em;
-    color: #1A1A1A;
+    margin-bottom: 1.3em;
+    color: #121212;
   }
 
-  .prose > p:first-of-type,
-  [data-article-body] > p:first-of-type {
-    font-size: 20px;
-    line-height: 1.6;
+  /* Drop cap on first paragraph (Economist signature) */
+  .prose > p:first-of-type::first-letter,
+  [data-article-body] > p:first-of-type::first-letter {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 700;
+    float: left;
+    font-size: 3.4em;
+    line-height: 0.9;
+    padding: 0.05em 0.08em 0 0;
+    color: #0D0D0D;
   }
 
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-    color: #121212;
-    font-weight: 700;
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
-    margin-top: 1.6em;
+    color: #0D0D0D;
+    font-weight: 600;
+    font-family: 'Source Serif 4', Georgia, serif;
+    margin-top: 1.5em;
     margin-bottom: 0.6em;
     line-height: 1.2;
   }
 
-  .prose h2 { font-size: 1.6em; }
-  .prose h3 { font-size: 1.3em; }
+  .prose h2 { font-size: 1.5em; }
+  .prose h3 { font-size: 1.25em; }
 
-  .prose strong { font-weight: 700; color: #121212; }
+  .prose strong { font-weight: 700; color: #0D0D0D; }
 
   .prose a {
-    color: #121212;
+    color: #0D0D0D;
     text-decoration: underline;
-    text-decoration-color: #8B0000;
+    text-decoration-color: #E3120B;
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
     transition: color 150ms ease;
   }
-  .prose a:hover { color: #8B0000; }
+  .prose a:hover { color: #E3120B; }
 
-  .prose ul, .prose ol { margin: 1.25em 0; padding-left: 1.625em; }
-  .prose li { margin: 0.5em 0; }
+  .prose ul, .prose ol { margin: 1.2em 0; padding-left: 1.5em; }
+  .prose li { margin: 0.4em 0; }
 
   .prose blockquote {
     font-style: italic;
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 600;
-    border-left: 3px solid #8B0000;
+    border-left: 3px solid #E3120B;
     padding-left: 1em;
-    margin: 1.6em 0;
-    color: #121212;
+    margin: 1.4em 0;
+    color: #0D0D0D;
   }
 
   .prose .number-highlight { font-weight: 700; }
 
-  .skeleton-ft { background: #E5E2DC; }
+  .skeleton-ft { background: #D9D9D9; }
 }
 
 a, button {
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+img {
+  transition: opacity 200ms ease;
+}
+.group:hover img.hover-fade {
+  opacity: 0.9;
 }

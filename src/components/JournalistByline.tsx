@@ -46,7 +46,7 @@ export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: P
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-2 hover:text-[#8B0000] transition-colors align-middle"
+            className="inline-flex items-center gap-2 hover:text-[#E3120B] transition-colors align-middle"
           >
             {showAvatar && (
               <img
@@ -68,7 +68,7 @@ export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: P
           <div className="font-semibold mb-1">
             {journalist.byline_name}
             {journalist.specialization && (
-              <span className="text-[#B8860B] font-normal ml-1.5">
+              <span className="text-[#5B5B5B] font-normal ml-1.5">
                 · {journalist.specialization}
               </span>
             )}
