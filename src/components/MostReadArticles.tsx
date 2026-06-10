@@ -93,12 +93,12 @@ const MostReadArticles = () => {
             className="w-full flex items-start gap-4 py-4 border-b border-[#D9D9D9] text-left group"
           >
             <span
-              className="font-headline text-[40px] font-bold text-[#D9D9D9] leading-none pt-0.5"
-              style={{ minWidth: '2.5rem' }}
+              className="font-serif text-[28px] font-bold text-[#E3120B] leading-none pt-0.5"
+              style={{ minWidth: '2rem' }}
             >
               {index + 1}
             </span>
-            <span className="font-headline text-[16px] sm:text-[18px] font-semibold leading-[1.25] headline-link">
+            <span className="font-serif text-[15px] font-semibold leading-[1.25] text-[#0D0D0D] headline-link line-clamp-2">
               {article.title}
             </span>
           </button>
