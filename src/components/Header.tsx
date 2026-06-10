@@ -81,7 +81,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 hover:opacity-90"
           >
             <img src={statsghLogo} alt="StatsGH" className="h-7" />
-            <span className="font-headline text-2xl font-bold text-[#121212]">
+            <span className="font-serif text-2xl font-bold text-[#0D0D0D]">
               StatsGH
             </span>
           </button>
@@ -125,7 +125,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             ) : (
               <Button
                 size="sm"
-                className="bg-[#E3120B] text-white hover:bg-[#B30E08] font-ui text-xs uppercase tracking-[0.1em] h-8 px-4 rounded-[2px]"
+                className="bg-[#E3120B] text-white hover:bg-[#B30E08] font-ui font-semibold text-[13px] h-8 px-4 rounded-[2px]"
                 onClick={() => navigate("/auth")}
               >
                 Subscribe
@@ -148,11 +148,11 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                 key={section.slug}
                 onClick={() => navigate(section.href)}
                 className={`
-                  flex-shrink-0 px-3 h-10 font-ui text-[13px] font-medium
-                  border-b-2 transition-colors
+                  flex-shrink-0 px-3 h-11 font-ui text-[14px] font-medium
+                  border-b-[3px] transition-colors
                   ${isActiveSection(section.href)
-                    ? "border-[#E3120B] text-[#E3120B]"
-                    : "border-transparent text-[#121212] hover:text-[#E3120B]"
+                    ? "border-[#E3120B] text-[#0D0D0D]"
+                    : "border-transparent text-[#0D0D0D] hover:text-[#E3120B]"
                   }
                 `}
               >
