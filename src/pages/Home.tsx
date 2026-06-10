@@ -114,42 +114,35 @@ const Home = () => {
         ) : (
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
-            <div className="py-5 border-b border-[#E5E2DC]">
+            <div className="py-6 border-b border-[#E5E2DC]">
               <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-5 gap-y-4">
-                {/* Col 1: Lead story (35%) */}
-                <div className="md:col-span-1" style={{ gridColumn: "span 1" }}>
+              <div className="grid grid-cols-1 md:grid-cols-[45%_1fr_1fr] gap-x-6 gap-y-6">
+                {/* Lead — 45% with large image */}
+                <div className="min-w-0">
                   {leadStory && (
                     <StoryItem
                       article={leadStory}
                       variant="lead"
                       showImage
                       showSummary
+                      eager
                     />
                   )}
                 </div>
 
-                {/* Col 2: 2 stacked stories */}
-                <div className="md:col-span-1 space-y-0">
+                {/* Col 2 — secondary with 80px thumbs */}
+                <div className="min-w-0 md:border-l md:border-[#E5E2DC] md:pl-6 -mt-4 md:mt-0">
                   {col2Stories.map((a) => (
-                    <StoryItem key={a.id} article={a} variant="compact" />
+                    <StoryItem key={a.id} article={a} variant="secondary" showImage />
                   ))}
                 </div>
 
-                {/* Col 3: 2 stacked stories */}
-                <div className="md:col-span-1 space-y-0">
+                {/* Col 3 — secondary with 80px thumbs */}
+                <div className="min-w-0 md:border-l md:border-[#E5E2DC] md:pl-6 -mt-4 md:mt-0">
                   {col3Stories.map((a) => (
-                    <StoryItem key={a.id} article={a} variant="compact" />
+                    <StoryItem key={a.id} article={a} variant="secondary" showImage />
                   ))}
-                </div>
-
-                {/* Col 4: Data widget */}
-                <div className="md:col-span-1 border-l border-[#E5E2DC] pl-5 hidden md:block">
-                  <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#555555] mb-3">
-                    Markets Snapshot
-                  </h2>
-                  <DataWidget />
                 </div>
               </div>
             </div>
