@@ -92,9 +92,9 @@ const Home = () => {
       <Header showTicker />
 
       {/* Date strip */}
-      <div className="border-b border-[#e8e8e8]">
+      <div className="border-b border-[#E5E2DC]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-2">
-          <span className="font-ui text-[12px] text-[#66605A]">
+          <span className="font-ui text-[12px] text-[#555555]">
             {dateStr} <span className="text-[#ccc] mx-2">|</span> Ghana's Premier Data Journalism Platform
           </span>
         </div>
@@ -114,7 +114,7 @@ const Home = () => {
         ) : (
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
-            <div className="py-5 border-b border-[#e8e8e8]">
+            <div className="py-5 border-b border-[#E5E2DC]">
               <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-x-5 gap-y-4">
@@ -145,8 +145,8 @@ const Home = () => {
                 </div>
 
                 {/* Col 4: Data widget */}
-                <div className="md:col-span-1 border-l border-[#e8e8e8] pl-5 hidden md:block">
-                  <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#66605A] mb-3">
+                <div className="md:col-span-1 border-l border-[#E5E2DC] pl-5 hidden md:block">
+                  <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#555555] mb-3">
                     Markets Snapshot
                   </h2>
                   <DataWidget />
@@ -156,7 +156,7 @@ const Home = () => {
 
             {/* ═══ ZONE B — SPOTLIGHT ═══ */}
             {spotlightStories.length >= 3 && (
-              <div className="py-5 border-b border-[#e8e8e8]">
+              <div className="py-5 border-b border-[#E5E2DC]">
                 <FTSectionLabel
                   label={getSectionLabel(spotlightStories[0].category_slug)}
                   onClick={() => navigate(`/${getSectionForCategory(spotlightStories[0].category_slug)}`)}
@@ -165,7 +165,7 @@ const Home = () => {
                   {spotlightStories.map((a, i) => (
                     <div
                       key={a.id}
-                      className={`${i > 0 ? "md:border-l md:border-[#e8e8e8] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
+                      className={`${i > 0 ? "md:border-l md:border-[#E5E2DC] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
                     >
                       <StoryItem
                         article={a}
@@ -205,7 +205,7 @@ const Home = () => {
             </div>
 
             {/* Mobile: right rail content at bottom */}
-            <div className="lg:hidden py-6 border-t border-[#e8e8e8]">
+            <div className="lg:hidden py-6 border-t border-[#E5E2DC]">
               <MostReadRail />
               <DataRail />
             </div>
@@ -273,12 +273,12 @@ const DataWidget = () => {
   return (
     <div className="space-y-0">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between py-1.5 border-t border-[#e8e8e8]">
-          <span className="font-ui text-[11px] font-medium text-[#33302E]">{item.label}</span>
+        <div key={i} className="flex items-center justify-between py-1.5 border-t border-[#E5E2DC]">
+          <span className="font-ui text-[11px] font-medium text-[#121212]">{item.label}</span>
           <div className="flex items-center gap-1.5">
-            <span className="font-ui text-[12px] font-semibold text-[#33302E]">{item.value}</span>
+            <span className="font-ui text-[12px] font-semibold text-[#121212]">{item.value}</span>
             {item.change !== null && (
-              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#CC0000]" : "text-[#66605A]"}`}>
+              <span className={`font-ui text-[10px] ${(item.change ?? 0) > 0 ? "text-[#00A36C]" : (item.change ?? 0) < 0 ? "text-[#8B0000]" : "text-[#555555]"}`}>
                 {(item.change ?? 0) > 0 ? "+" : ""}{(item.change ?? 0).toFixed(1)}%
               </span>
             )}

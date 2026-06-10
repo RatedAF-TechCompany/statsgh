@@ -65,37 +65,34 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
 
   return (
     <header className="sticky top-0 z-50">
-      {/* Ticker — above everything */}
+      {/* Ticker */}
       {showTicker && <EconomicIndicatorStrip />}
 
-      {/* Masthead — centered logo */}
-      <div className="bg-[#FFF1E0] border-b border-[#e8e8e8]">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-14">
-          {/* Left: date */}
-          <span className="hidden md:block font-ui text-[11px] text-[#66605A] whitespace-nowrap">
+      {/* Masthead */}
+      <div className="bg-white border-b border-[#E5E2DC]">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-16 relative">
+          <span className="hidden md:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#8A8A8A] whitespace-nowrap">
             {dateString}
           </span>
           <div className="md:hidden w-10" />
 
-          {/* Centre: logo */}
           <button
             onClick={() => navigate("/")}
             className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 hover:opacity-90"
           >
             <img src={statsghLogo} alt="StatsGH" className="h-7" />
-            <span className="font-headline text-xl font-bold text-[#33302E]">
+            <span className="font-headline text-2xl font-bold text-[#121212]">
               StatsGH
             </span>
           </button>
 
-          {/* Right: actions */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/search")}
               className="p-2 hover:opacity-80"
               aria-label="Search"
             >
-              <Search size={18} className="text-[#33302E]" />
+              <Search size={18} className="text-[#121212]" />
             </button>
 
             {session ? (
@@ -107,7 +104,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                     title="Dashboard"
                     aria-label="Open dashboard"
                   >
-                    <LayoutDashboard size={18} className="text-[#33302E]" />
+                    <LayoutDashboard size={18} className="text-[#121212]" />
                   </button>
                 )}
                 <button
@@ -115,20 +112,20 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                   className="p-2 hover:opacity-80"
                   aria-label="Saved articles and account"
                 >
-                  <User size={18} className="text-[#33302E]" />
+                  <User size={18} className="text-[#121212]" />
                 </button>
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:opacity-80"
                   aria-label="Log out"
                 >
-                  <LogOut size={16} className="text-[#33302E]" />
+                  <LogOut size={16} className="text-[#121212]" />
                 </button>
               </>
             ) : (
               <Button
                 size="sm"
-                className="bg-[#0D7680] text-white hover:bg-[#0a5f67] font-ui text-xs h-8 px-4"
+                className="bg-[#8B0000] text-white hover:bg-[#6d0000] font-ui text-xs uppercase tracking-[0.1em] h-8 px-4 rounded-[2px]"
                 onClick={() => navigate("/auth")}
               >
                 Subscribe
@@ -139,7 +136,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
       </div>
 
       {/* Section nav */}
-      <div className="bg-[#FFF1E0] border-b border-[#e8e8e8]">
+      <div className="bg-white border-b border-[#E5E2DC]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6">
           <nav
             ref={navRef}
@@ -154,8 +151,8 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                   flex-shrink-0 px-3 h-10 font-ui text-[13px] font-medium
                   border-b-2 transition-colors
                   ${isActiveSection(section.href)
-                    ? "border-[#0D7680] text-[#0D7680]"
-                    : "border-transparent text-[#33302E] hover:text-[#0D7680]"
+                    ? "border-[#8B0000] text-[#8B0000]"
+                    : "border-transparent text-[#121212] hover:text-[#8B0000]"
                   }
                 `}
               >

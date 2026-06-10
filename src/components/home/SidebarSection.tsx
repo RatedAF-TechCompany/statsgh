@@ -10,18 +10,12 @@ interface SidebarSectionProps {
 
 export const SidebarSection = ({ title, children, onViewAll, viewAllLabel = "View all" }: SidebarSectionProps) => {
   return (
-    <section className="border-t-2 border-ft-maroon pt-3">
+    <section className="border-t border-[#121212] pt-3 mb-8">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-serif text-base font-bold text-foreground">
-          {title}
-        </h2>
+        <h2 className="kicker">{title}</h2>
         {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="text-xs text-ft-maroon hover:underline flex items-center gap-1 font-medium"
-          >
-            {viewAllLabel}
-            <ArrowRight size={12} />
+          <button onClick={onViewAll} className="kicker flex items-center gap-1">
+            {viewAllLabel} →
           </button>
         )}
       </div>

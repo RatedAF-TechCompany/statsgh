@@ -61,33 +61,37 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
       )}
       <div className="space-y-2">
         {article.is_breaking && (
-          <span className="inline-block bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
+          <span className="inline-block bg-[#8B0000] text-white text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5">
             Breaking
           </span>
         )}
-        {isNew(article.published_at ?? null) && (
-          <span className="inline-block text-[#0D7680] text-[10px] font-bold uppercase tracking-widest">
-            New
-          </span>
-        )}
-        <p className="font-sans text-xs uppercase tracking-wider text-ft-maroon font-semibold">
+        <p className="kicker">
           {categoryLabel}
         </p>
-        <h1 className="font-serif text-2xl md:text-3xl font-bold leading-tight text-foreground group-hover:text-ft-maroon transition-colors">
+        <h1 className="font-headline text-[34px] md:text-[40px] font-bold leading-[1.15] tracking-[-0.01em] headline-link">
           {article.title}
         </h1>
         {article.summary && (
-          <p className="font-serif text-base md:text-lg leading-relaxed text-muted-foreground">
+          <p className="font-serif text-[16px] leading-[1.5] text-[#555555] max-w-[640px]">
             {article.summary}
           </p>
         )}
-        <p className="font-sans text-xs text-muted-foreground flex items-center gap-2 pt-1">
+        <p className="font-ui text-[13px] text-[#8A8A8A] flex items-center gap-2 pt-1">
+          {isNew(article.published_at ?? null) && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[#B8860B] font-semibold uppercase tracking-[0.12em] text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
+                New
+              </span>
+              <span>·</span>
+            </>
+          )}
           {article.published_at && (
             <span>{getTimeAgo(article.published_at)}</span>
           )}
           {readingTime && (
             <>
-              <span>•</span>
+              <span>·</span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {readingTime} read

@@ -13,10 +13,10 @@ export default {
       },
     },
     fontFamily: {
-      headline: ['Lora', 'Georgia', 'serif'],
-      serif: ['PT Serif', 'Georgia', 'serif'],
-      ui: ['DM Sans', 'system-ui', 'sans-serif'],
-      sans: ['DM Sans', 'system-ui', 'sans-serif'],
+      headline: ['Playfair Display', 'Georgia', 'serif'],
+      serif: ['Source Serif 4', 'Georgia', 'serif'],
+      ui: ['Inter', 'system-ui', 'sans-serif'],
+      sans: ['Inter', 'system-ui', 'sans-serif'],
     },
     extend: {
       colors: {

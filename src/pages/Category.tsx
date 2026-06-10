@@ -85,12 +85,12 @@ const Category = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF1E0]">
+    <div className="min-h-screen bg-[#FFFFFF]">
       <Header />
 
       <main className="max-w-[1280px] mx-auto px-4 md:px-6 py-8">
         {/* Section title */}
-        <div className="border-b border-[#0D7680] pb-3 mb-8">
+        <div className="border-b border-[#8B0000] pb-3 mb-8">
           <h1 className="section-label text-base">{categoryLabel}</h1>
         </div>
 
@@ -107,21 +107,21 @@ const Category = () => {
             {/* Lead article */}
             {leadArticle && (
               <article
-                className="pb-8 border-b border-[#E8D9C5] mb-6 cursor-pointer group"
+                className="pb-8 border-b border-[#E5E2DC] mb-6 cursor-pointer group"
                 onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h2 className="font-headline text-[28px] md:text-[34px] font-bold leading-[1.15] text-[#33302E] group-hover:text-[#0D7680] transition-colors">
+                    <h2 className="font-headline text-[28px] md:text-[34px] font-bold leading-[1.15] text-[#121212] group-hover:text-[#8B0000] transition-colors">
                       {leadArticle.title}
                     </h2>
                     {leadArticle.summary && (
-                      <p className="font-serif text-[15px] text-[#66605A] mt-3 leading-relaxed line-clamp-3">
+                      <p className="font-serif text-[15px] text-[#555555] mt-3 leading-relaxed line-clamp-3">
                         {leadArticle.summary}
                       </p>
                     )}
                     {leadArticle.published_at && (
-                      <span className="font-ui text-xs text-[#66605A] mt-3 block">
+                      <span className="font-ui text-xs text-[#555555] mt-3 block">
                         {getTimeAgo(leadArticle.published_at)}
                       </span>
                     )}
@@ -142,20 +142,20 @@ const Category = () => {
               {restArticles.map((article) => (
                 <article
                   key={article.id}
-                  className="py-4 border-b border-[#E8D9C5] cursor-pointer group flex gap-4"
+                  className="py-4 border-b border-[#E5E2DC] cursor-pointer group flex gap-4"
                   onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
                 >
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-headline text-lg font-semibold leading-snug text-[#33302E] group-hover:text-[#0D7680] transition-colors">
+                    <h3 className="font-headline text-lg font-semibold leading-snug text-[#121212] group-hover:text-[#8B0000] transition-colors">
                       {article.title}
                     </h3>
                     {article.summary && (
-                      <p className="font-serif text-sm text-[#66605A] mt-1 line-clamp-1">
+                      <p className="font-serif text-sm text-[#555555] mt-1 line-clamp-1">
                         {article.summary}
                       </p>
                     )}
                     {article.published_at && (
-                      <span className="font-ui text-xs text-[#66605A] mt-1 block">
+                      <span className="font-ui text-xs text-[#555555] mt-1 block">
                         {getTimeAgo(article.published_at)}
                       </span>
                     )}
@@ -177,7 +177,7 @@ const Category = () => {
                 {currentPage > 1 && (
                   <Button
                     variant="outline"
-                    className="font-ui border-[#E8D9C5] text-[#33302E] hover:bg-[#E8D9C5]"
+                    className="font-ui border-[#E5E2DC] text-[#121212] hover:bg-[#E5E2DC]"
                     onClick={() => { setCurrentPage(currentPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   >
                     Previous
@@ -186,7 +186,7 @@ const Category = () => {
                 {hasNextPage && (
                   <Button
                     variant="outline"
-                    className="font-ui border-[#E8D9C5] text-[#33302E] hover:bg-[#E8D9C5]"
+                    className="font-ui border-[#E5E2DC] text-[#121212] hover:bg-[#E5E2DC]"
                     onClick={() => { setCurrentPage(currentPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   >
                     Next
@@ -196,7 +196,7 @@ const Category = () => {
             )}
           </>
         ) : (
-          <p className="text-center py-12 text-[#66605A] font-ui text-sm">
+          <p className="text-center py-12 text-[#555555] font-ui text-sm">
             No articles found in this section.
           </p>
         )}

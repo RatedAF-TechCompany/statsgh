@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Source+Serif+4:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,169 +6,179 @@
 
 @layer base {
   :root {
-    /* FT-inspired colour system */
-    --background: 33 100% 94%;        /* #FFF1E0 */
-    --foreground: 18 8% 18%;          /* #33302E */
-    
-    --card: 33 100% 98%;              /* #FFFAF4 */
-    --card-foreground: 18 8% 18%;     /* #33302E */
-    
-    --popover: 33 100% 98%;
-    --popover-foreground: 18 8% 18%;
-    
-    --primary: 183 83% 26%;           /* #0D7680 teal */
-    --primary-foreground: 33 100% 94%;
-    
-    --secondary: 40 35% 54%;          /* #C9A84C gold */
-    --secondary-foreground: 18 8% 18%;
-    
-    --muted: 33 47% 90%;              /* light cream */
-    --muted-foreground: 22 7% 37%;    /* #66605A */
-    
-    --accent: 33 47% 90%;
-    --accent-foreground: 18 8% 18%;
-    
-    --destructive: 0 100% 40%;        /* #CC0000 */
+    /* New Yorker–inspired editorial palette */
+    --background: 0 0% 100%;            /* #FFFFFF */
+    --foreground: 0 0% 7%;              /* #121212 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+
+    --primary: 0 100% 27%;              /* #8B0000 deep red */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 89% 38%;            /* #B8860B gold (markers only) */
+    --secondary-foreground: 0 0% 7%;
+
+    --muted: 36 17% 88%;                /* #E5E2DC warm grey */
+    --muted-foreground: 0 0% 33%;       /* #555555 deks */
+
+    --accent: 36 17% 88%;
+    --accent-foreground: 0 0% 7%;
+
+    --destructive: 0 100% 27%;
     --destructive-foreground: 0 0% 100%;
-    
-    --border: 32 33% 85%;             /* #E8D9C5 */
-    --input: 32 33% 85%;
-    --ring: 183 83% 26%;
-    
-    /* Brand tokens */
-    --ft-teal: 183 83% 26%;           /* #0D7680 */
-    --ft-gold: 40 35% 54%;            /* #C9A84C */
-    --ft-slate: 18 8% 18%;            /* #33302E */
-    --ft-cream: 33 100% 94%;          /* #FFF1E0 */
-    --ft-warm-white: 33 100% 98%;     /* #FFFAF4 */
-    --ft-divider: 32 33% 85%;         /* #E8D9C5 */
-    --ft-muted: 22 7% 37%;            /* #66605A */
-    --ft-green: 160 100% 32%;         /* #00A36C */
-    --ft-red: 0 100% 40%;             /* #CC0000 */
-    
-    /* Legacy compat */
-    --ft-maroon: 183 83% 26%;         /* now maps to teal */
-    --accent-green: 160 100% 32%;
-    
-    --radius: 0rem;
+
+    --border: 36 17% 88%;               /* #E5E2DC hairline */
+    --input: 36 17% 88%;
+    --ring: 0 100% 27%;
+
+    /* Brand tokens — kept names for compat, remapped to new palette */
+    --ft-teal: 0 100% 27%;              /* now #8B0000 */
+    --ft-maroon: 0 100% 27%;            /* #8B0000 */
+    --ft-gold: 43 89% 38%;              /* #B8860B */
+    --ft-slate: 0 0% 7%;                /* #121212 */
+    --ft-cream: 0 0% 100%;              /* #FFFFFF */
+    --ft-warm-white: 0 0% 100%;
+    --ft-divider: 36 17% 88%;           /* #E5E2DC */
+    --ft-muted: 0 0% 33%;                /* #555555 */
+    --ft-byline: 0 0% 54%;               /* #8A8A8A */
+    --ft-green: 137 67% 30%;             /* #1A7F37 */
+    --ft-red: 3 60% 48%;                 /* #C8332B */
+
+    --accent-green: 137 67% 30%;
+
+    --radius: 0.125rem;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'PT Serif', Georgia, serif;
+    font-family: 'Source Serif 4', Georgia, serif;
     font-size: 17px;
     line-height: 1.65;
-    color: #33302E;
+    color: #121212;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer utilities {
   .font-headline {
-    font-family: 'Lora', Georgia, serif;
+    font-family: 'Playfair Display', Georgia, serif;
     letter-spacing: -0.01em;
   }
-  
+
   .font-serif {
-    font-family: 'PT Serif', Georgia, serif;
+    font-family: 'Source Serif 4', Georgia, serif;
   }
-  
+
   .font-sans,
   .font-ui {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
-  
-  .section-label {
-    font-family: 'DM Sans', system-ui, sans-serif;
+
+  /* Editorial kicker — the only persistent colour accent */
+  .kicker {
+    font-family: 'Inter', system-ui, sans-serif;
     font-size: 11px;
-    letter-spacing: 0.1em;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: hsl(var(--ft-teal));
+    color: #8B0000;
+  }
+  .kicker:hover { text-decoration: underline; }
+
+  .section-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8B0000;
     font-weight: 600;
   }
+
+  /* Headline hover signature */
+  .headline-link {
+    color: #121212;
+    transition: color 150ms ease;
+  }
+  .headline-link:hover { color: #8B0000; }
 }
 
 @layer components {
-  /* Article body — editorial styling */
+  /* Article body — editorial */
   .prose,
   [data-article-body] {
-    color: #33302E;
-    font-family: 'PT Serif', Georgia, serif;
-    font-size: 17px;
-    line-height: 1.75;
+    color: #1A1A1A;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 18px;
+    line-height: 1.7;
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
   }
-  
+
   .prose p,
   [data-article-body] p {
     margin-top: 0;
     margin-bottom: 1.4em;
-    color: #33302E;
+    color: #1A1A1A;
   }
-  
+
+  .prose > p:first-of-type,
+  [data-article-body] > p:first-of-type {
+    font-size: 20px;
+    line-height: 1.6;
+  }
+
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-    color: hsl(var(--foreground));
+    color: #121212;
     font-weight: 700;
-    font-family: 'Lora', Georgia, serif;
+    font-family: 'Playfair Display', Georgia, serif;
     letter-spacing: -0.01em;
-    margin-top: 1.5em;
-    margin-bottom: 0.75em;
-    line-height: 1.25;
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+    line-height: 1.2;
   }
-  
-  .prose h2 { font-size: 1.5em; }
-  .prose h3 { font-size: 1.25em; }
-  
-  .prose strong {
-    font-weight: 700;
-    color: hsl(var(--foreground));
-  }
-  
+
+  .prose h2 { font-size: 1.6em; }
+  .prose h3 { font-size: 1.3em; }
+
+  .prose strong { font-weight: 700; color: #121212; }
+
   .prose a {
-    color: hsl(var(--ft-teal));
+    color: #121212;
     text-decoration: underline;
-    transition: color 200ms;
+    text-decoration-color: #8B0000;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: color 150ms ease;
   }
-  
-  .prose a:hover {
-    color: hsl(183 83% 20%);
-  }
-  
-  .prose ul, .prose ol {
-    margin-top: 1.25em;
-    margin-bottom: 1.25em;
-    padding-left: 1.625em;
-  }
-  
-  .prose li {
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-  }
-  
+  .prose a:hover { color: #8B0000; }
+
+  .prose ul, .prose ol { margin: 1.25em 0; padding-left: 1.625em; }
+  .prose li { margin: 0.5em 0; }
+
   .prose blockquote {
     font-style: italic;
-    font-family: 'Lora', Georgia, serif;
-    border-left: 3px solid hsl(var(--ft-gold));
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 600;
+    border-left: 3px solid #8B0000;
     padding-left: 1em;
-    margin: 1.5em 0;
-    color: hsl(var(--muted-foreground));
+    margin: 1.6em 0;
+    color: #121212;
   }
 
-  .prose .number-highlight {
-    font-weight: 700;
-  }
+  .prose .number-highlight { font-weight: 700; }
 
-  /* Skeleton loader colour override */
-  .skeleton-ft {
-    background: hsl(var(--ft-divider));
-  }
+  .skeleton-ft { background: #E5E2DC; }
 }
 
-/* Smooth hover transitions globally */
 a, button {
-  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 }

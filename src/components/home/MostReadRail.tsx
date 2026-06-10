@@ -56,11 +56,11 @@ const MostReadRail = () => {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-3">
-        <div className="flex-1 h-px bg-[#e8e8e8]" />
-        <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#33302E] m-0">
+        <div className="flex-1 h-px bg-[#E5E2DC]" />
+        <h2 className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#121212] m-0">
           Most Read
         </h2>
-        <div className="flex-1 h-px bg-[#e8e8e8]" />
+        <div className="flex-1 h-px bg-[#E5E2DC]" />
       </div>
 
       {isLoading ? (
@@ -75,12 +75,12 @@ const MostReadRail = () => {
             <button
               key={article.id}
               onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
-              className="w-full flex items-start gap-3 py-2 border-t border-[#e8e8e8] text-left group"
+              className="w-full flex items-start gap-3 py-2 border-t border-[#E5E2DC] text-left group"
             >
-              <span className="font-headline text-lg font-bold text-[#C9A84C] leading-none pt-0.5 w-5 flex-shrink-0">
+              <span className="font-headline text-lg font-bold text-[#B8860B] leading-none pt-0.5 w-5 flex-shrink-0">
                 {i + 1}
               </span>
-              <span className="font-headline text-[13px] font-medium text-[#33302E] leading-snug group-hover:text-[#0D7680] transition-colors">
+              <span className="font-headline text-[13px] font-medium text-[#121212] leading-snug group-hover:text-[#8B0000] transition-colors">
                 {article.title}
               </span>
             </button>
