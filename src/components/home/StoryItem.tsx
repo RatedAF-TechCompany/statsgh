@@ -18,6 +18,7 @@ interface StoryItemProps {
   showImage?: boolean;
   showSummary?: boolean;
   sectionLabel?: string;
+  rubricTopic?: string; // optional 2nd-part for lead rubric: "Economy | Growth"
   eager?: boolean;
 }
 
@@ -37,84 +38,111 @@ const isNew = (publishedAt: string | null) => {
   return Date.now() - new Date(publishedAt).getTime() < 2 * 60 * 60 * 1000;
 };
 
+const deriveLabel = (sectionLabel?: string, section?: string | null, categorySlug?: string | null) => {
+  if (sectionLabel) return sectionLabel;
+  if (section === "analysis") return "Analysis";
+  if (section === "financial-literacy") return "Explainer";
+  const src = section || categorySlug || "";
+  if (!src) return "Top Stories";
+  return src
+    .split(/[-_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const Rubric = ({ label, topic }: { label: string; topic?: string }) => (
+  <div className="mb-2">
+    <span className="rubric-bar" />
+    <span className="rubric">
+      {label}
+      {topic && <span> | {topic}</span>}
+    </span>
+  </div>
+);
+
+const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: string | null }) => {
+  const time = getTimeAgo(publishedAt);
+  const showNew = isNew(publishedAt);
+  if (!author && !time) return null;
+
+  return (
+    <div
+      className="mt-2.5 flex items-center font-ui text-[12px] text-[#757575] whitespace-nowrap overflow-hidden"
+      style={{ flexWrap: "nowrap" }}
+    >
+      {author && <span className="font-medium text-[#121212] truncate min-w-0 flex-shrink">{author}</span>}
+      {author && time && <span className="flex-shrink-0 px-1.5 text-[#757575]">|</span>}
+      {showNew && (
+        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#E3120B] mr-1.5" aria-label="New" />
+      )}
+      {time && <span className="flex-shrink-0">{time}</span>}
+    </div>
+  );
+};
+
 export const StoryItem = ({
   article,
   variant,
   showImage = false,
   showSummary = false,
   sectionLabel,
+  rubricTopic,
   eager = false,
 }: StoryItemProps) => {
   const navigate = useNavigate();
+  const label = deriveLabel(sectionLabel, article.section, article.category_slug);
 
   const headlineSize =
-    variant === "lead"
-      ? "text-[28px] md:text-[28px]"
-      : variant === "secondary"
-      ? "text-[18px]"
-      : "text-[15px]";
-
+    variant === "lead" ? "text-[30px]" : variant === "secondary" ? "text-[19px]" : "text-[16px]";
   const clampClass =
-    variant === "lead"
-      ? "line-clamp-4"
-      : variant === "secondary"
-      ? "line-clamp-3"
-      : "line-clamp-2";
-
+    variant === "lead" ? "line-clamp-4" : variant === "secondary" ? "line-clamp-3" : "line-clamp-2";
   const dekClamp = variant === "lead" ? "line-clamp-3" : "line-clamp-2";
-  const fontWeight = variant === "compact" ? "font-medium" : "font-bold";
 
   const imgSrc = article.hero_image_url || getSectionFallback(article.section, article.category_slug);
 
-  // LEAD: image full-width on top
+  // LEAD — image LEFT (55%) | text RIGHT (45%) on desktop, stacked on mobile
   if (variant === "lead") {
     return (
       <article
         className="cursor-pointer group"
         onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
       >
-        {showImage && (
-          <div className="mb-3 overflow-hidden bg-[#F5F2EC] aspect-[3/2]">
-            <img
-              src={imgSrc}
-              alt=""
-              loading={eager ? "eager" : "lazy"}
-              fetchPriority={eager ? "high" : "auto"}
-              decoding="async"
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-[55%_45%] gap-x-6 gap-y-4">
+          {showImage && (
+            <div className="overflow-hidden bg-[#F5F5F5] aspect-[3/2]">
+              <img
+                src={imgSrc}
+                alt=""
+                loading={eager ? "eager" : "lazy"}
+                fetchPriority={eager ? "high" : "auto"}
+                decoding="async"
+                className="hover-fade w-full h-full object-cover"
+              />
+            </div>
+          )}
+          <div className="min-w-0">
+            <Rubric label={label} topic={rubricTopic} />
+            {article.is_breaking && (
+              <span className="block font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#E3120B] mb-2">
+                Breaking
+              </span>
+            )}
+            <h3 className="font-headline text-[30px] font-semibold leading-[1.2] text-[#0D0D0D] headline-link line-clamp-4">
+              {article.title}
+            </h3>
+            {showSummary && article.summary && (
+              <p className="font-serif text-[16px] text-[#5B5B5B] mt-2.5 leading-[1.45] line-clamp-3">
+                {article.summary}
+              </p>
+            )}
+            <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
           </div>
-        )}
-
-        <div className="flex items-center gap-2 mb-2">
-          {article.is_breaking && (
-            <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#E3120B]">
-              Breaking
-            </span>
-          )}
-          {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
-            <span className="kicker">
-              {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
-            </span>
-          )}
         </div>
-
-        <h3 className={`font-headline text-[28px] font-bold leading-[1.15] tracking-[-0.01em] headline-link line-clamp-4`}>
-          {article.title}
-        </h3>
-
-        {showSummary && article.summary && (
-          <p className="font-serif text-[16px] text-[#5B5B5B] mt-2 leading-[1.5] line-clamp-3">
-            {article.summary}
-          </p>
-        )}
-
-        <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
       </article>
     );
   }
 
-  // SECONDARY / COMPACT: 80px thumb left, content right
+  // SECONDARY / COMPACT — 80px thumb left of headline
   return (
     <article
       className="cursor-pointer group py-4 border-b border-[#D9D9D9] last:border-b-0"
@@ -122,7 +150,7 @@ export const StoryItem = ({
     >
       <div className="flex items-start gap-3">
         {showImage && (
-          <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F2EC]">
+          <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F5F5]">
             <img
               src={imgSrc}
               alt=""
@@ -130,66 +158,28 @@ export const StoryItem = ({
               decoding="async"
               width={80}
               height={80}
-              className="w-full h-full object-cover"
+              className="hover-fade w-full h-full object-cover"
             />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {article.is_breaking && (
-              <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#E3120B]">
-                Breaking
-              </span>
-            )}
-            {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
-              <span className="kicker">
-                {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
-              </span>
-            )}
-          </div>
-
-          <h3 className={`font-headline ${headlineSize} ${fontWeight} leading-[1.25] tracking-[-0.01em] headline-link ${clampClass}`}>
+          <Rubric label={label} />
+          {article.is_breaking && (
+            <span className="block font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#E3120B] mb-1">
+              Breaking
+            </span>
+          )}
+          <h3 className={`font-headline ${headlineSize} font-semibold leading-[1.2] text-[#0D0D0D] headline-link ${clampClass}`}>
             {article.title}
           </h3>
-
           {showSummary && article.summary && (
-            <p className={`font-serif text-[14px] text-[#5B5B5B] mt-1.5 leading-[1.45] ${dekClamp}`}>
+            <p className={`font-serif text-[15px] text-[#5B5B5B] mt-2 leading-[1.45] ${dekClamp}`}>
               {article.summary}
             </p>
           )}
-
           <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
         </div>
       </div>
     </article>
-  );
-};
-
-// ── Single-line byline; truncates author on overflow ──
-const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: string | null }) => {
-  const time = getTimeAgo(publishedAt);
-  const showNew = isNew(publishedAt);
-  if (!author && !time && !showNew) return null;
-
-  return (
-    <div
-      className="mt-2.5 flex items-center font-ui text-[13px] text-[#757575] whitespace-nowrap overflow-hidden"
-      style={{ flexWrap: "nowrap" }}
-    >
-      {author && (
-        <span className="flex items-center min-w-0 flex-shrink">
-          <span className="flex-shrink-0">By&nbsp;</span>
-          <span className="font-semibold text-[#121212] truncate">{author}</span>
-        </span>
-      )}
-      {author && time && <span className="flex-shrink-0 px-1.5">·</span>}
-      {time && <span className="flex-shrink-0">{time}</span>}
-      {showNew && (
-        <span className="flex-shrink-0 inline-flex items-center gap-1 ml-2 text-[#5B5B5B]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#5B5B5B] inline-block" />
-          <span className="font-semibold">New</span>
-        </span>
-      )}
-    </div>
   );
 };
