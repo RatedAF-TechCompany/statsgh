@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Category from "./pages/Category";
 import ArticleDetail from "./pages/ArticleDetail";
@@ -99,11 +99,32 @@ const App = () => (
           <Route path="/world" element={<Category />} />
           <Route path="/analysis" element={<Category />} />
           <Route path="/financial-literacy" element={<Category />} />
+          {/* Old category slugs → new category slugs */}
+          <Route path="/democracy" element={<Navigate to="/security-governance" replace />} />
+          <Route path="/democracy/*" element={<Navigate to="/security-governance" replace />} />
+          <Route path="/energy" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/energy/*" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/environment" element={<Navigate to="/environment-climate" replace />} />
+          <Route path="/environment/*" element={<Navigate to="/environment-climate" replace />} />
+          <Route path="/national-accounts" element={<Navigate to="/public-finance" replace />} />
+          <Route path="/national-accounts/*" element={<Navigate to="/public-finance" replace />} />
+          <Route path="/prices-and-consumption" element={<Navigate to="/economy-inflation" replace />} />
+          <Route path="/prices-and-consumption/*" element={<Navigate to="/economy-inflation" replace />} />
+          <Route path="/speeches-and-press-releases" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/speeches-and-press-releases/*" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/culture-and-leisure" element={<Navigate to="/" replace />} />
+          <Route path="/culture-and-leisure/*" element={<Navigate to="/" replace />} />
+          <Route path="/social-services" element={<Navigate to="/" replace />} />
+          <Route path="/social-services/*" element={<Navigate to="/" replace />} />
+          <Route path="/population/*" element={<Navigate to="/population" replace />} />
+          {/* Old article URL patterns */}
+          <Route path="/article" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/article/*" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/news/*" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/category" element={<Navigate to="/" replace />} />
+          <Route path="/category/*" element={<Navigate to="/" replace />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
-          {/* Legacy redirects */}
-          <Route path="/article/:slug" element={<ArticleDetail />} />
-          <Route path="/category/:slug" element={<Category />} />
           {/* Category pages */}
           <Route path="/:categorySlug" element={<Category />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
