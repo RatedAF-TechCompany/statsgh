@@ -117,9 +117,9 @@ const Home = () => {
             <div className="py-6 border-b border-[#D9D9D9]">
               <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
 
-              <div className="grid grid-cols-1 md:grid-cols-[45%_1fr_1fr] gap-x-6 gap-y-6">
-                {/* Lead — 45% with large image */}
-                <div className="min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                {/* Lead spans 2 columns — image-left/text-right inside */}
+                <div className="min-w-0 md:col-span-2">
                   {leadStory && (
                     <StoryItem
                       article={leadStory}
@@ -131,16 +131,9 @@ const Home = () => {
                   )}
                 </div>
 
-                {/* Col 2 — secondary with 80px thumbs */}
-                <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6 -mt-4 md:mt-0">
-                  {col2Stories.map((a) => (
-                    <StoryItem key={a.id} article={a} variant="secondary" showImage />
-                  ))}
-                </div>
-
-                {/* Col 3 — secondary with 80px thumbs */}
-                <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6 -mt-4 md:mt-0">
-                  {col3Stories.map((a) => (
+                {/* Right column — stacked secondaries with thumbs */}
+                <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6">
+                  {[...col2Stories, ...col3Stories].slice(0, 4).map((a) => (
                     <StoryItem key={a.id} article={a} variant="secondary" showImage />
                   ))}
                 </div>
