@@ -7,44 +7,44 @@
 @layer base {
   :root {
     /* FT-inspired colour system */
-    --background: 33 100% 94%;        /* #FFF1E0 */
-    --foreground: 18 8% 18%;          /* #33302E */
+    --background: 33 100% 94%;        /* #FFFFFF */
+    --foreground: 18 8% 18%;          /* #121212 */
     
-    --card: 33 100% 98%;              /* #FFFAF4 */
-    --card-foreground: 18 8% 18%;     /* #33302E */
+    --card: 33 100% 98%;              /* #FFFFFF */
+    --card-foreground: 18 8% 18%;     /* #121212 */
     
     --popover: 33 100% 98%;
     --popover-foreground: 18 8% 18%;
     
-    --primary: 183 83% 26%;           /* #0D7680 teal */
+    --primary: 183 83% 26%;           /* #8B0000 teal */
     --primary-foreground: 33 100% 94%;
     
-    --secondary: 40 35% 54%;          /* #C9A84C gold */
+    --secondary: 40 35% 54%;          /* #B8860B gold */
     --secondary-foreground: 18 8% 18%;
     
     --muted: 33 47% 90%;              /* light cream */
-    --muted-foreground: 22 7% 37%;    /* #66605A */
+    --muted-foreground: 22 7% 37%;    /* #555555 */
     
     --accent: 33 47% 90%;
     --accent-foreground: 18 8% 18%;
     
-    --destructive: 0 100% 40%;        /* #CC0000 */
+    --destructive: 0 100% 40%;        /* #8B0000 */
     --destructive-foreground: 0 0% 100%;
     
-    --border: 32 33% 85%;             /* #E8D9C5 */
+    --border: 32 33% 85%;             /* #E5E2DC */
     --input: 32 33% 85%;
     --ring: 183 83% 26%;
     
     /* Brand tokens */
-    --ft-teal: 183 83% 26%;           /* #0D7680 */
-    --ft-gold: 40 35% 54%;            /* #C9A84C */
-    --ft-slate: 18 8% 18%;            /* #33302E */
-    --ft-cream: 33 100% 94%;          /* #FFF1E0 */
-    --ft-warm-white: 33 100% 98%;     /* #FFFAF4 */
-    --ft-divider: 32 33% 85%;         /* #E8D9C5 */
-    --ft-muted: 22 7% 37%;            /* #66605A */
+    --ft-teal: 183 83% 26%;           /* #8B0000 */
+    --ft-gold: 40 35% 54%;            /* #B8860B */
+    --ft-slate: 18 8% 18%;            /* #121212 */
+    --ft-cream: 33 100% 94%;          /* #FFFFFF */
+    --ft-warm-white: 33 100% 98%;     /* #FFFFFF */
+    --ft-divider: 32 33% 85%;         /* #E5E2DC */
+    --ft-muted: 22 7% 37%;            /* #555555 */
     --ft-green: 160 100% 32%;         /* #00A36C */
-    --ft-red: 0 100% 40%;             /* #CC0000 */
+    --ft-red: 0 100% 40%;             /* #8B0000 */
     
     /* Legacy compat */
     --ft-maroon: 183 83% 26%;         /* now maps to teal */
@@ -64,7 +64,7 @@
     font-family: 'PT Serif', Georgia, serif;
     font-size: 17px;
     line-height: 1.65;
-    color: #33302E;
+    color: #121212;
   }
 }
 
@@ -97,7 +97,7 @@
   /* Article body — editorial styling */
   .prose,
   [data-article-body] {
-    color: #33302E;
+    color: #121212;
     font-family: 'PT Serif', Georgia, serif;
     font-size: 17px;
     line-height: 1.75;
@@ -107,7 +107,7 @@
   [data-article-body] p {
     margin-top: 0;
     margin-bottom: 1.4em;
-    color: #33302E;
+    color: #121212;
   }
   
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {

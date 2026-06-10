@@ -55,33 +55,33 @@ export const StoryItem = ({
 
   return (
     <article
-      className={`cursor-pointer group ${variant !== "lead" ? "border-t border-[#e8e8e8] pt-3" : ""}`}
+      className={`cursor-pointer group ${variant !== "lead" ? "border-t border-[#E5E2DC] pt-3" : ""}`}
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
       {/* Inline tags */}
       <div className="flex items-center gap-2 mb-1">
         {article.is_breaking && (
-          <span className="font-ui text-[10px] font-bold uppercase text-[#CC0000]">
+          <span className="font-ui text-[10px] font-bold uppercase text-[#8B0000]">
             Breaking
           </span>
         )}
         {article.section === "analysis" && (
-          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#0D7680] border border-[#0D7680] px-1.5 py-px">
+          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#8B0000] border border-[#8B0000] px-1.5 py-px">
             Analysis
           </span>
         )}
         {article.section === "financial-literacy" && (
-          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#C9A84C] border border-[#C9A84C] px-1.5 py-px">
+          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#B8860B] border border-[#B8860B] px-1.5 py-px">
             Explainer
           </span>
         )}
         {isNew(article.published_at ?? null) && (
-          <span className="font-ui text-[10px] font-bold uppercase text-[#0D7680]">
+          <span className="font-ui text-[10px] font-bold uppercase text-[#8B0000]">
             New
           </span>
         )}
         {sectionLabel && (
-          <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0D7680]">
+          <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8B0000]">
             {sectionLabel}
           </span>
         )}
@@ -90,28 +90,28 @@ export const StoryItem = ({
       <div className={showImage && article.hero_image_url ? "flex gap-3" : ""}>
         <div className="flex-1 min-w-0">
           <h3
-            className={`font-headline ${headlineSize} ${fontWeight} leading-[1.2] text-[#33302E] group-hover:text-[#0D7680] transition-colors tracking-[-0.01em]`}
+            className={`font-headline ${headlineSize} ${fontWeight} leading-[1.2] text-[#121212] group-hover:text-[#8B0000] transition-colors tracking-[-0.01em]`}
           >
             {article.title}
           </h3>
 
           {showSummary && article.summary && (
-            <p className="font-serif text-[14px] text-[#66605A] mt-1 leading-[1.4] line-clamp-2">
+            <p className="font-serif text-[14px] text-[#555555] mt-1 leading-[1.4] line-clamp-2">
               {article.summary}
             </p>
           )}
 
           <div className="flex items-center gap-1.5 mt-1.5">
             {article.author_name && (
-              <span className="font-ui text-[11px] text-[#66605A]">
+              <span className="font-ui text-[11px] text-[#555555]">
                 {article.author_name}
               </span>
             )}
             {article.author_name && article.published_at && (
-              <span className="font-ui text-[11px] text-[#66605A]">·</span>
+              <span className="font-ui text-[11px] text-[#555555]">·</span>
             )}
             {article.published_at && (
-              <span className="font-ui text-[11px] text-[#66605A]">
+              <span className="font-ui text-[11px] text-[#555555]">
                 {getTimeAgo(article.published_at)}
               </span>
             )}

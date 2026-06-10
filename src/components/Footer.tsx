@@ -5,15 +5,15 @@ const Footer = () => {
   const navigate = useNavigate();
 
   return (
-    <footer className="bg-[#33302E] text-[#FFF1E0]">
+    <footer className="bg-[#121212] text-[#FFFFFF]">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {/* About */}
           <div>
-            <h3 className="font-headline text-lg font-bold text-[#C9A84C] mb-4">
+            <h3 className="font-headline text-lg font-bold text-[#B8860B] mb-4">
               About StatsGH
             </h3>
-            <p className="font-ui text-sm text-[#FFF1E0]/70 leading-relaxed">
+            <p className="font-ui text-sm text-[#FFFFFF]/70 leading-relaxed">
               Ghana's premier data journalism platform. We retell the story with
               numbers openly sourced in Ghanaian news, providing accurate,
               data-driven reporting on Ghana's economy, markets, and public
@@ -23,7 +23,7 @@ const Footer = () => {
 
           {/* Sections */}
           <div>
-            <h3 className="font-headline text-lg font-bold text-[#C9A84C] mb-4">
+            <h3 className="font-headline text-lg font-bold text-[#B8860B] mb-4">
               Sections
             </h3>
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -31,7 +31,7 @@ const Footer = () => {
                 <li key={section.slug}>
                   <button
                     onClick={() => navigate(section.href)}
-                    className="font-ui text-sm text-[#FFF1E0]/70 hover:text-[#C9A84C] transition-colors"
+                    className="font-ui text-sm text-[#FFFFFF]/70 hover:text-[#B8860B] transition-colors"
                   >
                     {section.label}
                   </button>
@@ -42,7 +42,7 @@ const Footer = () => {
 
           {/* Data Sources */}
           <div>
-            <h3 className="font-headline text-lg font-bold text-[#C9A84C] mb-4">
+            <h3 className="font-headline text-lg font-bold text-[#B8860B] mb-4">
               Data Sources
             </h3>
             <ul className="space-y-2">
@@ -53,7 +53,7 @@ const Footer = () => {
                 "Ghana Statistical Service",
                 "Ghana Stock Exchange",
               ].map((source) => (
-                <li key={source} className="font-ui text-sm text-[#FFF1E0]/70">
+                <li key={source} className="font-ui text-sm text-[#FFFFFF]/70">
                   {source}
                 </li>
               ))}
@@ -63,16 +63,16 @@ const Footer = () => {
       </div>
 
       {/* Bottom strip */}
-      <div className="border-t border-[#FFF1E0]/10">
+      <div className="border-t border-[#FFFFFF]/10">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="font-ui text-xs text-[#FFF1E0]/50">
+          <p className="font-ui text-xs text-[#FFFFFF]/50">
             © 2026 StatsGH. Accuracy is our policy.
           </p>
           <a
             href="https://twitter.com/StatsGH"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-ui text-xs text-[#C9A84C] hover:text-[#C9A84C]/80"
+            className="font-ui text-xs text-[#B8860B] hover:text-[#B8860B]/80"
           >
             @StatsGH on X
           </a>

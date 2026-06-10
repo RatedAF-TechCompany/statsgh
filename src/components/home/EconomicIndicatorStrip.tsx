@@ -130,7 +130,7 @@ const EconomicIndicatorStrip = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-[#33302E] overflow-hidden">
+      <div className="bg-[#121212] overflow-hidden">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-2 flex gap-8">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-5 w-24 skeleton-ft opacity-20" />
@@ -146,10 +146,10 @@ const EconomicIndicatorStrip = () => {
   const tickerItems = [...items, ...items];
 
   return (
-    <div className="bg-[#33302E] overflow-hidden">
+    <div className="bg-[#121212] overflow-hidden">
       <div className="flex items-center">
         <div className="flex-shrink-0 px-4 py-2">
-          <span className="font-ui text-[10px] font-bold tracking-[0.15em] uppercase text-[#C9A84C]">
+          <span className="font-ui text-[10px] font-bold tracking-[0.15em] uppercase text-[#B8860B]">
             Markets
           </span>
         </div>
@@ -157,7 +157,7 @@ const EconomicIndicatorStrip = () => {
           <div className="animate-ticker flex gap-8 py-2 hover:pause">
             {tickerItems.map((item, i) => (
               <div key={i} className="flex items-center gap-2 whitespace-nowrap">
-                <span className="font-ui text-[11px] font-semibold text-[#C9A84C]">
+                <span className="font-ui text-[11px] font-semibold text-[#B8860B]">
                   {item.label}
                 </span>
                 <span className="font-ui text-[12px] text-white font-medium">
@@ -169,7 +169,7 @@ const EconomicIndicatorStrip = () => {
                       item.change > 0
                         ? "text-[#00A36C]"
                         : item.change < 0
-                        ? "text-[#CC0000]"
+                        ? "text-[#8B0000]"
                         : "text-white/80"
                     }`}
                   >

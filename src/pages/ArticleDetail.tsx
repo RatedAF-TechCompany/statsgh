@@ -209,7 +209,7 @@ const ArticleDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FFF1E0]">
+      <div className="min-h-screen bg-[#FFFFFF]">
         <Header />
         <main className="max-w-[680px] mx-auto px-4 py-8">
           <Skeleton className="h-4 w-20 mb-4 skeleton-ft" />
@@ -229,12 +229,12 @@ const ArticleDetail = () => {
 
   if (error || !article) {
     return (
-      <div className="min-h-screen bg-[#FFF1E0]">
+      <div className="min-h-screen bg-[#FFFFFF]">
         <Header />
         <main className="max-w-[680px] mx-auto px-4 py-16 text-center">
-          <h1 className="font-headline text-3xl font-bold text-[#33302E] mb-4">Article not found</h1>
-          <p className="text-[#66605A] mb-8">The article you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => navigate("/")} variant="outline" className="font-ui border-[#E8D9C5]">Return to Homepage</Button>
+          <h1 className="font-headline text-3xl font-bold text-[#121212] mb-4">Article not found</h1>
+          <p className="text-[#555555] mb-8">The article you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate("/")} variant="outline" className="font-ui border-[#E5E2DC]">Return to Homepage</Button>
         </main>
       </div>
     );
@@ -256,27 +256,27 @@ const ArticleDetail = () => {
   const sectionLabel = getSectionLabel(article.category_slug);
 
   return (
-    <div className="min-h-screen bg-[#FFF1E0]">
+    <div className="min-h-screen bg-[#FFFFFF]">
       <Header />
 
       {/* Share bar — fixed on left for desktop */}
       <div className="hidden lg:flex fixed left-4 top-1/3 flex-col gap-3 z-40">
         <button
           onClick={handleShare}
-          className="w-10 h-10 flex items-center justify-center border border-[#E8D9C5] bg-[#FFFAF4] hover:bg-[#E8D9C5] transition-colors"
+          className="w-10 h-10 flex items-center justify-center border border-[#E5E2DC] bg-[#FFFFFF] hover:bg-[#E5E2DC] transition-colors"
           title="Share"
           aria-label="Share article"
         >
-          <Share2 size={16} className="text-[#33302E]" />
+          <Share2 size={16} className="text-[#121212]" />
         </button>
         <button
           onClick={() => toggleBookmark.mutate()}
-          className="w-10 h-10 flex items-center justify-center border border-[#E8D9C5] bg-[#FFFAF4] hover:bg-[#E8D9C5] transition-colors"
+          className="w-10 h-10 flex items-center justify-center border border-[#E5E2DC] bg-[#FFFFFF] hover:bg-[#E5E2DC] transition-colors"
           title="Save"
           aria-label={isBookmarked ? "Remove from saved articles" : "Save article"}
           aria-pressed={isBookmarked}
         >
-          <Bookmark size={16} className="text-[#33302E]" fill={isBookmarked ? "#33302E" : "none"} />
+          <Bookmark size={16} className="text-[#121212]" fill={isBookmarked ? "#121212" : "none"} />
         </button>
       </div>
 
@@ -286,20 +286,20 @@ const ArticleDetail = () => {
           <BreadcrumbList className="font-ui text-xs">
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/" className="text-[#66605A] hover:text-[#0D7680]">Home</Link>
+                <Link to="/" className="text-[#555555] hover:text-[#8B0000]">Home</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to={`/${article.category_slug}`} className="text-[#66605A] hover:text-[#0D7680] capitalize">
+                <Link to={`/${article.category_slug}`} className="text-[#555555] hover:text-[#8B0000] capitalize">
                   {sectionLabel}
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-[#33302E] line-clamp-1 max-w-[200px]">{article.title}</BreadcrumbPage>
+              <BreadcrumbPage className="text-[#121212] line-clamp-1 max-w-[200px]">{article.title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -311,22 +311,22 @@ const ArticleDetail = () => {
           </Link>
 
           {/* Headline */}
-          <h1 className="font-headline text-[32px] md:text-[38px] font-bold leading-[1.15] text-[#33302E] mb-4" itemProp="headline">
+          <h1 className="font-headline text-[32px] md:text-[38px] font-bold leading-[1.15] text-[#121212] mb-4" itemProp="headline">
             {article.title}
           </h1>
 
           {/* Subtitle */}
           {article.subtitle && (
-            <p className="font-serif text-xl text-[#66605A] leading-relaxed mb-5" itemProp="description">
+            <p className="font-serif text-xl text-[#555555] leading-relaxed mb-5" itemProp="description">
               {article.subtitle}
             </p>
           )}
 
           {/* Byline */}
-          <div className="border-t border-b border-[#E8D9C5] py-3 mb-8">
+          <div className="border-t border-b border-[#E5E2DC] py-3 mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-ui text-[13px] text-[#66605A]" itemProp="author">
+                <span className="font-ui text-[13px] text-[#555555]" itemProp="author">
                   <JournalistByline name={article.author_name} />
                   {" "}|{" "}StatsGH
                   {article.published_at && (
@@ -335,14 +335,14 @@ const ArticleDetail = () => {
                     </time></>
                   )}
                 </span>
-                <div className="font-ui text-xs text-[#66605A] mt-1">
+                <div className="font-ui text-xs text-[#555555] mt-1">
                   <ReadingTime content={article.body} />
                 </div>
               </div>
               {/* Mobile share buttons */}
               <div className="flex items-center gap-1 lg:hidden">
                 <button onClick={handleShare} className="p-2 hover:opacity-70" aria-label="Share article">
-                  <Share2 size={16} className="text-[#66605A]" />
+                  <Share2 size={16} className="text-[#555555]" />
                 </button>
                 <button
                   onClick={() => toggleBookmark.mutate()}
@@ -350,7 +350,7 @@ const ArticleDetail = () => {
                   aria-label={isBookmarked ? "Remove from saved articles" : "Save article"}
                   aria-pressed={isBookmarked}
                 >
-                  <Bookmark size={16} className="text-[#66605A]" fill={isBookmarked ? "#33302E" : "none"} />
+                  <Bookmark size={16} className="text-[#555555]" fill={isBookmarked ? "#121212" : "none"} />
                 </button>
               </div>
             </div>
@@ -379,7 +379,7 @@ const ArticleDetail = () => {
           {/* Video */}
           {article.video_url && (
             <div className="mb-10">
-              <h2 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Video</h2>
+              <h2 className="font-headline text-xl font-bold mb-4 text-[#121212] border-b border-[#E5E2DC] pb-2">Video</h2>
               <div className="aspect-video"><iframe src={article.video_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
             </div>
           )}
@@ -387,7 +387,7 @@ const ArticleDetail = () => {
           {/* Audio */}
           {article.audio_url && (
             <div className="mb-10">
-              <h2 className="font-headline text-xl font-bold mb-4 text-[#33302E] border-b border-[#E8D9C5] pb-2">Listen</h2>
+              <h2 className="font-headline text-xl font-bold mb-4 text-[#121212] border-b border-[#E5E2DC] pb-2">Listen</h2>
               <audio controls className="w-full"><source src={article.audio_url} type="audio/mpeg" /></audio>
             </div>
           )}
@@ -395,31 +395,31 @@ const ArticleDetail = () => {
 
         {/* Data Citations */}
         {((linkedIndicators && linkedIndicators.length > 0) || (linkedSources && linkedSources.length > 0)) && (
-          <aside className="my-12 border-t border-b border-[#E8D9C5] py-8">
-            <h2 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#33302E]">
-              <Database className="h-5 w-5 text-[#66605A]" />
+          <aside className="my-12 border-t border-b border-[#E5E2DC] py-8">
+            <h2 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#121212]">
+              <Database className="h-5 w-5 text-[#555555]" />
               Data sources
             </h2>
             {linkedIndicators && linkedIndicators.length > 0 && (
               <div className="mb-8">
-                <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#66605A] mb-4 flex items-center gap-2">
+                <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#555555] mb-4 flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5" /> Indicators cited
                 </h3>
                 <div className="space-y-3">
                   {linkedIndicators.map((item: any) => (
-                    <div key={item.id} className="flex items-start justify-between p-4 bg-[#FFFAF4] border border-[#E8D9C5]">
+                    <div key={item.id} className="flex items-start justify-between p-4 bg-[#FFFFFF] border border-[#E5E2DC]">
                       <div className="flex-1">
-                        <Link to={`/data/${item.indicator?.slug}`} className="font-medium text-[#33302E] hover:text-[#0D7680] hover:underline">
+                        <Link to={`/data/${item.indicator?.slug}`} className="font-medium text-[#121212] hover:text-[#8B0000] hover:underline">
                           {item.indicator?.name}
                         </Link>
-                        <div className="font-ui text-sm text-[#66605A] mt-1 flex flex-wrap gap-x-2">
-                          {item.cited_value !== null && <span className="font-mono font-bold text-[#33302E]">{item.cited_value.toLocaleString()} {item.indicator?.unit}</span>}
+                        <div className="font-ui text-sm text-[#555555] mt-1 flex flex-wrap gap-x-2">
+                          {item.cited_value !== null && <span className="font-mono font-bold text-[#121212]">{item.cited_value.toLocaleString()} {item.indicator?.unit}</span>}
                           {item.cited_date && <span>{new Date(item.cited_date).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</span>}
                           {item.geography && <span>{item.geography.name}</span>}
                         </div>
-                        {item.context_note && <p className="font-ui text-xs text-[#66605A] mt-1 italic">{item.context_note}</p>}
+                        {item.context_note && <p className="font-ui text-xs text-[#555555] mt-1 italic">{item.context_note}</p>}
                       </div>
-                      <Link to={`/data/${item.indicator?.slug}`}><Button size="sm" variant="ghost" className="text-[#66605A] hover:text-[#0D7680]"><ExternalLink className="h-3.5 w-3.5" /></Button></Link>
+                      <Link to={`/data/${item.indicator?.slug}`}><Button size="sm" variant="ghost" className="text-[#555555] hover:text-[#8B0000]"><ExternalLink className="h-3.5 w-3.5" /></Button></Link>
                     </div>
                   ))}
                 </div>
@@ -427,14 +427,14 @@ const ArticleDetail = () => {
             )}
             {linkedSources && linkedSources.length > 0 && (
               <div>
-                <h4 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#66605A] mb-4">Sources</h4>
+                <h4 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#555555] mb-4">Sources</h4>
                 <div className="flex flex-wrap gap-2">
                   {linkedSources.map((item: any) => (
                     <button key={item.id} onClick={() => item.source?.website_url && window.open(item.source.website_url, "_blank")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-ui text-sm border border-[#E8D9C5] bg-[#FFFAF4] hover:bg-[#E8D9C5] transition-colors">
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-ui text-sm border border-[#E5E2DC] bg-[#FFFFFF] hover:bg-[#E5E2DC] transition-colors">
                       <span className="font-medium">{item.source?.short_name || item.source?.name}</span>
-                      {item.citation_text && <span className="text-[#66605A]">– {item.citation_text}</span>}
-                      {item.source?.website_url && <ExternalLink className="h-3 w-3 text-[#66605A]" />}
+                      {item.citation_text && <span className="text-[#555555]">– {item.citation_text}</span>}
+                      {item.source?.website_url && <ExternalLink className="h-3 w-3 text-[#555555]" />}
                     </button>
                   ))}
                 </div>

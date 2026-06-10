@@ -31,21 +31,21 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
   const supporting = articles.slice(1, 7); // up to 6 supporting
 
   return (
-    <div className="py-6 border-t border-[#e8e8e8]">
+    <div className="py-6 border-t border-[#E5E2DC]">
       {/* Section header — label left, More link right, inline */}
       <div className="flex items-center justify-between mb-4 gap-3">
         <h2 className="m-0 p-0">
           <button
             onClick={() => navigate(`/${sectionSlug}`)}
-            className="font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#33302E] hover:text-[#0D7680] transition-colors bg-transparent border-0 p-0"
+            className="font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#121212] hover:text-[#8B0000] transition-colors bg-transparent border-0 p-0"
           >
             {sectionLabel}
           </button>
         </h2>
-        <div className="flex-1 h-px bg-[#e8e8e8]" />
+        <div className="flex-1 h-px bg-[#E5E2DC]" />
         <button
           onClick={() => navigate(`/${sectionSlug}`)}
-          className="font-ui text-[11px] text-[#0D7680] hover:underline whitespace-nowrap"
+          className="font-ui text-[11px] text-[#8B0000] hover:underline whitespace-nowrap"
         >
           More {sectionLabel} →
         </button>

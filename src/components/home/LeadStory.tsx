@@ -66,7 +66,7 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
           </span>
         )}
         {isNew(article.published_at ?? null) && (
-          <span className="inline-block text-[#0D7680] text-[10px] font-bold uppercase tracking-widest">
+          <span className="inline-block text-[#8B0000] text-[10px] font-bold uppercase tracking-widest">
             New
           </span>
         )}
