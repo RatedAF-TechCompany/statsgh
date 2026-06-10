@@ -105,22 +105,23 @@ const GhanaAtAGlance = () => {
   const hasMore = allCards.length > INITIAL_CARDS_MOBILE;
 
   return (
-    <section className="bg-muted/50 py-5 sm:py-6 border-y border-border">
+    <section className="bg-white py-8 border-y border-[#E5E2DC]">
       <div className="max-w-7xl mx-auto px-4">
         {/* Section header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-5">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-serif text-base sm:text-lg lg:text-xl font-semibold text-ft-maroon">
+            <p className="kicker mb-1">Markets</p>
+            <h2 className="font-headline text-[22px] font-bold text-[#121212]">
               Ghana key indicators
             </h2>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+            <p className="font-ui text-[12px] text-[#8A8A8A] mt-1">
               Live official stats from GSS and Bank of Ghana
             </p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-ft-maroon hover:text-ft-maroon/80 text-xs hidden sm:flex"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="kicker hidden sm:flex"
             onClick={() => navigate('/data')}
           >
             All data →
