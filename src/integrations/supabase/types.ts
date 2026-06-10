@@ -243,6 +243,8 @@ export type Database = {
           dedupe_key: string | null
           hero_image_url: string | null
           id: string
+          image_caption: string | null
+          image_source: string | null
           instagram_comment: string | null
           instagram_compressed: string | null
           is_breaking: boolean
@@ -277,6 +279,8 @@ export type Database = {
           dedupe_key?: string | null
           hero_image_url?: string | null
           id?: string
+          image_caption?: string | null
+          image_source?: string | null
           instagram_comment?: string | null
           instagram_compressed?: string | null
           is_breaking?: boolean
@@ -311,6 +315,8 @@ export type Database = {
           dedupe_key?: string | null
           hero_image_url?: string | null
           id?: string
+          image_caption?: string | null
+          image_source?: string | null
           instagram_comment?: string | null
           instagram_compressed?: string | null
           is_breaking?: boolean
