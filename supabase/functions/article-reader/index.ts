@@ -111,6 +111,7 @@ serve(async (req) => {
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="icon" href="${baseUrl}/favicon.png" type="image/png">
   
+  ${tags.length > 0 ? `<meta name="news_keywords" content="${escapeHtml(tags.slice(0, 10).join(', '))}">` : ''}
   <!-- Open Graph -->
   <meta property="og:type" content="article">
   <meta property="og:url" content="${articleUrl}">

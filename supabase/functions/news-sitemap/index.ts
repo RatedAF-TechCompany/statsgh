@@ -16,15 +16,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get articles from last 72 hours
-    const seventyTwoHoursAgo = new Date();
-    seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
+    // Get articles from last 48 hours (Google News spec)
+    const fortyEightHoursAgo = new Date();
+    fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
 
     const { data: articles, error } = await supabase
       .from('articles')
       .select('slug, category_slug, title, published_at, updated_at')
       .eq('is_published', true)
-      .gte('published_at', seventyTwoHoursAgo.toISOString())
+      .gte('published_at', fortyEightHoursAgo.toISOString())
       .order('published_at', { ascending: false })
       .limit(1000);
 
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${articles?.map(article => `  <url>
-    <loc>https://statsgh.com/${article.category_slug}/${article.slug}</loc>
+    <loc>https://statsgh.com/${article.category_slug}/${article.slug}/</loc>
     <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
     <news:news>
       <news:publication>
