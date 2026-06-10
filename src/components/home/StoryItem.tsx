@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { getSectionFallback } from "@/lib/sectionFallback";
 
 interface StoryItemProps {
   article: {
@@ -17,6 +18,7 @@ interface StoryItemProps {
   showImage?: boolean;
   showSummary?: boolean;
   sectionLabel?: string;
+  eager?: boolean;
 }
 
 const getTimeAgo = (publishedAt: string | null) => {
@@ -41,6 +43,7 @@ export const StoryItem = ({
   showImage = false,
   showSummary = false,
   sectionLabel,
+  eager = false,
 }: StoryItemProps) => {
   const navigate = useNavigate();
 
@@ -51,80 +54,142 @@ export const StoryItem = ({
       ? "text-[18px]"
       : "text-[15px]";
 
+  const clampClass =
+    variant === "lead"
+      ? "line-clamp-4"
+      : variant === "secondary"
+      ? "line-clamp-3"
+      : "line-clamp-2";
+
+  const dekClamp = variant === "lead" ? "line-clamp-3" : "line-clamp-2";
   const fontWeight = variant === "compact" ? "font-medium" : "font-bold";
 
+  const imgSrc = article.hero_image_url || getSectionFallback(article.section, article.category_slug);
+
+  // LEAD: image full-width on top
+  if (variant === "lead") {
+    return (
+      <article
+        className="cursor-pointer group"
+        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+      >
+        {showImage && (
+          <div className="mb-3 overflow-hidden bg-[#F5F2EC] aspect-[3/2]">
+            <img
+              src={imgSrc}
+              alt=""
+              loading={eager ? "eager" : "lazy"}
+              fetchPriority={eager ? "high" : "auto"}
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mb-2">
+          {article.is_breaking && (
+            <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
+              Breaking
+            </span>
+          )}
+          {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
+            <span className="kicker">
+              {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
+            </span>
+          )}
+        </div>
+
+        <h3 className={`font-headline text-[28px] font-bold leading-[1.15] tracking-[-0.01em] headline-link line-clamp-4`}>
+          {article.title}
+        </h3>
+
+        {showSummary && article.summary && (
+          <p className="font-serif text-[16px] text-[#555555] mt-2 leading-[1.5] line-clamp-3">
+            {article.summary}
+          </p>
+        )}
+
+        <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
+      </article>
+    );
+  }
+
+  // SECONDARY / COMPACT: 80px thumb left, content right
   return (
     <article
-      className={`cursor-pointer group ${variant !== "lead" ? "border-t border-[#E5E2DC] pt-3" : ""} mb-4`}
+      className="cursor-pointer group py-4 border-b border-[#E5E2DC] last:border-b-0"
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
-      {/* Kicker line */}
-      <div className="flex items-center gap-2 mb-2">
-        {article.is_breaking && (
-          <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
-            Breaking
-          </span>
+      <div className="flex items-start gap-3">
+        {showImage && (
+          <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F2EC]">
+            <img
+              src={imgSrc}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width={80}
+              height={80}
+              className="w-full h-full object-cover"
+            />
+          </div>
         )}
-        {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
-          <span className="kicker">
-            {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
-          </span>
-        )}
-      </div>
-
-      <div className={showImage && article.hero_image_url ? "flex gap-3" : ""}>
         <div className="flex-1 min-w-0">
-          <h3
-            className={`font-headline ${headlineSize} ${fontWeight} leading-[1.25] tracking-[-0.01em] headline-link`}
-          >
+          <div className="flex items-center gap-2 mb-1">
+            {article.is_breaking && (
+              <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
+                Breaking
+              </span>
+            )}
+            {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
+              <span className="kicker">
+                {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
+              </span>
+            )}
+          </div>
+
+          <h3 className={`font-headline ${headlineSize} ${fontWeight} leading-[1.25] tracking-[-0.01em] headline-link ${clampClass}`}>
             {article.title}
           </h3>
 
           {showSummary && article.summary && (
-            <p className="font-serif text-[15px] text-[#555555] mt-2 leading-[1.5] line-clamp-2">
+            <p className={`font-serif text-[14px] text-[#555555] mt-1.5 leading-[1.45] ${dekClamp}`}>
               {article.summary}
             </p>
           )}
 
-          <div className="flex items-center gap-1.5 mt-3 font-ui text-[13px]">
-            {article.author_name && (
-              <>
-                <span className="text-[#8A8A8A]">By </span>
-                <span className="font-semibold text-[#121212]">{article.author_name}</span>
-              </>
-            )}
-            {article.author_name && article.published_at && (
-              <span className="text-[#8A8A8A]">·</span>
-            )}
-            {isNew(article.published_at ?? null) && (
-              <>
-                <span className="inline-flex items-center gap-1 text-[#B8860B] font-semibold uppercase tracking-[0.12em] text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
-                  New
-                </span>
-                <span className="text-[#8A8A8A]">·</span>
-              </>
-            )}
-            {article.published_at && (
-              <span className="text-[#8A8A8A]">{getTimeAgo(article.published_at)}</span>
-            )}
-          </div>
+          <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
         </div>
-
-        {showImage && article.hero_image_url && (
-          <img
-            src={article.hero_image_url}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            width={variant === "lead" ? 480 : 80}
-            height={variant === "lead" ? 270 : 80}
-            className={`object-cover flex-shrink-0 ${
-              variant === "lead" ? "w-full mt-3 aspect-[16/9]" : "w-20 h-20"
-            }`}
-          />
-        )}
       </div>
     </article>
+  );
+};
+
+// ── Single-line byline; truncates author on overflow ──
+const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: string | null }) => {
+  const time = getTimeAgo(publishedAt);
+  const showNew = isNew(publishedAt);
+  if (!author && !time && !showNew) return null;
+
+  return (
+    <div
+      className="mt-2.5 flex items-center font-ui text-[13px] text-[#8A8A8A] whitespace-nowrap overflow-hidden"
+      style={{ flexWrap: "nowrap" }}
+    >
+      {author && (
+        <span className="flex items-center min-w-0 flex-shrink">
+          <span className="flex-shrink-0">By&nbsp;</span>
+          <span className="font-semibold text-[#121212] truncate">{author}</span>
+        </span>
+      )}
+      {author && time && <span className="flex-shrink-0 px-1.5">·</span>}
+      {time && <span className="flex-shrink-0">{time}</span>}
+      {showNew && (
+        <span className="flex-shrink-0 inline-flex items-center gap-1 ml-2 text-[#B8860B]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
+          <span className="font-semibold">New</span>
+        </span>
+      )}
+    </div>
   );
 };
