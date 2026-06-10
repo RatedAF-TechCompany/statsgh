@@ -88,7 +88,7 @@ export const StoryItem = ({
 
         <div className="flex items-center gap-2 mb-2">
           {article.is_breaking && (
-            <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
+            <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#E3120B]">
               Breaking
             </span>
           )}
@@ -104,7 +104,7 @@ export const StoryItem = ({
         </h3>
 
         {showSummary && article.summary && (
-          <p className="font-serif text-[16px] text-[#555555] mt-2 leading-[1.5] line-clamp-3">
+          <p className="font-serif text-[16px] text-[#5B5B5B] mt-2 leading-[1.5] line-clamp-3">
             {article.summary}
           </p>
         )}
@@ -117,7 +117,7 @@ export const StoryItem = ({
   // SECONDARY / COMPACT: 80px thumb left, content right
   return (
     <article
-      className="cursor-pointer group py-4 border-b border-[#E5E2DC] last:border-b-0"
+      className="cursor-pointer group py-4 border-b border-[#D9D9D9] last:border-b-0"
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
       <div className="flex items-start gap-3">
@@ -137,7 +137,7 @@ export const StoryItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {article.is_breaking && (
-              <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
+              <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#E3120B]">
                 Breaking
               </span>
             )}
@@ -153,7 +153,7 @@ export const StoryItem = ({
           </h3>
 
           {showSummary && article.summary && (
-            <p className={`font-serif text-[14px] text-[#555555] mt-1.5 leading-[1.45] ${dekClamp}`}>
+            <p className={`font-serif text-[14px] text-[#5B5B5B] mt-1.5 leading-[1.45] ${dekClamp}`}>
               {article.summary}
             </p>
           )}
@@ -173,7 +173,7 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
 
   return (
     <div
-      className="mt-2.5 flex items-center font-ui text-[13px] text-[#8A8A8A] whitespace-nowrap overflow-hidden"
+      className="mt-2.5 flex items-center font-ui text-[13px] text-[#757575] whitespace-nowrap overflow-hidden"
       style={{ flexWrap: "nowrap" }}
     >
       {author && (
@@ -185,8 +185,8 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
       {author && time && <span className="flex-shrink-0 px-1.5">·</span>}
       {time && <span className="flex-shrink-0">{time}</span>}
       {showNew && (
-        <span className="flex-shrink-0 inline-flex items-center gap-1 ml-2 text-[#B8860B]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
+        <span className="flex-shrink-0 inline-flex items-center gap-1 ml-2 text-[#5B5B5B]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#5B5B5B] inline-block" />
           <span className="font-semibold">New</span>
         </span>
       )}

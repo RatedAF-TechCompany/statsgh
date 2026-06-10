@@ -56,8 +56,8 @@ function svgDataUri(label: string): string {
     </defs>
     <rect width="600" height="400" fill="#F5F2EC"/>
     <rect width="600" height="400" fill="url(#hatch)"/>
-    <rect x="40" y="40" width="80" height="3" fill="#8B0000"/>
-    <text x="40" y="80" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="2" fill="#8B0000" text-transform="uppercase">${label.toUpperCase()}</text>
+    <rect x="40" y="40" width="80" height="3" fill="#E3120B"/>
+    <text x="40" y="80" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="2" fill="#E3120B" text-transform="uppercase">${label.toUpperCase()}</text>
     <text x="40" y="370" font-family="Playfair Display, Georgia, serif" font-size="28" font-weight="700" fill="#121212">StatsGH</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;

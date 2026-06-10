@@ -37,7 +37,7 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
         <h2 className="m-0 p-0">
           <button
             onClick={() => navigate(`/${sectionSlug}`)}
-            className="font-headline text-[24px] font-bold text-[#121212] hover:text-[#8B0000] transition-colors bg-transparent border-0 p-0 leading-none"
+            className="font-headline text-[24px] font-bold text-[#121212] hover:text-[#E3120B] transition-colors bg-transparent border-0 p-0 leading-none"
           >
             {sectionLabel}
           </button>

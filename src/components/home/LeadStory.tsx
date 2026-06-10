@@ -61,7 +61,7 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
       )}
       <div className="space-y-2">
         {article.is_breaking && (
-          <span className="inline-block bg-[#8B0000] text-white text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5">
+          <span className="inline-block bg-[#E3120B] text-white text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5">
             Breaking
           </span>
         )}
@@ -72,15 +72,15 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
           {article.title}
         </h1>
         {article.summary && (
-          <p className="font-serif text-[16px] leading-[1.5] text-[#555555] max-w-[640px]">
+          <p className="font-serif text-[16px] leading-[1.5] text-[#5B5B5B] max-w-[640px]">
             {article.summary}
           </p>
         )}
-        <p className="font-ui text-[13px] text-[#8A8A8A] flex items-center gap-2 pt-1">
+        <p className="font-ui text-[13px] text-[#757575] flex items-center gap-2 pt-1">
           {isNew(article.published_at ?? null) && (
             <>
-              <span className="inline-flex items-center gap-1 text-[#B8860B] font-semibold uppercase tracking-[0.12em] text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
+              <span className="inline-flex items-center gap-1 text-[#5B5B5B] font-semibold uppercase tracking-[0.12em] text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#5B5B5B] inline-block" />
                 New
               </span>
               <span>·</span>

@@ -5,13 +5,13 @@ const Footer = () => {
   const navigate = useNavigate();
 
   return (
-    <footer className="bg-white border-t border-[#E5E2DC]">
+    <footer className="bg-white border-t border-[#D9D9D9]">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {/* About */}
           <div>
             <h3 className="kicker mb-4">About StatsGH</h3>
-            <p className="font-serif text-[15px] text-[#555555] leading-[1.6]">
+            <p className="font-serif text-[15px] text-[#5B5B5B] leading-[1.6]">
               Ghana's premier data journalism platform. We retell the story with
               numbers openly sourced in Ghanaian news, providing accurate,
               data-driven reporting on Ghana's economy, markets, and public
@@ -27,7 +27,7 @@ const Footer = () => {
                 <li key={section.slug}>
                   <button
                     onClick={() => navigate(section.href)}
-                    className="font-ui text-[13px] text-[#555555] hover:text-[#8B0000] transition-colors"
+                    className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B] transition-colors"
                   >
                     {section.label}
                   </button>
@@ -47,7 +47,7 @@ const Footer = () => {
                 "Ghana Statistical Service",
                 "Ghana Stock Exchange",
               ].map((source) => (
-                <li key={source} className="font-ui text-[13px] text-[#555555]">
+                <li key={source} className="font-ui text-[13px] text-[#5B5B5B]">
                   {source}
                 </li>
               ))}
@@ -57,16 +57,16 @@ const Footer = () => {
       </div>
 
       {/* Bottom strip */}
-      <div className="border-t border-[#E5E2DC]">
+      <div className="border-t border-[#D9D9D9]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="font-ui text-[12px] text-[#8A8A8A]">
+          <p className="font-ui text-[12px] text-[#757575]">
             © 2026 StatsGH. Accuracy is our policy.
           </p>
           <a
             href="https://twitter.com/StatsGH"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-ui text-[12px] text-[#8B0000] hover:underline"
+            className="font-ui text-[12px] text-[#E3120B] hover:underline"
           >
             @StatsGH on X
           </a>

@@ -83,17 +83,17 @@ const MostReadArticles = () => {
   }
 
   return (
-    <div className="border-t border-[#E5E2DC] pt-6">
+    <div className="border-t border-[#D9D9D9] pt-6">
       <h2 className="kicker mb-4">Most read today</h2>
       <div className="space-y-0">
         {mostReadArticles.map((article, index) => (
           <button
             key={article.id}
             onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
-            className="w-full flex items-start gap-4 py-4 border-b border-[#E5E2DC] text-left group"
+            className="w-full flex items-start gap-4 py-4 border-b border-[#D9D9D9] text-left group"
           >
             <span
-              className="font-headline text-[40px] font-bold text-[#E5E2DC] leading-none pt-0.5"
+              className="font-headline text-[40px] font-bold text-[#D9D9D9] leading-none pt-0.5"
               style={{ minWidth: '2.5rem' }}
             >
               {index + 1}

@@ -16,14 +16,14 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
 
-    --primary: 0 100% 27%;              /* #8B0000 deep red */
+    --primary: 0 100% 27%;              /* #E3120B deep red */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 43 89% 38%;            /* #B8860B gold (markers only) */
+    --secondary: 43 89% 38%;            /* #5B5B5B gold (markers only) */
     --secondary-foreground: 0 0% 7%;
 
-    --muted: 36 17% 88%;                /* #E5E2DC warm grey */
-    --muted-foreground: 0 0% 33%;       /* #555555 deks */
+    --muted: 36 17% 88%;                /* #D9D9D9 warm grey */
+    --muted-foreground: 0 0% 33%;       /* #5B5B5B deks */
 
     --accent: 36 17% 88%;
     --accent-foreground: 0 0% 7%;
@@ -31,20 +31,20 @@
     --destructive: 0 100% 27%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 17% 88%;               /* #E5E2DC hairline */
+    --border: 36 17% 88%;               /* #D9D9D9 hairline */
     --input: 36 17% 88%;
     --ring: 0 100% 27%;
 
     /* Brand tokens — kept names for compat, remapped to new palette */
-    --ft-teal: 0 100% 27%;              /* now #8B0000 */
-    --ft-maroon: 0 100% 27%;            /* #8B0000 */
-    --ft-gold: 43 89% 38%;              /* #B8860B */
+    --ft-teal: 0 100% 27%;              /* now #E3120B */
+    --ft-maroon: 0 100% 27%;            /* #E3120B */
+    --ft-gold: 43 89% 38%;              /* #5B5B5B */
     --ft-slate: 0 0% 7%;                /* #121212 */
     --ft-cream: 0 0% 100%;              /* #FFFFFF */
     --ft-warm-white: 0 0% 100%;
-    --ft-divider: 36 17% 88%;           /* #E5E2DC */
-    --ft-muted: 0 0% 33%;                /* #555555 */
-    --ft-byline: 0 0% 54%;               /* #8A8A8A */
+    --ft-divider: 36 17% 88%;           /* #D9D9D9 */
+    --ft-muted: 0 0% 33%;                /* #5B5B5B */
+    --ft-byline: 0 0% 54%;               /* #757575 */
     --ft-green: 137 67% 30%;             /* #1A7F37 */
     --ft-red: 3 60% 48%;                 /* #C8332B */
 
@@ -89,7 +89,7 @@
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #8B0000;
+    color: #E3120B;
   }
   .kicker:hover { text-decoration: underline; }
 
@@ -98,7 +98,7 @@
     font-size: 11px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #8B0000;
+    color: #E3120B;
     font-weight: 600;
   }
 
@@ -107,7 +107,7 @@
     color: #121212;
     transition: color 150ms ease;
   }
-  .headline-link:hover { color: #8B0000; }
+  .headline-link:hover { color: #E3120B; }
 }
 
 @layer components {
@@ -154,12 +154,12 @@
   .prose a {
     color: #121212;
     text-decoration: underline;
-    text-decoration-color: #8B0000;
+    text-decoration-color: #E3120B;
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
     transition: color 150ms ease;
   }
-  .prose a:hover { color: #8B0000; }
+  .prose a:hover { color: #E3120B; }
 
   .prose ul, .prose ol { margin: 1.25em 0; padding-left: 1.625em; }
   .prose li { margin: 0.5em 0; }
@@ -168,7 +168,7 @@
     font-style: italic;
     font-family: 'Playfair Display', Georgia, serif;
     font-weight: 600;
-    border-left: 3px solid #8B0000;
+    border-left: 3px solid #E3120B;
     padding-left: 1em;
     margin: 1.6em 0;
     color: #121212;
@@ -176,7 +176,7 @@
 
   .prose .number-highlight { font-weight: 700; }
 
-  .skeleton-ft { background: #E5E2DC; }
+  .skeleton-ft { background: #D9D9D9; }
 }
 
 a, button {

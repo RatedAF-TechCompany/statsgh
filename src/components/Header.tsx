@@ -69,9 +69,9 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
       {showTicker && <EconomicIndicatorStrip />}
 
       {/* Masthead */}
-      <div className="bg-white border-b border-[#E5E2DC]">
+      <div className="bg-white border-b border-[#D9D9D9]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-16 relative">
-          <span className="hidden md:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#8A8A8A] whitespace-nowrap">
+          <span className="hidden md:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#757575] whitespace-nowrap">
             {dateString}
           </span>
           <div className="md:hidden w-10" />
@@ -125,7 +125,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             ) : (
               <Button
                 size="sm"
-                className="bg-[#8B0000] text-white hover:bg-[#6d0000] font-ui text-xs uppercase tracking-[0.1em] h-8 px-4 rounded-[2px]"
+                className="bg-[#E3120B] text-white hover:bg-[#B30E08] font-ui text-xs uppercase tracking-[0.1em] h-8 px-4 rounded-[2px]"
                 onClick={() => navigate("/auth")}
               >
                 Subscribe
@@ -136,7 +136,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
       </div>
 
       {/* Section nav */}
-      <div className="bg-white border-b border-[#E5E2DC]">
+      <div className="bg-white border-b border-[#D9D9D9]">
         <div className="max-w-[1280px] mx-auto px-4 md:px-6">
           <nav
             ref={navRef}
@@ -151,8 +151,8 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                   flex-shrink-0 px-3 h-10 font-ui text-[13px] font-medium
                   border-b-2 transition-colors
                   ${isActiveSection(section.href)
-                    ? "border-[#8B0000] text-[#8B0000]"
-                    : "border-transparent text-[#121212] hover:text-[#8B0000]"
+                    ? "border-[#E3120B] text-[#E3120B]"
+                    : "border-transparent text-[#121212] hover:text-[#E3120B]"
                   }
                 `}
               >
