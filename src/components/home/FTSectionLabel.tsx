@@ -4,11 +4,12 @@ interface FTSectionLabelProps {
 }
 
 export const FTSectionLabel = ({ label, onClick }: FTSectionLabelProps) => (
-  <div className="border-t border-[#121212] pt-3 mb-6">
+  <div className="mb-5">
+    <span className="rubric-bar" />
     <h2 className="m-0 p-0">
       <button
         onClick={onClick}
-        className="kicker bg-transparent border-0 p-0"
+        className="font-ui text-[18px] font-bold text-[#0D0D0D] hover:text-[#E3120B] transition-colors bg-transparent border-0 p-0 leading-none"
       >
         {label}
       </button>
