@@ -122,6 +122,44 @@ const App = () => (
           <Route path="/article/*" element={<Navigate to="/top-stories" replace />} />
           <Route path="/news/*" element={<Navigate to="/top-stories" replace />} />
           <Route path="/category" element={<Navigate to="/" replace />} />
+          {/* Preserve ranking equity from legacy /category/<slug>/ URLs by mapping to current section slugs */}
+          <Route path="/category/business" element={<Navigate to="/business" replace />} />
+          <Route path="/category/business/*" element={<Navigate to="/business" replace />} />
+          <Route path="/category/economy" element={<Navigate to="/economy" replace />} />
+          <Route path="/category/economy/*" element={<Navigate to="/economy" replace />} />
+          <Route path="/category/markets" element={<Navigate to="/markets-data" replace />} />
+          <Route path="/category/markets/*" element={<Navigate to="/markets-data" replace />} />
+          <Route path="/category/markets-data" element={<Navigate to="/markets-data" replace />} />
+          <Route path="/category/markets-data/*" element={<Navigate to="/markets-data" replace />} />
+          <Route path="/category/politics" element={<Navigate to="/politics-policy" replace />} />
+          <Route path="/category/politics/*" element={<Navigate to="/politics-policy" replace />} />
+          <Route path="/category/politics-policy" element={<Navigate to="/politics-policy" replace />} />
+          <Route path="/category/politics-policy/*" element={<Navigate to="/politics-policy" replace />} />
+          <Route path="/category/energy" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/category/energy/*" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/category/energy-resources" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/category/energy-resources/*" element={<Navigate to="/energy-resources" replace />} />
+          <Route path="/category/agriculture" element={<Navigate to="/agriculture" replace />} />
+          <Route path="/category/agriculture/*" element={<Navigate to="/agriculture" replace />} />
+          <Route path="/category/technology" element={<Navigate to="/technology" replace />} />
+          <Route path="/category/technology/*" element={<Navigate to="/technology" replace />} />
+          <Route path="/category/companies" element={<Navigate to="/companies" replace />} />
+          <Route path="/category/companies/*" element={<Navigate to="/companies" replace />} />
+          <Route path="/category/analysis" element={<Navigate to="/analysis" replace />} />
+          <Route path="/category/analysis/*" element={<Navigate to="/analysis" replace />} />
+          <Route path="/category/opinion" element={<Navigate to="/opinion-analysis" replace />} />
+          <Route path="/category/opinion/*" element={<Navigate to="/opinion-analysis" replace />} />
+          <Route path="/category/opinion-analysis" element={<Navigate to="/opinion-analysis" replace />} />
+          <Route path="/category/opinion-analysis/*" element={<Navigate to="/opinion-analysis" replace />} />
+          <Route path="/category/research" element={<Navigate to="/research" replace />} />
+          <Route path="/category/research/*" element={<Navigate to="/research" replace />} />
+          <Route path="/category/financial-literacy" element={<Navigate to="/financial-literacy" replace />} />
+          <Route path="/category/financial-literacy/*" element={<Navigate to="/financial-literacy" replace />} />
+          <Route path="/category/world" element={<Navigate to="/world" replace />} />
+          <Route path="/category/world/*" element={<Navigate to="/world" replace />} />
+          <Route path="/category/top-stories" element={<Navigate to="/top-stories" replace />} />
+          <Route path="/category/top-stories/*" element={<Navigate to="/top-stories" replace />} />
+          {/* Unknown legacy category → homepage as final fallback */}
           <Route path="/category/*" element={<Navigate to="/" replace />} />
           {/* New URL structure: /:categorySlug/:articleSlug */}
           <Route path="/:categorySlug/:articleSlug" element={<ArticleDetail />} />
