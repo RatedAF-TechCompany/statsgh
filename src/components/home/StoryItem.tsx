@@ -55,34 +55,19 @@ export const StoryItem = ({
 
   return (
     <article
-      className={`cursor-pointer group ${variant !== "lead" ? "border-t border-[#E5E2DC] pt-3" : ""}`}
+      className={`cursor-pointer group ${variant !== "lead" ? "border-t border-[#E5E2DC] pt-3" : ""} mb-4`}
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
-      {/* Inline tags */}
-      <div className="flex items-center gap-2 mb-1">
+      {/* Kicker line */}
+      <div className="flex items-center gap-2 mb-2">
         {article.is_breaking && (
-          <span className="font-ui text-[10px] font-bold uppercase text-[#8B0000]">
+          <span className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[#8B0000]">
             Breaking
           </span>
         )}
-        {article.section === "analysis" && (
-          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#8B0000] border border-[#8B0000] px-1.5 py-px">
-            Analysis
-          </span>
-        )}
-        {article.section === "financial-literacy" && (
-          <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#B8860B] border border-[#B8860B] px-1.5 py-px">
-            Explainer
-          </span>
-        )}
-        {isNew(article.published_at ?? null) && (
-          <span className="font-ui text-[10px] font-bold uppercase text-[#8B0000]">
-            New
-          </span>
-        )}
-        {sectionLabel && (
-          <span className="font-ui text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8B0000]">
-            {sectionLabel}
+        {(sectionLabel || article.section === "analysis" || article.section === "financial-literacy") && (
+          <span className="kicker">
+            {sectionLabel || (article.section === "analysis" ? "Analysis" : "Explainer")}
           </span>
         )}
       </div>
@@ -90,30 +75,38 @@ export const StoryItem = ({
       <div className={showImage && article.hero_image_url ? "flex gap-3" : ""}>
         <div className="flex-1 min-w-0">
           <h3
-            className={`font-headline ${headlineSize} ${fontWeight} leading-[1.2] text-[#121212] group-hover:text-[#8B0000] transition-colors tracking-[-0.01em]`}
+            className={`font-headline ${headlineSize} ${fontWeight} leading-[1.25] tracking-[-0.01em] headline-link`}
           >
             {article.title}
           </h3>
 
           {showSummary && article.summary && (
-            <p className="font-serif text-[14px] text-[#555555] mt-1 leading-[1.4] line-clamp-2">
+            <p className="font-serif text-[15px] text-[#555555] mt-2 leading-[1.5] line-clamp-2">
               {article.summary}
             </p>
           )}
 
-          <div className="flex items-center gap-1.5 mt-1.5">
+          <div className="flex items-center gap-1.5 mt-3 font-ui text-[13px]">
             {article.author_name && (
-              <span className="font-ui text-[11px] text-[#555555]">
-                {article.author_name}
-              </span>
+              <>
+                <span className="text-[#8A8A8A]">By </span>
+                <span className="font-semibold text-[#121212]">{article.author_name}</span>
+              </>
             )}
             {article.author_name && article.published_at && (
-              <span className="font-ui text-[11px] text-[#555555]">·</span>
+              <span className="text-[#8A8A8A]">·</span>
+            )}
+            {isNew(article.published_at ?? null) && (
+              <>
+                <span className="inline-flex items-center gap-1 text-[#B8860B] font-semibold uppercase tracking-[0.12em] text-[11px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] inline-block" />
+                  New
+                </span>
+                <span className="text-[#8A8A8A]">·</span>
+              </>
             )}
             {article.published_at && (
-              <span className="font-ui text-[11px] text-[#555555]">
-                {getTimeAgo(article.published_at)}
-              </span>
+              <span className="text-[#8A8A8A]">{getTimeAgo(article.published_at)}</span>
             )}
           </div>
         </div>
