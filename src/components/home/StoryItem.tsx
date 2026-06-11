@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { getSectionFallback } from "@/lib/sectionFallback";
+import { getSectionLabel } from "@/lib/navigation";
 
 interface StoryItemProps {
   article: {
@@ -38,16 +39,18 @@ const isNew = (publishedAt: string | null) => {
   return Date.now() - new Date(publishedAt).getTime() < 2 * 60 * 60 * 1000;
 };
 
-const deriveLabel = (sectionLabel?: string, section?: string | null, categorySlug?: string | null) => {
-  if (sectionLabel) return sectionLabel;
-  if (section === "analysis") return "Analysis";
-  if (section === "financial-literacy") return "Explainer";
-  const src = section || categorySlug || "";
-  if (!src) return "Top Stories";
-  return src
-    .split(/[-_\s]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
+const deriveLabel = (_sectionLabel?: string, section?: string | null, categorySlug?: string | null) => {
+  // Rubric must always reflect the article's OWN section — never the host block label.
+  // Resolve via canonical SECTION_LABEL (preserves ampersands like "Markets & Data").
+  if (categorySlug) {
+    const l = getSectionLabel(categorySlug);
+    if (l) return l;
+  }
+  if (section) {
+    const l = getSectionLabel(section);
+    if (l) return l;
+  }
+  return "Top Stories";
 };
 
 const Rubric = ({ label, topic }: { label: string; topic?: string }) => (
