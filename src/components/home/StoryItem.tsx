@@ -132,13 +132,13 @@ export const StoryItem = ({
             </div>
           )}
           <div className="min-w-0">
-            <Rubric label={label} topic={rubricTopic} />
+            {!hideRubric && <Rubric label={label} topic={rubricTopic} />}
             {article.is_breaking && (
               <span className="block font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#E3120B] mb-2">
                 Breaking
               </span>
             )}
-            <h3 className="font-headline text-[30px] font-semibold leading-[1.2] text-[#0D0D0D] headline-link line-clamp-4">
+            <h3 className="font-headline text-[32px] font-bold leading-[1.15] tracking-[-0.015em] text-[#0D0D0D] headline-link line-clamp-4">
               {showNew && <NewTag />}
               {article.title}
             </h3>
@@ -157,7 +157,7 @@ export const StoryItem = ({
   // SECONDARY / COMPACT
   return (
     <article
-      className="cursor-pointer group py-4 border-b border-[#D9D9D9] last:border-b-0"
+      className="cursor-pointer group py-3 border-t border-[#e8e8e8] first:border-t-0"
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
       <div className="flex items-start gap-3">
@@ -176,13 +176,13 @@ export const StoryItem = ({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <Rubric label={label} />
+          {!hideRubric && <Rubric label={label} />}
           {article.is_breaking && (
             <span className="block font-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[#E3120B] mb-1">
               Breaking
             </span>
           )}
-          <h3 className={`font-headline ${headlineSize} font-semibold leading-[1.2] text-[#0D0D0D] headline-link ${clampClass}`}>
+          <h3 className={`font-headline ${headlineSize} font-bold leading-[1.15] tracking-[-0.015em] text-[#0D0D0D] headline-link ${clampClass}`}>
             {showNew && <NewTag />}
             {article.title}
           </h3>
