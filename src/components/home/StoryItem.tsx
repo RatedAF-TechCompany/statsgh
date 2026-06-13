@@ -1,5 +1,5 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSectionFallback } from "@/lib/sectionFallback";
 import { getSectionLabel } from "@/lib/navigation";
 
 interface StoryItemProps {
@@ -19,7 +19,7 @@ interface StoryItemProps {
   showImage?: boolean;
   showSummary?: boolean;
   sectionLabel?: string;
-  rubricTopic?: string; // optional 2nd-part for lead rubric: "Economy | Growth"
+  rubricTopic?: string;
   eager?: boolean;
 }
 
@@ -34,14 +34,12 @@ const getTimeAgo = (publishedAt: string | null) => {
   return `${Math.floor(hrs / 24)}d ago`;
 };
 
-const isNew = (publishedAt: string | null) => {
+const isNewArticle = (publishedAt?: string | null) => {
   if (!publishedAt) return false;
-  return Date.now() - new Date(publishedAt).getTime() < 2 * 60 * 60 * 1000;
+  return new Date(publishedAt).getTime() > Date.now() - 2 * 60 * 60 * 1000;
 };
 
 const deriveLabel = (_sectionLabel?: string, section?: string | null, categorySlug?: string | null) => {
-  // Rubric must always reflect the article's OWN section — never the host block label.
-  // Resolve via canonical SECTION_LABEL (preserves ampersands like "Markets & Data").
   if (categorySlug) {
     const l = getSectionLabel(categorySlug);
     if (l) return l;
@@ -63,9 +61,14 @@ const Rubric = ({ label, topic }: { label: string; topic?: string }) => (
   </div>
 );
 
+const NewTag = () => (
+  <span className="inline-block font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#0F9D8C] mr-2 align-middle">
+    New
+  </span>
+);
+
 const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: string | null }) => {
   const time = getTimeAgo(publishedAt);
-  const showNew = isNew(publishedAt);
   if (!author && !time) return null;
 
   return (
@@ -75,9 +78,6 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
     >
       {author && <span className="font-medium text-[#121212] truncate min-w-0 flex-shrink">{author}</span>}
       {author && time && <span className="flex-shrink-0 px-1.5 text-[#757575]">|</span>}
-      {showNew && (
-        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#E3120B] mr-1.5" aria-label="New" />
-      )}
       {time && <span className="flex-shrink-0">{time}</span>}
     </div>
   );
@@ -93,7 +93,12 @@ export const StoryItem = ({
   eager = false,
 }: StoryItemProps) => {
   const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
   const label = deriveLabel(sectionLabel, article.section, article.category_slug);
+  const showNew = isNewArticle(article.published_at);
+
+  const hasImage =
+    showImage && !!article.hero_image_url && article.hero_image_url.trim() !== "" && !imgError;
 
   const headlineSize =
     variant === "lead" ? "text-[30px]" : variant === "secondary" ? "text-[19px]" : "text-[16px]";
@@ -101,24 +106,23 @@ export const StoryItem = ({
     variant === "lead" ? "line-clamp-4" : variant === "secondary" ? "line-clamp-3" : "line-clamp-2";
   const dekClamp = variant === "lead" ? "line-clamp-3" : "line-clamp-2";
 
-  const imgSrc = article.hero_image_url || getSectionFallback(article.section, article.category_slug);
-
-  // LEAD — image LEFT (55%) | text RIGHT (45%) on desktop, stacked on mobile
+  // LEAD — image left, text right; collapse image column when no image
   if (variant === "lead") {
     return (
       <article
         className="cursor-pointer group"
         onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
       >
-        <div className="grid grid-cols-1 md:grid-cols-[55%_45%] gap-x-6 gap-y-4">
-          {showImage && (
+        <div className={`grid grid-cols-1 ${hasImage ? "md:grid-cols-[55%_45%]" : "md:grid-cols-1"} gap-x-6 gap-y-4`}>
+          {hasImage && (
             <div className="overflow-hidden bg-[#F5F5F5] aspect-[3/2]">
               <img
-                src={imgSrc}
+                src={article.hero_image_url!}
                 alt=""
                 loading={eager ? "eager" : "lazy"}
                 fetchPriority={eager ? "high" : "auto"}
                 decoding="async"
+                onError={() => setImgError(true)}
                 className="hover-fade w-full h-full object-cover"
               />
             </div>
@@ -131,6 +135,7 @@ export const StoryItem = ({
               </span>
             )}
             <h3 className="font-headline text-[30px] font-semibold leading-[1.2] text-[#0D0D0D] headline-link line-clamp-4">
+              {showNew && <NewTag />}
               {article.title}
             </h3>
             {showSummary && article.summary && (
@@ -145,22 +150,23 @@ export const StoryItem = ({
     );
   }
 
-  // SECONDARY / COMPACT — 80px thumb left of headline
+  // SECONDARY / COMPACT
   return (
     <article
       className="cursor-pointer group py-4 border-b border-[#D9D9D9] last:border-b-0"
       onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
     >
       <div className="flex items-start gap-3">
-        {showImage && (
+        {hasImage && (
           <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F5F5]">
             <img
-              src={imgSrc}
+              src={article.hero_image_url!}
               alt=""
               loading="lazy"
               decoding="async"
               width={80}
               height={80}
+              onError={() => setImgError(true)}
               className="hover-fade w-full h-full object-cover"
             />
           </div>
@@ -173,6 +179,7 @@ export const StoryItem = ({
             </span>
           )}
           <h3 className={`font-headline ${headlineSize} font-semibold leading-[1.2] text-[#0D0D0D] headline-link ${clampClass}`}>
+            {showNew && <NewTag />}
             {article.title}
           </h3>
           {showSummary && article.summary && (
