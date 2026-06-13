@@ -19,7 +19,7 @@ const LoadingSpinner = ({ size = "md", text }: LoadingSpinnerProps) => {
           className={`${sizeClasses[size]} rounded-full border-2 border-ft-maroon/20 border-t-ft-maroon animate-spin`}
         />
         <img
-          src={statsghLogo}
+          src={statsghLogo.src}
           alt="Loading..."
           className={`absolute inset-0 m-auto ${size === "sm" ? "h-5 w-5" : size === "md" ? "h-7 w-7" : "h-10 w-10"} object-contain`}
         />
