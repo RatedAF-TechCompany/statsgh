@@ -21,6 +21,7 @@ interface StoryItemProps {
   sectionLabel?: string;
   rubricTopic?: string;
   eager?: boolean;
+  hideRubric?: boolean;
 }
 
 const getTimeAgo = (publishedAt: string | null) => {
@@ -73,12 +74,12 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
 
   return (
     <div
-      className="mt-2.5 flex items-center font-ui text-[12px] text-[#757575] whitespace-nowrap overflow-hidden"
+      className="mt-2 flex items-center font-ui text-[12px] whitespace-nowrap overflow-hidden"
       style={{ flexWrap: "nowrap" }}
     >
-      {author && <span className="font-medium text-[#121212] truncate min-w-0 flex-shrink">{author}</span>}
-      {author && time && <span className="flex-shrink-0 px-1.5 text-[#757575]">|</span>}
-      {time && <span className="flex-shrink-0">{time}</span>}
+      {author && <span className="font-medium text-[#666] truncate min-w-0 flex-shrink">{author}</span>}
+      {author && time && <span className="flex-shrink-0 px-1.5 text-[#999]">|</span>}
+      {time && <span className="flex-shrink-0 text-[#999]">{time}</span>}
     </div>
   );
 };
@@ -91,6 +92,7 @@ export const StoryItem = ({
   sectionLabel,
   rubricTopic,
   eager = false,
+  hideRubric = false,
 }: StoryItemProps) => {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
