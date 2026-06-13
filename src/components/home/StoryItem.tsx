@@ -62,8 +62,8 @@ const Rubric = ({ label, topic }: { label: string; topic?: string }) => (
 );
 
 const NewTag = () => (
-  <span className="inline-block font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#0F9D8C] mr-2 align-middle">
-    New
+  <span className="inline-block bg-[#0D7680] text-white text-[9px] font-bold uppercase px-1.5 py-0.5 mr-2 tracking-wide align-middle">
+    NEW
   </span>
 );
 
