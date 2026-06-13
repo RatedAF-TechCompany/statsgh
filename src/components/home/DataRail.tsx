@@ -30,15 +30,30 @@ function cleanCommodityName(raw: string): string {
 const DataRail = () => {
   const navigate = useNavigate();
 
+  const INVALID_LABELS = new Set([
+    "GHSIBOR", "ACCRA", "INCOME", "DISCOUNT", "INTERBANK",
+  ]);
+  const isValidLabel = (s: string | null | undefined) => {
+    if (!s) return false;
+    const t = String(s).trim();
+    if (!t) return false;
+    if (/^\d+(\.\d+)?$/.test(t)) return false;
+    if (INVALID_LABELS.has(t.toUpperCase())) return false;
+    return true;
+  };
+
   const { data: currencies, isLoading: currLoading } = useQuery({
     queryKey: ["rail-currencies"],
     queryFn: async () => {
       const { data, error } = await supabase.from("currency_rates")
         .select("id, base_currency, target_currency, rate, change_percent")
-        .eq("target_currency", "GHS").order("fetched_at", { ascending: false }).limit(10);
+        .in("base_currency", ["USD", "EUR", "GBP", "CNY"])
+        .eq("target_currency", "GHS").order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
       const seen = new Set<string>();
-      return (data || []).filter((r) => { const k = r.base_currency || ""; if (seen.has(k)) return false; seen.add(k); return true; });
+      return (data || [])
+        .filter((r) => isValidLabel(r.base_currency))
+        .filter((r) => { const k = r.base_currency || ""; if (seen.has(k)) return false; seen.add(k); return true; });
     },
     refetchInterval: 60000,
   });
@@ -48,10 +63,13 @@ const DataRail = () => {
     queryFn: async () => {
       const { data, error } = await supabase.from("commodity_prices")
         .select("id, commodity, price, change_percent, currency")
+        .in("commodity", ["gold", "cocoa", "oil_brent", "oil_wti", "natural_gas"])
         .order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
       const seen = new Set<string>();
-      return (data || []).filter((c) => { if (seen.has(c.commodity)) return false; seen.add(c.commodity); return true; });
+      return (data || [])
+        .filter((c) => isValidLabel(c.commodity))
+        .filter((c) => { if (seen.has(c.commodity)) return false; seen.add(c.commodity); return true; });
     },
     refetchInterval: 60000,
   });
