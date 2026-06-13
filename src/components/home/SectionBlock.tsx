@@ -64,7 +64,7 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
         <div className="md:col-span-2 md:pl-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:divide-x sm:divide-[#D9D9D9]">
           {supporting.map((article, i) => (
             <div key={article.id} className={i % 2 === 1 ? "sm:pl-6" : ""}>
-              <StoryItem article={article} variant="compact" />
+              <StoryItem article={article} variant="compact" hideRubric />
             </div>
           ))}
         </div>

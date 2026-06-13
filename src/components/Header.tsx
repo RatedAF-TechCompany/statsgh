@@ -70,23 +70,22 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
 
       {/* Masthead */}
       <div className="bg-white border-b border-[#D9D9D9]">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-16 relative">
-          <span className="hidden md:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#757575] whitespace-nowrap">
-            {dateString}
-          </span>
-          <div className="md:hidden w-10" />
-
+        <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center justify-between h-16 gap-6">
           <button
             onClick={() => navigate("/")}
-            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 hover:opacity-90"
+            className="flex items-center gap-2 hover:opacity-90 flex-shrink-0"
           >
             <img src={statsghLogo} alt="StatsGH" className="h-7" />
-            <span className="font-serif text-2xl font-bold text-[#0D0D0D]">
+            <span className="font-headline text-2xl font-bold text-[#0D0D0D] tracking-tight">
               StatsGH
             </span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <span className="hidden lg:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#757575] whitespace-nowrap">
+            {dateString}
+          </span>
+
+          <div className="flex items-center gap-2 ml-auto md:ml-6 flex-shrink-0">
             <button
               onClick={() => navigate("/search")}
               className="p-2 hover:opacity-80"
