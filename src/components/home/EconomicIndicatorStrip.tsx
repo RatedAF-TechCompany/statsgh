@@ -26,28 +26,27 @@ interface IndicatorItem {
 }
 
 // Clean display name mapping for commodity keys
-const COMMODITY_DISPLAY_NAMES: Record<string, string> = {
-  oil_brent: "Brent Crude",
-  brent: "Brent Crude",
+const COMMODITY_NAMES: Record<string, string> = {
   oil_wti: "WTI Crude",
+  oil_brent: "Brent Crude",
   wti: "WTI Crude",
+  brent: "Brent Crude",
   cocoa: "Cocoa",
   gold: "Gold",
   natural_gas: "Nat Gas",
-  nat_gas: "Nat Gas",
+  naturalgas: "Nat Gas",
+  silver: "Silver",
+  crude: "Crude Oil",
   crude_oil: "Crude Oil",
 };
 
 function cleanCommodityName(raw: string): string {
-  const lower = raw.toLowerCase().trim();
-  // Check exact match first
-  if (COMMODITY_DISPLAY_NAMES[lower]) return COMMODITY_DISPLAY_NAMES[lower];
-  // Check substring match
-  for (const [key, display] of Object.entries(COMMODITY_DISPLAY_NAMES)) {
-    if (lower.includes(key) || key.includes(lower)) return display;
+  const lower = raw.toLowerCase().replace(/\s+/g, "_");
+  if (COMMODITY_NAMES[lower]) return COMMODITY_NAMES[lower];
+  for (const [key, value] of Object.entries(COMMODITY_NAMES)) {
+    if (lower.includes(key)) return value;
   }
-  // Fallback: title-case the raw name
-  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }
 
 const EconomicIndicatorStrip = () => {
