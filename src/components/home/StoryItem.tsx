@@ -97,8 +97,10 @@ export const StoryItem = ({
   const label = deriveLabel(sectionLabel, article.section, article.category_slug);
   const showNew = isNewArticle(article.published_at);
 
-  const hasImage =
-    showImage && !!article.hero_image_url && article.hero_image_url.trim() !== "" && !imgError;
+  const validUrl =
+    typeof article.hero_image_url === "string" &&
+    article.hero_image_url.trim().startsWith("http");
+  const hasImage = showImage && validUrl && !imgError;
 
   const headlineSize =
     variant === "lead" ? "text-[30px]" : variant === "secondary" ? "text-[19px]" : "text-[16px]";
