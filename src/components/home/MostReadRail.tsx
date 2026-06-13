@@ -80,7 +80,7 @@ const MostReadRail = () => {
               <span className="font-headline text-lg font-bold text-[#5B5B5B] leading-none pt-0.5 w-5 flex-shrink-0">
                 {i + 1}
               </span>
-              <span className="font-headline text-[13px] font-medium text-[#121212] leading-snug group-hover:text-[#E3120B] transition-colors">
+              <span className="font-headline text-[13px] font-medium text-[#121212] leading-snug group-hover:text-[#E3120B] transition-colors line-clamp-3">
                 {article.title}
               </span>
             </button>
