@@ -62,8 +62,8 @@ const Rubric = ({ label, topic }: { label: string; topic?: string }) => (
 );
 
 const NewTag = () => (
-  <span className="inline-block font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#0F9D8C] mr-2 align-middle">
-    New
+  <span className="inline-block bg-[#0D7680] text-white text-[9px] font-bold uppercase px-1.5 py-0.5 mr-2 tracking-wide align-middle">
+    NEW
   </span>
 );
 
@@ -97,8 +97,10 @@ export const StoryItem = ({
   const label = deriveLabel(sectionLabel, article.section, article.category_slug);
   const showNew = isNewArticle(article.published_at);
 
-  const hasImage =
-    showImage && !!article.hero_image_url && article.hero_image_url.trim() !== "" && !imgError;
+  const validUrl =
+    typeof article.hero_image_url === "string" &&
+    article.hero_image_url.trim().startsWith("http");
+  const hasImage = showImage && validUrl && !imgError;
 
   const headlineSize =
     variant === "lead" ? "text-[30px]" : variant === "secondary" ? "text-[19px]" : "text-[16px]";

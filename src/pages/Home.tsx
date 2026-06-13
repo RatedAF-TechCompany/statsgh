@@ -166,21 +166,30 @@ const Home = () => {
             )}
 
             {/* ═══ ZONE C — MAIN + RIGHT RAIL ═══ */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-x-8 py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-x-8 py-4">
               {/* Main content — section blocks */}
               <div>
-                {SITE_SECTIONS.filter((s) => s.slug !== "top-stories").map((section) => {
-                  const arts = sectionArticles[section.slug];
-                  if (!arts || arts.length < 4) return null;
-                  return (
-                    <SectionBlock
-                      key={section.slug}
-                      sectionLabel={section.label}
-                      sectionSlug={section.slug}
-                      articles={arts}
-                    />
-                  );
-                })}
+                {(() => {
+                  const spotlightSection = spotlightStories[0]
+                    ? getSectionForCategory(spotlightStories[0].category_slug)
+                    : null;
+                  const renderedSlugs = new Set<string>();
+                  if (spotlightSection) renderedSlugs.add(spotlightSection);
+                  return SITE_SECTIONS.filter((s) => s.slug !== "top-stories").map((section) => {
+                    if (renderedSlugs.has(section.slug)) return null;
+                    const arts = sectionArticles[section.slug];
+                    if (!arts || arts.length < 4) return null;
+                    renderedSlugs.add(section.slug);
+                    return (
+                      <SectionBlock
+                        key={section.slug}
+                        sectionLabel={section.label}
+                        sectionSlug={section.slug}
+                        articles={arts}
+                      />
+                    );
+                  });
+                })()}
               </div>
 
               {/* Right rail */}

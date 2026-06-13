@@ -108,7 +108,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
       </div>
 
       <div className="flex flex-col items-end gap-2">
-        {article.hero_image_url && (
+        {typeof article.hero_image_url === "string" && article.hero_image_url.startsWith("http") && (
           <div
             className="w-[120px] h-[80px] bg-muted flex-shrink-0 cursor-pointer overflow-hidden"
             onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
@@ -120,6 +120,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
               height={80}
               loading="lazy"
               decoding="async"
+              onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
               className="w-full h-full object-cover"
             />
           </div>
