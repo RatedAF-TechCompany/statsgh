@@ -210,3 +210,8 @@ img {
 .group:hover img.hover-fade {
   opacity: 0.9;
 }
+
+/* Hide horizontal scrollbar on nav */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+

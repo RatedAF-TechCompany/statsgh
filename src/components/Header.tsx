@@ -140,15 +140,20 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
         <div className="max-w-[1280px] mx-auto px-4 md:px-6">
           <nav
             ref={navRef}
-            className="flex items-center gap-0 overflow-x-auto scrollbar-hide h-10 -mx-2"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            className="flex items-center gap-0 overflow-x-auto scrollbar-hide h-10 -mx-2 flex-nowrap"
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              WebkitOverflowScrolling: "touch",
+              whiteSpace: "nowrap",
+            }}
           >
             {SITE_SECTIONS.map((section) => (
               <button
                 key={section.slug}
                 onClick={() => navigate(section.href)}
                 className={`
-                  flex-shrink-0 px-3 h-11 font-ui text-[14px] font-medium
+                  flex-shrink-0 whitespace-nowrap px-3 h-11 font-ui text-[14px] font-medium
                   border-b-[3px] transition-colors
                   ${isActiveSection(section.href)
                     ? "border-[#E3120B] text-[#0D0D0D]"
