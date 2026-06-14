@@ -11,25 +11,25 @@ import { FTSectionLabel } from "@/components/home/FTSectionLabel";
 import { StoryItem } from "@/components/home/StoryItem";
 import { SITE_SECTIONS, getSectionLabel } from "@/lib/navigation";
 import { getSectionForCategory } from "@/lib/sectionMapping";
-import { usePageMeta } from "@/hooks/usePageMeta";
+import {
+  fetchHomepageArticles,
+  type HomepageArticle,
+  type MostReadArticle,
+} from "@/lib/homepage-data";
 
-const ARTICLES_LIMIT = 200; // fetch enough for 60+ visible stories
+interface HomeProps {
+  initialArticles?: HomepageArticle[];
+  initialMostRead?: MostReadArticle[];
+}
 
-const Home = () => {
-
-  // Fetch large batch of articles
+const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
+  // Server-rendered batch is passed in as initialData so the article zones are
+  // present in the initial HTML; the client hydrates and refetches for freshness.
   const { data: allArticles, isLoading } = useQuery({
     queryKey: ["homepage-articles-dense"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("articles")
-        .select("id, title, slug, category_slug, section, summary, word_count, hero_image_url, published_at, author_name, is_breaking")
-        .eq("is_published", true)
-        .order("published_at", { ascending: false })
-        .limit(ARTICLES_LIMIT);
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => fetchHomepageArticles(supabase),
+    initialData: initialArticles,
+    staleTime: 60_000,
   });
 
   const articles = allArticles || [];
@@ -59,30 +59,6 @@ const Home = () => {
     year: "numeric",
     month: "long",
     day: "numeric",
-  });
-
-  usePageMeta({
-    jsonLd: [
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "StatsGH",
-        url: "https://statsgh.com",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: "https://statsgh.com/search?q={search_term_string}",
-          "query-input": "required name=search_term_string",
-        },
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "StatsGH",
-        url: "https://statsgh.com",
-        logo: "https://statsgh.com/social/statsgh-og-1200x630.png",
-        sameAs: ["https://twitter.com/StatsGH"],
-      },
-    ],
   });
 
   return (
@@ -193,14 +169,14 @@ const Home = () => {
 
               {/* Right rail */}
               <div className="hidden lg:block">
-                <MostReadRail />
+                <MostReadRail initialData={initialMostRead} />
                 <DataRail />
               </div>
             </div>
 
             {/* Mobile: right rail content at bottom */}
             <div className="lg:hidden py-6 border-t border-[#D9D9D9]">
-              <MostReadRail />
+              <MostReadRail initialData={initialMostRead} />
               <DataRail />
             </div>
           </>
