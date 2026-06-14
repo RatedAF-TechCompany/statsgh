@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import { formatTime } from "@/components/ReadingTime";
@@ -36,14 +36,13 @@ const isNew = (publishedAt: string | null) => {
 };
 
 export const LeadStory = ({ article }: LeadStoryProps) => {
-  const navigate = useNavigate();
   const categoryLabel = CATEGORY_MAPPING[article.category_slug as keyof typeof CATEGORY_MAPPING] || article.category_slug;
   const readingTime = article.word_count ? formatTime(article.word_count / 238) : null;
 
   return (
-    <article 
-      className="cursor-pointer group"
-      onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+    <Link
+      to={`/${article.category_slug}/${article.slug}`}
+      className="block group"
     >
       {article.hero_image_url && (
         <div className="mb-4 overflow-hidden">
@@ -100,6 +99,6 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
           )}
         </p>
       </div>
-    </article>
+    </Link>
   );
 };

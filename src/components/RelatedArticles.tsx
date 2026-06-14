@@ -130,45 +130,45 @@ export const RelatedArticles = ({
       </h2>
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {relatedArticles.map((article) => (
-          <Link
-            key={article.id}
-            to={`/${article.category_slug}/${article.slug}`}
-            className="group block"
-          >
-            <article className="h-full">
-              {article.hero_image_url && (
-                <div className="aspect-[3/2] overflow-hidden mb-3">
-                  <img
-                    src={article.hero_image_url}
-                    alt=""
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Link 
-                  to={`/${article.category_slug}`}
-                  className="text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {article.category_slug?.replace(/-/g, " ")}
-                </Link>
-                
-                <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-3">
-                  {article.title}
-                </h3>
-                
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {article.published_at && (
-                    <time dateTime={article.published_at}>
-                      {format(new Date(article.published_at), "MMM d, yyyy")}
-                    </time>
-                  )}
-                </div>
+          <article key={article.id} className="group relative h-full">
+            {article.hero_image_url && (
+              <div className="aspect-[3/2] overflow-hidden mb-3">
+                <img
+                  src={article.hero_image_url}
+                  alt=""
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
               </div>
-            </article>
-          </Link>
+            )}
+
+            <div className="space-y-2">
+              {/* Sits above the stretched title link so it stays clickable */}
+              <Link
+                to={`/${article.category_slug}`}
+                className="relative z-10 inline-block text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
+              >
+                {article.category_slug?.replace(/-/g, " ")}
+              </Link>
+
+              <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-3">
+                {/* Stretched link: overlay covers the whole card → entire card navigates to the article */}
+                <Link
+                  to={`/${article.category_slug}/${article.slug}`}
+                  className="after:absolute after:inset-0 after:content-['']"
+                >
+                  {article.title}
+                </Link>
+              </h3>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {article.published_at && (
+                  <time dateTime={article.published_at}>
+                    {format(new Date(article.published_at), "MMM d, yyyy")}
+                  </time>
+                )}
+              </div>
+            </div>
+          </article>
         ))}
       </div>
     </section>

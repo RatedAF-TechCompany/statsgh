@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const MostReadRail = () => {
-  const navigate = useNavigate();
 
   const { data: mostRead, isLoading } = useQuery({
     queryKey: ["most-read-rail-10"],
@@ -72,9 +71,9 @@ const MostReadRail = () => {
       ) : (
         <div className="space-y-0">
           {(mostRead || []).map((article, i) => (
-            <button
+            <Link
               key={article.id}
-              onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+              to={`/${article.category_slug}/${article.slug}`}
               className="w-full flex items-start gap-3 py-2 border-t border-[#D9D9D9] text-left group"
             >
               <span className="font-headline text-lg font-bold text-[#5B5B5B] leading-none pt-0.5 w-5 flex-shrink-0">
@@ -83,7 +82,7 @@ const MostReadRail = () => {
               <span className="font-headline text-[13px] font-medium text-[#121212] leading-snug group-hover:text-[#E3120B] transition-colors line-clamp-3">
                 {article.title}
               </span>
-            </button>
+            </Link>
           ))}
         </div>
       )}

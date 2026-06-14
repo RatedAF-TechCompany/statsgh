@@ -75,7 +75,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             onClick={() => navigate("/")}
             className="flex items-center gap-2 hover:opacity-90 flex-shrink-0"
           >
-            <img src={statsghLogo} alt="StatsGH" className="h-7" />
+            <img src={statsghLogo.src} alt="StatsGH" className="h-7" />
             <span className="font-headline text-2xl font-bold text-[#0D0D0D] tracking-tight">
               StatsGH
             </span>

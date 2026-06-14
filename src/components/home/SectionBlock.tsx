@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { FTSectionLabel } from "./FTSectionLabel";
 import { StoryItem } from "./StoryItem";
 
@@ -23,7 +23,6 @@ interface SectionBlockProps {
 }
 
 export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlockProps) => {
-  const navigate = useNavigate();
   // Minimum 4 articles to render a section
   if (articles.length < 4) return null;
 
@@ -36,19 +35,19 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
         <span className="rubric-bar" />
         <div className="flex items-end justify-between gap-3">
           <h2 className="m-0 p-0">
-            <button
-              onClick={() => navigate(`/${sectionSlug}`)}
+            <Link
+              to={`/${sectionSlug}`}
               className="font-ui text-[18px] font-bold text-[#0D0D0D] hover:text-[#E3120B] transition-colors bg-transparent border-0 p-0 leading-none"
             >
               {sectionLabel}
-            </button>
+            </Link>
           </h2>
-          <button
-            onClick={() => navigate(`/${sectionSlug}`)}
+          <Link
+            to={`/${sectionSlug}`}
             className="font-ui text-[13px] font-medium text-[#E3120B] hover:underline whitespace-nowrap"
           >
             More from {sectionLabel} →
-          </button>
+          </Link>
         </div>
       </div>
 

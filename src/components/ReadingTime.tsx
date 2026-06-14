@@ -9,9 +9,10 @@ const WORDS_PER_MINUTE_READING = 238; // Average adult reading speed
 const WORDS_PER_MINUTE_LISTENING = 150; // Average speech rate at 1x speed
 
 export const getWordCount = (html: string): number => {
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  const text = div.textContent || div.innerText || "";
+  // SSR-safe: strip tags/entities with regex rather than touching the DOM.
+  const text = (html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z0-9#]+;/gi, " ");
   const words = text.trim().split(/\s+/).filter(Boolean);
   return words.length;
 };

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 
 interface SecondaryStoryProps {
@@ -29,14 +29,14 @@ const getTimeAgo = (publishedAt: string | null) => {
 };
 
 export const SecondaryStory = ({ article, showImage = true, variant = "default" }: SecondaryStoryProps) => {
-  const navigate = useNavigate();
   const categoryLabel = CATEGORY_MAPPING[article.category_slug as keyof typeof CATEGORY_MAPPING] || article.category_slug;
+  const href = `/${article.category_slug}/${article.slug}`;
 
   if (variant === "horizontal") {
     return (
-      <article 
-        className="py-3 border-b border-border cursor-pointer group"
-        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+      <Link
+        to={href}
+        className="block py-3 border-b border-border group"
       >
         <div className="flex gap-3">
           <div className="flex-1 min-w-0">
@@ -64,15 +64,15 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
             />
           )}
         </div>
-      </article>
+      </Link>
     );
   }
 
   if (variant === "compact") {
     return (
-      <article 
-        className="py-2.5 border-b border-border cursor-pointer group"
-        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+      <Link
+        to={href}
+        className="block py-2.5 border-b border-border group"
       >
         <p className="font-sans text-[10px] uppercase tracking-wider text-ft-maroon font-semibold mb-0.5">
           {categoryLabel}
@@ -80,14 +80,14 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
         <h3 className="font-serif text-sm font-medium leading-snug text-foreground group-hover:text-ft-maroon transition-colors">
           {article.title}
         </h3>
-      </article>
+      </Link>
     );
   }
 
   return (
-    <article 
-      className="cursor-pointer group"
-      onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+    <Link
+      to={href}
+      className="block group"
     >
       {showImage && article.hero_image_url && (
         <div className="mb-2 overflow-hidden">
@@ -118,6 +118,6 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
           {getTimeAgo(article.published_at)}
         </p>
       )}
-    </article>
+    </Link>
   );
 };
