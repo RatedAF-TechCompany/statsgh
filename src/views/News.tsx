@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react"; // News page
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -13,7 +13,6 @@ import { Clock } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const News = () => {
-  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -129,8 +128,7 @@ const News = () => {
               {articles.map((article) => (
                 <article
                   key={article.id}
-                  className="group cursor-pointer"
-                  onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+                  className="group relative"
                 >
                   {article.hero_image_url && (
                     <div className="aspect-video overflow-hidden rounded-lg mb-3 relative">
@@ -147,7 +145,12 @@ const News = () => {
                     </Badge>
                   </div>
                   <h2 className="font-serif text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
-                    {article.title}
+                    <Link
+                      to={`/${article.category_slug}/${article.slug}`}
+                      className="after:absolute after:inset-0 after:content-['']"
+                    >
+                      {article.title}
+                    </Link>
                   </h2>
                   {article.summary && (
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
