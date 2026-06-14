@@ -2,7 +2,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SectionBlock } from "@/components/home/SectionBlock";
@@ -17,7 +16,6 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 const ARTICLES_LIMIT = 200; // fetch enough for 60+ visible stories
 
 const Home = () => {
-  const navigate = useNavigate();
 
   // Fetch large batch of articles
   const { data: allArticles, isLoading } = useQuery({
@@ -116,7 +114,7 @@ const Home = () => {
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
             <div className="py-6 border-b border-[#D9D9D9]">
-              <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
+              <FTSectionLabel label="Top Stories" to="/" />
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
                 {/* Lead spans 2 columns — image-left/text-right inside */}
@@ -146,7 +144,7 @@ const Home = () => {
               <div className="py-5 border-b border-[#D9D9D9]">
                 <FTSectionLabel
                   label={getSectionLabel(spotlightStories[0].category_slug)}
-                  onClick={() => navigate(`/${getSectionForCategory(spotlightStories[0].category_slug)}`)}
+                  to={`/${getSectionForCategory(spotlightStories[0].category_slug)}`}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-0 gap-y-4">
                   {spotlightStories.map((a, i) => (

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -211,7 +211,6 @@ interface TopicsOverviewProps {
 }
 
 const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: TopicsOverviewProps) => {
-  const navigate = useNavigate();
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [visibleTopics, setVisibleTopics] = useState<Set<string>>(new Set());
   const topicRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -260,11 +259,6 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
     return () => clearTimeout(timeoutId);
   }, [isLoading]);
 
-  const handleIndicatorClick = (slug: string, exists: boolean) => {
-    if (exists) {
-      navigate(`/data/${slug}`);
-    }
-  };
 
   const toggleTopicExpanded = (topicSlug: string) => {
     setExpandedTopics((prev) => {
@@ -382,25 +376,27 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
             >
               {(() => {
                 return (
-                  <h3
-                    className="font-serif text-lg md:text-xl text-primary cursor-pointer mb-1.5 flex items-center gap-2 w-fit transition-colors duration-200"
-                    onClick={() => navigate(`/topics/${topic.topicSlug}`)}
-                    onMouseEnter={(e) => {
-                      if (topicColor) {
-                        e.currentTarget.style.color = topicColor;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '';
-                    }}
-                  >
-                    {TopicIcon && (
-                      <TopicIcon 
-                        size={20} 
-                        className="flex-shrink-0"
-                      />
-                    )}
-                    <span className="hover:underline">{topic.topicTitle}</span>
+                  <h3 className="font-serif text-lg md:text-xl mb-1.5">
+                    <Link
+                      to={`/topics/${topic.topicSlug}`}
+                      className="text-primary cursor-pointer flex items-center gap-2 w-fit transition-colors duration-200"
+                      onMouseEnter={(e) => {
+                        if (topicColor) {
+                          e.currentTarget.style.color = topicColor;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '';
+                      }}
+                    >
+                      {TopicIcon && (
+                        <TopicIcon
+                          size={20}
+                          className="flex-shrink-0"
+                        />
+                      )}
+                      <span className="hover:underline">{topic.topicTitle}</span>
+                    </Link>
                   </h3>
                 );
               })()}
@@ -421,20 +417,19 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
                             {index > 0 && (
                               <span className="text-muted-foreground mx-1.5">•</span>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleIndicatorClick(link.indicatorSlug, !!exists);
-                              }}
-                              disabled={!exists}
-                              className={`${
-                                exists
-                                  ? "text-foreground font-medium cursor-pointer hover:text-primary underline decoration-foreground/30 underline-offset-2 hover:decoration-primary transition-colors"
-                                  : "text-muted-foreground cursor-default"
-                              } text-sm`}
-                            >
-                              {link.label}
-                            </button>
+                            {exists ? (
+                              <Link
+                                to={`/data/${link.indicatorSlug}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-foreground font-medium cursor-pointer hover:text-primary underline decoration-foreground/30 underline-offset-2 hover:decoration-primary transition-colors text-sm"
+                              >
+                                {link.label}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground cursor-default text-sm">
+                                {link.label}
+                              </span>
+                            )}
                           </span>
                         );
                       })}
@@ -466,12 +461,12 @@ const TopicsOverview = ({ showHeader = true, maxTopics, limitIndicators }: Topic
 
       {maxTopics && maxTopics < TOPICS_CONFIG.length && (
         <div className="mt-6 pt-4 border-t border-border/50">
-          <button
-            onClick={() => navigate("/topics")}
+          <Link
+            to="/topics"
             className="text-primary hover:underline text-sm font-medium"
           >
             View all topics →
-          </button>
+          </Link>
         </div>
       )}
     </section>

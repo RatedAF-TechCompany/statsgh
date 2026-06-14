@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const COMMODITY_NAMES: Record<string, string> = {
   oil_wti: "WTI Crude",
@@ -28,8 +28,6 @@ function cleanCommodityName(raw: string): string {
 }
 
 const DataRail = () => {
-  const navigate = useNavigate();
-
   const INVALID_LABELS = new Set([
     "GHSIBOR", "ACCRA", "INCOME", "DISCOUNT", "INTERBANK",
   ]);
@@ -155,9 +153,9 @@ const DataRail = () => {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => navigate("/dashboards/gse")} className="font-ui text-[11px] text-[#E3120B] hover:underline">
+                <Link to="/dashboards/gse" className="font-ui text-[11px] text-[#E3120B] hover:underline">
                   Full GSE dashboard →
-                </button>
+                </Link>
               </>
             )}
           </>
@@ -173,9 +171,9 @@ const DataRail = () => {
             { label: "Economic Calendar", href: "/calendar" },
             { label: "Finance Dashboard", href: "/dashboards/finance" },
           ].map((link) => (
-            <button key={link.href} onClick={() => navigate(link.href)} className="block font-ui text-[11px] text-[#E3120B] hover:underline">
+            <Link key={link.href} to={link.href} className="block font-ui text-[11px] text-[#E3120B] hover:underline">
               {link.label}
-            </button>
+            </Link>
           ))}
         </div>
       </div>
