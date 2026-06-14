@@ -39,8 +39,6 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/**/*",
-    "src/main.tsx",
-    "src/App.tsx"
+    "supabase/**/*"
   ]
 }

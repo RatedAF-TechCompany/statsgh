@@ -1,9 +1,7 @@
 import { SITE_SECTIONS } from "@/lib/navigation";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
-  const navigate = useNavigate();
-
   return (
     <footer className="bg-white border-t border-[#D9D9D9]">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-16">
@@ -25,12 +23,12 @@ const Footer = () => {
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
               {SITE_SECTIONS.map((section) => (
                 <li key={section.slug}>
-                  <button
-                    onClick={() => navigate(section.href)}
+                  <Link
+                    to={section.href}
                     className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B] transition-colors"
                   >
                     {section.label}
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
