@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { SidebarSection } from "./SidebarSection";
 
 const MostReadSidebar = () => {
-  const navigate = useNavigate();
 
   const { data: mostReadArticles, isLoading } = useQuery({
     queryKey: ["most-read-articles-sidebar"],
@@ -79,9 +78,9 @@ const MostReadSidebar = () => {
     <SidebarSection title="Most read">
       <div className="space-y-0">
         {mostReadArticles.map((article, index) => (
-          <button
+          <Link
             key={article.id}
-            onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+            to={`/${article.category_slug}/${article.slug}`}
             className="w-full flex items-start gap-3 py-3 border-b border-[#D9D9D9] text-left group"
           >
             <span className="font-serif text-[28px] font-bold text-[#E3120B] leading-none pt-0.5 w-9 flex-shrink-0">
@@ -90,7 +89,7 @@ const MostReadSidebar = () => {
             <span className="font-serif text-[15px] font-semibold leading-[1.25] text-[#0D0D0D] headline-link line-clamp-2">
               {article.title}
             </span>
-          </button>
+          </Link>
         ))}
       </div>
     </SidebarSection>

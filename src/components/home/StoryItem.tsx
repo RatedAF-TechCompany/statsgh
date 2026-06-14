@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { getSectionLabel } from "@/lib/navigation";
 
 interface StoryItemProps {
@@ -94,8 +94,8 @@ export const StoryItem = ({
   eager = false,
   hideRubric = false,
 }: StoryItemProps) => {
-  const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
+  const href = `/${article.category_slug}/${article.slug}`;
   const label = deriveLabel(sectionLabel, article.section, article.category_slug);
   const showNew = isNewArticle(article.published_at);
 
@@ -113,9 +113,9 @@ export const StoryItem = ({
   // LEAD — image left, text right; collapse image column when no image
   if (variant === "lead") {
     return (
-      <article
-        className="cursor-pointer group"
-        onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+      <Link
+        to={href}
+        className="block group"
       >
         <div className={`grid grid-cols-1 ${hasImage ? "md:grid-cols-[55%_45%]" : "md:grid-cols-1"} gap-x-6 gap-y-4`}>
           {hasImage && (
@@ -150,15 +150,15 @@ export const StoryItem = ({
             <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
           </div>
         </div>
-      </article>
+      </Link>
     );
   }
 
   // SECONDARY / COMPACT
   return (
-    <article
-      className="cursor-pointer group py-3 border-t border-[#e8e8e8] first:border-t-0"
-      onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+    <Link
+      to={href}
+      className="block group py-3 border-t border-[#e8e8e8] first:border-t-0"
     >
       <div className="flex items-start gap-3">
         {hasImage && (
@@ -194,6 +194,6 @@ export const StoryItem = ({
           <Byline author={article.author_name} publishedAt={article.published_at ?? null} />
         </div>
       </div>
-    </article>
+    </Link>
   );
 };

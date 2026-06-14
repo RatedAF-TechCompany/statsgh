@@ -136,55 +136,56 @@ const Saved = () => {
               if (!article) return null;
               
               return (
-                <article key={bookmark.id} className="py-6">
-                  <Link
-                    to={`/${article.category_slug}/${article.slug}`}
-                    className="group flex gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
+                <article key={bookmark.id} className="group relative flex gap-4 py-6">
+                  <div className="flex-1 min-w-0">
+                    {/* Above the stretched title link so it stays clickable */}
+                    <Link
+                      to={`/${article.category_slug}`}
+                      className="relative z-10 inline-block text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
+                    >
+                      {article.category_slug?.replace(/-/g, " ")}
+                    </Link>
+
+                    <h2 className="mt-2 font-serif text-xl font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-2">
+                      {/* Stretched link → whole card navigates to the article */}
                       <Link
-                        to={`/${article.category_slug}`}
-                        className="text-xs font-bold uppercase tracking-wide text-ft-maroon hover:underline"
-                        onClick={(e) => e.stopPropagation()}
+                        to={`/${article.category_slug}/${article.slug}`}
+                        className="after:absolute after:inset-0 after:content-['']"
                       >
-                        {article.category_slug?.replace(/-/g, " ")}
-                      </Link>
-                      
-                      <h2 className="mt-2 font-serif text-xl font-semibold text-foreground group-hover:text-ft-maroon transition-colors leading-snug line-clamp-2">
                         {article.title}
-                      </h2>
-                      
-                      {article.summary && (
-                        <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                          {article.summary}
-                        </p>
+                      </Link>
+                    </h2>
+
+                    {article.summary && (
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                        {article.summary}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{article.author_name}</span>
+                      {article.published_at && (
+                        <>
+                          <span>•</span>
+                          <time dateTime={article.published_at}>
+                            {format(new Date(article.published_at), "MMM d, yyyy")}
+                          </time>
+                        </>
                       )}
-                      
-                      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{article.author_name}</span>
-                        {article.published_at && (
-                          <>
-                            <span>•</span>
-                            <time dateTime={article.published_at}>
-                              {format(new Date(article.published_at), "MMM d, yyyy")}
-                            </time>
-                          </>
-                        )}
+                    </div>
+                  </div>
+
+                  {article.hero_image_url && (
+                    <div className="w-32 md:w-40 flex-shrink-0">
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img
+                          src={article.hero_image_url}
+                          alt=""
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
                     </div>
-                    
-                    {article.hero_image_url && (
-                      <div className="w-32 md:w-40 flex-shrink-0">
-                        <div className="aspect-[4/3] overflow-hidden">
-                          <img
-                            src={article.hero_image_url}
-                            alt=""
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </Link>
+                  )}
                 </article>
               );
             })}
