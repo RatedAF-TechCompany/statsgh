@@ -2,53 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchMostRead, type MostReadArticle } from "@/lib/homepage-data";
 
-const MostReadRail = () => {
-
+const MostReadRail = ({ initialData }: { initialData?: MostReadArticle[] } = {}) => {
   const { data: mostRead, isLoading } = useQuery({
     queryKey: ["most-read-rail-10"],
-    queryFn: async () => {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const { data: views, error: viewErr } = await supabase
-        .from("article_views")
-        .select("article_id")
-        .gte("viewed_at", oneDayAgo);
-
-      if (viewErr) throw viewErr;
-
-      const counts: Record<string, number> = {};
-      (views || []).forEach((v) => {
-        if (v.article_id) counts[v.article_id] = (counts[v.article_id] || 0) + 1;
-      });
-
-      const topIds = Object.entries(counts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10)
-        .map(([id]) => id);
-
-      if (topIds.length > 0) {
-        const { data: articles } = await supabase
-          .from("articles")
-          .select("id, title, slug, category_slug")
-          .in("id", topIds)
-          .eq("is_published", true);
-
-        return (articles || []).sort(
-          (a, b) => (counts[b.id] || 0) - (counts[a.id] || 0)
-        );
-      }
-
-      // Fallback: recent articles
-      const { data: recent } = await supabase
-        .from("articles")
-        .select("id, title, slug, category_slug")
-        .eq("is_published", true)
-        .order("published_at", { ascending: false })
-        .limit(10);
-
-      return recent || [];
-    },
+    queryFn: () => fetchMostRead(supabase),
+    initialData,
+    staleTime: 60_000,
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
