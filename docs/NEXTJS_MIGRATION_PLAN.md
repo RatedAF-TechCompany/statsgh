@@ -7,6 +7,7 @@ StatsGH article pages are a client-side React SPA: content loads *after* the pag
 Workflow agreed with the user: **cut a new branch, perform the migration there, fully verify it behaves as intended, then merge to `main`.**
 
 ---
+little change
 
 ## Decisive Discovery: a proven blueprint already exists
 
