@@ -2,7 +2,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SectionBlock } from "@/components/home/SectionBlock";
@@ -12,26 +11,25 @@ import { FTSectionLabel } from "@/components/home/FTSectionLabel";
 import { StoryItem } from "@/components/home/StoryItem";
 import { SITE_SECTIONS, getSectionLabel } from "@/lib/navigation";
 import { getSectionForCategory } from "@/lib/sectionMapping";
-import { usePageMeta } from "@/hooks/usePageMeta";
+import {
+  fetchHomepageArticles,
+  type HomepageArticle,
+  type MostReadArticle,
+} from "@/lib/homepage-data";
 
-const ARTICLES_LIMIT = 200; // fetch enough for 60+ visible stories
+interface HomeProps {
+  initialArticles?: HomepageArticle[];
+  initialMostRead?: MostReadArticle[];
+}
 
-const Home = () => {
-  const navigate = useNavigate();
-
-  // Fetch large batch of articles
+const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
+  // Server-rendered batch is passed in as initialData so the article zones are
+  // present in the initial HTML; the client hydrates and refetches for freshness.
   const { data: allArticles, isLoading } = useQuery({
     queryKey: ["homepage-articles-dense"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("articles")
-        .select("id, title, slug, category_slug, section, summary, word_count, hero_image_url, published_at, author_name, is_breaking")
-        .eq("is_published", true)
-        .order("published_at", { ascending: false })
-        .limit(ARTICLES_LIMIT);
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => fetchHomepageArticles(supabase),
+    initialData: initialArticles,
+    staleTime: 60_000,
   });
 
   const articles = allArticles || [];
@@ -63,30 +61,6 @@ const Home = () => {
     day: "numeric",
   });
 
-  usePageMeta({
-    jsonLd: [
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "StatsGH",
-        url: "https://statsgh.com",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: "https://statsgh.com/search?q={search_term_string}",
-          "query-input": "required name=search_term_string",
-        },
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "StatsGH",
-        url: "https://statsgh.com",
-        logo: "https://statsgh.com/social/statsgh-og-1200x630.png",
-        sameAs: ["https://twitter.com/StatsGH"],
-      },
-    ],
-  });
-
   return (
     <div className="min-h-screen bg-white">
       <h1 className="sr-only">StatsGH — Ghana's Premier Data Journalism Platform</h1>
@@ -116,7 +90,7 @@ const Home = () => {
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
             <div className="py-6 border-b border-[#D9D9D9]">
-              <FTSectionLabel label="Top Stories" onClick={() => navigate("/")} />
+              <FTSectionLabel label="Top Stories" to="/" />
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
                 {/* Lead spans 2 columns — image-left/text-right inside */}
@@ -146,7 +120,7 @@ const Home = () => {
               <div className="py-5 border-b border-[#D9D9D9]">
                 <FTSectionLabel
                   label={getSectionLabel(spotlightStories[0].category_slug)}
-                  onClick={() => navigate(`/${getSectionForCategory(spotlightStories[0].category_slug)}`)}
+                  to={`/${getSectionForCategory(spotlightStories[0].category_slug)}`}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-0 gap-y-4">
                   {spotlightStories.map((a, i) => (
@@ -195,14 +169,14 @@ const Home = () => {
 
               {/* Right rail */}
               <div className="hidden lg:block">
-                <MostReadRail />
+                <MostReadRail initialData={initialMostRead} />
                 <DataRail />
               </div>
             </div>
 
             {/* Mobile: right rail content at bottom */}
             <div className="lg:hidden py-6 border-t border-[#D9D9D9]">
-              <MostReadRail />
+              <MostReadRail initialData={initialMostRead} />
               <DataRail />
             </div>
           </>

@@ -1,12 +1,11 @@
 "use client";
-import { useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
 import { getCategoriesForSection } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ const Category = () => {
   const fallbackSlug = pathSegments[0] === "category" ? pathSegments[1] : pathSegments[0];
   const categoryParam = categorySlug || slug || fallbackSlug;
   const [currentPage, setCurrentPage] = useState(1);
-  const navigate = useNavigate();
 
   const categorySlugs = categoryParam ? getCategoriesForSection(categoryParam) : [];
 
@@ -107,14 +105,16 @@ const Category = () => {
           <>
             {/* Lead article */}
             {leadArticle && (
-              <article
-                className="pb-8 border-b border-[#D9D9D9] mb-6 cursor-pointer group"
-                onClick={() => navigate(`/${leadArticle.category_slug}/${leadArticle.slug}`)}
-              >
+              <article className="relative pb-8 border-b border-[#D9D9D9] mb-6 group">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h2 className="font-headline text-[28px] md:text-[34px] font-bold leading-[1.15] text-[#121212] group-hover:text-[#E3120B] transition-colors">
-                      {leadArticle.title}
+                      <Link
+                        to={`/${leadArticle.category_slug}/${leadArticle.slug}`}
+                        className="after:absolute after:inset-0 after:content-['']"
+                      >
+                        {leadArticle.title}
+                      </Link>
                     </h2>
                     {leadArticle.summary && (
                       <p className="font-serif text-[15px] text-[#5B5B5B] mt-3 leading-relaxed line-clamp-3">
@@ -143,12 +143,16 @@ const Category = () => {
               {restArticles.map((article) => (
                 <article
                   key={article.id}
-                  className="py-4 border-b border-[#D9D9D9] cursor-pointer group flex gap-4"
-                  onClick={() => navigate(`/${article.category_slug}/${article.slug}`)}
+                  className="relative py-4 border-b border-[#D9D9D9] group flex gap-4"
                 >
                   <div className="flex-1 min-w-0">
                     <h3 className="font-headline text-lg font-semibold leading-snug text-[#121212] group-hover:text-[#E3120B] transition-colors">
-                      {article.title}
+                      <Link
+                        to={`/${article.category_slug}/${article.slug}`}
+                        className="after:absolute after:inset-0 after:content-['']"
+                      >
+                        {article.title}
+                      </Link>
                     </h3>
                     {article.summary && (
                       <p className="font-serif text-sm text-[#5B5B5B] mt-1 line-clamp-1">

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format } from "date-fns";
 import { SidebarSection } from "./SidebarSection";
@@ -43,8 +43,6 @@ const formatValue = (value: number | null, unit: string, decimals: number | null
 };
 
 const DataHighlightsSidebar = () => {
-  const navigate = useNavigate();
-
   const { data: indicators, isLoading } = useQuery({
     queryKey: ["data-highlights-sidebar"],
     queryFn: async () => {
@@ -121,15 +119,15 @@ const DataHighlightsSidebar = () => {
   if (!indicators || indicators.length === 0) return null;
 
   return (
-    <SidebarSection title="Ghana Data" onViewAll={() => navigate('/data')} viewAllLabel="All data">
+    <SidebarSection title="Ghana Data" viewAllHref="/data" viewAllLabel="All data">
       <div className="space-y-0">
         {indicators.map((indicator) => {
           const positive = indicator.change !== null ? indicator.change >= 0 : null;
-          
+
           return (
-            <button
+            <Link
               key={indicator.id}
-              onClick={() => navigate(`/data/${indicator.slug}`)}
+              to={`/data/${indicator.slug}`}
               className="w-full flex items-center justify-between py-2.5 border-b border-border hover:bg-muted/30 transition-colors text-left group"
             >
               <div className="min-w-0 flex-1">
@@ -159,7 +157,7 @@ const DataHighlightsSidebar = () => {
                   </>
                 )}
               </div>
-            </button>
+            </Link>
           );
         })}
       </div>
