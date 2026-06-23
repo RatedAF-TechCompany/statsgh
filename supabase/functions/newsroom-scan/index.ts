@@ -3118,6 +3118,22 @@ Return ONLY valid JSON with these exact keys:
           const headlineLower = headline.toLowerCase();
           const hasBreakingKeyword = BREAKING_KEYWORDS.some(kw => headlineLower.includes(kw));
           const isBreaking = ageMinutes <= 30 && isTierOne && hasBreakingKeyword;
+
+          // Resolve hero image: source extract first, AI generation as fallback.
+          // fetchAndUploadImage mirrors the source image to our storage; if it fails
+          // it returns null and we fall through to AI generation — this is intentional.
+          let heroImageUrl: string | null = null;
+          const sourceImageUrl = await extractImageFromSourceHtml(sourceHtml, item.link);
+          if (sourceImageUrl) {
+            heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, uniqueSlug);
+          }
+          if (!heroImageUrl) {
+            const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
+            heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+          }
+          // If both fail, heroImageUrl stays null — article publishes imageless
+          // and backfill-images will fill it in on the next scheduled sweep.
+
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3130,7 +3146,7 @@ Return ONLY valid JSON with these exact keys:
               seo_description: generated.seo_description || null,
               body: generated.body_html,
               author_name: assignJournalist(categorySlug, uniqueSlug),
-              hero_image_url: generated.hero_image_url || null,
+              hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),
               is_published: true,
