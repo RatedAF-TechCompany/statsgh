@@ -2992,7 +2992,7 @@ Return ONLY valid JSON with these exact keys:
               headline: item.title,
               subtitle: null,
               summary: fallbackSummary,
-              seo_description: fallbackSummary.substring(0, 155),
+              seo_description: fallbackSummary.substring(0, 140),
               body_html: fallbackBody,
               slug: fallbackSlug,
               category_slug: DEFAULT_CATEGORY,
