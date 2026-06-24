@@ -1,35 +1,48 @@
-# Grant Admin Access to /admin/analytics
+## Plan: Fix the failing GitHub scheduled jobs
 
-## Current State
-- `officeofstatsgh@gmail.com` has **no account** in the database yet.
-- The `handle_new_user` trigger only auto-grants `admin` to the hardcoded master email `officeofnajib@gmail.com`. All other signups get `user` role, which cannot access `/admin/*`.
+### Problem
+The failing GitHub Actions are still calling:
 
-## Steps
-
-### 1. You sign up (required first)
-Go to `https://statsgh.com/auth`, click **"Don't have an account? Sign up"**, and register with:
-- Email: `officeofstatsgh@gmail.com`
-- Password: (your choice)
-
-This creates the `auth.users` row + a `profiles` row + a `user_roles` row with role `user`.
-
-### 2. I run a migration to promote you to admin
-Once you confirm the account is created, I'll run:
-
-```sql
-UPDATE public.user_roles
-SET role = 'admin'
-WHERE user_id = (SELECT id FROM public.profiles WHERE email = 'officeofstatsgh@gmail.com');
+```text
+${{ secrets.SUPABASE_URL }}/functions/v1/...
+Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 ```
 
-(Insert instead if no row exists.)
+In GitHub, those secrets are blank, so `curl` receives only `/functions/v1/...` and fails with:
 
-### 3. You log in
-Refresh `/auth`, log in, and you'll be redirected to `/dashboard`. `/admin/analytics` will then be accessible.
+```text
+URL rejected: No host part in the URL
+```
 
-## Out of Scope
-- No changes to the `handle_new_user` trigger or master-email logic.
-- No code changes to auth UI, routes, or RLS policies.
+### Fix
+Update the two failing workflow files:
 
-## Next Action From You
-Reply once you've signed up, and I'll run the role-promotion migration.
+1. `.github/workflows/newsroom-cron.yml`
+   - Stop depending on GitHub `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets.
+   - Call the existing public scheduled wrapper instead:
+
+```text
+https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled?token=statsgh-newsroom-2026
+```
+
+   - This wrapper already runs server-side with the internal backend credentials and then invokes `newsroom-scan`.
+
+2. `.github/workflows/bog-scan-cron.yml`
+   - Stop depending on blank GitHub secrets.
+   - Call the Lovable Cloud edge function URL directly:
+
+```text
+https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/bog-dashboard-scan
+```
+
+   - Use the publishable/anon key header instead of service-role auth, because this function has `verify_jwt = false`.
+
+3. Leave `.github/workflows/market-newsletter-cron.yml` unchanged for now
+   - It is already succeeding in your screenshot.
+
+### Validation
+After the change:
+- The GitHub curl URL will include a real host, so the “No host part in the URL” error should disappear.
+- Re-running **Newsroom Scheduled Scan** should reach `newsroom-scheduled`.
+- Re-running **BoG Dashboard Update Scanner** should reach `bog-dashboard-scan`.
+- The only remaining failures, if any, would be inside the backend functions themselves rather than GitHub secret configuration.

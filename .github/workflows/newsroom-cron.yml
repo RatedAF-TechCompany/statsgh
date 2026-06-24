@@ -13,12 +13,8 @@ jobs:
       - name: Trigger Newsroom Scan
         run: |
           curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/newsroom-scan" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled?token=statsgh-newsroom-2026" \
             -H "Content-Type: application/json" \
             -d '{"triggerType": "scheduled"}' \
             --fail-with-body \
             --max-time 300
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

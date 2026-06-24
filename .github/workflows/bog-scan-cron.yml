@@ -13,12 +13,9 @@ jobs:
       - name: Trigger BoG Dashboard Scan
         run: |
           curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/bog-dashboard-scan" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/bog-dashboard-scan" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9maGVqdHdhaWdpcXllamJ2bmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyOTE1NjUsImV4cCI6MjA3ODg2NzU2NX0.l01PfzD7KDaGQJKRoLFxoBuA46z8OsAM7F0Xc4DTLEo" \
             -H "Content-Type: application/json" \
             -d '{"triggerType": "scheduled"}' \
             --fail-with-body \
             --max-time 300
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
