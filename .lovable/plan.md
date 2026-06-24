@@ -1,9 +1,35 @@
-The user approved removing the failing `news-sitemap.xml` from both the repo and Google Search Console, keeping the working `sitemap.xml`.
+# Grant Admin Access to /admin/analytics
 
-## Actions
-1. Delete `public/news-sitemap.xml` from the project repo.
-2. Remove the `news-sitemap.xml` submission from Google Search Console via the connector gateway so only the working `sitemap.xml` remains.
+## Current State
+- `officeofstatsgh@gmail.com` has **no account** in the database yet.
+- The `handle_new_user` trigger only auto-grants `admin` to the hardcoded master email `officeofnajib@gmail.com`. All other signups get `user` role, which cannot access `/admin/*`.
 
-## Verification
-- Confirm `public/news-sitemap.xml` no longer exists.
-- Confirm GSC API call succeeds (HTTP 200 or 404, since the file may not have been successfully submitted).
+## Steps
+
+### 1. You sign up (required first)
+Go to `https://statsgh.com/auth`, click **"Don't have an account? Sign up"**, and register with:
+- Email: `officeofstatsgh@gmail.com`
+- Password: (your choice)
+
+This creates the `auth.users` row + a `profiles` row + a `user_roles` row with role `user`.
+
+### 2. I run a migration to promote you to admin
+Once you confirm the account is created, I'll run:
+
+```sql
+UPDATE public.user_roles
+SET role = 'admin'
+WHERE user_id = (SELECT id FROM public.profiles WHERE email = 'officeofstatsgh@gmail.com');
+```
+
+(Insert instead if no row exists.)
+
+### 3. You log in
+Refresh `/auth`, log in, and you'll be redirected to `/dashboard`. `/admin/analytics` will then be accessible.
+
+## Out of Scope
+- No changes to the `handle_new_user` trigger or master-email logic.
+- No code changes to auth UI, routes, or RLS policies.
+
+## Next Action From You
+Reply once you've signed up, and I'll run the role-promotion migration.
