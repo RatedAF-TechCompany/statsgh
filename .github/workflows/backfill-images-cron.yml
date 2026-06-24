@@ -1,0 +1,25 @@
+name: Backfill Missing Article Images
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 3am UTC daily
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of articles to process (default 50)'
+        required: false
+        default: '50'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backfill missing hero images
+        run: |
+          curl -X POST \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/backfill-images" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9maGVqdHdhaWdpcXllamJ2bmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyOTE1NjUsImV4cCI6MjA3ODg2NzU2NX0.l01PfzD7KDaGQJKRoLFxoBuA46z8OsAM7F0Xc4DTLEo" \
+            -H "Content-Type: application/json" \
+            -d "{\"limit\": ${{ github.event.inputs.limit || '50' }}}" \
+            --fail-with-body \
+            --max-time 300
