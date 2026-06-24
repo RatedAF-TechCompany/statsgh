@@ -38,7 +38,7 @@ const articleSchema = z.object({
   body: z.string().trim().min(1, "Article body is required").max(50000, "Article body must be less than 50,000 characters"),
   author_name: z.string().trim().min(1, "Author name is required").max(100, "Author name must be less than 100 characters"),
   hero_image_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  seo_description: z.string().trim().max(160, "SEO description must be less than 160 characters").optional(),
+  seo_description: z.string().trim().max(140, "SEO description must be 140 characters or fewer").optional(),
 });
 
 const AdminArticleEditor = () => {
@@ -298,7 +298,7 @@ const AdminArticleEditor = () => {
         video_url: videoUrl || null,
         audio_url: audioUrl || null,
         tags: tagsArray,
-        seo_description: seoDescription,
+        seo_description: (seoDescription || "").substring(0, 140),
         status,
         scheduled_at: scheduledAt || null,
         is_published: status === "published",
