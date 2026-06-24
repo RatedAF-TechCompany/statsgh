@@ -470,7 +470,7 @@ OUTPUT (valid JSON only):
   "article_body_html": "FULL HTML article body. For lists/rankings, preserve ALL items as <h3> headings with <p> descriptions. Include an intro paragraph, then ALL list items with their details, then a conclusion. Use <h3> for item titles, <p> for details. MUST include ALL items from the source.",
   "tweet": "One sentence with at least one number, no URLs",
   "source_url": "${articleSource.sourceUrl || ""}",
-  "seo_description": "SEO meta description under 155 characters",
+  "seo_description": "SEO meta description — HARD MAX 140 characters, full sentence ending with period",
   "slug": "url-friendly-slug-lowercase-hyphens",
   "section": "A category slug like: ${PREFERRED_CATEGORIES.join(", ")} - or suggest a new one in kebab-case",
   "tags": ["array", "of", "relevant", "tags"],
@@ -617,7 +617,7 @@ Return ONLY valid JSON.`;
         published_at: isScheduled ? null : new Date().toISOString(),
         scheduled_at: isScheduled && scheduledDateTime ? scheduledDateTime.toISOString() : null,
         meta_title: custom_title ? String(custom_title).substring(0, 60) : String(articleJson.headline || "").substring(0, 60),
-        seo_description: String(articleJson.seo_description || "").substring(0, 155),
+        seo_description: String(articleJson.seo_description || "").substring(0, 140),
         twitter_post: String(articleJson.tweet || "").substring(0, 280),
       })
       .select()

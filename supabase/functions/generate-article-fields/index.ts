@@ -81,7 +81,7 @@ FIELD-SPECIFIC RULES:
 
 3. summary: Plain English, easy for anyone to understand. Maximum 400 characters.
 
-4. seo_description: Plain English. Maximum 155 characters.
+4. seo_description: Plain English. HARD MAXIMUM 140 characters. Must be a complete sentence ending with a period — never truncated mid-word.
 
 5. instagram_comment: ALWAYS exactly this text: "See full article link in bio."
 
@@ -104,7 +104,7 @@ Return ONLY valid JSON with these exact keys:
   "headline": "string",
   "subtitle": "string", 
   "summary": "string (max 400 chars)",
-  "seo_description": "string (max 155 chars)",
+  "seo_description": "string (max 140 chars)",
   "instagram_comment": "See full article link in bio.",
   "twitter_post": "string",
   "instagram_compressed": "string",
@@ -248,9 +248,9 @@ serve(async (req) => {
       generatedFields.summary = generatedFields.summary.substring(0, 397) + '...';
     }
 
-    // Ensure seo_description doesn't exceed 155 chars
-    if (generatedFields.seo_description && generatedFields.seo_description.length > 155) {
-      generatedFields.seo_description = generatedFields.seo_description.substring(0, 152) + '...';
+    // Ensure seo_description doesn't exceed 140 chars (hard limit)
+    if (generatedFields.seo_description && generatedFields.seo_description.length > 140) {
+      generatedFields.seo_description = generatedFields.seo_description.substring(0, 140);
     }
 
     console.log('Successfully generated article fields');

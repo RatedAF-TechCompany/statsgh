@@ -794,7 +794,7 @@ Return ONLY valid JSON:
         generated.headline = collapseImmediateWordRepeats(generated.headline);
         generated.summary = collapseImmediateWordRepeats(generated.summary || "");
         if (generated.summary.length > 400) generated.summary = generated.summary.substring(0, 397) + "...";
-        if (generated.seo_description?.length > 155) generated.seo_description = generated.seo_description.substring(0, 152) + "...";
+        if (generated.seo_description?.length > 140) generated.seo_description = generated.seo_description.substring(0, 140);
 
         // Validate category — default to data-and-research
         const categorySlug = PREFERRED_CATEGORIES.includes(generated.category_slug)
@@ -875,7 +875,7 @@ Return ONLY valid JSON:
             section: getSectionForCat(categorySlug),
             summary: generated.summary || "",
             subtitle: generated.subtitle || null,
-            seo_description: generated.seo_description || null,
+            seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
             body: generated.body_html,
             author_name: authorName,
             hero_image_url: heroImageUrl,
