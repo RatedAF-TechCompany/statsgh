@@ -211,7 +211,7 @@ const Categories = () => {
                 <div className="flex items-center gap-4">
                   <div
                     className="w-4 h-4 rounded"
-                    style={{ backgroundColor: category.color }}
+                    style={{ backgroundColor: category.color ?? undefined }}
                   />
                   <div>
                     <h3 className="font-semibold">{category.name}</h3>
