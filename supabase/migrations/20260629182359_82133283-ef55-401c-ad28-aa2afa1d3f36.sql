@@ -1,0 +1,1 @@
+ALTER TABLE public.tweet_scheduler_state ADD COLUMN IF NOT EXISTS min_gap_minutes integer NOT NULL DEFAULT 600;
