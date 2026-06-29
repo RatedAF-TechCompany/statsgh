@@ -129,7 +129,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                       className={`${i > 0 ? "md:border-l md:border-[#D9D9D9] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
                     >
                       <StoryItem
-                        article={a}
+                        article={a as any}
                         variant="secondary"
                         showImage={!!a.hero_image_url}
                         showSummary
