@@ -2046,6 +2046,7 @@ export type Database = {
           last_error_at: string | null
           last_posted_at: string | null
           last_posted_hash: string | null
+          min_gap_minutes: number
           posted_hashes: Json
           queue_hashes: Json
           quiet_end: string
@@ -2062,6 +2063,7 @@ export type Database = {
           last_error_at?: string | null
           last_posted_at?: string | null
           last_posted_hash?: string | null
+          min_gap_minutes?: number
           posted_hashes?: Json
           queue_hashes?: Json
           quiet_end?: string
@@ -2078,6 +2080,7 @@ export type Database = {
           last_error_at?: string | null
           last_posted_at?: string | null
           last_posted_hash?: string | null
+          min_gap_minutes?: number
           posted_hashes?: Json
           queue_hashes?: Json
           quiet_end?: string

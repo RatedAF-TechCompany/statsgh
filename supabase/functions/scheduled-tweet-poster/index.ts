@@ -365,6 +365,29 @@ serve(async (req) => {
       });
     }
 
+    // ── DAILY LIMIT GATE: max 2 tweets per 24h ──
+    {
+      const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: dailyCount } = await supabase
+        .from("articles")
+        .select("id", { count: "exact", head: true })
+        .like("twitter_post", "POSTED:%")
+        .gte("updated_at", cutoff24h);
+
+      if ((dailyCount ?? 0) >= 2) {
+        console.log(`[scheduled-tweet-poster] DAILY_LIMIT_REACHED: ${dailyCount} tweets posted in last 24h. Skipping.`);
+        await supabase.from("tweet_scheduler_logs").insert({
+          status: "skipped",
+          reason: `DAILY_LIMIT_REACHED: ${dailyCount} tweets in last 24h`,
+          cycle_id: state.cycle_id,
+        });
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "DAILY_LIMIT_REACHED", message: `${dailyCount} tweets already posted in last 24h (max 2)` }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // ── 3-HOUR MINIMUM GAP GATE ──
     if (state.last_posted_at) {
       const lastPostedMs = new Date(state.last_posted_at).getTime();
