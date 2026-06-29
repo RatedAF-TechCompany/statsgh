@@ -1,6 +1,9 @@
 import { MetadataRoute } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const BASE_URL = "https://statsgh.com";
 
 const STATIC_PAGES = [
