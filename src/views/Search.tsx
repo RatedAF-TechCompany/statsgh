@@ -15,7 +15,7 @@ interface Article {
   category_slug: string;
   summary: string;
   hero_image_url: string | null;
-  published_at: string;
+  published_at: string | null;
   section: string;
 }
 
