@@ -1,6 +1,9 @@
 import { MetadataRoute } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const BASE_URL = "https://statsgh.com";
 
 const STATIC_PAGES = [
@@ -38,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const articleEntries: MetadataRoute.Sitemap = (articles ?? []).map((article) => ({
     url: `${BASE_URL}/${article.category_slug}/${article.slug}`,
-    lastModified: article.updated_at || article.published_at,
+    lastModified: article.updated_at || article.published_at || new Date().toISOString(),
     changeFrequency: "weekly",
     priority: 0.6,
   }));
