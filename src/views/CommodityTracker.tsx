@@ -161,7 +161,7 @@ const CommodityTracker = () => {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            {CURRENCY_FLAGS[rate.base_currency] || "🌐"} {rate.base_currency} → {CURRENCY_FLAGS[rate.target_currency]} {rate.target_currency}
+                            {CURRENCY_FLAGS[rate.base_currency ?? ""] || "🌐"} {rate.base_currency} → {CURRENCY_FLAGS[rate.target_currency ?? ""]} {rate.target_currency}
                           </p>
                           <p className="text-2xl font-bold mt-1">
                             GHS {Number(rate.rate).toFixed(4)}
