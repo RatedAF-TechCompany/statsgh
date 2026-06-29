@@ -29,7 +29,7 @@ const TopicDashboard = () => {
       const { data, error } = await supabase
         .from("data_topics")
         .select("*")
-        .eq("slug", slug)
+        .eq("slug", slug!)
         .single();
 
       if (error) throw error;
