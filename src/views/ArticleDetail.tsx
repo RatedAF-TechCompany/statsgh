@@ -40,7 +40,7 @@ const ArticleDetail = () => {
       const { data, error } = await supabase
         .from("articles")
         .select("*")
-        .eq("slug", slug)
+        .eq("slug", slug!)
         .eq("is_published", true)
         .maybeSingle();
       if (error) throw error;
