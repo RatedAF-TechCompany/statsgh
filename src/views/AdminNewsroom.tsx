@@ -117,9 +117,9 @@ export default function AdminNewsroom() {
   });
 
   // Fetch generated articles with images for completed newsroom articles
-  const generatedArticleIds = runArticles
+  const generatedArticleIds: string[] = runArticles
     ?.filter(a => a.generated_article_id)
-    .map(a => a.generated_article_id) || [];
+    .map(a => a.generated_article_id as string) || [];
 
   const { data: generatedArticles } = useQuery({
     queryKey: ["generated-articles", generatedArticleIds],

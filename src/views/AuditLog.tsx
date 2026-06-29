@@ -151,7 +151,7 @@ const AuditLog = () => {
                 {auditEvents.map((event) => (
                   <TableRow key={event.id}>
                     <TableCell className="font-mono text-sm">
-                      {format(new Date(event.timestamp), "MMM dd, yyyy HH:mm:ss")}
+                      {format(new Date(event.timestamp!), "MMM dd, yyyy HH:mm:ss")}
                     </TableCell>
                     <TableCell className="text-sm">{event.user_email}</TableCell>
                     <TableCell>

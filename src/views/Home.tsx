@@ -97,7 +97,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 <div className="min-w-0 md:col-span-2">
                   {leadStory && (
                     <StoryItem
-                      article={leadStory}
+                      article={leadStory as any}
                       variant="lead"
                       showImage
                       showSummary
@@ -109,7 +109,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 {/* Right column — stacked secondaries with thumbs */}
                 <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6">
                   {[...col2Stories, ...col3Stories].slice(0, 4).map((a) => (
-                    <StoryItem key={a.id} article={a} variant="secondary" showImage />
+                    <StoryItem key={a.id} article={a as any} variant="secondary" showImage />
                   ))}
                 </div>
               </div>
@@ -129,7 +129,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                       className={`${i > 0 ? "md:border-l md:border-[#D9D9D9] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
                     >
                       <StoryItem
-                        article={a}
+                        article={a as any}
                         variant="secondary"
                         showImage={!!a.hero_image_url}
                         showSummary
@@ -160,7 +160,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                         key={section.slug}
                         sectionLabel={section.label}
                         sectionSlug={section.slug}
-                        articles={arts}
+                        articles={arts as any}
                       />
                     );
                   });
