@@ -106,10 +106,10 @@ const ArticleDetail = () => {
     mutationFn: async () => {
       if (!session?.user?.id) { navigate("/auth"); return; }
       if (isBookmarked) {
-        const { error } = await supabase.from("bookmarks").delete().eq("user_id", session.user.id).eq("article_id", article.id);
+        const { error } = await supabase.from("bookmarks").delete().eq("user_id", session.user.id).eq("article_id", article!.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("bookmarks").insert({ user_id: session.user.id, article_id: article.id });
+        const { error } = await supabase.from("bookmarks").insert({ user_id: session.user.id, article_id: article!.id });
         if (error) throw error;
       }
     },
