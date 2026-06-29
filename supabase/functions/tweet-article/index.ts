@@ -260,6 +260,24 @@ serve(async (req) => {
       });
     }
 
+    // ── DAILY LIMIT GATE: max 2 tweets per 24h ──
+    {
+      const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: dailyCount } = await supabase
+        .from("articles")
+        .select("id", { count: "exact", head: true })
+        .like("twitter_post", "POSTED:%")
+        .gte("updated_at", cutoff24h);
+
+      if ((dailyCount ?? 0) >= 2) {
+        console.log(`[tweet-article] DAILY_LIMIT_REACHED: ${dailyCount} tweets posted in last 24h. Skipping article ${articleId}.`);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "DAILY_LIMIT_REACHED", message: `${dailyCount} tweets already posted in last 24h (max 2)` }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // ── GATE 5 (V5.0): 3-HOUR SOURCE FRESHNESS GATE ──
     // Articles whose ORIGINAL SOURCE was published more than 3 hours ago
     // are not tweeted — discard immediately. This is in addition to the
