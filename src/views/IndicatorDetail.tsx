@@ -79,7 +79,7 @@ const IndicatorDetail = () => {
           topic:data_topics(id, name, slug),
           default_geography:geographies!indicators_default_geography_id_fkey(id, name, code)
         `)
-        .eq("slug", slug)
+        .eq("slug", slug!)
         .maybeSingle();
 
       if (error) throw error;
