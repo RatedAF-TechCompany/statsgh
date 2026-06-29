@@ -160,7 +160,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                         key={section.slug}
                         sectionLabel={section.label}
                         sectionSlug={section.slug}
-                        articles={arts}
+                        articles={arts as any}
                       />
                     );
                   });
