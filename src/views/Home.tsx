@@ -97,7 +97,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 <div className="min-w-0 md:col-span-2">
                   {leadStory && (
                     <StoryItem
-                      article={leadStory}
+                      article={leadStory as any}
                       variant="lead"
                       showImage
                       showSummary
