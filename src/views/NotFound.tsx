@@ -17,7 +17,7 @@ const NotFound = () => {
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="text-center">
         <img
-          src={statsghLogo}
+          src={statsghLogo.src}
           alt="StatsGH"
           className="mx-auto mb-6 h-16 w-16 object-contain"
         />
