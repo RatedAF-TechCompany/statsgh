@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "build:dev": "next build",
-    "start": "next start",
+    "dev": "vite --host 0.0.0.0 --port 8080",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "start": "vite preview --host 0.0.0.0 --port 8080",
     "lint": "next lint"
   },
   "dependencies": {
