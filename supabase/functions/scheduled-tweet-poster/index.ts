@@ -260,6 +260,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "scheduled";
     const overrideQuiet = body.override_quiet === true;
+    const forceTest = body.force_test === true;
 
     // ── Save tweets action ──
     if (action === "save_tweets") {
@@ -366,7 +367,7 @@ serve(async (req) => {
     }
 
     // ── DAILY LIMIT GATE: max 2 tweets per 24h ──
-    {
+    if (!forceTest) {
       const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count: dailyCount } = await supabase
         .from("articles")
@@ -389,7 +390,7 @@ serve(async (req) => {
     }
 
     // ── 3-HOUR MINIMUM GAP GATE ──
-    if (state.last_posted_at) {
+    if (!forceTest && state.last_posted_at) {
       const lastPostedMs = new Date(state.last_posted_at).getTime();
       const elapsedMinutes = (Date.now() - lastPostedMs) / 60000;
       if (elapsedMinutes < 180) {
