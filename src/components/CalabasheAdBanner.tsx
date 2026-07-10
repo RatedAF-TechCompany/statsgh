@@ -12,7 +12,7 @@ const CalabasheAdBanner = () => (
       className="block"
     >
       <img
-        src={calabasheAd}
+        src={calabasheAd.src}
         alt="Got a Ghanaian doctor you'd recommend for others? Leave a review on Calabashe.com"
         className="w-full max-w-2xl mx-auto rounded-md"
       />
