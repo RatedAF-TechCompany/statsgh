@@ -260,6 +260,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "scheduled";
     const overrideQuiet = body.override_quiet === true;
+    const forceTest = body.force_test === true;
 
     // ── Save tweets action ──
     if (action === "save_tweets") {
