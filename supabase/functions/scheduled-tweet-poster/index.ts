@@ -367,7 +367,7 @@ serve(async (req) => {
     }
 
     // ── DAILY LIMIT GATE: max 2 tweets per 24h ──
-    {
+    if (!forceTest) {
       const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count: dailyCount } = await supabase
         .from("articles")
