@@ -390,7 +390,7 @@ serve(async (req) => {
     }
 
     // ── 3-HOUR MINIMUM GAP GATE ──
-    if (state.last_posted_at) {
+    if (!forceTest && state.last_posted_at) {
       const lastPostedMs = new Date(state.last_posted_at).getTime();
       const elapsedMinutes = (Date.now() - lastPostedMs) / 60000;
       if (elapsedMinutes < 180) {
