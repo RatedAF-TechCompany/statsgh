@@ -2935,40 +2935,33 @@ Return ONLY valid JSON with these exact keys:
 
           const aiModel = "google/gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}) for article restructuring...`);
-          const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${lovableApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: aiModel,
-              messages: [
-                { role: "user", content: aiPrompt },
-              ],
-            }),
-          });
+
+          const { callGateway, parseJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
 
           let useRssFallback = false;
-
-          if (!aiResp.ok) {
-            const errText = await aiResp.text();
-            console.log(`AI call failed (${aiResp.status}): ${errText.substring(0, 200)} — using RSS fallback`);
-            useRssFallback = true;
-          }
-
           let aiContent: string | null = null;
-          if (!useRssFallback) {
-            const aiData = await aiResp.json();
-            aiContent = aiData.choices?.[0]?.message?.content;
-
-            if (!aiContent) {
-              console.log("Empty AI response — using RSS fallback");
-              useRssFallback = true;
-            } else if (aiContent.trim().toLowerCase().startsWith("rejected")) {
-              console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — using RSS fallback instead of dropping`);
+          try {
+            const res = await callGateway({
+              model: aiModel,
+              messages: [{ role: "user", content: aiPrompt }],
+              max_tokens: 1800,
+              temperature: 0.3,
+              json: true,
+              usage: (globalThis as any).__nrUsage,
+            });
+            aiContent = res.content;
+            if (!aiContent) useRssFallback = true;
+            else if (aiContent.trim().toLowerCase().startsWith("rejected")) {
+              console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — using RSS fallback`);
               useRssFallback = true;
             }
+          } catch (err) {
+            if (err instanceof GatewayHaltError) {
+              console.log(`⛔ Halt (${err.reason}) — leaving remaining items PENDING`);
+              break;
+            }
+            console.log(`AI call failed: ${(err as Error).message} — using RSS fallback`);
+            useRssFallback = true;
           }
 
           // Parse JSON from AI response OR build RSS fallback
@@ -2987,7 +2980,7 @@ Return ONLY valid JSON with these exact keys:
             const fallbackSummary = item.description
               ? item.description.substring(0, 300)
               : item.title;
-            
+
             generated = {
               headline: item.title,
               subtitle: null,
@@ -3004,20 +2997,30 @@ Return ONLY valid JSON with these exact keys:
             console.log(`📋 RSS fallback article: "${item.title.substring(0, 60)}..."`);
           } else {
             try {
-              const jsonMatch = aiContent!.match(/\{[\s\S]*\}/);
-              if (!jsonMatch) throw new Error("No JSON found");
-              generated = JSON.parse(jsonMatch[0]);
+              generated = parseJson(aiContent!);
             } catch (parseErr) {
-              // Parse failed — use RSS fallback instead of dropping
-              console.log(`AI JSON parse failed, using RSS fallback: ${parseErr}`);
-              const fallbackSlug = item.title
-                .toLowerCase()
-                .replace(/[^a-z0-9\s]/g, "")
-                .replace(/\s+/g, "-")
-                .substring(0, 80);
-              const fallbackBody = item.description
-                ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
-                : `<p>${item.title}</p>`;
+              // One retry with a larger cap before falling back
+              console.log(`AI JSON parse failed; retrying once at 2200 tokens: ${parseErr}`);
+              try {
+                const retry = await callGateway({
+                  model: aiModel,
+                  messages: [{ role: "user", content: aiPrompt }],
+                  max_tokens: 2200,
+                  temperature: 0.3,
+                  json: true,
+                  usage: (globalThis as any).__nrUsage,
+                });
+                generated = parseJson(retry.content);
+              } catch (retryErr) {
+                console.log(`Retry also failed, using RSS fallback: ${retryErr}`);
+                const fallbackSlug = item.title
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s]/g, "")
+                  .replace(/\s+/g, "-")
+                  .substring(0, 80);
+                const fallbackBody = item.description
+                  ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
+                  : `<p>${item.title}</p>`;
               const fallbackSummary = item.description
                 ? item.description.substring(0, 300)
                 : item.title;
