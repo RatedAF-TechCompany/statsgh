@@ -2071,6 +2071,9 @@ serve(async (req) => {
 
     console.log(`Started newsroom run: ${run.id}, timeWindow: ${timeWindowHours}h, targetSource: ${targetSource || 'all'}`);
 
+    // Per-run AI usage tracker (Phase 2 cost visibility)
+    (globalThis as any).__nrUsage = { ai_calls: 0, prompt_tokens: 0, completion_tokens: 0, estimated_cost: 0, json_parse_failures: 0 };
+
     // ============================================
     // FETCH RSS FEEDS FROM ALL SOURCES
     // ============================================
