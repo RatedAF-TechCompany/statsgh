@@ -68,6 +68,45 @@ export type Database = {
         }
         Relationships: []
       }
+      article_entities: {
+        Row: {
+          article_id: string
+          created_at: string
+          entity_id: string
+          id: string
+          mention_count: number
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          entity_id: string
+          id?: string
+          mention_count?: number
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          entity_id?: string
+          id?: string
+          mention_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_entities_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "article_entities_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       article_indicators: {
         Row: {
           article_id: string
@@ -260,6 +299,8 @@ export type Database = {
       }
       articles: {
         Row: {
+          article_scenarios: Json | null
+          article_type: string
           audio_url: string | null
           author_id: string | null
           author_name: string
@@ -278,6 +319,7 @@ export type Database = {
           is_most_read: boolean
           is_published: boolean
           is_wire: boolean
+          key_data: Json
           meta_title: string | null
           published_at: string | null
           scheduled_at: string | null
@@ -296,6 +338,8 @@ export type Database = {
           word_count: number | null
         }
         Insert: {
+          article_scenarios?: Json | null
+          article_type?: string
           audio_url?: string | null
           author_id?: string | null
           author_name: string
@@ -314,6 +358,7 @@ export type Database = {
           is_most_read?: boolean
           is_published?: boolean
           is_wire?: boolean
+          key_data?: Json
           meta_title?: string | null
           published_at?: string | null
           scheduled_at?: string | null
@@ -332,6 +377,8 @@ export type Database = {
           word_count?: number | null
         }
         Update: {
+          article_scenarios?: Json | null
+          article_type?: string
           audio_url?: string | null
           author_id?: string | null
           author_name?: string
@@ -350,6 +397,7 @@ export type Database = {
           is_most_read?: boolean
           is_published?: boolean
           is_wire?: boolean
+          key_data?: Json
           meta_title?: string | null
           published_at?: string | null
           scheduled_at?: string | null
@@ -1167,6 +1215,39 @@ export type Database = {
         }
         Relationships: []
       }
+      entities: {
+        Row: {
+          created_at: string
+          description: string | null
+          entity_type: string
+          first_seen_at: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entity_type: string
+          first_seen_at?: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entity_type?: string
+          first_seen_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       geographies: {
         Row: {
           code: string | null
@@ -1909,6 +1990,7 @@ export type Database = {
           fallback_rss_url: string | null
           id: string
           is_active: boolean | null
+          is_primary_data: boolean
           last_error_at: string | null
           last_error_message: string | null
           last_item_at: string | null
@@ -1927,6 +2009,7 @@ export type Database = {
           fallback_rss_url?: string | null
           id?: string
           is_active?: boolean | null
+          is_primary_data?: boolean
           last_error_at?: string | null
           last_error_message?: string | null
           last_item_at?: string | null
@@ -1945,6 +2028,7 @@ export type Database = {
           fallback_rss_url?: string | null
           id?: string
           is_active?: boolean | null
+          is_primary_data?: boolean
           last_error_at?: string | null
           last_error_message?: string | null
           last_item_at?: string | null
