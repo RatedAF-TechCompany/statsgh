@@ -148,70 +148,32 @@ serve(async (req) => {
 
     console.log('Calling Lovable AI for article generation...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const { callGatewayJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
+
+    let generatedFields: any;
+    try {
+      generatedFields = await callGatewayJson({
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          { role: 'user', content: userPrompt },
         ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        max_tokens: 1800,
+        temperature: 0.3,
+      });
+    } catch (err) {
+      if (err instanceof GatewayHaltError) {
+        const status = err.reason === 'credits_exhausted' ? 402 : 429;
+        const msg = err.reason === 'credits_exhausted'
+          ? 'AI credits exhausted. Please add credits to continue.'
+          : 'Rate limit exceeded. Please try again later.';
+        return new Response(JSON.stringify({ error: msg }), {
+          status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+      console.error('AI generation failed:', err);
       return new Response(
         JSON.stringify({ error: 'Failed to generate article fields' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      console.error('No content in AI response');
-      return new Response(
-        JSON.stringify({ error: 'No response from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('AI response received:', content.substring(0, 200));
-
-    // Parse the JSON response from AI
-    let generatedFields;
-    try {
-      // Extract JSON from response (handle potential markdown code blocks)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      generatedFields = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError, content);
-      return new Response(
-        JSON.stringify({ error: 'Failed to parse AI response' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
