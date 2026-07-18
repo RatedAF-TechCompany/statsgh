@@ -2948,7 +2948,7 @@ Return ONLY valid JSON with these exact keys:
             const res = await callGateway({
               model: aiModel,
               messages: [{ role: "user", content: aiPrompt }],
-              max_tokens: 1800,
+              max_tokens: 1500,
               temperature: 0.3,
               json: true,
               usage: (globalThis as any).__nrUsage,
