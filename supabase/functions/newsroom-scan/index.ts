@@ -1895,7 +1895,7 @@ serve(async (req) => {
     // ============================================
     const { data: dbSources } = await supabase
       .from("newsroom_sources")
-      .select("name, rss_url, priority_tier, last_success_at, is_active")
+      .select("name, rss_url, priority_tier, last_success_at, is_active, is_primary_data")
       .eq("is_active", true)
       .order("last_success_at", { ascending: true, nullsFirst: true });
 
