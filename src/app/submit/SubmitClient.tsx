@@ -23,15 +23,12 @@ export default function SubmitClient() {
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("newsroom_candidates").insert({
-        title: title || content.slice(0, 80),
-        content: content,
-        source_name: `Expert: ${authorName}`,
-        source_url: null,
+      const { error } = await supabase.from("expert_submissions").insert({
         author_name: authorName,
         author_bio: authorBio || null,
-        status: "expert_pending",
-        submitted_at: new Date().toISOString(),
+        title: title || null,
+        content,
+        status: "pending",
       } as any);
       if (error) throw error;
       setSubmitted(true);
