@@ -482,30 +482,35 @@ IMPORTANT: The "article_body_html" field must contain the COMPLETE article with 
 
 Return ONLY valid JSON.`;
 
-    const articleResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: "You are a professional business journalist. Return only valid JSON. No markdown formatting." },
-        { role: "user", content: articlePrompt },
-      ],
-      max_tokens: 3000,
-      temperature: 0.5,
-    });
+    const { parseJson } = await import("../_shared/ai-gateway.ts");
+
+    let articleResponse;
+    try {
+      articleResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a professional business journalist. Return only valid JSON. No markdown formatting." },
+          { role: "user", content: articlePrompt },
+        ],
+        max_tokens: 3000,
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+      });
+    } catch (err: any) {
+      const status = err?.status ?? 500;
+      if (status === 402 || status === 429) {
+        return new Response(JSON.stringify({
+          error: status === 402 ? "AI credits exhausted" : "Rate limit exceeded",
+        }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      throw err;
+    }
 
     const articleContent = articleResponse.choices[0]?.message?.content || "";
 
     let articleJson: any;
     try {
-      let jsonStr = articleContent;
-      const jsonMatch = articleContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (objMatch) {
-        jsonStr = objMatch[0];
-      }
-      articleJson = JSON.parse(jsonStr);
+      articleJson = parseJson(articleContent);
     } catch {
       return new Response(JSON.stringify({ error: "Failed to generate article - invalid AI response" }), {
         status: 500,
