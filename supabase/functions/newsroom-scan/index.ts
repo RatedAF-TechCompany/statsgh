@@ -275,7 +275,8 @@ PASS criteria (any one):
 - Involves large monetary values (GHS, USD)
 - Signals structural reform or economic risk
 
-FAIL criteria:
+FAIL criteria (any one):
+- No clear Ghana angle (must involve Ghana, a Ghanaian entity, or direct impact on Ghana's economy)
 - Crime stories without economic data
 - Political rhetoric/gossip without policy data
 - Entertainment, sports, celebrity news
@@ -2071,6 +2072,39 @@ serve(async (req) => {
 
     console.log(`Started newsroom run: ${run.id}, timeWindow: ${timeWindowHours}h, targetSource: ${targetSource || 'all'}`);
 
+    // ============================================
+    // MONTHLY BUDGET GUARD (£25/mo ≈ $31.50 USD)
+    // If <$2 remains this calendar month, halt before spending more.
+    // Bypassed for manual reprocess and forced runs.
+    // ============================================
+    const MONTHLY_BUDGET_USD = 31.5;
+    const MIN_REMAINING_USD = 2.0;
+    if (triggerType === "scheduled") {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const { data: monthRuns } = await supabase
+        .from("newsroom_runs")
+        .select("estimated_cost")
+        .gte("created_at", monthStart.toISOString());
+      const spent = (monthRuns || []).reduce((s: number, r: any) => s + Number(r.estimated_cost || 0), 0);
+      const remaining = MONTHLY_BUDGET_USD - spent;
+      console.log(`💰 Budget: spent $${spent.toFixed(3)} / $${MONTHLY_BUDGET_USD} — remaining $${remaining.toFixed(3)}`);
+      if (remaining < MIN_REMAINING_USD) {
+        await supabase.from("newsroom_runs").update({
+          status: "halted",
+          error_message: `Budget guard: only $${remaining.toFixed(3)} left this month`,
+        }).eq("id", run.id);
+        return new Response(JSON.stringify({
+          success: false,
+          halted: true,
+          reason: "budget_exhausted",
+          spent_usd: spent,
+          remaining_usd: remaining,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // Per-run AI usage tracker (Phase 2 cost visibility)
     (globalThis as any).__nrUsage = { ai_calls: 0, prompt_tokens: 0, completion_tokens: 0, estimated_cost: 0, json_parse_failures: 0 };
 
@@ -2947,7 +2981,7 @@ Return ONLY valid JSON with these exact keys:
             const res = await callGateway({
               model: aiModel,
               messages: [{ role: "user", content: aiPrompt }],
-              max_tokens: 1800,
+              max_tokens: 1500,
               temperature: 0.3,
               json: true,
               usage: (globalThis as any).__nrUsage,
@@ -3137,8 +3171,20 @@ Return ONLY valid JSON with these exact keys:
             heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, uniqueSlug);
           }
           if (!heroImageUrl) {
-            const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-            heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+            // FLAGSHIP-ONLY AI image generation (budget guard).
+            // Only breaking news OR articles tagged "economic-impact-high" spend
+            // AI image credits (~$0.15/image). Routine news publishes imageless
+            // and backfill-images fills in a stock/free image later.
+            const tagList = Array.isArray(generated.tags)
+              ? generated.tags.map((t: string) => String(t).toLowerCase())
+              : (generated.tags ? String(generated.tags).toLowerCase().split(",").map((t: string) => t.trim()) : []);
+            const isFlagship = isBreaking || tagList.includes("economic-impact-high") || tagList.includes("breaking");
+            if (isFlagship) {
+              const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
+              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+            } else {
+              console.log(`⏭️  Skipping AI image (non-flagship): "${item.title.substring(0, 60)}"`);
+            }
           }
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
