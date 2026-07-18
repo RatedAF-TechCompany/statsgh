@@ -239,6 +239,24 @@ serve(async (req) => {
     // ── Batch mode: tweet multiple articles with delays ──
     if (articleIds && Array.isArray(articleIds) && articleIds.length > 0) {
       const results: Array<{ articleId: string; success: boolean; skipped?: boolean; message?: string; tweetId?: string; error?: string }> = [];
+
+      // ── Pre-fetch all articles and batch-condense in ONE AI call ──
+      const { data: preArts } = await supabase
+        .from("articles")
+        .select("id, title, twitter_post, summary")
+        .in("id", articleIds);
+      const preMap = new Map<string, any>((preArts || []).map((a: any) => [a.id, a]));
+      const toCondense: Array<{ id: string; text: string }> = [];
+      for (const aid of articleIds) {
+        const a = preMap.get(aid);
+        if (!a || a.twitter_post?.startsWith("POSTED:")) continue;
+        const raw = ((a.twitter_post || a.title) as string).replace(/https?:\/\/[^\s]+/g, "").replace(/www\.[^\s]+/g, "").trim();
+        if (raw.length > 150 || !isCompleteSentence(raw)) {
+          toCondense.push({ id: aid, text: `${a.title}. ${a.summary || ""}`.substring(0, 800) });
+        }
+      }
+      const condensedMap = await batchCondenseTweets(toCondense);
+
       
       for (let i = 0; i < articleIds.length; i++) {
         const aid = articleIds[i];
