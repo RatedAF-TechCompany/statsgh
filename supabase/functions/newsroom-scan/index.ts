@@ -3038,7 +3038,10 @@ Return ONLY valid JSON with these exact keys:
                 twitter_post: null,
                 instagram_post: null,
               };
+              }
             }
+
+
 
             // Validate required fields — fallback if missing
             if (!generated.headline || !generated.body_html || !generated.slug) {
