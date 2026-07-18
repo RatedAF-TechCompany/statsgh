@@ -2971,8 +2971,13 @@ Return ONLY valid JSON with these exact keys:
 "author_name": "",
 "tags": [],
 "twitter_post": "",
-"instagram_post": ""
-}`;
+"instagram_post": "",
+"key_data": [{"label":"GDP growth","value":"3.2","unit":"%","context":"Q2 2026"}],
+"entities": [{"name":"Bank of Ghana","type":"ministry"},{"name":"Ernest Addison","type":"person"}]
+}
+
+KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, prices, volumes, growth figures). Each item must have a specific numeric value. Skip if the article has no quantitative substance.
+ENTITIES RULES: Extract named entities that appear in the article. type must be one of: person, company, ministry, law, indicator, organization. 3-8 items typical. Skip generic terms like "government" or "citizens".`;
 
           const aiModel = "google/gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}) for article restructuring...`);
