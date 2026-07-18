@@ -2072,6 +2072,39 @@ serve(async (req) => {
 
     console.log(`Started newsroom run: ${run.id}, timeWindow: ${timeWindowHours}h, targetSource: ${targetSource || 'all'}`);
 
+    // ============================================
+    // MONTHLY BUDGET GUARD (£25/mo ≈ $31.50 USD)
+    // If <$2 remains this calendar month, halt before spending more.
+    // Bypassed for manual reprocess and forced runs.
+    // ============================================
+    const MONTHLY_BUDGET_USD = 31.5;
+    const MIN_REMAINING_USD = 2.0;
+    if (triggerType === "scheduled") {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const { data: monthRuns } = await supabase
+        .from("newsroom_runs")
+        .select("estimated_cost")
+        .gte("created_at", monthStart.toISOString());
+      const spent = (monthRuns || []).reduce((s: number, r: any) => s + Number(r.estimated_cost || 0), 0);
+      const remaining = MONTHLY_BUDGET_USD - spent;
+      console.log(`💰 Budget: spent $${spent.toFixed(3)} / $${MONTHLY_BUDGET_USD} — remaining $${remaining.toFixed(3)}`);
+      if (remaining < MIN_REMAINING_USD) {
+        await supabase.from("newsroom_runs").update({
+          status: "halted",
+          error_message: `Budget guard: only $${remaining.toFixed(3)} left this month`,
+        }).eq("id", run.id);
+        return new Response(JSON.stringify({
+          success: false,
+          halted: true,
+          reason: "budget_exhausted",
+          spent_usd: spent,
+          remaining_usd: remaining,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // Per-run AI usage tracker (Phase 2 cost visibility)
     (globalThis as any).__nrUsage = { ai_calls: 0, prompt_tokens: 0, completion_tokens: 0, estimated_cost: 0, json_parse_failures: 0 };
 
