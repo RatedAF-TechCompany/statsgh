@@ -2073,6 +2073,44 @@ export type Database = {
         }
         Relationships: []
       }
+      tweet_schedule_log: {
+        Row: {
+          article_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          status: string
+          tweet_id: string | null
+          tweet_text: string | null
+        }
+        Insert: {
+          article_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          status: string
+          tweet_id?: string | null
+          tweet_text?: string | null
+        }
+        Update: {
+          article_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          status?: string
+          tweet_id?: string | null
+          tweet_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tweet_schedule_log_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tweet_scheduler_logs: {
         Row: {
           category: string | null
