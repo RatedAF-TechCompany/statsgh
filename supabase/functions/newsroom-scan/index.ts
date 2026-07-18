@@ -3260,10 +3260,16 @@ Return ONLY valid JSON with these exact keys:
     }
 
     // Complete run metadata
+    const nrUsage = (globalThis as any).__nrUsage || {};
     await supabase.from("newsroom_runs").update({
       status: "completed",
       articles_created: publishedCount,
       completed_at: new Date().toISOString(),
+      ai_calls: nrUsage.ai_calls ?? 0,
+      prompt_tokens: nrUsage.prompt_tokens ?? 0,
+      completion_tokens: nrUsage.completion_tokens ?? 0,
+      estimated_cost: nrUsage.estimated_cost ?? 0,
+      json_parse_failures: nrUsage.json_parse_failures ?? 0,
       metadata: { 
         method: "rss-feeds-v3-optimized", 
         sources_checked: cappedSources.length, 
