@@ -228,6 +228,25 @@ const ArticleContent = ({ article }: { article: any }) => {
             </figure>
           )}
 
+          {/* Key Data */}
+          {Array.isArray((article as any).key_data) && (article as any).key_data.length > 0 && (
+            <aside className="mb-10 border-l-4 border-[#E3120B] bg-[#FAF7F2] p-5">
+              <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B] mb-4">Key Data</h2>
+              <ul className="space-y-3">
+                {(article as any).key_data.map((k: any, i: number) => (
+                  <li key={i} className="flex flex-col">
+                    <span className="font-mono text-2xl font-bold text-[#121212]">
+                      {k.value}{k.unit ? ` ${k.unit}` : ""}
+                    </span>
+                    <span className="font-ui text-sm text-[#5B5B5B]">
+                      {k.label}{k.context ? ` — ${k.context}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
+
           {/* Article Body */}
           <section
             data-article-body="true"
