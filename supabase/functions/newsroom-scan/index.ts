@@ -1895,7 +1895,7 @@ serve(async (req) => {
     // ============================================
     const { data: dbSources } = await supabase
       .from("newsroom_sources")
-      .select("name, rss_url, priority_tier, last_success_at, is_active")
+      .select("name, rss_url, priority_tier, last_success_at, is_active, is_primary_data")
       .eq("is_active", true)
       .order("last_success_at", { ascending: true, nullsFirst: true });
 
@@ -2662,7 +2662,11 @@ serve(async (req) => {
 
     // Build tier map for priority sorting and dedup
     const sourceTierMap = new Map<string, number>();
-    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+    const sourcePrimaryMap = new Map<string, boolean>();
+    for (const s of activeDbSources) {
+      sourceTierMap.set(s.name, s.priority_tier || 5);
+      sourcePrimaryMap.set(s.name, !!s.is_primary_data);
+    }
 
     // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
     qualifyingArticles.sort((a, b) => {
@@ -2967,8 +2971,13 @@ Return ONLY valid JSON with these exact keys:
 "author_name": "",
 "tags": [],
 "twitter_post": "",
-"instagram_post": ""
-}`;
+"instagram_post": "",
+"key_data": [{"label":"GDP growth","value":"3.2","unit":"%","context":"Q2 2026"}],
+"entities": [{"name":"Bank of Ghana","type":"ministry"},{"name":"Ernest Addison","type":"person"}]
+}
+
+KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, prices, volumes, growth figures). Each item must have a specific numeric value. Skip if the article has no quantitative substance.
+ENTITIES RULES: Extract named entities that appear in the article. type must be one of: person, company, ministry, law, indicator, organization. 3-8 items typical. Skip generic terms like "government" or "citizens".`;
 
           const aiModel = "google/gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}) for article restructuring...`);
@@ -3185,6 +3194,18 @@ Return ONLY valid JSON with these exact keys:
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
 
+          const isPrimaryData = sourcePrimaryMap.get(item.source_name) === true;
+          const cleanKeyData = Array.isArray(generated.key_data)
+            ? generated.key_data
+                .filter((k: any) => k && typeof k === "object" && k.label && k.value != null)
+                .slice(0, 8)
+            : [];
+          const rawEntities = Array.isArray(generated.entities)
+            ? generated.entities
+                .filter((e: any) => e && typeof e === "object" && typeof e.name === "string" && e.name.trim().length > 1)
+                .slice(0, 10)
+            : [];
+
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3209,6 +3230,8 @@ Return ONLY valid JSON with these exact keys:
               twitter_post: generated.twitter_post || null,
               instagram_comment: generated.instagram_post || "See full article link in bio.",
               status: "published",
+              key_data: cleanKeyData,
+              article_type: isPrimaryData ? "primary_data" : "analysis",
             })
             .select("id")
             .single();
@@ -3224,6 +3247,32 @@ Return ONLY valid JSON with these exact keys:
           }
 
           console.log(`✅ PUBLISHED: "${generated.headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+
+          // 6b. Upsert entities and link to article
+          if (rawEntities.length > 0) {
+            try {
+              const allowedTypes = new Set(["person", "company", "ministry", "law", "indicator", "organization"]);
+              for (const ent of rawEntities) {
+                const name = String(ent.name).trim().substring(0, 200);
+                const type = allowedTypes.has(ent.type) ? ent.type : "organization";
+                const entSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 100);
+                if (!entSlug) continue;
+                const { data: entRow } = await supabase
+                  .from("entities")
+                  .upsert({ slug: entSlug, name, entity_type: type }, { onConflict: "slug" })
+                  .select("id")
+                  .single();
+                if (entRow?.id) {
+                  await supabase.from("article_entities").insert({
+                    article_id: newArticle.id,
+                    entity_id: entRow.id,
+                  });
+                }
+              }
+            } catch (e) {
+              console.log(`Entity linking failed: ${e}`);
+            }
+          }
 
           // 7. Update newsroom_articles record
           await supabase.from("newsroom_articles").update({

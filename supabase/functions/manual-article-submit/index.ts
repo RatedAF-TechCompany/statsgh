@@ -263,7 +263,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { input, scheduled_at, custom_title, hero_image_url: userProvidedImage } = body;
+    const { input, scheduled_at, custom_title, hero_image_url: userProvidedImage, author_type, author_bio, author_name: overrideAuthor } = body;
     
     // Extract author attribution from input (e.g., "by Citizen Yao" or "by John Doe")
     // Pattern: look for "by [Name]" at start or end of input, or after a period/newline
@@ -615,7 +615,8 @@ Return ONLY valid JSON.`;
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
-        author_name: extractedAuthor || "StatsGH Newsroom",
+        author_name: overrideAuthor || extractedAuthor || "StatsGH Newsroom",
+        article_type: author_type === "expert" ? "expert_commentary" : undefined,
         section: categorySlug,
         status: isScheduled ? "scheduled" : "published",
         is_published: !isScheduled,
