@@ -3248,6 +3248,32 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
 
           console.log(`✅ PUBLISHED: "${generated.headline.substring(0, 60)}..." (id: ${newArticle.id})`);
 
+          // 6b. Upsert entities and link to article
+          if (rawEntities.length > 0) {
+            try {
+              const allowedTypes = new Set(["person", "company", "ministry", "law", "indicator", "organization"]);
+              for (const ent of rawEntities) {
+                const name = String(ent.name).trim().substring(0, 200);
+                const type = allowedTypes.has(ent.type) ? ent.type : "organization";
+                const entSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 100);
+                if (!entSlug) continue;
+                const { data: entRow } = await supabase
+                  .from("entities")
+                  .upsert({ slug: entSlug, name, type }, { onConflict: "slug" })
+                  .select("id")
+                  .single();
+                if (entRow?.id) {
+                  await supabase.from("article_entities").insert({
+                    article_id: newArticle.id,
+                    entity_id: entRow.id,
+                  });
+                }
+              }
+            } catch (e) {
+              console.log(`Entity linking failed: ${e}`);
+            }
+          }
+
           // 7. Update newsroom_articles record
           await supabase.from("newsroom_articles").update({
             processing_status: "completed",
