@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.submit-sitemap]
 verify_jwt = false
+
+[functions.hourly-tweet-statsgh]
+verify_jwt = false
