@@ -3171,8 +3171,20 @@ Return ONLY valid JSON with these exact keys:
             heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, uniqueSlug);
           }
           if (!heroImageUrl) {
-            const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-            heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+            // FLAGSHIP-ONLY AI image generation (budget guard).
+            // Only breaking news OR articles tagged "economic-impact-high" spend
+            // AI image credits (~$0.15/image). Routine news publishes imageless
+            // and backfill-images fills in a stock/free image later.
+            const tagList = Array.isArray(generated.tags)
+              ? generated.tags.map((t: string) => String(t).toLowerCase())
+              : (generated.tags ? String(generated.tags).toLowerCase().split(",").map((t: string) => t.trim()) : []);
+            const isFlagship = isBreaking || tagList.includes("economic-impact-high") || tagList.includes("breaking");
+            if (isFlagship) {
+              const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
+              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+            } else {
+              console.log(`⏭️  Skipping AI image (non-flagship): "${item.title.substring(0, 60)}"`);
+            }
           }
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
