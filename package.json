@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 8080",
-    "build": "next build",
-    "build:dev": "next build",
+    "build": "next build && mkdir -p dist && echo 'Next.js build - see .next/' > dist/README.txt",
+    "build:dev": "next build && mkdir -p dist && echo 'Next.js build - see .next/' > dist/README.txt",
     "start": "next start -H 0.0.0.0 -p 8080",
     "lint": "next lint"
   },
