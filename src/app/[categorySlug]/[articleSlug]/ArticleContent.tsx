@@ -255,6 +255,27 @@ const ArticleContent = ({ article }: { article: any }) => {
             dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
 
+          {/* Predictive scenarios */}
+          {Array.isArray((article as any).article_scenarios) && (article as any).article_scenarios.length > 0 && (
+            <aside className="my-10 border border-[#D9D9D9] p-6 bg-white">
+              <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B] mb-4">
+                What happens next
+              </h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                {(article as any).article_scenarios.map((s: any, i: number) => (
+                  <div key={i} className="border-l-2 border-[#E3120B] pl-4">
+                    <p className="font-ui text-[10px] uppercase tracking-[0.12em] text-[#5B5B5B]">
+                      {s.probability || "—"} probability
+                    </p>
+                    <h3 className="font-headline text-lg font-bold text-[#121212] mt-1">{s.label}</h3>
+                    {s.mechanism && <p className="font-ui text-sm text-[#5B5B5B] mt-2">{s.mechanism}</p>}
+                    {s.impact && <p className="font-ui text-sm text-[#121212] mt-2 italic">{s.impact}</p>}
+                  </div>
+                ))}
+              </div>
+            </aside>
+          )}
+
           {/* Comments */}
           <div className="mb-12">
             <CommentSection articleId={article.id} />
