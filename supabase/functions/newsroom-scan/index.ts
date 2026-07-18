@@ -2662,7 +2662,11 @@ serve(async (req) => {
 
     // Build tier map for priority sorting and dedup
     const sourceTierMap = new Map<string, number>();
-    for (const s of activeDbSources) sourceTierMap.set(s.name, s.priority_tier || 5);
+    const sourcePrimaryMap = new Map<string, boolean>();
+    for (const s of activeDbSources) {
+      sourceTierMap.set(s.name, s.priority_tier || 5);
+      sourcePrimaryMap.set(s.name, !!s.is_primary_data);
+    }
 
     // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
     qualifyingArticles.sort((a, b) => {
