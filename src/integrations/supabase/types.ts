@@ -1248,6 +1248,48 @@ export type Database = {
         }
         Relationships: []
       }
+      expert_submissions: {
+        Row: {
+          author_bio: string | null
+          author_email: string | null
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          published_article_id: string | null
+          reviewed_by: string | null
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_bio?: string | null
+          author_email?: string | null
+          author_name: string
+          content: string
+          created_at?: string
+          id?: string
+          published_article_id?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_bio?: string | null
+          author_email?: string | null
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          published_article_id?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       geographies: {
         Row: {
           code: string | null
