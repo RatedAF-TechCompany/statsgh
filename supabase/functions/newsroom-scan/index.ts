@@ -275,7 +275,8 @@ PASS criteria (any one):
 - Involves large monetary values (GHS, USD)
 - Signals structural reform or economic risk
 
-FAIL criteria:
+FAIL criteria (any one):
+- No clear Ghana angle (must involve Ghana, a Ghanaian entity, or direct impact on Ghana's economy)
 - Crime stories without economic data
 - Political rhetoric/gossip without policy data
 - Entertainment, sports, celebrity news
