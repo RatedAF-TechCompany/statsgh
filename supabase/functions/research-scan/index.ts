@@ -446,6 +446,14 @@ async function ensureCategoryExists(supabase: any, slug: string): Promise<string
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // ── DISABLED as part of £25/mo AI budget tuning (2026-07). ──
+  // Cron job unscheduled; endpoint kept as a hard no-op so any residual
+  // invocation costs nothing.
+  return new Response(
+    JSON.stringify({ success: false, disabled: true, reason: "research-scan disabled per cost optimization" }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
