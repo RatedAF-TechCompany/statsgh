@@ -1,5 +1,6 @@
 import { Search, User, LogOut, LayoutDashboard } from "lucide-react";
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";

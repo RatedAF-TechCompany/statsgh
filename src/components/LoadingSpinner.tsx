@@ -1,4 +1,5 @@
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";

@@ -1,7 +1,8 @@
 "use client";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const NotFound = () => {

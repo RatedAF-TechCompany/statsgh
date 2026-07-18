@@ -1,4 +1,5 @@
-import calabasheAd from "@/assets/calabashe-ad.png";
+import calabasheAdImport from "@/assets/calabashe-ad.png";
+const calabasheAd: string = (calabasheAdImport as any)?.src ?? (calabasheAdImport as any);
 
 const CalabasheAdBanner = () => (
   <div className="my-8">

@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { logAuditEvent } from "@/lib/audit";
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const Auth = () => {
