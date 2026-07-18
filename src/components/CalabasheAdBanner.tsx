@@ -1,4 +1,5 @@
-import calabasheAd from "@/assets/calabashe-ad.png";
+import calabasheAdImport from "@/assets/calabashe-ad.png";
+const calabasheAd: string = (calabasheAdImport as any)?.src ?? (calabasheAdImport as any);
 
 const CalabasheAdBanner = () => (
   <div className="my-8">
@@ -12,7 +13,7 @@ const CalabasheAdBanner = () => (
       className="block"
     >
       <img
-        src={calabasheAd.src}
+        src={calabasheAd}
         alt="Got a Ghanaian doctor you'd recommend for others? Leave a review on Calabashe.com"
         className="w-full max-w-2xl mx-auto rounded-md"
       />

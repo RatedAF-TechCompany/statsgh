@@ -1,7 +1,8 @@
 "use client";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const NotFound = () => {
@@ -17,7 +18,7 @@ const NotFound = () => {
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="text-center">
         <img
-          src={statsghLogo.src}
+          src={statsghLogo}
           alt="StatsGH"
           className="mx-auto mb-6 h-16 w-16 object-contain"
         />

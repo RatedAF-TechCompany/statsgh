@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { logAuditEvent } from "@/lib/audit";
-import statsghLogo from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo.png";
+const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const Auth = () => {
@@ -202,7 +203,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
-            <img src={statsghLogo.src} alt="StatsGH" className="h-10 sm:h-12" />
+            <img src={statsghLogo} alt="StatsGH" className="h-10 sm:h-12" />
             <span className="font-serif text-2xl sm:text-3xl md:text-4xl font-semibold">StatsGH</span>
           </div>
           <p className="text-muted-foreground">

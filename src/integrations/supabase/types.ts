@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_rejects: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          source_name: string | null
+          title_hash: string
+          url_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          source_name?: string | null
+          title_hash: string
+          url_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          source_name?: string | null
+          title_hash?: string
+          url_hash?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           alert_type: string
@@ -1608,13 +1635,17 @@ export type Database = {
       }
       newsroom_articles: {
         Row: {
+          attempts: number
           category_hint: string | null
           created_at: string
+          dead_letter: boolean
           dedupe_key: string | null
           error_message: string | null
           generated_article_id: string | null
           id: string
           image_style: string | null
+          last_attempt_at: string | null
+          last_error: string | null
           needs_review: boolean | null
           original_headline: string
           original_summary: string | null
@@ -1627,13 +1658,17 @@ export type Database = {
           source_url: string | null
         }
         Insert: {
+          attempts?: number
           category_hint?: string | null
           created_at?: string
+          dead_letter?: boolean
           dedupe_key?: string | null
           error_message?: string | null
           generated_article_id?: string | null
           id?: string
           image_style?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
           needs_review?: boolean | null
           original_headline: string
           original_summary?: string | null
@@ -1646,13 +1681,17 @@ export type Database = {
           source_url?: string | null
         }
         Update: {
+          attempts?: number
           category_hint?: string | null
           created_at?: string
+          dead_letter?: boolean
           dedupe_key?: string | null
           error_message?: string | null
           generated_article_id?: string | null
           id?: string
           image_style?: string | null
+          last_attempt_at?: string | null
+          last_error?: string | null
           needs_review?: boolean | null
           original_headline?: string
           original_summary?: string | null
@@ -1683,7 +1722,9 @@ export type Database = {
       }
       newsroom_candidates: {
         Row: {
+          attempts: number
           created_at: string | null
+          dead_letter: boolean
           decision: string
           dedupe_key: string | null
           dedupe_matched_article_id: string | null
@@ -1692,6 +1733,8 @@ export type Database = {
           fetched_full_text: string | null
           headline: string
           id: string
+          last_attempt_at: string | null
+          last_error: string | null
           newsroom_article_id: string | null
           numbers_found: string[] | null
           pub_date_parsed: string | null
@@ -1704,7 +1747,9 @@ export type Database = {
           source_url: string | null
         }
         Insert: {
+          attempts?: number
           created_at?: string | null
+          dead_letter?: boolean
           decision?: string
           dedupe_key?: string | null
           dedupe_matched_article_id?: string | null
@@ -1713,6 +1758,8 @@ export type Database = {
           fetched_full_text?: string | null
           headline: string
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           newsroom_article_id?: string | null
           numbers_found?: string[] | null
           pub_date_parsed?: string | null
@@ -1725,7 +1772,9 @@ export type Database = {
           source_url?: string | null
         }
         Update: {
+          attempts?: number
           created_at?: string | null
+          dead_letter?: boolean
           decision?: string
           dedupe_key?: string | null
           dedupe_matched_article_id?: string | null
@@ -1734,6 +1783,8 @@ export type Database = {
           fetched_full_text?: string | null
           headline?: string
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
           newsroom_article_id?: string | null
           numbers_found?: string[] | null
           pub_date_parsed?: string | null
@@ -1778,37 +1829,58 @@ export type Database = {
       }
       newsroom_runs: {
         Row: {
+          ai_calls: number
           articles_created: number | null
           articles_found: number | null
           completed_at: string | null
+          completion_tokens: number
           created_by: string | null
+          discovery_ran: boolean
           error_message: string | null
+          estimated_cost: number
+          halt_reason: string | null
           id: string
+          json_parse_failures: number
           metadata: Json | null
+          prompt_tokens: number
           started_at: string
           status: string
           trigger_type: string
         }
         Insert: {
+          ai_calls?: number
           articles_created?: number | null
           articles_found?: number | null
           completed_at?: string | null
+          completion_tokens?: number
           created_by?: string | null
+          discovery_ran?: boolean
           error_message?: string | null
+          estimated_cost?: number
+          halt_reason?: string | null
           id?: string
+          json_parse_failures?: number
           metadata?: Json | null
+          prompt_tokens?: number
           started_at?: string
           status?: string
           trigger_type: string
         }
         Update: {
+          ai_calls?: number
           articles_created?: number | null
           articles_found?: number | null
           completed_at?: string | null
+          completion_tokens?: number
           created_by?: string | null
+          discovery_ran?: boolean
           error_message?: string | null
+          estimated_cost?: number
+          halt_reason?: string | null
           id?: string
+          json_parse_failures?: number
           metadata?: Json | null
+          prompt_tokens?: number
           started_at?: string
           status?: string
           trigger_type?: string

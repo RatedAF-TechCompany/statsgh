@@ -722,31 +722,32 @@ Return ONLY valid JSON:
 
         console.log(`AI processing: "${item.title.substring(0, 60)}..."`);
 
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const { callGateway, parseJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
+
+        let aiContent = "";
+        try {
+          const res = await callGateway({
             model: "google/gemini-2.5-flash",
             messages: [{ role: "user", content: aiPrompt }],
-          }),
-        });
-
-        if (!aiResp.ok) {
-          const errText = await aiResp.text();
-          console.log(`AI error ${aiResp.status}: ${errText.substring(0, 200)}`);
+            max_tokens: 1800,
+            temperature: 0.3,
+            json: true,
+          });
+          aiContent = res.content;
+        } catch (err) {
+          if (err instanceof GatewayHaltError) {
+            console.log(`⛔ Halt (${err.reason}) — leaving item PENDING for next run`);
+            // do NOT mark failed on credit/rate halts — leave pending
+            break;
+          }
+          console.log(`AI error: ${(err as Error).message}`);
           await supabase.from("newsroom_articles").update({
             processing_status: "failed",
-            error_message: `AI error ${aiResp.status}`,
+            error_message: `AI error: ${(err as Error).message.substring(0, 200)}`,
           }).eq("id", newsRecord.id);
-          errors.push(`AI ${aiResp.status}: ${item.title.substring(0, 40)}`);
+          errors.push(`AI: ${item.title.substring(0, 40)}`);
           continue;
         }
-
-        const aiData = await aiResp.json();
-        const aiContent = aiData.choices?.[0]?.message?.content;
 
         if (!aiContent) {
           await supabase.from("newsroom_articles").update({
@@ -766,12 +767,10 @@ Return ONLY valid JSON:
           continue;
         }
 
-        // Parse JSON
+        // Parse JSON (no regex extraction)
         let generated: any;
         try {
-          const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) throw new Error("No JSON found");
-          generated = JSON.parse(jsonMatch[0]);
+          generated = parseJson(aiContent);
         } catch (parseErr) {
           console.log(`JSON parse error: ${parseErr}`);
           await supabase.from("newsroom_articles").update({
