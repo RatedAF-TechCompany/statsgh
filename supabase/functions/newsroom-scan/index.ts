@@ -3194,6 +3194,18 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
 
+          const isPrimaryData = sourcePrimaryMap.get(item.source_name) === true;
+          const cleanKeyData = Array.isArray(generated.key_data)
+            ? generated.key_data
+                .filter((k: any) => k && typeof k === "object" && k.label && k.value != null)
+                .slice(0, 8)
+            : [];
+          const rawEntities = Array.isArray(generated.entities)
+            ? generated.entities
+                .filter((e: any) => e && typeof e === "object" && typeof e.name === "string" && e.name.trim().length > 1)
+                .slice(0, 10)
+            : [];
+
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3218,6 +3230,8 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               twitter_post: generated.twitter_post || null,
               instagram_comment: generated.instagram_post || "See full article link in bio.",
               status: "published",
+              key_data: cleanKeyData,
+              article_type: isPrimaryData ? "primary_data" : "analysis",
             })
             .select("id")
             .single();
