@@ -301,7 +301,7 @@ Respond in this exact format, one per line:
         model: "google/gemini-2.5-flash-lite",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
-        temperature: 0.2,
+        temperature: 0.15,
         usage: (globalThis as any).__nrUsage,
       });
       content = res.content;
@@ -3171,19 +3171,15 @@ Return ONLY valid JSON with these exact keys:
             heroImageUrl = await fetchAndUploadImage(sourceImageUrl, supabase, uniqueSlug);
           }
           if (!heroImageUrl) {
-            // FLAGSHIP-ONLY AI image generation (budget guard).
-            // Only breaking news OR articles tagged "economic-impact-high" spend
-            // AI image credits (~$0.15/image). Routine news publishes imageless
-            // and backfill-images fills in a stock/free image later.
-            const tagList = Array.isArray(generated.tags)
-              ? generated.tags.map((t: string) => String(t).toLowerCase())
-              : (generated.tags ? String(generated.tags).toLowerCase().split(",").map((t: string) => t.trim()) : []);
-            const isFlagship = isBreaking || tagList.includes("economic-impact-high") || tagList.includes("breaking");
-            if (isFlagship) {
+            // BREAKING-ONLY AI image generation (final tuning).
+            // Waterfall: source → (openverse/wikimedia done later by
+            // backfill-images) → AI only when breaking=true AND no source
+            // image exists. Prevents any duplicate paid gen.
+            if (isBreaking && !sourceImageUrl) {
               const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
               heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
             } else {
-              console.log(`⏭️  Skipping AI image (non-flagship): "${item.title.substring(0, 60)}"`);
+              console.log(`⏭️  Skipping AI image (not breaking or source image exists): "${item.title.substring(0, 60)}"`);
             }
           }
           // If both fail, heroImageUrl stays null — article publishes imageless

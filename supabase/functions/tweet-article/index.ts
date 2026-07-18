@@ -25,61 +25,103 @@ function hasPresentPerfectTense(text: string): boolean {
   return first60.includes(" has ") || first60.includes(" have ");
 }
 
-async function condenseTweetText(text: string): Promise<string | null> {
-  const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_KEY) { console.error("LOVABLE_API_KEY not set"); return null; }
-  
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${LOVABLE_KEY}`, "Content-Type": "application/json" },
-           body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: `You are StatsGH, Ghana's premier data journalism account. Write a single tweet of maximum 240 characters about this article. The tweet MUST include at least one specific number, percentage, currency figure, or measurable quantity from the article.
+const TWEET_SYSTEM_PROMPT = `You are StatsGH, Ghana's premier data journalism account. Rewrite each article into a single tweet of MAX 240 characters that MUST include at least one specific number, percentage, currency figure, or measurable quantity from the article.
 
-TENSE RULE (CRITICAL — MUST FOLLOW):
-- The tweet MUST be written in present perfect tense: [Subject] has/have [past participle] [rest of sentence].
-- The subject should be the main actor in the article (a company, institution, government, country, or person).
-- Example correct form: "Ghana has secured $500 million from the World Bank for infrastructure development."
-- Example correct form: "Cocoa prices have risen 15% in Q1 2026 to $8,200 per tonne."
-- Example wrong form: "Ghana secures $500 million." (simple present — WRONG)
-- Example wrong form: "Ghana secured $500 million." (simple past — WRONG)
-- Never use simple present tense or simple past tense.
-- Always lead with the subject, then "has" or "have", then the past participle.
+TENSE (CRITICAL):
+- Must be in present perfect: [Subject] has/have [past participle] ...
+- Example: "Ghana has secured $500 million from the World Bank."
+- Example: "Cocoa prices have risen 15% in Q1 2026 to $8,200 per tonne."
+- Never simple present or simple past.
 
 RULES:
-- MUST contain at least one number, percentage, or currency figure
-- Maximum 240 characters
-- Must end with a period
+- Contains ≥1 number / % / currency
+- Max 240 chars, ends with a period
 - No emojis, hashtags, links, or dashes
-- Sentence case (not title case) — capitalize only proper nouns
-- Use "GHS" for Ghana cedi values
-- If the article contains no usable statistic, respond with SKIP
-- Output ONLY the tweet or SKIP
+- Sentence case
+- Use "GHS" for cedi
+- If no usable stat, output SKIP for that item`;
 
-Original: ${text}` }],
-          max_tokens: 100,
-          temperature: attempt === 0 ? 0.3 : 0.5,
-        }),
+async function condenseTweetText(text: string): Promise<string | null> {
+  const { callGateway, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { content } = await callGateway({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: TWEET_SYSTEM_PROMPT },
+          { role: "user", content: `Article: ${text}` },
+        ],
+        max_tokens: 100,
+        temperature: attempt === 0 ? 0.3 : 0.5,
       });
-      if (!aiRes.ok) { console.error(`AI attempt ${attempt} failed: ${aiRes.status}`); continue; }
-      const aiData = await aiRes.json();
-      const condensed = aiData.choices?.[0]?.message?.content?.trim()?.replace(/^["']|["']$/g, "");
-      console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed?.length}, complete=${condensed ? isCompleteSentence(condensed) : false}, tense=${condensed ? hasPresentPerfectTense(condensed) : false})`);
-      if (condensed && condensed.toUpperCase() === "SKIP") { console.log("AI returned SKIP — no usable stat"); return null; }
-      if (condensed && condensed.length <= 240 && isCompleteSentence(condensed)) {
-        if (!hasPresentPerfectTense(condensed)) {
-          console.log(`[tweet-article] Attempt ${attempt}: WRONG_TENSE — "${condensed}"`);
-          continue;
-        }
+      const condensed = content?.trim()?.replace(/^["']|["']$/g, "") ?? "";
+      console.log(`AI attempt ${attempt}: "${condensed}" (len=${condensed.length})`);
+      if (condensed.toUpperCase() === "SKIP") return null;
+      if (condensed.length <= 240 && isCompleteSentence(condensed)) {
+        if (!hasPresentPerfectTense(condensed)) { console.log(`WRONG_TENSE attempt ${attempt}`); continue; }
         return condensed;
       }
-
-    } catch (err) { console.error(`AI attempt ${attempt} error:`, err); }
+    } catch (err) {
+      if (err instanceof GatewayHaltError) { console.error(`condense halted: ${err.reason}`); return null; }
+      console.error(`condense error attempt ${attempt}:`, err);
+    }
   }
-  console.log("[tweet-article] condenseTweetText failed after 2 attempts (WRONG_TENSE or other)");
   return null;
+}
+
+// Batch condense — one AI call for 3-4 articles at once.
+// Cuts prompt-token overhead by ~65% vs per-article calls.
+async function batchCondenseTweets(
+  items: Array<{ id: string; text: string }>,
+): Promise<Map<string, string | null>> {
+  const results = new Map<string, string | null>();
+  if (items.length === 0) return results;
+  if (items.length === 1) {
+    results.set(items[0].id, await condenseTweetText(items[0].text));
+    return results;
+  }
+  const { callGateway, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
+  const numbered = items.map((it, i) => `${i + 1}. ${it.text.substring(0, 800)}`).join("\n\n");
+  const userPrompt = `Produce one tweet per article. Respond with exactly one line per article in the form "N: <tweet>" or "N: SKIP". No preamble.
+
+${numbered}`;
+  try {
+    const { content } = await callGateway({
+      model: "google/gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: TWEET_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+    for (const line of (content || "").split("\n")) {
+      const m = line.match(/^\s*(\d+)\s*:\s*(.+)$/);
+      if (!m) continue;
+      const idx = parseInt(m[1], 10) - 1;
+      if (idx < 0 || idx >= items.length) continue;
+      const t = m[2].trim().replace(/^["']|["']$/g, "");
+      if (t.toUpperCase() === "SKIP") { results.set(items[idx].id, null); continue; }
+      if (t.length <= 240 && isCompleteSentence(t) && hasPresentPerfectTense(t)) {
+        results.set(items[idx].id, t);
+      } else {
+        results.set(items[idx].id, null);
+      }
+    }
+    // Any missing item — fall back to per-article condense
+    for (const it of items) {
+      if (!results.has(it.id)) results.set(it.id, await condenseTweetText(it.text));
+    }
+  } catch (err) {
+    if (err instanceof GatewayHaltError) {
+      console.error(`batchCondense halted: ${err.reason}`);
+      for (const it of items) results.set(it.id, null);
+    } else {
+      console.error("batchCondense error, falling back per-article:", err);
+      for (const it of items) results.set(it.id, await condenseTweetText(it.text));
+    }
+  }
+  return results;
 }
 
 // Percent-encode per RFC 3986
@@ -197,6 +239,24 @@ serve(async (req) => {
     // ── Batch mode: tweet multiple articles with delays ──
     if (articleIds && Array.isArray(articleIds) && articleIds.length > 0) {
       const results: Array<{ articleId: string; success: boolean; skipped?: boolean; message?: string; tweetId?: string; error?: string }> = [];
+
+      // ── Pre-fetch all articles and batch-condense in ONE AI call ──
+      const { data: preArts } = await supabase
+        .from("articles")
+        .select("id, title, twitter_post, summary")
+        .in("id", articleIds);
+      const preMap = new Map<string, any>((preArts || []).map((a: any) => [a.id, a]));
+      const toCondense: Array<{ id: string; text: string }> = [];
+      for (const aid of articleIds) {
+        const a = preMap.get(aid);
+        if (!a || a.twitter_post?.startsWith("POSTED:")) continue;
+        const raw = ((a.twitter_post || a.title) as string).replace(/https?:\/\/[^\s]+/g, "").replace(/www\.[^\s]+/g, "").trim();
+        if (raw.length > 150 || !isCompleteSentence(raw)) {
+          toCondense.push({ id: aid, text: `${a.title}. ${a.summary || ""}`.substring(0, 800) });
+        }
+      }
+      const condensedMap = await batchCondenseTweets(toCondense);
+
       
       for (let i = 0; i < articleIds.length; i++) {
         const aid = articleIds[i];
@@ -213,9 +273,9 @@ serve(async (req) => {
     let text = art.twitter_post || art.title;
           text = text.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
           
-          // AI condensation with validation — no naive truncation fallback
+          // Use batch-condensed tweet when available; else fall back per-article.
           if (text.length > 150 || !isCompleteSentence(text)) {
-            const condensed = await condenseTweetText(text);
+            const condensed = condensedMap.has(aid) ? condensedMap.get(aid) : await condenseTweetText(text);
             if (condensed) {
               text = condensed;
             } else {
