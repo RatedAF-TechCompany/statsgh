@@ -3259,7 +3259,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
                 if (!entSlug) continue;
                 const { data: entRow } = await supabase
                   .from("entities")
-                  .upsert({ slug: entSlug, name, type }, { onConflict: "slug" })
+                  .upsert({ slug: entSlug, name, entity_type: type }, { onConflict: "slug" })
                   .select("id")
                   .single();
                 if (entRow?.id) {
