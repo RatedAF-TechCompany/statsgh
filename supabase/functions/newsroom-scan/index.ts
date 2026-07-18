@@ -293,27 +293,27 @@ Respond in this exact format, one per line:
 ...`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const { callGateway, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
+    let content = "";
+    try {
+      const res = await callGateway({
         model: "google/gemini-2.5-flash-lite",
         messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!resp.ok) {
-      console.log(`Batch filter AI call failed (${resp.status}), defaulting all to PASS`);
+        max_tokens: 500,
+        temperature: 0.2,
+        usage: (globalThis as any).__nrUsage,
+      });
+      content = res.content;
+    } catch (err) {
+      if (err instanceof GatewayHaltError) {
+        console.log(`Batch filter halted (${err.reason}) — defaulting all to PASS`);
+      } else {
+        console.log(`Batch filter AI call failed (${(err as Error).message}), defaulting all to PASS`);
+      }
       items.forEach(item => results.set(item.title, { pass: true, reason: "filter_unavailable" }));
       return results;
     }
 
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content || "";
-    
     // Parse response line by line
     const lines = content.split("\n").filter((l: string) => l.trim());
     for (const line of lines) {
