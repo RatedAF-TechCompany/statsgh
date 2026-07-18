@@ -273,9 +273,9 @@ serve(async (req) => {
     let text = art.twitter_post || art.title;
           text = text.replace(/https?:\/\/[^\s]+/g, '').replace(/www\.[^\s]+/g, '').trim();
           
-          // AI condensation with validation — no naive truncation fallback
+          // Use batch-condensed tweet when available; else fall back per-article.
           if (text.length > 150 || !isCompleteSentence(text)) {
-            const condensed = await condenseTweetText(text);
+            const condensed = condensedMap.has(aid) ? condensedMap.get(aid) : await condenseTweetText(text);
             if (condensed) {
               text = condensed;
             } else {
