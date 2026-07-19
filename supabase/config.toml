@@ -83,3 +83,12 @@ verify_jwt = false
 
 [functions.statsgh-tweet-validator-v2]
 verify_jwt = false
+
+[functions.tweet-batch-generator]
+verify_jwt = false
+
+[functions.tweet-hourly-poster]
+verify_jwt = false
+
+[functions.tweet-metrics-rollup]
+verify_jwt = false
