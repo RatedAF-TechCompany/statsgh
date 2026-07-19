@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.hourly-tweet-poster]
 verify_jwt = false
+
+[functions.statsgh-tweet-validator-v2]
+verify_jwt = false
