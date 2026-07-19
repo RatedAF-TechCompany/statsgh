@@ -92,3 +92,15 @@ verify_jwt = false
 
 [functions.tweet-metrics-rollup]
 verify_jwt = false
+
+[functions.editorial-tier1]
+verify_jwt = false
+
+[functions.editorial-tier2-batch]
+verify_jwt = false
+
+[functions.editorial-publish-gate]
+verify_jwt = false
+
+[functions.editorial-metrics-rollup]
+verify_jwt = false
