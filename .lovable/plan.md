@@ -1,152 +1,68 @@
+# StatsGH Efficient Twitter Pipeline
 
-# StatsGH Editorial Excellence — Implementation Plan
+One unified pipeline replaces every existing tweet function. Three stages, five new tables, three cron jobs.
 
-Budget target: keep monthly AI spend under $15/mo (down from £25 cap). All AI calls route through existing `ai-gateway.ts` with `GatewayHaltError` guard.
+## 1. Database migration (single call)
 
----
+Create these tables in `public` with GRANTs + RLS (admin read, service_role full):
 
-## Phase 1 — Foundation (Sources, Data, Entities)
+- `articles_rejected_scoring` — `article_id`, `headline`, `score int`, `reason text`, `rejected_at timestamptz default now()`
+- `articles_rejected_ai` — `article_id`, `reason text`, `rejected_at timestamptz default now()`
+- `tweet_queue` — `id uuid pk`, `article_id uuid` (unique), `tweet_text text`, `url text`, `generated_at timestamptz default now()`, `scheduled_hour int`, `posted bool default false`, `posted_at timestamptz`, `twitter_id text`, `halt_reason text`
+- `tweet_schedule_log` — `id uuid pk`, `queue_id uuid`, `article_id uuid`, `twitter_id text`, `posted_at timestamptz`, `impressions_24h int`
+- `daily_twitter_metrics` — `day date pk`, `articles_published int`, `articles_passed_keyword_gate int`, `articles_rejected_at_keyword int`, `articles_rejected_at_ai int`, `tweets_generated int`, `tweets_posted int`, `avg_engagement numeric`, `total_cost_daily numeric`
 
-### 1a. Primary source injection
-Insert 5 new rows into `newsroom_sources`, marked `priority_tier = 1` and `is_primary_data = true` (new column):
-- Bank of Ghana — Press Releases RSS
-- Ghana Statistical Service — Publications feed
-- Ghana Stock Exchange — Market announcements
-- Ministry of Finance — Publications
-- IMF Ghana Country Page
+## 2. Shared scoring library
 
-Add `is_primary_data BOOLEAN` column to `newsroom_sources` for fast-lane routing.
+`supabase/functions/_shared/tweet-scoring.ts` — pure TS module with tier-1 and tier-2 keyword sets and a `scoreArticle(title, summary)` function returning `{score, hits}`. Threshold constant `TWEET_KEYWORD_THRESHOLD = 3` (adjustable in one place).
 
-### 1b. Data-point extraction (piggyback, zero extra AI cost)
-Extend the article-generation prompt in `newsroom-scan/index.ts` to also return a `key_data[]` array (label, value, unit, context). No new AI call — same completion.
+## 3. Stage 1 — keyword gate
 
-Schema addition:
-```sql
-ALTER TABLE articles ADD COLUMN key_data JSONB DEFAULT '[]'::jsonb;
-```
+Wire into `supabase/functions/newsroom-scan/index.ts` immediately after an article is published: call `scoreArticle`. If `score >= 3`, do nothing (article stays eligible). If `score < 3`, insert into `articles_rejected_scoring`. Zero AI cost.
 
-UI: New `KeyDataSidebar.tsx` rendered in `ArticleDetail.tsx`, right column.
+## 4. Stage 2 — batch tweet generator
 
-### 1c. Named-entity graph
-New tables:
-- `entities` (id, name, slug, type: person|company|ministry|law|indicator, description, first_seen_at)
-- `article_entities` (article_id, entity_id, mention_count)
+New function `supabase/functions/tweet-batch-generator/index.ts` (`verify_jwt = false`):
 
-Same generation prompt returns `entities[]`. Upsert to `entities` by slug, insert junction rows.
+- Load published articles from the last 6h whose `id` is NOT in `tweet_queue` and NOT in `articles_rejected_scoring` and NOT in `articles_rejected_ai`.
+- Cap at 10.
+- One `callGatewayJson` call to `google/gemini-2.5-flash-lite`, `max_tokens: 800`, `temperature: 0.2`, JSON mode, with the batch prompt.
+- For each returned `{article_id, tweet, reject_reason}`: null tweet → `articles_rejected_ai`; otherwise append `[Read: {url}]` if missing, clamp to 280 chars, insert into `tweet_queue`.
+- On `GatewayHaltError` return early with halt reason.
 
-New route: `/entity/[slug]/page.tsx` — shows entity + all linked articles chronologically.
+Cron via `pg_cron` at `0 0,6,12,18 * * *`.
 
-Search: extend existing `/search` to match entity names.
+## 5. Stage 3 — hourly poster
 
----
+New function `supabase/functions/tweet-hourly-poster/index.ts` (`verify_jwt = false`):
 
-## Phase 2 — Speed (15-min lane + primary-source fast track)
+- Select the oldest `tweet_queue` row with `posted = false AND halt_reason IS NULL`.
+- Post to X v2 `POST /2/tweets` using OAuth 1.0a with the existing `TWITTER_*` secrets (reuse the signing helper already in `daily-batch-tweet-filter` / `hourly-tweet-poster`).
+- On success: update row `posted=true, posted_at=now(), twitter_id`, insert into `tweet_schedule_log`.
+- On 402/429 or network fail: set `halt_reason`, return.
 
-### 2a. Revert cron to 15-min
-```sql
-SELECT cron.unschedule(12);
-SELECT cron.schedule('newsroom-15min-scan', '*/15 * * * *', ...);
-```
-Keep tight batch filter + budget guard. Est. +$4/mo.
+Cron via `pg_cron` at `5 * * * *`.
 
-### 2b. Primary-source fast-lane (template, no AI)
-In `newsroom-scan/index.ts`: if `source.is_primary_data === true`, skip the AI batch filter AND skip AI generation. Use a templated writeup:
-> "The [source] published [title] on [date]. Key figures: [extracted data]. Full release: [link]."
+## 6. Daily metrics rollup
 
-Extract numbers via regex (`/(GHS|USD|%|billion|million|basis points)/i` + surrounding digits). Publishes in <5 min, zero AI cost.
+New function `supabase/functions/tweet-metrics-rollup/index.ts`, cron `10 0 * * *`:
 
-Add `article_type` column: `'analysis' | 'primary_data' | 'expert'`.
+- Compute yesterday's counts across the five tables and upsert into `daily_twitter_metrics`.
 
----
+## 7. Retire old functions
 
-## Phase 3 — Authority (Experts + BoG Scenarios)
+- Unschedule pg_cron jobs for `scheduled-tweet-poster`, `hourly-tweet-statsgh`, `hourly-tweet-scheduler`, `daily-batch-tweet-filter`, `hourly-tweet-poster`, `tweet-article`.
+- Leave source files in place (do not delete) so history/logs remain accessible; note in code header they are deprecated.
+- Add `[functions.tweet-batch-generator]`, `[functions.tweet-hourly-poster]`, `[functions.tweet-metrics-rollup]` blocks with `verify_jwt = false` in `supabase/config.toml`.
 
-### 3a. Expert auto-publish flow
-New public route `/submit` with form: name, title, affiliation, article body, credentials link.
+## Technical notes
 
-Extend `manual-article-submit` edge function:
-- Accept `author_type='expert'`, `author_bio`, `author_affiliation`
-- Auto-publish with `article_type='expert'` and forced tag `expert-commentary`
-- Rate limit: 3 submissions per email per week (in-function check via `articles` table)
-- Sanitize HTML (DOMPurify server-side, block scripts/iframes)
-- Render `<ExpertBadge>` on article page
+- Article URL: `https://statsgh.com/{category_slug}/{slug}/` (matches `daily-batch-tweet-filter`).
+- All AI calls route through `_shared/ai-gateway.ts` (`callGatewayJson`, `GatewayHaltError`) — no direct fetches.
+- RLS: all five tables — `authenticated` gets `SELECT` only when `public.has_role(auth.uid(),'admin')`; `service_role` gets `ALL`. No `anon` grants.
+- `tweet_queue.article_id` is unique so re-runs of the batcher are idempotent.
+- `statsgh-tweet-validator-v2` from the last turn stays available for ad-hoc admin use but is not on the cron path.
 
-### 3b. Predictive scenarios function
-New `supabase/functions/bog-rate-scenarios/index.ts`:
-- Triggered by `bog-scan-cron` when a rate-change signal is detected
-- Single AI call: `gemini-2.5-flash-lite`, max_tokens 400
-- Prompt: "Given BoG's decision to [action] rates to [X]%, generate 3 numbered scenarios for the next 90 days: (1) if held, (2) if raised 100bps, (3) if cut 100bps. Focus on GHS, inflation, borrowing."
-- Publishes as sidebar block on the source article via new `article_scenarios` JSONB column
-- Est. cost: ~$0.02/event, ~5 events/month = $0.10
+## Confirmation
 
----
-
-## Phase 4 — Distribution (Weekly Digest + Slack)
-
-### 4a. Weekly email digest
-New edge function `weekly-digest-email`:
-- Runs Sundays 07:00 UTC via `pg_cron`
-- Aggregates: top 5 articles by view_count (last 7 days) + new entities + new data points
-- Uses existing Resend integration
-- Sends to same subscriber list as daily newsletter
-
-### 4b. Slack weekly digest
-Requires **Slack App connector** (standard, workspace-owned — StatsGH posts to its own channel).
-
-New edge function `weekly-digest-slack`:
-- Runs Sundays 07:15 UTC
-- Same aggregation as email
-- Formatted as Slack blocks with article links
-- Posts via `SLACK_API_KEY` gateway
-
-I will call `standard_connectors--connect` for Slack after this plan is approved so you can pick your target channel.
-
----
-
-## Technical details
-
-### Files created
-- `src/components/KeyDataSidebar.tsx`
-- `src/components/ExpertBadge.tsx`
-- `src/app/entity/[slug]/page.tsx`
-- `src/app/submit/page.tsx`
-- `supabase/functions/bog-rate-scenarios/index.ts`
-- `supabase/functions/weekly-digest-email/index.ts`
-- `supabase/functions/weekly-digest-slack/index.ts`
-
-### Files modified
-- `supabase/functions/newsroom-scan/index.ts` — extract key_data + entities in same prompt; fast-lane for primary sources
-- `supabase/functions/manual-article-submit/index.ts` — expert flow
-- `supabase/functions/bog-scan/index.ts` — trigger scenarios function on rate change
-- `src/views/ArticleDetail.tsx` — render KeyDataSidebar, ExpertBadge, scenarios block
-- `src/views/Search.tsx` — include entities
-
-### DB migrations (one file)
-1. `ALTER TABLE newsroom_sources ADD COLUMN is_primary_data BOOLEAN DEFAULT false`
-2. `ALTER TABLE articles ADD COLUMN key_data JSONB DEFAULT '[]'`, `article_type TEXT DEFAULT 'analysis'`, `article_scenarios JSONB`
-3. `CREATE TABLE entities (…)` + GRANTs + RLS (public read, service_role write)
-4. `CREATE TABLE article_entities (…)` + GRANTs + RLS
-5. Seed 5 primary sources into `newsroom_sources`
-
-### Cron changes (via `supabase--insert`)
-- Unschedule job 12; reschedule at `*/15 * * * *`
-- Schedule `weekly-digest-email` Sun 07:00
-- Schedule `weekly-digest-slack` Sun 07:15
-
-### Cost projection (post-deployment)
-| Item | Monthly |
-|---|---|
-| 15-min scan (tight filter) | ~$10 |
-| Data + entity extraction (piggyback) | $0 |
-| Primary-source fast-lane (templated) | $0 |
-| Expert submissions | $0 (no AI) |
-| BoG scenarios (~5/mo) | $0.10 |
-| Weekly digest generation | $0.20 |
-| **Total** | **~$10.30/mo** |
-
-Within your £25 cap with ~£15 headroom for spikes.
-
-### Order of execution
-1. Migration (approval gate) → 2. Primary source seed → 3. Backend function edits (newsroom-scan, manual-submit, bog-scenarios) → 4. New digest functions → 5. Slack connector → 6. Frontend components/routes → 7. Cron updates → 8. Verify build.
-
-Ready to execute on approval.
+Reply "go" to apply the migration and ship the three functions. I will disable the old cron jobs in the same migration.

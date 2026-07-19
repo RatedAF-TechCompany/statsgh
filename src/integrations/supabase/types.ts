@@ -425,6 +425,54 @@ export type Database = {
           },
         ]
       }
+      articles_rejected_ai: {
+        Row: {
+          article_id: string
+          id: string
+          reason: string | null
+          rejected_at: string
+        }
+        Insert: {
+          article_id: string
+          id?: string
+          reason?: string | null
+          rejected_at?: string
+        }
+        Update: {
+          article_id?: string
+          id?: string
+          reason?: string | null
+          rejected_at?: string
+        }
+        Relationships: []
+      }
+      articles_rejected_scoring: {
+        Row: {
+          article_id: string
+          headline: string | null
+          id: string
+          reason: string | null
+          rejected_at: string
+          score: number
+        }
+        Insert: {
+          article_id: string
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          rejected_at?: string
+          score?: number
+        }
+        Update: {
+          article_id?: string
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          rejected_at?: string
+          score?: number
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action_type: string
@@ -801,6 +849,45 @@ export type Database = {
           tweet_id?: string | null
           tweet_text?: string
           url?: string | null
+        }
+        Relationships: []
+      }
+      daily_twitter_metrics: {
+        Row: {
+          articles_passed_keyword_gate: number
+          articles_published: number
+          articles_rejected_at_ai: number
+          articles_rejected_at_keyword: number
+          avg_engagement: number | null
+          day: string
+          total_cost_daily: number | null
+          tweets_generated: number
+          tweets_posted: number
+          updated_at: string
+        }
+        Insert: {
+          articles_passed_keyword_gate?: number
+          articles_published?: number
+          articles_rejected_at_ai?: number
+          articles_rejected_at_keyword?: number
+          avg_engagement?: number | null
+          day: string
+          total_cost_daily?: number | null
+          tweets_generated?: number
+          tweets_posted?: number
+          updated_at?: string
+        }
+        Update: {
+          articles_passed_keyword_gate?: number
+          articles_published?: number
+          articles_rejected_at_ai?: number
+          articles_rejected_at_keyword?: number
+          avg_engagement?: number | null
+          day?: string
+          total_cost_daily?: number | null
+          tweets_generated?: number
+          tweets_posted?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2232,6 +2319,45 @@ export type Database = {
           is_active?: boolean
           text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tweet_queue: {
+        Row: {
+          article_id: string
+          generated_at: string
+          halt_reason: string | null
+          id: string
+          posted: boolean
+          posted_at: string | null
+          scheduled_hour: number | null
+          tweet_text: string
+          twitter_id: string | null
+          url: string | null
+        }
+        Insert: {
+          article_id: string
+          generated_at?: string
+          halt_reason?: string | null
+          id?: string
+          posted?: boolean
+          posted_at?: string | null
+          scheduled_hour?: number | null
+          tweet_text: string
+          twitter_id?: string | null
+          url?: string | null
+        }
+        Update: {
+          article_id?: string
+          generated_at?: string
+          halt_reason?: string | null
+          id?: string
+          posted?: boolean
+          posted_at?: string | null
+          scheduled_hour?: number | null
+          tweet_text?: string
+          twitter_id?: string | null
+          url?: string | null
         }
         Relationships: []
       }
