@@ -299,6 +299,8 @@ export type Database = {
       }
       articles: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           article_scenarios: Json | null
           article_type: string
           audio_url: string | null
@@ -309,6 +311,10 @@ export type Database = {
           category_slug: string
           created_at: string
           dedupe_key: string | null
+          editorial_note: string | null
+          editorial_status: string | null
+          formula_breakdown: Json | null
+          formula_score: number | null
           hero_image_url: string | null
           id: string
           image_caption: string | null
@@ -322,6 +328,9 @@ export type Database = {
           key_data: Json
           meta_title: string | null
           published_at: string | null
+          reject_reason: string | null
+          reject_tier: string | null
+          rejected_at: string | null
           scheduled_at: string | null
           section: string
           seo_description: string | null
@@ -338,6 +347,8 @@ export type Database = {
           word_count: number | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           article_scenarios?: Json | null
           article_type?: string
           audio_url?: string | null
@@ -348,6 +359,10 @@ export type Database = {
           category_slug: string
           created_at?: string
           dedupe_key?: string | null
+          editorial_note?: string | null
+          editorial_status?: string | null
+          formula_breakdown?: Json | null
+          formula_score?: number | null
           hero_image_url?: string | null
           id?: string
           image_caption?: string | null
@@ -361,6 +376,9 @@ export type Database = {
           key_data?: Json
           meta_title?: string | null
           published_at?: string | null
+          reject_reason?: string | null
+          reject_tier?: string | null
+          rejected_at?: string | null
           scheduled_at?: string | null
           section: string
           seo_description?: string | null
@@ -377,6 +395,8 @@ export type Database = {
           word_count?: number | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           article_scenarios?: Json | null
           article_type?: string
           audio_url?: string | null
@@ -387,6 +407,10 @@ export type Database = {
           category_slug?: string
           created_at?: string
           dedupe_key?: string | null
+          editorial_note?: string | null
+          editorial_status?: string | null
+          formula_breakdown?: Json | null
+          formula_score?: number | null
           hero_image_url?: string | null
           id?: string
           image_caption?: string | null
@@ -400,6 +424,9 @@ export type Database = {
           key_data?: Json
           meta_title?: string | null
           published_at?: string | null
+          reject_reason?: string | null
+          reject_tier?: string | null
+          rejected_at?: string | null
           scheduled_at?: string | null
           section?: string
           seo_description?: string | null
@@ -1337,6 +1364,97 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      editorial_approvals: {
+        Row: {
+          approval_path: string
+          approved_at: string
+          approved_by: string | null
+          article_id: string | null
+          id: string
+          tweeted: boolean | null
+        }
+        Insert: {
+          approval_path: string
+          approved_at?: string
+          approved_by?: string | null
+          article_id?: string | null
+          id?: string
+          tweeted?: boolean | null
+        }
+        Update: {
+          approval_path?: string
+          approved_at?: string
+          approved_by?: string | null
+          article_id?: string | null
+          id?: string
+          tweeted?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editorial_approvals_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      editorial_daily_metrics: {
+        Row: {
+          date: string
+          metrics_json: Json
+          updated_at: string
+        }
+        Insert: {
+          date: string
+          metrics_json?: Json
+          updated_at?: string
+        }
+        Update: {
+          date?: string
+          metrics_json?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      editorial_rejections: {
+        Row: {
+          article_id: string | null
+          created_at: string
+          headline: string | null
+          id: string
+          reason: string | null
+          rejected_by: string | null
+          tier: string
+        }
+        Insert: {
+          article_id?: string | null
+          created_at?: string
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          rejected_by?: string | null
+          tier: string
+        }
+        Update: {
+          article_id?: string | null
+          created_at?: string
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          rejected_by?: string | null
+          tier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editorial_rejections_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entities: {
         Row: {
@@ -2674,6 +2792,10 @@ export type Database = {
       assign_journalist: {
         Args: { p_article_id: string; p_category: string }
         Returns: string
+      }
+      editor_decide_article: {
+        Args: { p_article_id: string; p_decision: string; p_note: string }
+        Returns: undefined
       }
       has_role: {
         Args: {
