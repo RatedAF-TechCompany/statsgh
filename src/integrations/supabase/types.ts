@@ -768,6 +768,42 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_tweet_queue: {
+        Row: {
+          article_id: string
+          created_at: string
+          generated_at: string
+          id: string
+          posted_at: string | null
+          scheduled_at: string | null
+          tweet_id: string | null
+          tweet_text: string
+          url: string | null
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          posted_at?: string | null
+          scheduled_at?: string | null
+          tweet_id?: string | null
+          tweet_text: string
+          url?: string | null
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          posted_at?: string | null
+          scheduled_at?: string | null
+          tweet_id?: string | null
+          tweet_text?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       dashboard_updates: {
         Row: {
           id: string
@@ -2196,6 +2232,27 @@ export type Database = {
           is_active?: boolean
           text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tweet_rejections: {
+        Row: {
+          article_id: string
+          id: string
+          reject_reason: string | null
+          rejected_at: string
+        }
+        Insert: {
+          article_id: string
+          id?: string
+          reject_reason?: string | null
+          rejected_at?: string
+        }
+        Update: {
+          article_id?: string
+          id?: string
+          reject_reason?: string | null
+          rejected_at?: string
         }
         Relationships: []
       }
