@@ -2353,6 +2353,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rejected_articles_international: {
+        Row: {
+          article_id: string | null
+          headline: string | null
+          id: string
+          reason_international_nexus: string | null
+          rejected_at: string
+        }
+        Insert: {
+          article_id?: string | null
+          headline?: string | null
+          id?: string
+          reason_international_nexus?: string | null
+          rejected_at?: string
+        }
+        Update: {
+          article_id?: string | null
+          headline?: string | null
+          id?: string
+          reason_international_nexus?: string | null
+          rejected_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           default_seo_description: string | null
@@ -2625,6 +2649,33 @@ export type Database = {
           quiet_start?: string
           timezone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tweets_missing_urls: {
+        Row: {
+          article_id: string | null
+          generated_at: string
+          id: string
+          reason: string | null
+          tweet_text: string | null
+          url_provided: string | null
+        }
+        Insert: {
+          article_id?: string | null
+          generated_at?: string
+          id?: string
+          reason?: string | null
+          tweet_text?: string | null
+          url_provided?: string | null
+        }
+        Update: {
+          article_id?: string | null
+          generated_at?: string
+          id?: string
+          reason?: string | null
+          tweet_text?: string | null
+          url_provided?: string | null
         }
         Relationships: []
       }
