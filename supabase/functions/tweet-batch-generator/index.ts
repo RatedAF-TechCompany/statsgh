@@ -51,6 +51,7 @@ interface Candidate {
 interface BatchResult {
   article_id: string;
   tweet: string | null;
+  url_included?: boolean;
   reject_reason?: string | null;
 }
 
