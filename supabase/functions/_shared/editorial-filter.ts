@@ -8,7 +8,13 @@ const SPORTS = ["sports","football","world cup","match result","black stars","pr
 const LIFESTYLE = ["lifestyle","fashion","relationships","wellness tips","recipe","travel diary","horoscope"];
 const DISASTER = ["weather","flooding","disaster","storm","landslide","earthquake"];
 const SPECULATION = ["ai predicts","speculation","could become","might become","rumoured","rumored"];
-const INTL_MARKERS = ["usa","united states","brazil","russia","china's","india's","kenya","nigeria","south africa","uk","europe"];
+const INTL_MARKERS = [
+  "usa","united states"," us ","u.s.","u.s ","brazil","russia","china's","india's","kenya","nigeria","south africa",
+  " uk ","u.k.","europe","america","american","morocco","egypt","tunisia","ethiopia","tanzania","uganda","rwanda",
+  "senegal","ivory coast","cote d'ivoire","zimbabwe","zambia","botswana","namibia","angola","cameroon","sudan",
+  "international travel","world cup","wta","fifa","uefa","nba","premier league","samsung","apple inc","tesla",
+  "barclays","hsbc","jp morgan","goldman sachs"
+];
 
 // Mitigators: presence of these keeps an otherwise-rejected article in play.
 const ECON_MITIGATORS = [
