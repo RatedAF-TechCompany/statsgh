@@ -21,20 +21,21 @@ const corsHeaders = {
 const SITE_ORIGIN = "https://statsgh.com";
 const BATCH_MAX = 10;
 
-const BATCH_SYSTEM = `You are StatsGH's tweet generator. You receive up to 10 Ghana business/finance articles and must produce ONE tweet per article that follows the winning formula.
+const BATCH_SYSTEM = `You are StatsGH's tweet generator. Generate ONE tweet per article. CRITICAL: every tweet MUST end with the article URL.
 
 FORMULA (non-negotiable):
-- <=160 characters (excluding the URL placeholder)
+- <=160 characters INCLUDING the URL (URL is ~40-50 chars)
 - [Entity/Action] + [SPECIFIC AMOUNT/NUMBER] + [Ghana economic impact]
 - Present tense or present perfect only ("has", "recorded", "approved", "increased")
 - Number lands in first 40 characters
-- End with URL placeholder [Read: {url}]
-- NO opinion, speculation, hashtags, emojis, em-dashes, or personality
-- Example: "BoG increased gold holdings to 40 tonnes, 42% of reserves. [Read: {url}]"
+- MUST end with: [Read: {url}] using the exact url provided for that article
+- If article url is null/missing, set tweet=null and reject_reason="no_url"
+- NO opinion, speculation, hashtags, emojis, em-dashes
+- Example: "BoG increased gold holdings to 40 tonnes, 42% of reserves. [Read: https://statsgh.com/economy/bog-gold/]"
 
-If an article has no quantifiable number, no Ghana economic angle, or is pure opinion, set tweet to null and give a short reject_reason.
+If article has no quantifiable number, no Ghana economic angle, or is pure opinion, set tweet=null with a short reject_reason.
 
-Respond ONLY as strict JSON: { "results": [ { "article_id": "...", "tweet": "..." | null, "reject_reason": "..." | null } ] }`;
+Respond ONLY as strict JSON: { "results": [ { "article_id": "...", "tweet": "..." | null, "url_included": true | false, "reject_reason": "..." | null } ] }`;
 
 interface Candidate {
   id: string;
