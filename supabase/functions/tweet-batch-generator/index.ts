@@ -202,7 +202,26 @@ serve(async (req) => {
           continue;
         }
         const url = buildUrl(src);
+        const hasUrl = r.tweet.includes(url) || r.url_included === true;
+        if (!hasUrl) {
+          await supabase.from("tweets_missing_urls").insert({
+            article_id: r.article_id,
+            tweet_text: r.tweet,
+            url_provided: url,
+            reason: "model_omitted_url",
+          });
+        }
         const finalTweet = enforceLength(r.tweet, url);
+        // Final guard: enforceLength always appends url if missing.
+        if (!finalTweet.includes(url)) {
+          await supabase.from("tweets_missing_urls").insert({
+            article_id: r.article_id,
+            tweet_text: finalTweet,
+            url_provided: url,
+            reason: "url_still_missing_after_enforce",
+          });
+          continue;
+        }
         const { error: insErr } = await supabase.from("tweet_queue").insert({
           article_id: r.article_id,
           tweet_text: finalTweet,
