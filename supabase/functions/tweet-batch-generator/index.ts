@@ -159,7 +159,8 @@ serve(async (req) => {
       const userPayload = batch
         .map((a, i) => {
           const summary = (a.summary || (a.body || "").slice(0, 600)).replace(/\s+/g, " ").trim();
-          return `[${i + 1}] article_id: ${a.id}\nHeadline: ${a.title}\nSummary: ${summary.slice(0, 700)}`;
+          const url = buildUrl(a);
+          return `[${i + 1}] article_id: ${a.id}\nURL: ${url}\nHeadline: ${a.title}\nSummary: ${summary.slice(0, 700)}`;
         })
         .join("\n\n");
 
