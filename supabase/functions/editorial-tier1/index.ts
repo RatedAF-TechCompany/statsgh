@@ -41,6 +41,13 @@ Deno.serve(async (req) => {
         article_id: a.id, tier: "tier_1_instant", reason: r.reason,
         headline: a.title, rejected_by: "system",
       });
+      if (r.reason && /international|no ghana nexus/i.test(r.reason)) {
+        await sb.from("rejected_articles_international").insert({
+          article_id: a.id,
+          headline: a.title,
+          reason_international_nexus: r.reason,
+        });
+      }
       rejected++;
     } else {
       await sb.from("articles").update({ editorial_status: "passed_tier_1" }).eq("id", a.id);

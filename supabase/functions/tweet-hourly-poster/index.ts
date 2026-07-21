@@ -34,13 +34,32 @@ serve(async (req) => {
       .eq("posted", false)
       .is("halt_reason", null)
       .order("generated_at", { ascending: true })
-      .limit(1);
+      .limit(5);
     if (error) throw error;
 
-    const next = rows?.[0];
+    // Pick the first row that has both [Read: and a non-null url; log & skip others.
+    let next: { id: string; article_id: string; tweet_text: string; url: string | null } | null = null;
+    for (const row of rows || []) {
+      const hasMarker = typeof row.tweet_text === "string" && row.tweet_text.includes("[Read:");
+      if (row.url && hasMarker && row.tweet_text.includes(row.url)) {
+        next = row as any;
+        break;
+      }
+      await supabase.from("tweets_missing_urls").insert({
+        article_id: row.article_id,
+        tweet_text: row.tweet_text,
+        url_provided: row.url,
+        reason: "poster_pre_check_missing_url",
+      });
+      await supabase
+        .from("tweet_queue")
+        .update({ halt_reason: "missing_url" })
+        .eq("id", row.id);
+    }
+
     if (!next) {
       return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: "queue_empty" }),
+        JSON.stringify({ success: true, skipped: true, reason: "queue_empty_or_missing_urls" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

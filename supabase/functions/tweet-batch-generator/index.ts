@@ -21,20 +21,21 @@ const corsHeaders = {
 const SITE_ORIGIN = "https://statsgh.com";
 const BATCH_MAX = 10;
 
-const BATCH_SYSTEM = `You are StatsGH's tweet generator. You receive up to 10 Ghana business/finance articles and must produce ONE tweet per article that follows the winning formula.
+const BATCH_SYSTEM = `You are StatsGH's tweet generator. Generate ONE tweet per article. CRITICAL: every tweet MUST end with the article URL.
 
 FORMULA (non-negotiable):
-- <=160 characters (excluding the URL placeholder)
+- <=160 characters INCLUDING the URL (URL is ~40-50 chars)
 - [Entity/Action] + [SPECIFIC AMOUNT/NUMBER] + [Ghana economic impact]
 - Present tense or present perfect only ("has", "recorded", "approved", "increased")
 - Number lands in first 40 characters
-- End with URL placeholder [Read: {url}]
-- NO opinion, speculation, hashtags, emojis, em-dashes, or personality
-- Example: "BoG increased gold holdings to 40 tonnes, 42% of reserves. [Read: {url}]"
+- MUST end with: [Read: {url}] using the exact url provided for that article
+- If article url is null/missing, set tweet=null and reject_reason="no_url"
+- NO opinion, speculation, hashtags, emojis, em-dashes
+- Example: "BoG increased gold holdings to 40 tonnes, 42% of reserves. [Read: https://statsgh.com/economy/bog-gold/]"
 
-If an article has no quantifiable number, no Ghana economic angle, or is pure opinion, set tweet to null and give a short reject_reason.
+If article has no quantifiable number, no Ghana economic angle, or is pure opinion, set tweet=null with a short reject_reason.
 
-Respond ONLY as strict JSON: { "results": [ { "article_id": "...", "tweet": "..." | null, "reject_reason": "..." | null } ] }`;
+Respond ONLY as strict JSON: { "results": [ { "article_id": "...", "tweet": "..." | null, "url_included": true | false, "reject_reason": "..." | null } ] }`;
 
 interface Candidate {
   id: string;
@@ -50,6 +51,7 @@ interface Candidate {
 interface BatchResult {
   article_id: string;
   tweet: string | null;
+  url_included?: boolean;
   reject_reason?: string | null;
 }
 
@@ -157,7 +159,8 @@ serve(async (req) => {
       const userPayload = batch
         .map((a, i) => {
           const summary = (a.summary || (a.body || "").slice(0, 600)).replace(/\s+/g, " ").trim();
-          return `[${i + 1}] article_id: ${a.id}\nHeadline: ${a.title}\nSummary: ${summary.slice(0, 700)}`;
+          const url = buildUrl(a);
+          return `[${i + 1}] article_id: ${a.id}\nURL: ${url}\nHeadline: ${a.title}\nSummary: ${summary.slice(0, 700)}`;
         })
         .join("\n\n");
 
@@ -199,7 +202,26 @@ serve(async (req) => {
           continue;
         }
         const url = buildUrl(src);
+        const hasUrl = r.tweet.includes(url) || r.url_included === true;
+        if (!hasUrl) {
+          await supabase.from("tweets_missing_urls").insert({
+            article_id: r.article_id,
+            tweet_text: r.tweet,
+            url_provided: url,
+            reason: "model_omitted_url",
+          });
+        }
         const finalTweet = enforceLength(r.tweet, url);
+        // Final guard: enforceLength always appends url if missing.
+        if (!finalTweet.includes(url)) {
+          await supabase.from("tweets_missing_urls").insert({
+            article_id: r.article_id,
+            tweet_text: finalTweet,
+            url_provided: url,
+            reason: "url_still_missing_after_enforce",
+          });
+          continue;
+        }
         const { error: insErr } = await supabase.from("tweet_queue").insert({
           article_id: r.article_id,
           tweet_text: finalTweet,
