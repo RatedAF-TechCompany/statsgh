@@ -2795,6 +2795,15 @@ serve(async (req) => {
 
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
+      await supabase.from("newsroom_runs").update({
+        halt_reason: "missing_lovable_api_key",
+        error_message: "LOVABLE_API_KEY unavailable — AI generation skipped, items left pending",
+      }).eq("id", run.id);
+      await supabase.from("alerts").insert({
+        alert_type: "ai_key_missing",
+        source_name: "newsroom-scan",
+        message: "LOVABLE_API_KEY unavailable — no articles generated this run",
+      });
     } else {
       // ============================================
       // OPTIMIZATION #2+#3: BATCH EDITORIAL PRE-SCREEN
