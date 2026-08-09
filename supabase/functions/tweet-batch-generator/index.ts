@@ -1,80 +1,101 @@
-// Stage 2 of the unified StatsGH Twitter pipeline.
-// Cron: every 6 hours (0 0,6,12,18 * * *).
+// STATSGH SINGLE TWEET PIPELINE — Stage 1+2 (selection, validation, generation).
+// Cron: hourly at :00. Posting is done by tweet-hourly-poster (Stage 3).
 //
-// - Collects published articles from the last 6h.
-// - Filters via free keyword gate (_shared/tweet-scoring).
-//   Failures logged to articles_rejected_scoring; no AI cost.
-// - Sends ONE bulk call to gemini-2.5-flash-lite for up to 10 articles.
-// - Parses per-article {tweet, reject_reason}; inserts winners into tweet_queue,
-//   losers into articles_rejected_ai.
+// Flow: ARTICLE -> GHANA CHECK -> NUMBER EXTRACTION -> STATISTICAL VALIDATION ->
+// DUPLICATE CHECK -> RANKING -> AI DRAFT -> NUMBER VERIFICATION -> 200-CHAR CHECK ->
+// CANONICAL URL APPENDED -> FINAL VALIDATION -> tweet_queue.
+//
+// Every decision is written to public.tweet_decisions. If nothing qualifies,
+// nothing is queued. A quiet hour is acceptable.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callGatewayJson, GatewayHaltError } from "../_shared/ai-gateway.ts";
-import { passesKeywordGate } from "../_shared/tweet-scoring.ts";
+import {
+  MAX_TWEET_LENGTH,
+  canonicalUrl,
+  eventFingerprint,
+  headlineSimilarity,
+  validateFinalTweet,
+  validateStatisticalArticle,
+  type ArticleLike,
+  type RejectCode,
+  type SubstantiveNumber,
+} from "../_shared/statistical-validator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SITE_ORIGIN = "https://statsgh.com";
-const BATCH_MAX = 10;
+const LOOKBACK_HOURS = 6;
+const FALLBACK_LOOKBACK_HOURS = 24;
+const DUP_LOOKBACK_DAYS = 7;
+const HEADLINE_SIM_THRESHOLD = 0.6;
+const MAX_CANDIDATES_TO_AI = 3;
 
-const BATCH_SYSTEM = `You are StatsGH's tweet generator. Generate ONE tweet per article. CRITICAL: every tweet MUST end with the article URL.
+const SYSTEM_PROMPT = `You are the automated statistical news editor for StatsGH.
+Write ONE short factual X post from the supplied StatsGH article.
+The tweet must centre on the strongest substantive number in the article.
 
-FORMULA (non-negotiable):
-- <=160 characters INCLUDING the URL (URL is ~40-50 chars)
-- [Entity/Action] + [SPECIFIC AMOUNT/NUMBER] + [Ghana economic impact]
-- Present tense or present perfect only ("has", "recorded", "approved", "increased")
-- Number lands in first 40 characters
-- MUST end with: [Read: {url}] using the exact url provided for that article
-- If article url is null/missing, set tweet=null and reject_reason="no_url"
-- NO opinion, speculation, hashtags, emojis, em-dashes
-- Example: "BoG increased gold holdings to 40 tonnes, 42% of reserves. [Read: https://statsgh.com/economy/bog-gold/]"
+Rules:
+- State the entity clearly.
+- Include at least one substantive number.
+- Prefer the strongest number early in the sentence.
+- Explain what the number measures.
+- Use plain English.
+- Use GHS rather than GHC.
+- Use % rather than spelling out percent.
+- Do not use hashtags.
+- Do not use emojis.
+- Do not use hype.
+- Do not add opinion.
+- Do not invent any number.
+- Do not calculate a new statistic unless that exact calculation appears in the article.
+- Do not use dates or years as the main numerical fact.
+- Return SKIP if there is no meaningful statistical fact.
+- Never write, guess or include any URL. The canonical article URL is appended automatically.
+- The tweet will have the canonical article URL appended automatically, so keep the factual text within the character budget supplied.
 
-If article has no quantifiable number, no Ghana economic angle, or is pure opinion, set tweet=null with a short reject_reason.
+Respond ONLY as strict JSON:
+{"tweet":"...","primary_number":"...","supporting_text":"...","valid":true}
+Set "valid": false and "tweet": "SKIP" when no meaningful statistical fact exists.`;
 
-Respond ONLY as strict JSON: { "results": [ { "article_id": "...", "tweet": "..." | null, "url_included": true | false, "reject_reason": "..." | null } ] }`;
-
-interface Candidate {
-  id: string;
-  title: string;
-  summary: string | null;
-  body: string | null;
-  slug: string | null;
-  category_slug: string | null;
+interface Row extends ArticleLike {
   published_at: string | null;
-  score: number;
 }
 
-interface BatchResult {
-  article_id: string;
-  tweet: string | null;
-  url_included?: boolean;
-  reject_reason?: string | null;
+async function logDecision(
+  supabase: any,
+  row: {
+    article_id: string | null;
+    headline?: string | null;
+    canonical_url?: string | null;
+    event_fingerprint?: string | null;
+    tweet_text?: string | null;
+    status: RejectCode;
+    reason: string;
+    substantive_numbers?: SubstantiveNumber[];
+    score?: number;
+  },
+) {
+  await supabase.from("tweet_decisions").insert({
+    article_id: row.article_id,
+    headline: row.headline ?? null,
+    canonical_url: row.canonical_url ?? null,
+    event_fingerprint: row.event_fingerprint ?? null,
+    tweet_text: row.tweet_text ?? null,
+    status: row.status,
+    reason: row.reason.slice(0, 500),
+    substantive_numbers: (row.substantive_numbers || []).slice(0, 8).map((n) => ({
+      raw: n.raw, value: n.value, unit: n.unit, kind: n.kind,
+    })),
+    score: row.score ?? null,
+  });
 }
 
-function buildUrl(a: { slug: string | null; category_slug: string | null }): string {
-  const cat = (a.category_slug || "news").trim().replace(/^\/+|\/+$/g, "");
-  const slug = (a.slug || "").trim().replace(/^\/+|\/+$/g, "");
-  return `${SITE_ORIGIN}/${cat}/${slug}/`;
-}
-
-function enforceLength(tweet: string, url: string | null): string {
-  let t = tweet.trim().replace(/\s+/g, " ").replace(/^["']|["']$/g, "");
-  // Replace literal {url} placeholder or [Read: {url}] with real URL if present.
-  if (url) {
-    t = t.replace(/\{url\}/g, url);
-    if (!t.includes(url)) {
-      const marker = ` [Read: ${url}]`;
-      const budget = 280 - marker.length;
-      const head = t.length > budget ? t.slice(0, budget - 1).trimEnd() : t;
-      t = head + marker;
-    }
-  }
-  if (t.length > 280) t = t.slice(0, 277) + "...";
-  return t;
+function stripUrls(s: string): string {
+  return s.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
 }
 
 serve(async (req) => {
@@ -85,175 +106,285 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const stats = {
+    considered: 0,
+    already_seen: 0,
+    rejected_not_ghana: 0,
+    rejected_no_number: 0,
+    rejected_date_only: 0,
+    rejected_duplicate: 0,
+    sent_to_ai: 0,
+    rejected_ai: 0,
+    queued: 0,
+    halted: false as false | string,
+  };
+
   try {
-    const sinceIso = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-    const { data: articles, error } = await supabase
+    /* ---------- 1. Candidate articles ---------- */
+    const since = new Date(Date.now() - LOOKBACK_HOURS * 3600_000).toISOString();
+    let { data: articles, error } = await supabase
       .from("articles")
       .select("id, title, summary, body, slug, category_slug, published_at")
       .eq("is_published", true)
-      .gte("published_at", sinceIso)
+      .gte("published_at", since)
       .order("published_at", { ascending: false })
-      .limit(80);
+      .limit(60);
     if (error) throw error;
 
-    const list = (articles || []) as Array<Omit<Candidate, "score">>;
-    if (!list.length) {
-      return new Response(
-        JSON.stringify({ success: true, window_start: sinceIso, considered: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    if (!articles?.length) {
+      const wider = new Date(Date.now() - FALLBACK_LOOKBACK_HOURS * 3600_000).toISOString();
+      const r = await supabase
+        .from("articles")
+        .select("id, title, summary, body, slug, category_slug, published_at")
+        .eq("is_published", true)
+        .gte("published_at", wider)
+        .order("published_at", { ascending: false })
+        .limit(60);
+      articles = r.data || [];
     }
 
-    // Filter out already-processed articles.
-    const ids = list.map((a) => a.id);
-    const [{ data: queued }, { data: scoreRej }, { data: aiRej }] = await Promise.all([
-      supabase.from("tweet_queue").select("article_id").in("article_id", ids),
-      supabase.from("articles_rejected_scoring").select("article_id").in("article_id", ids),
-      supabase.from("articles_rejected_ai").select("article_id").in("article_id", ids),
-    ]);
-    const seen = new Set<string>([
-      ...((queued || []) as any[]).map((r) => r.article_id),
-      ...((scoreRej || []) as any[]).map((r) => r.article_id),
-      ...((aiRej || []) as any[]).map((r) => r.article_id),
+    const list = (articles || []) as Row[];
+    stats.considered = list.length;
+    if (!list.length) {
+      return new Response(JSON.stringify({ success: true, ...stats, note: "no articles" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    /* ---------- 2. Duplicate history ---------- */
+    const dupSince = new Date(Date.now() - DUP_LOOKBACK_DAYS * 86400_000).toISOString();
+    const [{ data: queuedRows }, { data: decidedRows }] = await Promise.all([
+      supabase
+        .from("tweet_queue")
+        .select("article_id, url, headline, event_fingerprint")
+        .gte("generated_at", dupSince),
+      supabase
+        .from("tweet_decisions")
+        .select("article_id, canonical_url, headline, event_fingerprint, status")
+        .gte("created_at", dupSince)
+        .in("status", ["QUEUED", "POSTED"]),
     ]);
 
-    const stats = {
-      considered: list.length,
-      already_processed: 0,
-      keyword_rejected: 0,
-      passed_keyword: 0,
-      sent_to_ai: 0,
-      generated: 0,
-      ai_rejected: 0,
-      halted: false as false | string,
-    };
+    const seenArticleIds = new Set<string>();
+    const seenUrls = new Set<string>();
+    const seenFingerprints = new Set<string>();
+    const seenHeadlines: string[] = [];
+    for (const r of [...(queuedRows || []), ...(decidedRows || [])] as any[]) {
+      if (r.article_id) seenArticleIds.add(r.article_id);
+      const u = r.url || r.canonical_url;
+      if (u) seenUrls.add(u);
+      if (r.event_fingerprint) seenFingerprints.add(r.event_fingerprint);
+      if (r.headline) seenHeadlines.push(r.headline);
+    }
 
-    const passed: Candidate[] = [];
+    /* ---------- 3. Deterministic gates ---------- */
+    interface Candidate {
+      article: Row;
+      url: string;
+      numbers: SubstantiveNumber[];
+      score: number;
+      fingerprint: string;
+    }
+    const candidates: Candidate[] = [];
+
     for (const a of list) {
-      if (seen.has(a.id)) {
-        stats.already_processed += 1;
+      if (seenArticleIds.has(a.id)) {
+        stats.already_seen += 1;
         continue;
       }
-      const summary = a.summary || (a.body || "").slice(0, 400);
-      const gate = passesKeywordGate(a.title, summary);
-      if (!gate.pass) {
-        stats.keyword_rejected += 1;
-        await supabase.from("articles_rejected_scoring").insert({
-          article_id: a.id,
-          headline: a.title,
-          score: gate.score,
-          reason: `keyword_gate<${3}> hits=${gate.hits.slice(0, 5).join(",")}`,
+      const url = canonicalUrl(a);
+      if (!url) {
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, status: "REJECT_URL_MISSING",
+          reason: "article has no slug / canonical url",
         });
         continue;
       }
-      stats.passed_keyword += 1;
-      passed.push({ ...a, score: gate.score });
+      if (seenUrls.has(url)) {
+        stats.rejected_duplicate += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: "REJECT_DUPLICATE_ARTICLE", reason: "canonical url already tweeted",
+        });
+        continue;
+      }
+
+      const v = validateStatisticalArticle(a);
+      if (!v.qualifies) {
+        if (v.code === "REJECT_NOT_GHANA") stats.rejected_not_ghana += 1;
+        else if (v.code === "REJECT_DATE_ONLY") stats.rejected_date_only += 1;
+        else stats.rejected_no_number += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: v.code || "REJECT_NO_SUBSTANTIVE_NUMBER", reason: v.reason,
+          substantive_numbers: v.substantiveNumbers,
+        });
+        continue;
+      }
+
+      const fingerprint = eventFingerprint(a.title, v.substantiveNumbers[0]?.raw);
+      const dupEvent =
+        seenFingerprints.has(fingerprint) ||
+        seenHeadlines.some((h) => headlineSimilarity(h, a.title) >= HEADLINE_SIM_THRESHOLD);
+      if (dupEvent) {
+        stats.rejected_duplicate += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          event_fingerprint: fingerprint, status: "REJECT_DUPLICATE_EVENT",
+          reason: "same underlying event already tweeted within 7 days",
+          substantive_numbers: v.substantiveNumbers, score: v.score,
+        });
+        continue;
+      }
+
+      candidates.push({ article: a, url, numbers: v.substantiveNumbers, score: v.score, fingerprint });
     }
 
-    // Take top-N by score for the AI batch.
-    passed.sort((a, b) => b.score - a.score);
-    const batch = passed.slice(0, BATCH_MAX);
-    stats.sent_to_ai = batch.length;
+    if (!candidates.length) {
+      return new Response(JSON.stringify({ success: true, ...stats, note: "nothing qualified" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (batch.length) {
-      const userPayload = batch
-        .map((a, i) => {
-          const summary = (a.summary || (a.body || "").slice(0, 600)).replace(/\s+/g, " ").trim();
-          const url = buildUrl(a);
-          return `[${i + 1}] article_id: ${a.id}\nURL: ${url}\nHeadline: ${a.title}\nSummary: ${summary.slice(0, 700)}`;
-        })
-        .join("\n\n");
+    /* ---------- 4. Rank, then AI draft strongest first ---------- */
+    candidates.sort((a, b) => b.score - a.score);
 
-      let parsed: { results?: BatchResult[] } = {};
+    for (const c of candidates.slice(0, MAX_CANDIDATES_TO_AI)) {
+      const { article: a, url, numbers } = c;
+      const budget = MAX_TWEET_LENGTH - url.length - 1;
+      if (budget < 60) {
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: "REJECT_OVER_200_CHARS", reason: `url too long, only ${budget} chars available`,
+        });
+        continue;
+      }
+
+      const factList = numbers.slice(0, 8).map((n) => `- ${n.raw} (${n.context.slice(0, 120)})`).join("\n");
+      const userPrompt = `Character budget for the factual sentence: ${budget} characters (hard maximum, the URL is appended separately).
+
+Headline: ${a.title}
+
+Extracted numerical facts from the article:
+${factList}
+
+Article text:
+${(a.summary || "")}\n${(a.body || "").slice(0, 3000)}`;
+
+      let draft: { tweet?: string; primary_number?: string; valid?: boolean } = {};
+      stats.sent_to_ai += 1;
       try {
-        parsed = await callGatewayJson<{ results?: BatchResult[] }>({
+        draft = await callGatewayJson({
           model: "google/gemini-2.5-flash-lite",
           messages: [
-            { role: "system", content: BATCH_SYSTEM },
-            { role: "user", content: userPayload },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userPrompt },
           ],
-          max_tokens: 800,
+          max_tokens: 300,
           temperature: 0.2,
         });
       } catch (err) {
         if (err instanceof GatewayHaltError) {
           stats.halted = err.reason;
-        } else {
-          console.error("tweet-batch-generator AI error:", (err as Error).message);
-          return new Response(
-            JSON.stringify({ success: false, error: (err as Error).message, stats }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
+          break;
         }
-      }
-
-      const results: BatchResult[] = Array.isArray(parsed?.results) ? parsed.results! : [];
-      const byId = new Map(batch.map((a) => [a.id, a]));
-
-      for (const r of results) {
-        const src = byId.get(r.article_id);
-        if (!src) continue; // hallucinated id
-        if (!r.tweet) {
-          stats.ai_rejected += 1;
-          await supabase.from("articles_rejected_ai").insert({
-            article_id: r.article_id,
-            reason: (r.reject_reason || "ai_returned_null").slice(0, 500),
-          });
-          continue;
-        }
-        const url = buildUrl(src);
-        const hasUrl = r.tweet.includes(url) || r.url_included === true;
-        if (!hasUrl) {
-          await supabase.from("tweets_missing_urls").insert({
-            article_id: r.article_id,
-            tweet_text: r.tweet,
-            url_provided: url,
-            reason: "model_omitted_url",
-          });
-        }
-        const finalTweet = enforceLength(r.tweet, url);
-        // Final guard: enforceLength always appends url if missing.
-        if (!finalTweet.includes(url)) {
-          await supabase.from("tweets_missing_urls").insert({
-            article_id: r.article_id,
-            tweet_text: finalTweet,
-            url_provided: url,
-            reason: "url_still_missing_after_enforce",
-          });
-          continue;
-        }
-        const { error: insErr } = await supabase.from("tweet_queue").insert({
-          article_id: r.article_id,
-          tweet_text: finalTweet,
-          url,
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: "REJECT_VALIDATION_FAILED", reason: `ai_error: ${(err as Error).message}`,
         });
-        if (insErr && !/duplicate/i.test(insErr.message)) {
-          console.error("tweet_queue insert error:", insErr.message);
-          continue;
-        }
-        stats.generated += 1;
+        continue;
       }
 
-      // Any batch article the model omitted entirely -> mark as ai_rejected.
-      const returnedIds = new Set(results.map((r) => r.article_id));
-      for (const a of batch) {
-        if (!returnedIds.has(a.id)) {
-          await supabase.from("articles_rejected_ai").insert({
-            article_id: a.id,
-            reason: "ai_omitted_from_batch",
+      let text = stripUrls(String(draft.tweet ?? "")).replace(/^["']|["']$/g, "").trim();
+      if (!text || /^skip$/i.test(text) || draft.valid === false) {
+        stats.rejected_ai += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: "REJECT_AI_SKIP", reason: "model found no meaningful statistical fact",
+          substantive_numbers: numbers, score: c.score,
+        });
+        continue;
+      }
+
+      // Compose, then validate. One shortening retry if over budget.
+      let finalTweet = `${text} ${url}`;
+      if (finalTweet.length > MAX_TWEET_LENGTH) {
+        try {
+          const retry = await callGatewayJson<{ tweet?: string }>({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+              { role: "assistant", content: JSON.stringify({ tweet: text }) },
+              {
+                role: "user",
+                content: `Too long. Rewrite the same factual sentence in at most ${budget} characters. Keep the number exactly as stated. Same JSON shape.`,
+              },
+            ],
+            max_tokens: 300,
+            temperature: 0.1,
           });
-          stats.ai_rejected += 1;
+          text = stripUrls(String(retry.tweet ?? "")).replace(/^["']|["']$/g, "").trim();
+          finalTweet = `${text} ${url}`;
+        } catch (err) {
+          if (err instanceof GatewayHaltError) {
+            stats.halted = err.reason;
+            break;
+          }
         }
       }
+
+      const check = validateFinalTweet({
+        tweet: finalTweet,
+        article: a,
+        canonicalUrl: url,
+        articleNumbers: numbers,
+      });
+      if (!check.valid) {
+        stats.rejected_ai += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          event_fingerprint: c.fingerprint, tweet_text: finalTweet,
+          status: check.code, reason: check.reason,
+          substantive_numbers: numbers, score: c.score,
+        });
+        continue;
+      }
+
+      const fingerprint = eventFingerprint(a.title, check.primaryNumber);
+      const { error: insErr } = await supabase.from("tweet_queue").insert({
+        article_id: a.id,
+        tweet_text: finalTweet,
+        url,
+        headline: a.title,
+        event_fingerprint: fingerprint,
+        primary_number: check.primaryNumber ?? null,
+      });
+      if (insErr) {
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          status: "REJECT_VALIDATION_FAILED", reason: `queue_insert: ${insErr.message}`,
+        });
+        continue;
+      }
+
+      stats.queued += 1;
+      await logDecision(supabase, {
+        article_id: a.id, headline: a.title, canonical_url: url,
+        event_fingerprint: fingerprint, tweet_text: finalTweet,
+        status: "QUEUED", reason: `len=${finalTweet.length}`,
+        substantive_numbers: numbers, score: c.score,
+      });
+      break; // one qualifying tweet per run
     }
 
-    return new Response(JSON.stringify({ success: true, window_start: sinceIso, ...stats }), {
+    return new Response(JSON.stringify({ success: true, ...stats }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("tweet-batch-generator error:", msg);
-    return new Response(JSON.stringify({ success: false, error: msg }), {
+    console.error("statsgh-tweet-pipeline error:", msg);
+    return new Response(JSON.stringify({ success: false, error: msg, ...stats }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
