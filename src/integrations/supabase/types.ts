@@ -2464,14 +2464,59 @@ export type Database = {
         }
         Relationships: []
       }
+      tweet_decisions: {
+        Row: {
+          article_id: string | null
+          canonical_url: string | null
+          created_at: string
+          event_fingerprint: string | null
+          headline: string | null
+          id: string
+          reason: string | null
+          score: number | null
+          status: string
+          substantive_numbers: Json
+          tweet_text: string | null
+        }
+        Insert: {
+          article_id?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          event_fingerprint?: string | null
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          score?: number | null
+          status: string
+          substantive_numbers?: Json
+          tweet_text?: string | null
+        }
+        Update: {
+          article_id?: string | null
+          canonical_url?: string | null
+          created_at?: string
+          event_fingerprint?: string | null
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          score?: number | null
+          status?: string
+          substantive_numbers?: Json
+          tweet_text?: string | null
+        }
+        Relationships: []
+      }
       tweet_queue: {
         Row: {
           article_id: string
+          event_fingerprint: string | null
           generated_at: string
           halt_reason: string | null
+          headline: string | null
           id: string
           posted: boolean
           posted_at: string | null
+          primary_number: string | null
           scheduled_hour: number | null
           tweet_text: string
           twitter_id: string | null
@@ -2479,11 +2524,14 @@ export type Database = {
         }
         Insert: {
           article_id: string
+          event_fingerprint?: string | null
           generated_at?: string
           halt_reason?: string | null
+          headline?: string | null
           id?: string
           posted?: boolean
           posted_at?: string | null
+          primary_number?: string | null
           scheduled_hour?: number | null
           tweet_text: string
           twitter_id?: string | null
@@ -2491,11 +2539,14 @@ export type Database = {
         }
         Update: {
           article_id?: string
+          event_fingerprint?: string | null
           generated_at?: string
           halt_reason?: string | null
+          headline?: string | null
           id?: string
           posted?: boolean
           posted_at?: string | null
+          primary_number?: string | null
           scheduled_hour?: number | null
           tweet_text?: string
           twitter_id?: string | null
