@@ -330,16 +330,27 @@ const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}
 export function tweetNumbers(tweet: string, url: string): Array<{ raw: string; value: number }> {
   const body = tweet.replace(url, " ");
   const out: Array<{ raw: string; value: number }> = [];
-  const re = /\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|bn|million|mn|thousand|k)?/gi;
+  const re = /(?<![A-Za-z0-9])(?:GH¢|GHS|GH₵|₵|US\$|\$|£|€)?\s?\d[\d,]*(?:\.\d+)?\s*(?:%|trillion|billion|bn|million|mn|thousand|k\b)?/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
     const raw = m[0].trim();
     const v = numericPart(raw);
     if (!isFinite(v)) continue;
+
+    const after = body.slice(m.index + m[0].length, m.index + m[0].length + 20);
+    const isSubstantive =
+      /%|GH¢|GHS|GH₵|₵|\$|£|€/.test(raw) ||
+      /\b(trillion|billion|bn|million|mn|thousand)\b/i.test(raw) ||
+      new RegExp(`^\\s*(?:%|per\\s?cent|percent|percentage|bps|${UNIT_WORDS.join("|")})\\b`, "i").test(after) ||
+      /\.\d/.test(raw) ||
+      v >= 1000;
+    if (!isSubstantive) continue; // ordinals like "H1", "top 5" are not claims
+
     out.push({ raw, value: v * scaleOf(raw) });
   }
   return out;
 }
+
 
 function supportedByArticle(value: number, articleValues: number[]): boolean {
   return articleValues.some((av) => {
