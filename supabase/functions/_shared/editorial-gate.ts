@@ -149,6 +149,179 @@ const PROMO_PR = ["we are pleased to announce", "press release", "launches new b
 const MATERIAL_NUMBER_RE =
   /(?:gh¢|ghs|gh₵|₵|us\$|usd|\$|£|€)\s?\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|bn|million|mn|thousand)?|\d[\d,]*(?:\.\d+)?\s*(?:%|per\s?cent|percent|percentage points?|basis points?|bps)|\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|million)\s*(?:cedis?|dollars?)|\d[\d,]*(?:\.\d+)?\s*(?:mw|gw|tonnes?|barrels?|jobs?|workers?|hectares?|households?|patients?|students?|beneficiaries)/;
 
+/* ==========================================================================
+   RULE 4b — NUMERIC FACT CLASSIFICATION
+   A number does not qualify merely because it is a count. Every numeric
+   token is classified; only a PRIMARY_CURRENT_STATISTIC (or a clearly
+   material CURRENT_SUPPORTING_STATISTIC) can satisfy the statistical gate.
+   ========================================================================== */
+
+export type NumericClass =
+  | "PRIMARY_CURRENT_STATISTIC"
+  | "CURRENT_SUPPORTING_STATISTIC"
+  | "HISTORICAL_CONTEXT_STATISTIC"
+  | "LOGISTICAL_NUMBER"
+  | "CALENDAR_NUMBER"
+  | "IDENTIFIER_NUMBER";
+
+export interface NumericFact {
+  raw: string;
+  value: number;
+  klass: NumericClass;
+  reason: string;
+  context: string;
+}
+
+const WORD_NUMBERS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+  nine: 9, ten: 10, eleven: 11, twelve: 12,
+};
+
+const MONTHS =
+  "january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|oct|nov|dec";
+
+// Purely logistical / event-shape nouns. Counting these is never a statistic.
+const LOGISTICAL_NOUNS =
+  /^(?:-|\s)*(?:day|days|week|weeks|month|months|hour|hours|hrs|minute|minutes|night|nights|long)\b/;
+const LOGISTICAL_UNITS =
+  /^(?:\s|-)*(?:sessions?|speakers?|panellists?|panelists?|activities|activity|editions?|edition|venues?|halls?|rooms?|floors?|stands?|booths?|anniversary|anniversaries|seaters?|slots?|stages?)\b/;
+
+// Countable subjects whose totals can carry a measurable public-interest claim.
+const MEASURABLE_NOUNS =
+  /^(?:\s)*(?:jobs?|workers?|employees?|staff|households?|families|people|persons?|residents?|students?|pupils?|teachers?|patients?|nurses?|doctors?|farmers?|traders?|vendors?|exhibitors?|businesses|firms?|companies|smes?|banks?|schools?|hospitals?|clinics?|beneficiaries|customers?|subscribers?|passengers?|vehicles?|tonnes?|tons?|barrels?|hectares?|acres?|megawatts?|mw|gw|kilometres?|kilometers?|km|units?|houses?|homes?|beds?|shops?|factories|projects?|contracts?|licences?|licenses?)\b/;
+
+const CURRENCY_PREFIX_RE = /(?:gh¢|ghs|gh₵|₵|us\$|usd|\$|£|€)\s?$/i;
+const PCT_SUFFIX_RE = /^(?:\s)*(?:%|per\s?cent|percent|percentage points?|basis points?|bps)\b/i;
+const SCALE_SUFFIX_RE = /^(?:\s)*(?:trillion|billion|bn|million|mn|thousand)\b/i;
+const CURRENCY_SUFFIX_RE = /^(?:\s)*(?:(?:trillion|billion|bn|million|mn|thousand)\s*)?(?:cedis?|dollars?|pounds?|euros?)\b/i;
+const TIME_SUFFIX_RE = /^(?:\s)*(?:a\.?m\.?|p\.?m\.?|o'clock|gmt|hrs\b|:\d{2})/i;
+const ORDINAL_ANNIV_RE = /^(?:st|nd|rd|th)\s+(?:anniversary|edition|congress|session|summit|conference|edition)\b/i;
+
+const PAST_MARKER_RE =
+  /\b(?:in|back in|during|as at|as of|since)\s+(?:19|20)\d{2}\b|\b(?:19|20)\d{2}\b.*?\b(?:attended|recorded|was|were|had|saw|reached|stood at|reported)\b|\b(?:last year|previous year|a decade ago|years ago|then|at the time|historically|previously)\b/i;
+
+function currentYear(): number {
+  return new Date().getUTCFullYear();
+}
+
+/** Classify every numeric token in the supplied text. */
+export function classifyNumbers(input: string): NumericFact[] {
+  const src = (input || "").replace(/\s+/g, " ");
+  const low = src.toLowerCase();
+  const facts: NumericFact[] = [];
+  const scan = /(?:\d[\d,]*(?:\.\d+)?)|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/gi;
+  const monthBeforeRe = new RegExp(`(?:${MONTHS})\\s*$`, "i");
+  const monthAfterRe = new RegExp(`^\\s*(?:${MONTHS})\\b`, "i");
+
+  let m: RegExpExecArray | null;
+  while ((m = scan.exec(low)) !== null) {
+    const raw = m[0];
+    const start = m.index;
+    const end = start + raw.length;
+    const before = low.slice(Math.max(0, start - 40), start);
+    const after = low.slice(end, end + 40);
+    const sentStart = low.lastIndexOf(".", start) + 1;
+    let sentEnd = low.indexOf(".", end);
+    if (sentEnd < 0) sentEnd = low.length;
+    const sentence = low.slice(sentStart, sentEnd);
+    const value = WORD_NUMBERS[raw] ?? parseFloat(raw.replace(/,/g, ""));
+    const push = (klass: NumericClass, reason: string) =>
+      facts.push({ raw, value, klass, reason, context: sentence.trim().slice(0, 200) });
+
+    // --- IDENTIFIERS ----------------------------------------------------
+    if (/(?:tel|phone|call|whatsapp|hotline|contact)[^.]{0,15}$/.test(before) || /^\d{7,}$/.test(raw.replace(/,/g, ""))) {
+      push("IDENTIFIER_NUMBER", "telephone / identifier"); continue;
+    }
+    if (/\b(?:no\.|number|room|suite|floor|box|version|v)\s*$/.test(before)) {
+      push("IDENTIFIER_NUMBER", "venue / reference number"); continue;
+    }
+
+    // --- CALENDAR -------------------------------------------------------
+    if (TIME_SUFFIX_RE.test(after)) { push("CALENDAR_NUMBER", "clock time"); continue; }
+    if (monthBeforeRe.test(before) || monthAfterRe.test(after)) { push("CALENDAR_NUMBER", "calendar date"); continue; }
+    if (/[-–]\s*$/.test(before) && facts.length && facts[facts.length - 1].klass === "CALENDAR_NUMBER") {
+      push("CALENDAR_NUMBER", "date range"); continue;
+    }
+    if (Number.isInteger(value) && value >= 1900 && value <= 2100 && !CURRENCY_PREFIX_RE.test(before) && !SCALE_SUFFIX_RE.test(after) && !PCT_SUFFIX_RE.test(after) && !MEASURABLE_NOUNS.test(after)) {
+      push("CALENDAR_NUMBER", "bare year"); continue;
+    }
+    if (/^\s*(?:january|february|march|april|june|july|august|september|october|november|december)\b/i.test(after)) {
+      push("CALENDAR_NUMBER", "calendar date"); continue;
+    }
+
+    // --- LOGISTICAL -----------------------------------------------------
+    if (ORDINAL_ANNIV_RE.test(after)) { push("LOGISTICAL_NUMBER", "anniversary / edition ordinal"); continue; }
+    if (LOGISTICAL_NOUNS.test(after)) { push("LOGISTICAL_NUMBER", "event duration"); continue; }
+    if (LOGISTICAL_UNITS.test(after)) { push("LOGISTICAL_NUMBER", "event logistics count"); continue; }
+
+    // --- SUBSTANTIVE CANDIDATES ----------------------------------------
+    let klass: NumericClass | null = null;
+    let reason = "";
+    if (CURRENCY_PREFIX_RE.test(before) || CURRENCY_SUFFIX_RE.test(after)) { klass = "PRIMARY_CURRENT_STATISTIC"; reason = "monetary amount"; }
+    else if (PCT_SUFFIX_RE.test(after)) { klass = "PRIMARY_CURRENT_STATISTIC"; reason = "percentage / rate"; }
+    else if (SCALE_SUFFIX_RE.test(after)) { klass = "PRIMARY_CURRENT_STATISTIC"; reason = "large magnitude"; }
+    else if (MEASURABLE_NOUNS.test(after)) { klass = "CURRENT_SUPPORTING_STATISTIC"; reason = "counted measurable subject"; }
+
+    if (!klass) continue;
+
+    // --- HISTORICAL DOWNGRADE ------------------------------------------
+    const yearsInSentence = (sentence.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number);
+    const historicalYear = yearsInSentence.some((y) => y < currentYear());
+    if (historicalYear || PAST_MARKER_RE.test(sentence)) {
+      push("HISTORICAL_CONTEXT_STATISTIC", `${reason} tied to a past period`);
+      continue;
+    }
+    push(klass, reason);
+  }
+  return facts;
+}
+
+export interface StatGateResult {
+  ok: boolean;
+  code: GateCode;
+  reason: string;
+  facts: NumericFact[];
+}
+
+/**
+ * RULE 4 — the statistical gate. Requires at least one number that measures
+ * the news claim itself. Logistical, calendar, identifier and purely
+ * historical numbers can never satisfy it, and economic vocabulary can never
+ * substitute for a missing figure.
+ */
+export function hasSubstantiveStatistic(a: StoryLike): StatGateResult {
+  const t = text(a);
+  const facts = classifyNumbers(t);
+  const primary = facts.find((f) => f.klass === "PRIMARY_CURRENT_STATISTIC");
+  if (primary) {
+    return { ok: true, code: "PASS", reason: `primary current statistic: "${primary.raw}" (${primary.reason})`, facts };
+  }
+  const supporting = facts.find((f) => f.klass === "CURRENT_SUPPORTING_STATISTIC" && f.value >= 10);
+  if (supporting) {
+    return { ok: true, code: "PASS", reason: `material current supporting statistic: "${supporting.raw}" (${supporting.reason})`, facts };
+  }
+  if (facts.some((f) => f.klass === "HISTORICAL_CONTEXT_STATISTIC")) {
+    return {
+      ok: false,
+      code: "REJECT_NO_CURRENT_SUBSTANTIVE_NUMBER",
+      reason: "only historical/background statistics present; no current measurable figure",
+      facts,
+    };
+  }
+  const kinds = [...new Set(facts.map((f) => f.klass))].join(", ") || "none";
+  return {
+    ok: false,
+    code: "REJECT_NO_SUBSTANTIVE_NUMBER",
+    reason: `no number measures the news claim (numbers found: ${kinds})`,
+    facts,
+  };
+}
+
+/** Back-compat helper used by the topic guards below. */
+const hasMaterialNumber = (a: StoryLike) => hasSubstantiveStatistic(a).ok;
+
+
+
 export function isExcludedTopic(a: StoryLike): ExclusionResult {
   const t = text(a);
   const head = `${a.title || ""} ${a.summary || ""}`.toLowerCase();
