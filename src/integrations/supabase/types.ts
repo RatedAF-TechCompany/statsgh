@@ -2906,6 +2906,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      publish_due_scheduled_articles: { Args: never; Returns: number }
       trigger_newsroom_scan: { Args: never; Returns: undefined }
     }
     Enums: {
