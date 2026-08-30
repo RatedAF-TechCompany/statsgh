@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
         reject_tier: "tier_1_instant",
         reject_reason: r.reason,
         rejected_at: new Date().toISOString(),
-        published: false,
+        is_published: false,
       }).eq("id", a.id);
       await sb.from("editorial_rejections").insert({
         article_id: a.id, tier: "tier_1_instant", reason: r.reason,
