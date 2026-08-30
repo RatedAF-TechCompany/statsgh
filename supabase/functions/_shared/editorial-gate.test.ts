@@ -9,6 +9,8 @@ import {
   isMaterialUpdate,
   finalEditorialValidator,
   finalTweetValidator,
+  classifyNumbers,
+  hasSubstantiveStatistic,
 } from "./editorial-gate";
 
 const s = (title: string, summary = "", body = "") => ({ title, summary, body });
@@ -187,5 +189,61 @@ describe("final safety nets", () => {
     const fp = finalTweetValidator(good).fingerprint!;
     expect(finalTweetValidator(good, { tweetedFingerprints: new Set([fp]) }).code)
       .toBe("REJECT_DUPLICATE_EVENT");
+  });
+});
+
+describe("RULE 4b — numeric fact classification (Joy FM regression)", () => {
+  const joyfm = s(
+    "Joy FM Discount Fair Returns to Ease Back-to-School Costs",
+    "Joy FM has relaunched its Back-to-School Discount Fair, providing Ghanaian families with an opportunity to purchase school supplies at reduced prices. The two-day event aims to alleviate financial burdens.",
+    "Joy FM has brought back its annual Back-to-School Discount Fair, offering families discounted prices on essential school supplies. The two-day event will gather numerous vendors and businesses. Ghanaian households often face significant expenditure spikes at the start of each academic term. The Joy FM Back-to-School Discount Fair is scheduled for September 4-5. It will run daily from 10 a.m. to 5 p.m. at the Joy FM Car Park.",
+  );
+
+  it("rejects the Joy FM discount fair", () => {
+    const r = classifyEditorialSubject(joyfm);
+    expect(r.allowed).toBe(false);
+    expect(r.code).toBe("REJECT_NO_SUBSTANTIVE_NUMBER");
+    expect(finalEditorialValidator(joyfm).ok).toBe(false);
+  });
+
+  it("classifies its numbers as logistical/calendar only", () => {
+    const kinds = new Set(classifyNumbers(
+      "The two-day event runs September 4-5 from 10 a.m. to 5 p.m.",
+    ).map((f) => f.klass));
+    expect(kinds.has("PRIMARY_CURRENT_STATISTIC")).toBe(false);
+    expect(kinds.has("CURRENT_SUPPORTING_STATISTIC")).toBe(false);
+  });
+
+  it("rejects event-duration-only stories", () => {
+    expect(hasSubstantiveStatistic(s("Two-day business conference opens in Accra", "Ghana hosts the event.")).code)
+      .toBe("REJECT_NO_SUBSTANTIVE_NUMBER");
+    expect(hasSubstantiveStatistic(s("Three-day investment summit attracts businesses in Accra")).code)
+      .toBe("REJECT_NO_SUBSTANTIVE_NUMBER");
+    expect(hasSubstantiveStatistic(s("Fair runs from 8am to 8pm in Accra")).code)
+      .toBe("REJECT_NO_SUBSTANTIVE_NUMBER");
+    expect(hasSubstantiveStatistic(s("Accra church marks 40th anniversary")).code)
+      .toBe("REJECT_NO_SUBSTANTIVE_NUMBER");
+  });
+
+  it("accepts figures that measure the claim", () => {
+    expect(hasSubstantiveStatistic(s("Fair offers school supplies at 20% lower prices in Accra")).ok).toBe(true);
+    expect(hasSubstantiveStatistic(s("Fair generated GHS 4.2 million in sales in Accra")).ok).toBe(true);
+    expect(hasSubstantiveStatistic(s("4,000 families attended the Accra fair")).ok).toBe(true);
+  });
+
+  it("does not let a historical statistic qualify a current announcement", () => {
+    const r = hasSubstantiveStatistic(s(
+      "2026 Accra trade fair announced",
+      "Organisers confirmed the fair. 77 exhibitors attended in 2018.",
+    ));
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe("REJECT_NO_CURRENT_SUBSTANTIVE_NUMBER");
+  });
+
+  it("does not let economic vocabulary substitute for a figure", () => {
+    expect(hasSubstantiveStatistic(s(
+      "Families can buy goods at discounted prices in Accra",
+      "The discount, cost, inflation and household expenditure pressures are severe.",
+    )).ok).toBe(false);
   });
 });

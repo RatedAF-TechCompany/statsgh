@@ -146,10 +146,6 @@ const PROMO_PR = ["we are pleased to announce", "press release", "launches new b
   "unveils new logo", "brand ambassador", "sponsored content", "advertorial",
   "cuts sod for its new branch"];
 
-// A number that materially explains something (RULE 4).
-const MATERIAL_NUMBER_RE =
-  /(?:gh¢|ghs|gh₵|₵|us\$|usd|\$|£|€)\s?\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|bn|million|mn|thousand)?|\d[\d,]*(?:\.\d+)?\s*(?:%|per\s?cent|percent|percentage points?|basis points?|bps)|\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|million)\s*(?:cedis?|dollars?)|\d[\d,]*(?:\.\d+)?\s*(?:mw|gw|tonnes?|barrels?|jobs?|workers?|hectares?|households?|patients?|students?|beneficiaries)/;
-
 /* ==========================================================================
    RULE 4b — NUMERIC FACT CLASSIFICATION
    A number does not qualify merely because it is a count. Every numeric
