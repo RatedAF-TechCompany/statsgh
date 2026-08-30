@@ -188,7 +188,7 @@ const MEASURABLE_NOUNS =
   /^(?:\s)*(?:jobs?|workers?|employees?|staff|households?|families|people|persons?|residents?|students?|pupils?|teachers?|patients?|nurses?|doctors?|farmers?|traders?|vendors?|exhibitors?|businesses|firms?|companies|smes?|banks?|schools?|hospitals?|clinics?|beneficiaries|customers?|subscribers?|passengers?|vehicles?|tonnes?|tons?|barrels?|hectares?|acres?|megawatts?|mw|gw|kilometres?|kilometers?|km|units?|houses?|homes?|beds?|shops?|factories|projects?|contracts?|licences?|licenses?)\b/;
 
 const CURRENCY_PREFIX_RE = /(?:gh¢|ghs|gh₵|₵|us\$|usd|\$|£|€)\s?$/i;
-const PCT_SUFFIX_RE = /^(?:\s)*(?:%|per\s?cent|percent|percentage points?|basis points?|bps)\b/i;
+const PCT_SUFFIX_RE = /^(?:\s)*(?:%|(?:per\s?cent|percent|percentage points?|basis points?|bps)\b)/i;
 const SCALE_SUFFIX_RE = /^(?:\s)*(?:trillion|billion|bn|million|mn|thousand)\b/i;
 const CURRENCY_SUFFIX_RE = /^(?:\s)*(?:(?:trillion|billion|bn|million|mn|thousand)\s*)?(?:cedis?|dollars?|pounds?|euros?)\b/i;
 const TIME_SUFFIX_RE = /^(?:\s)*(?:a\.?m\.?|p\.?m\.?|o'clock|gmt|hrs\b|:\d{2})/i;
