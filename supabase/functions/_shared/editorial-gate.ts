@@ -154,7 +154,9 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   const head = `${a.title || ""} ${a.summary || ""}`.toLowerCase();
   const cat = (a.category_slug || "").toLowerCase();
 
-  if (/sport|football|entertainment|celebrit|showbiz|lifestyle|gossip/.test(cat)) {
+  // Slug segments only — "infrastructure-and-transport" must not match "sport".
+  const catSegments = cat.split(/[^a-z]+/).filter(Boolean);
+  if (catSegments.some((seg) => /^(sports?|football|entertainment|celebrity|celebrities|showbiz|lifestyle|gossip)$/.test(seg))) {
     return { excluded: true, code: "REJECT_SPORTS", category: "SPORTS", reason: `excluded category_slug: ${cat}` };
   }
 
@@ -184,9 +186,11 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   }
 
   // --- OTHER HARD EXCLUSIONS --------------------------------------------
-  const ent = has(t, ENTERTAINMENT);
+  // Entertainment / lifestyle are judged on the headline and summary: a passing
+  // mention deep in a body must not sink a legitimate economic story.
+  const ent = has(head, ENTERTAINMENT);
   if (ent) return { excluded: true, code: "REJECT_ENTERTAINMENT", category: "ENTERTAINMENT", reason: `entertainment: "${ent}"` };
-  const life = has(t, LIFESTYLE);
+  const life = has(head, LIFESTYLE);
   if (life) return { excluded: true, code: "REJECT_LIFESTYLE", category: "LIFESTYLE", reason: `lifestyle: "${life}"` };
   const gos = has(head, GOSSIP);
   if (gos) return { excluded: true, code: "REJECT_GOSSIP", category: "GOSSIP", reason: `gossip: "${gos}"` };
