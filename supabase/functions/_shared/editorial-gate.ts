@@ -24,6 +24,7 @@ export type GateCode =
   | "REJECT_NOT_GHANA"
   | "REJECT_OUT_OF_REMIT"
   | "REJECT_NO_SUBSTANTIVE_NUMBER"
+  | "REJECT_NO_CURRENT_SUBSTANTIVE_NUMBER"
   | "REJECT_DATE_ONLY"
   | "REJECT_DUPLICATE_EVENT"
   | "PASS";
@@ -347,7 +348,7 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   if (softSport) {
     // The very limited exception: Ghana public expenditure where sport is incidental.
     const publicMoney = hasRe(t, PUBLIC_MONEY_RE) && hasRe(t, GHANA_MONEY_RE) &&
-      hasRe(t, MATERIAL_NUMBER_RE) && isGhanaCentral(a).central;
+      hasMaterialNumber(a) && isGhanaCentral(a).central;
     if (!publicMoney) {
       return {
         excluded: true,
@@ -368,11 +369,11 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   const gos = has(head, GOSSIP);
   if (gos) return { excluded: true, code: "REJECT_GOSSIP", category: "GOSSIP", reason: `gossip: "${gos}"` };
   const cer = has(head, CEREMONY);
-  if (cer && !hasRe(t, MATERIAL_NUMBER_RE)) {
+  if (cer && !hasMaterialNumber(a)) {
     return { excluded: true, code: "REJECT_CEREMONY", category: "SOCIAL_EVENT", reason: `ceremonial: "${cer}"` };
   }
   const crime = has(t, CRIME);
-  if (crime && !(hasRe(t, MATERIAL_NUMBER_RE) && hasRe(t, /\b(fraud|corruption|embezzl|laundering|smuggl|galamsey|tax evasion|procurement|state funds|misappropriat)\b/))) {
+  if (crime && !(hasMaterialNumber(a) && hasRe(t, /\b(fraud|corruption|embezzl|laundering|smuggl|galamsey|tax evasion|procurement|state funds|misappropriat)\b/))) {
     return {
       excluded: true, code: "REJECT_CRIME_NO_DATA",
       category: "CRIME_WITHOUT_STATISTICAL_PUBLIC_INTEREST",
@@ -380,11 +381,11 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
     };
   }
   const pol = has(t, POLITICS_RHETORIC);
-  if (pol && !hasRe(t, MATERIAL_NUMBER_RE)) {
+  if (pol && !hasMaterialNumber(a)) {
     return { excluded: true, code: "REJECT_POLITICS_NO_DATA", category: "PARTY_POLITICS_WITHOUT_DATA", reason: `party politics without data: "${pol}"` };
   }
   const pr = has(t, PROMO_PR);
-  if (pr && !hasRe(t, MATERIAL_NUMBER_RE)) {
+  if (pr && !hasMaterialNumber(a)) {
     return { excluded: true, code: "REJECT_PROMOTIONAL_PR", category: "PROMOTIONAL_PR", reason: `promotional PR: "${pr}"` };
   }
 
@@ -502,12 +503,13 @@ export function classifyEditorialSubject(a: StoryLike): SubjectResult {
     };
   }
 
-  if (!hasRe(t, MATERIAL_NUMBER_RE)) {
+  const stat = hasSubstantiveStatistic(a);
+  if (!stat.ok) {
     return {
       allowed: false,
       primary_category: best.cat,
-      reason: "no material (non-decorative) number supporting the subject",
-      code: "REJECT_NO_SUBSTANTIVE_NUMBER",
+      reason: stat.reason,
+      code: stat.code,
     };
   }
 
