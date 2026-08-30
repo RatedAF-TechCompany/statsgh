@@ -11,6 +11,7 @@ import {
   validateFinalTweet,
   articleText,
 } from "../_shared/statistical-validator.ts";
+import { finalTweetValidator } from "../_shared/editorial-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,14 +35,12 @@ serve(async (req) => {
   }
 
   try {
-    const { data: rows, error } = await supabase
-      .from("tweet_queue")
-      .select("id, article_id, tweet_text, url, headline, event_fingerprint")
-      .eq("posted", false)
-      .is("halt_reason", null)
-      .order("generated_at", { ascending: true })
-      .limit(5);
+    // RULE 11: release abandoned claims, then claim exactly one row atomically.
+    await supabase.rpc("release_stale_tweet_claims");
+    const worker = `poster-${crypto.randomUUID().slice(0, 8)}`;
+    const { data: claimed, error } = await supabase.rpc("claim_next_tweet", { p_worker: worker });
     if (error) throw error;
+    const rows = (Array.isArray(claimed) ? claimed : claimed ? [claimed] : []) as any[];
 
     for (const row of rows || []) {
       const { data: article } = await supabase
@@ -58,6 +57,37 @@ serve(async (req) => {
           reason: "source article no longer exists",
         });
         continue;
+      }
+
+      // RULES 1-4 + 10: the shared editorial gate runs again immediately
+      // before posting. A story that should never have been published can
+      // never be tweeted.
+      const preGate = finalTweetValidator(article as any, { fingerprint: row.event_fingerprint || undefined });
+      if (!preGate.ok) {
+        await supabase.from("tweet_queue").update({ halt_reason: preGate.code }).eq("id", row.id);
+        await supabase.from("tweet_decisions").insert({
+          article_id: row.article_id, headline: row.headline, canonical_url: row.url,
+          event_fingerprint: row.event_fingerprint, tweet_text: row.tweet_text,
+          status: preGate.code, reason: `pre-post gate: ${preGate.reason}`,
+        });
+        continue;
+      }
+
+      if (row.event_fingerprint) {
+        const { data: ev } = await supabase
+          .from("news_events")
+          .select("id, tweeted")
+          .eq("fingerprint", row.event_fingerprint)
+          .maybeSingle();
+        if (ev?.tweeted) {
+          await supabase.from("tweet_queue").update({ halt_reason: "REJECT_DUPLICATE_EVENT" }).eq("id", row.id);
+          await supabase.from("tweet_decisions").insert({
+            article_id: row.article_id, headline: row.headline, canonical_url: row.url,
+            event_fingerprint: row.event_fingerprint, tweet_text: row.tweet_text,
+            status: "REJECT_DUPLICATE_EVENT", reason: "event already tweeted",
+          });
+          continue;
+        }
       }
 
       const numbers = extractSubstantiveNumbers(articleText(article as any));
@@ -107,6 +137,12 @@ serve(async (req) => {
         event_fingerprint: row.event_fingerprint, tweet_text: row.tweet_text,
         status: "POSTED", reason: result.tweetId || "posted",
       });
+
+      if (row.event_fingerprint) {
+        await supabase.from("news_events")
+          .update({ tweeted: true, tweeted_at: new Date().toISOString(), tweet_id: result.tweetId || null })
+          .eq("fingerprint", row.event_fingerprint);
+      }
 
       await supabase.from("tweet_schedule_log").insert({
         article_id: row.article_id,

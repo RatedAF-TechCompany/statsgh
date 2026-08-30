@@ -311,8 +311,11 @@ export type Database = {
           category_slug: string
           created_at: string
           dedupe_key: string | null
+          editorial_category: string | null
           editorial_note: string | null
           editorial_status: string | null
+          event_fingerprint: string | null
+          event_id: string | null
           formula_breakdown: Json | null
           formula_score: number | null
           hero_image_url: string | null
@@ -359,8 +362,11 @@ export type Database = {
           category_slug: string
           created_at?: string
           dedupe_key?: string | null
+          editorial_category?: string | null
           editorial_note?: string | null
           editorial_status?: string | null
+          event_fingerprint?: string | null
+          event_id?: string | null
           formula_breakdown?: Json | null
           formula_score?: number | null
           hero_image_url?: string | null
@@ -407,8 +413,11 @@ export type Database = {
           category_slug?: string
           created_at?: string
           dedupe_key?: string | null
+          editorial_category?: string | null
           editorial_note?: string | null
           editorial_status?: string | null
+          event_fingerprint?: string | null
+          event_id?: string | null
           formula_breakdown?: Json | null
           formula_score?: number | null
           hero_image_url?: string | null
@@ -1964,6 +1973,69 @@ export type Database = {
           },
         ]
       }
+      news_events: {
+        Row: {
+          action: string | null
+          article_count: number
+          category: string | null
+          created_at: string
+          fingerprint: string
+          first_article_id: string | null
+          first_published_at: string
+          headline: string | null
+          id: string
+          last_updated_at: string
+          normalised_statistic: string | null
+          period: string | null
+          primary_entity: string | null
+          primary_statistic: string | null
+          tweet_id: string | null
+          tweeted: boolean
+          tweeted_at: string | null
+          update_count: number
+        }
+        Insert: {
+          action?: string | null
+          article_count?: number
+          category?: string | null
+          created_at?: string
+          fingerprint: string
+          first_article_id?: string | null
+          first_published_at?: string
+          headline?: string | null
+          id?: string
+          last_updated_at?: string
+          normalised_statistic?: string | null
+          period?: string | null
+          primary_entity?: string | null
+          primary_statistic?: string | null
+          tweet_id?: string | null
+          tweeted?: boolean
+          tweeted_at?: string | null
+          update_count?: number
+        }
+        Update: {
+          action?: string | null
+          article_count?: number
+          category?: string | null
+          created_at?: string
+          fingerprint?: string
+          first_article_id?: string | null
+          first_published_at?: string
+          headline?: string | null
+          id?: string
+          last_updated_at?: string
+          normalised_statistic?: string | null
+          period?: string | null
+          primary_entity?: string | null
+          primary_statistic?: string | null
+          tweet_id?: string | null
+          tweeted?: boolean
+          tweeted_at?: string | null
+          update_count?: number
+        }
+        Relationships: []
+      }
       newsletter_sends: {
         Row: {
           error_message: string | null
@@ -2353,6 +2425,45 @@ export type Database = {
         }
         Relationships: []
       }
+      publication_rejections: {
+        Row: {
+          article_id: string | null
+          code: string
+          created_at: string
+          event_fingerprint: string | null
+          headline: string | null
+          id: string
+          reason: string | null
+          source_name: string | null
+          source_url: string | null
+          stage: string
+        }
+        Insert: {
+          article_id?: string | null
+          code: string
+          created_at?: string
+          event_fingerprint?: string | null
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          source_name?: string | null
+          source_url?: string | null
+          stage: string
+        }
+        Update: {
+          article_id?: string | null
+          code?: string
+          created_at?: string
+          event_fingerprint?: string | null
+          headline?: string | null
+          id?: string
+          reason?: string | null
+          source_name?: string | null
+          source_url?: string | null
+          stage?: string
+        }
+        Relationships: []
+      }
       rejected_articles_international: {
         Row: {
           article_id: string | null
@@ -2509,7 +2620,10 @@ export type Database = {
       tweet_queue: {
         Row: {
           article_id: string
+          claimed_at: string | null
+          claimed_by: string | null
           event_fingerprint: string | null
+          event_id: string | null
           generated_at: string
           halt_reason: string | null
           headline: string | null
@@ -2524,7 +2638,10 @@ export type Database = {
         }
         Insert: {
           article_id: string
+          claimed_at?: string | null
+          claimed_by?: string | null
           event_fingerprint?: string | null
+          event_id?: string | null
           generated_at?: string
           halt_reason?: string | null
           headline?: string | null
@@ -2539,7 +2656,10 @@ export type Database = {
         }
         Update: {
           article_id?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
           event_fingerprint?: string | null
+          event_id?: string | null
           generated_at?: string
           halt_reason?: string | null
           headline?: string | null
@@ -2895,6 +3015,33 @@ export type Database = {
         Args: { p_article_id: string; p_category: string }
         Returns: string
       }
+      claim_news_event: {
+        Args: {
+          p_action: string
+          p_category: string
+          p_fingerprint: string
+          p_headline: string
+          p_normalised_statistic: string
+          p_period: string
+          p_primary_entity: string
+          p_primary_statistic: string
+        }
+        Returns: {
+          event_id: string
+          status: string
+        }[]
+      }
+      claim_next_tweet: {
+        Args: { p_worker: string }
+        Returns: {
+          article_id: string
+          event_fingerprint: string
+          headline: string
+          id: string
+          tweet_text: string
+          url: string
+        }[]
+      }
       editor_decide_article: {
         Args: { p_article_id: string; p_decision: string; p_note: string }
         Returns: undefined
@@ -2907,6 +3054,15 @@ export type Database = {
         Returns: boolean
       }
       publish_due_scheduled_articles: { Args: never; Returns: number }
+      record_event_update: {
+        Args: {
+          p_event_id: string
+          p_headline: string
+          p_normalised_statistic: string
+        }
+        Returns: undefined
+      }
+      release_stale_tweet_claims: { Args: never; Returns: number }
       trigger_newsroom_scan: { Args: never; Returns: undefined }
     }
     Enums: {

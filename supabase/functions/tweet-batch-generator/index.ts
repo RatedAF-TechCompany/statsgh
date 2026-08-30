@@ -22,6 +22,10 @@ import {
   type RejectCode,
   type SubstantiveNumber,
 } from "../_shared/statistical-validator.ts";
+import {
+  finalTweetValidator,
+  buildEventDescriptor,
+} from "../_shared/editorial-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,8 +34,8 @@ const corsHeaders = {
 
 const LOOKBACK_HOURS = 6;
 const FALLBACK_LOOKBACK_HOURS = 24;
-const DUP_LOOKBACK_DAYS = 7;
-const HEADLINE_SIM_THRESHOLD = 0.6;
+const DUP_LOOKBACK_DAYS = 14; // RULE 7: 14-day event memory
+const HEADLINE_SIM_THRESHOLD = 0.55;
 const MAX_CANDIDATES_TO_AI = 3;
 
 const SYSTEM_PROMPT = `You are the automated statistical news editor for StatsGH.
@@ -124,7 +128,7 @@ serve(async (req) => {
     const since = new Date(Date.now() - LOOKBACK_HOURS * 3600_000).toISOString();
     let { data: articles, error } = await supabase
       .from("articles")
-      .select("id, title, summary, body, slug, category_slug, published_at")
+      .select("id, title, summary, body, slug, category_slug, published_at, event_id, event_fingerprint, editorial_category")
       .eq("is_published", true)
       .gte("published_at", since)
       .order("published_at", { ascending: false })
@@ -135,7 +139,7 @@ serve(async (req) => {
       const wider = new Date(Date.now() - FALLBACK_LOOKBACK_HOURS * 3600_000).toISOString();
       const r = await supabase
         .from("articles")
-        .select("id, title, summary, body, slug, category_slug, published_at")
+        .select("id, title, summary, body, slug, category_slug, published_at, event_id, event_fingerprint, editorial_category")
         .eq("is_published", true)
         .gte("published_at", wider)
         .order("published_at", { ascending: false })
@@ -165,6 +169,12 @@ serve(async (req) => {
         .in("status", ["QUEUED", "POSTED"]),
     ]);
 
+    const { data: tweetedEvents } = await supabase
+      .from("news_events")
+      .select("fingerprint")
+      .eq("tweeted", true)
+      .gte("first_published_at", dupSince);
+
     const seenArticleIds = new Set<string>();
     const seenUrls = new Set<string>();
     const seenFingerprints = new Set<string>();
@@ -175,6 +185,9 @@ serve(async (req) => {
       if (u) seenUrls.add(u);
       if (r.event_fingerprint) seenFingerprints.add(r.event_fingerprint);
       if (r.headline) seenHeadlines.push(r.headline);
+    }
+    for (const e of (tweetedEvents || []) as any[]) {
+      if (e.fingerprint) seenFingerprints.add(e.fingerprint);
     }
 
     /* ---------- 3. Deterministic gates ---------- */
@@ -209,6 +222,21 @@ serve(async (req) => {
         continue;
       }
 
+      // RULES 1-4 + 10: the same shared gate the website publication path uses.
+      const gate = finalTweetValidator(a as any, { tweetedFingerprints: seenFingerprints,
+        fingerprint: (a as any).event_fingerprint || undefined });
+      if (!gate.ok) {
+        if (gate.code === "REJECT_DUPLICATE_EVENT") stats.rejected_duplicate += 1;
+        else if (gate.code === "REJECT_NOT_GHANA") stats.rejected_not_ghana += 1;
+        else stats.rejected_no_number += 1;
+        await logDecision(supabase, {
+          article_id: a.id, headline: a.title, canonical_url: url,
+          event_fingerprint: gate.fingerprint ?? null,
+          status: gate.code as any, reason: gate.reason,
+        });
+        continue;
+      }
+
       const v = validateStatisticalArticle(a);
       if (!v.qualifies) {
         if (v.code === "REJECT_NOT_GHANA") stats.rejected_not_ghana += 1;
@@ -222,7 +250,10 @@ serve(async (req) => {
         continue;
       }
 
-      const fingerprint = eventFingerprint(a.title, v.substantiveNumbers[0]?.raw);
+      const fingerprint = (a as any).event_fingerprint
+        || gate.fingerprint
+        || buildEventDescriptor(a as any).fingerprint
+        || eventFingerprint(a.title, v.substantiveNumbers[0]?.raw);
       const dupEvent =
         seenFingerprints.has(fingerprint) ||
         seenHeadlines.some((h) => headlineSimilarity(h, a.title) >= HEADLINE_SIM_THRESHOLD);
@@ -231,7 +262,7 @@ serve(async (req) => {
         await logDecision(supabase, {
           article_id: a.id, headline: a.title, canonical_url: url,
           event_fingerprint: fingerprint, status: "REJECT_DUPLICATE_EVENT",
-          reason: "same underlying event already tweeted within 7 days",
+          reason: "same underlying event already tweeted within 14 days",
           substantive_numbers: v.substantiveNumbers, score: v.score,
         });
         continue;
@@ -351,9 +382,10 @@ ${(a.summary || "")}\n${(a.body || "").slice(0, 3000)}`;
         continue;
       }
 
-      const fingerprint = eventFingerprint(a.title, check.primaryNumber);
+      const fingerprint = c.fingerprint;
       const { error: insErr } = await supabase.from("tweet_queue").insert({
         article_id: a.id,
+        event_id: (a as any).event_id ?? null,
         tweet_text: finalTweet,
         url,
         headline: a.title,

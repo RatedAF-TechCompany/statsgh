@@ -2,6 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import OpenAI from "https://esm.sh/openai@4.20.1";
+import {
+  classifyEditorialSubject,
+  finalEditorialValidator,
+  buildEventDescriptor,
+} from "../_shared/editorial-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2297,6 +2302,8 @@ serve(async (req) => {
       }
 
       const isFast = isFastPublishSource(article.source_name);
+      // RULE 13: auto-pass no longer skips editorial filtering; it only affects
+      // the high-rejection-source skip below.
       const isAutoPass = isAutoPassSource(article.source_name);
       const isOpinion = isOpinionSource(article.source_name) || article.is_opinion === true;
       if (isBackfill && !isFast && !isOpinion) continue;
@@ -2307,8 +2314,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Optimization #1: Fast headline blocklist (no AI needed)
-      if (!isAutoPass) {
+      // RULE 13: no source bypasses the blocklist.
+      {
         const blockCheck = headlineIsBlocklisted(article.title);
         if (blockCheck.blocked) {
           preFilterBlockedCount++;
@@ -2375,14 +2382,14 @@ serve(async (req) => {
 
       // Check if business-related (still skip for fast-publish; auto-pass sources bypass this)
       const rssText = `${article.title} ${article.description}`;
-      if (!isAutoPass && !isFast && !isOpinion && !isBusinessRelated(rssText)) {
+      if (!isFast && !isOpinion && !isBusinessRelated(rssText)) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_BUSINESS,
           "No business keywords found in headline/summary", { pubDateParsed: pubDate });
         continue;
       }
 
-      // V2.0: Score-based Ghana relevance check (auto-pass and Tier 1 sources skip this)
-      if (!isAutoPass && !isTier1Source(article.source_name)) {
+      // RULE 3/13: Ghana relevance is checked for every source, tier 1 included.
+      {
         const ghanaCheck = getGhanaRelevanceScore(article.title, rssText);
         if (!ghanaCheck.passes) {
           await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.NOT_GHANA_RELEVANT,
@@ -2420,42 +2427,78 @@ serve(async (req) => {
         fullPageHtml = pageText;
       }
 
-      // Auto-pass sources skip all content filters below — proceed directly to dedupe + publish
-      if (!isAutoPass) {
-        // V2.0: Check for calendar/announcement page
-        if (isCalendarAnnouncementPage(fullText)) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CALENDAR_ANNOUNCEMENT_PAGE,
-            "Page appears to be a calendar/announcement listing with many dates but few data points", 
-            { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
+      // ============================================
+      // HARD EDITORIAL GATE (RULES 1-4, 13).
+      // Applies to EVERY source. There is no auto-pass, no trusted-source
+      // bypass and no fallback. Failure = permanent rejection.
+      // ============================================
+      {
+        const story = {
+          title: article.title,
+          summary: article.description || "",
+          body: fullText,
+          category_slug: null,
+        };
+        const subject = classifyEditorialSubject(story);
+        if (!subject.allowed) {
+          console.log(`🚫 ${subject.code}: "${article.title.substring(0, 70)}" — ${subject.reason}`);
+          await supabase.from("publication_rejections").insert({
+            stage: "candidate_gate",
+            code: subject.code,
+            reason: subject.reason,
+            headline: article.title.substring(0, 500),
+            source_url: article.link,
+            source_name: article.source_name,
+          });
+          await logCandidate(supabase, run.id, article, "rejected", subject.code,
+            subject.reason, { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
           continue;
         }
+        (article as any)._editorialCategory = subject.primary_category;
+      }
 
-        // V2.0: Crime filter with significant data requirement
-        const crimeCheck = isCrimeNewsWithData(fullText);
-        if (crimeCheck.isCrime && !crimeCheck.hasSignificantData) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_NO_SIGNIFICANT_DATA,
-            crimeCheck.detail, { pubDateParsed: pubDate });
-          continue;
-        }
+      // Legacy structural filters still apply on top of the hard gate.
+      if (isCalendarAnnouncementPage(fullText)) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CALENDAR_ANNOUNCEMENT_PAGE,
+          "Page appears to be a calendar/announcement listing with many dates but few data points",
+          { pubDateParsed: pubDate, fullText: fullText.substring(0, 500) });
+        continue;
+      }
 
-        // V2.0: Politics filter - numbers must be policy data
-        const politicsCheck = isPoliticsWithoutData(fullText);
-        if (politicsCheck.isPolitics && !politicsCheck.numbersAreData) {
-          await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICS_NUMBER_NOT_DATA,
-            politicsCheck.detail, { pubDateParsed: pubDate });
-          continue;
-        }
+      const crimeCheck = isCrimeNewsWithData(fullText);
+      if (crimeCheck.isCrime && !crimeCheck.hasSignificantData) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.CRIME_NO_SIGNIFICANT_DATA,
+          crimeCheck.detail, { pubDateParsed: pubDate });
+        continue;
+      }
+
+      const politicsCheck = isPoliticsWithoutData(fullText);
+      if (politicsCheck.isPolitics && !politicsCheck.numbersAreData) {
+        await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.POLITICS_NUMBER_NOT_DATA,
+          politicsCheck.detail, { pubDateParsed: pubDate });
+        continue;
       }
 
       // V2.0: Extract and classify numbers
       const numberAnalysis = bodyMeetsNumberRequirements(fullText);
-      
-      // V2.1: Headline check already done before page fetch (moved up for optimization)
-      
-      // V6.0: Numbers are a scoring signal, not a gate — log but don't reject
-      if (!isAutoPass && !numberAnalysis.passes) {
-        console.log(`⚠ Low numeric content: "${article.title.substring(0, 60)}..." — ${numberAnalysis.detail} (proceeding anyway)`);
+
+      // RULE 4 (forensic tightening): a substantive number is now a HARD gate
+      // for every source. Dates, ages, phone numbers and scores never qualify.
+      if (!numberAnalysis.passes) {
+        console.log(`🚫 REJECT_NO_SUBSTANTIVE_NUMBER: "${article.title.substring(0, 70)}" — ${numberAnalysis.detail}`);
+        await supabase.from("publication_rejections").insert({
+          stage: "candidate_gate",
+          code: "REJECT_NO_SUBSTANTIVE_NUMBER",
+          reason: numberAnalysis.detail,
+          headline: article.title.substring(0, 500),
+          source_url: article.link,
+          source_name: article.source_name,
+        });
+        await logCandidate(supabase, run.id, article, "rejected", "REJECT_NO_SUBSTANTIVE_NUMBER",
+          numberAnalysis.detail, { pubDateParsed: pubDate, numbersFound: numberAnalysis.numbersFoundAll });
+        continue;
       }
+
 
       // V2.0: Generate dedupe key using QUALIFYING numbers only
       const dateStr = pubDate.toISOString().split("T")[0];
@@ -3215,6 +3258,73 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
                 .slice(0, 10)
             : [];
 
+          // ============================================
+          // FINAL EDITORIAL VALIDATOR (RULES 1-4) + CANONICAL EVENT CLAIM
+          // (RULES 5-9). No article reaches public.articles without both.
+          // ============================================
+          const storyForGate = {
+            title: generated.headline || item.title,
+            summary: generated.summary || item.description || "",
+            body: generated.body_html || item._fullText || "",
+            category_slug: categorySlug,
+          };
+
+          const finalGate = finalEditorialValidator(storyForGate);
+          if (!finalGate.ok) {
+            console.log(`🚫 FINAL_GATE ${finalGate.code}: "${storyForGate.title.substring(0, 70)}" — ${finalGate.reason}`);
+            await supabase.from("publication_rejections").insert({
+              stage: "final_editorial_validator",
+              code: finalGate.code,
+              reason: finalGate.reason,
+              headline: storyForGate.title.substring(0, 500),
+              source_url: item.link,
+              source_name: item.source_name,
+            });
+            await supabase.from("newsroom_articles").update({
+              processing_status: "rejected",
+              error_message: `${finalGate.code}: ${finalGate.reason}`.substring(0, 500),
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          const descriptor = buildEventDescriptor(storyForGate, finalGate.primary_category);
+          const { data: claimRows, error: claimError } = await supabase.rpc("claim_news_event", {
+            p_fingerprint: descriptor.fingerprint,
+            p_primary_entity: descriptor.primary_entity,
+            p_action: descriptor.action,
+            p_primary_statistic: descriptor.primary_statistic,
+            p_normalised_statistic: descriptor.normalised_statistic,
+            p_period: descriptor.period,
+            p_category: descriptor.category,
+            p_headline: storyForGate.title.substring(0, 500),
+          });
+          if (claimError) {
+            console.error(`Event claim failed: ${claimError.message}`);
+            await supabase.from("newsroom_articles").update({
+              processing_status: "failed",
+              error_message: `event claim failed: ${claimError.message}`.substring(0, 500),
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+          const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
+          if (!claim || claim.status !== "claimed") {
+            console.log(`🚫 DUPLICATE_EVENT: "${storyForGate.title.substring(0, 70)}" — ${descriptor.fingerprint}`);
+            await supabase.from("publication_rejections").insert({
+              stage: "event_claim",
+              code: "REJECT_DUPLICATE_EVENT",
+              reason: `event already published (${descriptor.fingerprint})`,
+              headline: storyForGate.title.substring(0, 500),
+              source_url: item.link,
+              source_name: item.source_name,
+              event_fingerprint: descriptor.fingerprint,
+            });
+            await supabase.from("newsroom_articles").update({
+              processing_status: "rejected",
+              error_message: `REJECT_DUPLICATE_EVENT: ${descriptor.fingerprint}`.substring(0, 500),
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
           const { data: newArticle, error: articleError } = await supabase
             .from("articles")
             .insert({
@@ -3235,6 +3345,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               is_breaking: isBreaking,
               word_count: wordCount,
               dedupe_key: item._dedupeKey,
+              event_id: claim.event_id,
+              event_fingerprint: descriptor.fingerprint,
+              editorial_category: finalGate.primary_category,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
               twitter_post: generated.twitter_post || null,
               instagram_comment: generated.instagram_post || "See full article link in bio.",
@@ -3242,6 +3355,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               key_data: cleanKeyData,
               article_type: isPrimaryData ? "primary_data" : "analysis",
             })
+
             .select("id")
             .single();
 
@@ -3256,6 +3370,12 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           }
 
           console.log(`✅ PUBLISHED: "${generated.headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+
+          // Bind the canonical event to its first article.
+          await supabase.from("news_events")
+            .update({ first_article_id: newArticle.id })
+            .eq("id", claim.event_id)
+            .is("first_article_id", null);
 
           // 6b. Upsert entities and link to article
           if (rawEntities.length > 0) {
@@ -3307,29 +3427,11 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             console.log(`Indicator extraction error: ${e}`);
           }
 
-          // 9. Auto-tweet the article immediately (synchronous, no queue)
-          try {
-            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-            const tweetRes = await fetch(`${supabaseUrl}/functions/v1/tweet-article`, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${supabaseKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ articleId: newArticle.id }),
-            });
-            const tweetResult = await tweetRes.json().catch(() => ({}));
-            if (tweetRes.ok && tweetResult.success) {
-              console.log(`Auto-tweet posted for article ${newArticle.id}: ${tweetResult.tweetId || 'ok'}`);
-            } else if (tweetResult.skipped) {
-              console.log(`Auto-tweet skipped for article ${newArticle.id}: ${tweetResult.reason || tweetResult.message}`);
-            } else {
-              console.log(`Auto-tweet failed for article ${newArticle.id}: ${tweetResult.error || tweetRes.status} — discarding, no retry`);
-            }
-          } catch (e) {
-            console.log(`Auto-tweet error (discarded, no retry): ${e}`);
-          }
+          // 9. X POSTING: intentionally NOT done here.
+          // RULE 12 — there is exactly ONE X path: tweet-batch-generator
+          // (selection + generation) followed by tweet-hourly-poster (posting).
+          // newsroom-scan must never post to X directly.
+
 
         } catch (itemError) {
           console.error(`Error processing article "${item.title.substring(0, 60)}":`, itemError);
