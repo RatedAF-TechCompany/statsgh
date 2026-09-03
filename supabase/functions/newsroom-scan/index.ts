@@ -3000,9 +3000,6 @@ HEADLINE RULES:
 - Include a key number if relevant
 - Keep factual and direct
 
-SOCIAL MEDIA:
-Twitter (twitter_post): Maximum 160 characters. Must use present perfect tense: [Subject] has/have [past participle] [rest]. Must use "GHS" for currency. No hashtags, no emojis.
-Instagram (instagram_post): Slightly longer. Must end with: Visit StatsGH.com to read more.
 
 INPUT:
 SOURCE HEADLINE: ${item.title}
@@ -3022,8 +3019,6 @@ Return ONLY valid JSON with these exact keys:
 "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
 "author_name": "",
 "tags": [],
-"twitter_post": "",
-"instagram_post": "",
 "key_data": [{"label":"GDP growth","value":"3.2","unit":"%","context":"Q2 2026"}],
 "entities": [{"name":"Bank of Ghana","type":"ministry"},{"name":"Ernest Addison","type":"person"}]
 }
@@ -3349,8 +3344,8 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               event_fingerprint: descriptor.fingerprint,
               editorial_category: finalGate.primary_category,
               tags: Array.isArray(generated.tags) ? generated.tags : (generated.tags ? String(generated.tags).split(",").map((t: string) => t.trim()) : []),
-              twitter_post: generated.twitter_post || null,
-              instagram_comment: generated.instagram_post || "See full article link in bio.",
+              // AUTO_TWEET_ENABLED = false: no social copy is generated or stored.
+              twitter_post: null,
               status: "published",
               key_data: cleanKeyData,
               article_type: isPrimaryData ? "primary_data" : "analysis",
