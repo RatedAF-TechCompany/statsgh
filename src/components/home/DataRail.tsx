@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isEstimateSource, isStale, GSE_STALE_DAYS } from "@/lib/dataProvenance";
+import { isEstimateSource, isStale, GSE_STALE_DAYS, GSE_SOURCE, sourceLabel, asOfLabel } from "@/lib/dataProvenance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
