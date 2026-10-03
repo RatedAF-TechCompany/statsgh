@@ -13,9 +13,7 @@ const MostReadSidebar = () => {
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
       const { data: viewCounts, error: viewError } = await supabase
-        .from("article_views")
-        .select("article_id")
-        .gte("viewed_at", oneDayAgo.toISOString());
+        .rpc("get_most_read_counts" as any, { p_since: oneDayAgo.toISOString(), p_limit: 10 });
 
       if (viewError) throw viewError;
 

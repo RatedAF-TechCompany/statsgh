@@ -22,6 +22,13 @@
       "when": 1791041651016,
       "tag": "0002_tighten_public_inserts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791041725736,
+      "tag": "0003_most_read_rpc",
+      "breakpoints": true
     }
   ]
 }

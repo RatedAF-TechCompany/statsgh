@@ -53,15 +53,13 @@ export async function fetchMostRead(client: Client): Promise<MostReadArticle[]> 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const { data: views, error: viewErr } = await client
-    .from("article_views")
-    .select("article_id")
-    .gte("viewed_at", oneDayAgo);
+    .rpc("get_most_read_counts" as any, { p_since: oneDayAgo, p_limit: 10 });
 
   if (viewErr) throw viewErr;
 
   const counts: Record<string, number> = {};
-  (views || []).forEach((v) => {
-    if (v.article_id) counts[v.article_id] = (counts[v.article_id] || 0) + 1;
+  ((views as any[]) || []).forEach((v: any) => {
+    if (v.article_id) counts[v.article_id] = Number(v.views);
   });
 
   const topIds = Object.entries(counts)

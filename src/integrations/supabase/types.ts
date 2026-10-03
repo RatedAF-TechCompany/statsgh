@@ -3083,6 +3083,13 @@ export type Database = {
           specialization: string
         }[]
       }
+      get_most_read_counts: {
+        Args: { p_limit?: number; p_since: string }
+        Returns: {
+          article_id: string
+          views: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
