@@ -8,6 +8,13 @@
       "when": 1791040731569,
       "tag": "0000_public_article_source",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791041628339,
+      "tag": "0001_security_lockdown",
+      "breakpoints": true
     }
   ]
 }

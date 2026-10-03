@@ -3074,6 +3074,15 @@ export type Database = {
           source_url: string
         }[]
       }
+      get_journalist_byline: {
+        Args: { p_name: string }
+        Returns: {
+          bio: string
+          byline_name: string
+          photo_url: string
+          specialization: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
