@@ -201,6 +201,17 @@ const GhanaAtAGlance = () => {
             Explore all data →
           </Button>
         </div>
+
+        <div className="mt-3 text-center sm:text-right">
+          <Button
+            variant="link"
+            size="sm"
+            className="text-ft-maroon hover:text-ft-maroon/80 text-xs p-0"
+            onClick={() => navigate('/trackers/fuel-and-cedi')}
+          >
+            Fuel &amp; Cedi Weekly tracker →
+          </Button>
+        </div>
       </div>
     </section>
   );
