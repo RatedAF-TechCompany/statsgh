@@ -19,6 +19,7 @@ import {
   Fuel,
   Globe,
 } from "lucide-react";
+import { sourceLabel } from "@/lib/dataProvenance";
 import { format } from "date-fns";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
@@ -59,6 +60,7 @@ const CommodityTracker = () => {
       const { data, error } = await supabase
         .from("commodity_prices")
         .select("*")
+        .not("source", "in", "(market_estimate,world_bank_estimate)")
         .order("commodity", { ascending: true });
       if (error) throw error;
       // Get latest per commodity
@@ -130,7 +132,7 @@ const CommodityTracker = () => {
 
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="default">Live</Badge>
+            <Badge variant="default">Sourced</Badge>
             <Badge variant="outline">Markets</Badge>
           </div>
           <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
@@ -138,7 +140,7 @@ const CommodityTracker = () => {
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
             Track global commodity prices and exchange rates that impact Ghana's economy. 
-            Updated automatically from free public data sources.
+            Exchange rates refresh hourly (ExchangeRate-API). Oil prices are daily EIA figures and cocoa is the monthly IMF price, both via FRED, so they lag the market.
           </p>
         </header>
 
@@ -171,7 +173,7 @@ const CommodityTracker = () => {
                       </div>
                       {rate.fetched_at && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(rate.fetched_at), "d MMM yyyy, HH:mm")}
+                          Source: {sourceLabel(rate.source)} · as of {format(new Date(rate.fetched_at), "d MMM yyyy, HH:mm")}
                         </p>
                       )}
                     </CardContent>
@@ -218,7 +220,7 @@ const CommodityTracker = () => {
                         </div>
                         {commodity.fetched_at && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            {format(new Date(commodity.fetched_at), "d MMM yyyy, HH:mm")}
+                            Source: {sourceLabel(commodity.source)} · as of {format(new Date(commodity.fetched_at), "d MMM yyyy, HH:mm")}
                           </p>
                         )}
                       </CardContent>

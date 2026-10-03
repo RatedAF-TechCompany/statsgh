@@ -333,7 +333,7 @@ const GhanaStockExchange = () => {
 
         {/* Data Source */}
         <p className="text-xs text-muted-foreground mt-6 text-center">
-          Data source: Ghana Stock Exchange • Prices may be delayed up to 15 minutes
+          Data source: Ghana Stock Exchange via dev.kwayisi.org • Refreshed hourly during trading hours • Last updated {latestPriceUpdate ? format(new Date(latestPriceUpdate), "d MMM yyyy, HH:mm") : "—"}
         </p>
       </main>
     </div>

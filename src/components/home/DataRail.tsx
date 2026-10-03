@@ -45,7 +45,7 @@ const DataRail = () => {
     queryKey: ["rail-currencies"],
     queryFn: async () => {
       const { data, error } = await supabase.from("currency_rates")
-        .select("id, base_currency, target_currency, rate, change_percent")
+        .select("id, base_currency, target_currency, rate, change_percent, source, fetched_at")
         .in("base_currency", ["USD", "EUR", "GBP", "CNY"])
         .eq("target_currency", "GHS").order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
@@ -61,8 +61,8 @@ const DataRail = () => {
     queryKey: ["rail-commodities"],
     queryFn: async () => {
       const { data, error } = await supabase.from("commodity_prices")
-        .select("id, commodity, price, change_percent, currency, source")
-        .in("commodity", ["gold", "cocoa", "oil_brent", "oil_wti", "natural_gas"])
+        .select("id, commodity, price, change_percent, currency, source, fetched_at")
+        .in("commodity", ["gold", "cocoa", "oil_brent", "oil_wti", "natural_gas"]).not("source", "in", "(market_estimate,world_bank_estimate)")
         .order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
       const seen = new Set<string>();
@@ -127,6 +127,11 @@ const DataRail = () => {
                   </div>
                 </div>
               ))}
+              {(currencies || []).length === 0 ? (
+                <p className="py-1.5 border-t border-[#D9D9D9] font-ui text-[11px] text-[#5B5B5B]">Data unavailable</p>
+              ) : (
+                <p className="pt-1 font-ui text-[9px] text-[#5B5B5B]">Source: {sourceLabel((currencies as any)[0].source)} · as of {asOfLabel((currencies as any)[0].fetched_at)}</p>
+              )}
             </div>
 
             {/* Commodities */}
@@ -139,9 +144,7 @@ const DataRail = () => {
                 <div key={c.id} className="flex items-center justify-between py-1.5 border-t border-[#D9D9D9]">
                   <span className="font-ui text-[11px] font-medium text-[#121212]">
                     {cleanCommodityName(c.commodity)}
-                    {isEstimateSource(c.source) && (
-                      <span className="ml-1.5 font-ui text-[9px] uppercase tracking-[0.08em] text-[#5B5B5B]" title="Fixed estimate, not a live market quote">Illustrative</span>
-                    )}
+                    <span className="block font-ui text-[9px] text-[#5B5B5B]">{sourceLabel(c.source)} · {asOfLabel(c.fetched_at)}</span>
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="font-ui text-[12px] font-semibold text-[#121212]">${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -169,8 +172,10 @@ const DataRail = () => {
                     </div>
                   ))}
                 </div>
-                {gseStale && (
-                  <p className="font-ui text-[10px] text-[#5B5B5B] mb-2">Not a live feed. Not refreshed since {new Date(gseLatest || 0).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.</p>
+                {gseStale ? (
+                  <p className="font-ui text-[10px] text-[#5B5B5B] mb-2">Not a live feed. Not refreshed since {asOfLabel(gseLatest)}.</p>
+                ) : (
+                  <p className="font-ui text-[9px] text-[#5B5B5B] mb-2">Source: {GSE_SOURCE} · as of {asOfLabel(gseLatest)}</p>
                 )}
                 <Link to="/dashboards/gse" className="font-ui text-[11px] text-[#E3120B] hover:underline">
                   Full GSE dashboard →
