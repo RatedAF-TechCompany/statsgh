@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isStale, GSE_STALE_DAYS } from "@/lib/dataProvenance";
+import { isStale, GSE_STALE_DAYS, GSE_SOURCE, asOfLabel } from "@/lib/dataProvenance";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -66,7 +66,7 @@ const GSETickerStrip = () => {
       <div className="flex items-center">
         {/* GSE Label */}
         <div className="flex-shrink-0 bg-white/10 px-3 py-1.5 text-xs font-semibold tracking-wide">
-          GSE
+          GSE <span className="font-normal opacity-70">· {GSE_SOURCE} · {asOfLabel(freshStocks[0]?.last_updated)}</span>
         </div>
         
         {/* Scrolling Ticker */}

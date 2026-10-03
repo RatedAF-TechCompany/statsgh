@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { isEstimateSource } from "@/lib/dataProvenance";
+import { isEstimateSource, sourceLabel, asOfLabel } from "@/lib/dataProvenance";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -24,6 +24,7 @@ interface IndicatorItem {
   label: string;
   value: string;
   change: number | null;
+  meta?: string;
 }
 
 // Clean display name mapping for commodity keys
@@ -56,7 +57,7 @@ const EconomicIndicatorStrip = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("currency_rates")
-        .select("id, base_currency, target_currency, rate, change_percent")
+        .select("id, base_currency, target_currency, rate, change_percent, source, fetched_at")
         .eq("target_currency", "GHS")
         .order("fetched_at", { ascending: false })
         .limit(10);
@@ -77,7 +78,7 @@ const EconomicIndicatorStrip = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commodity_prices")
-        .select("id, commodity, price, change_percent, currency, source")
+        .select("id, commodity, price, change_percent, currency, source, fetched_at")
         .order("fetched_at", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -102,6 +103,7 @@ const EconomicIndicatorStrip = () => {
         label: `${base}/GHS`,
         value: rate.rate.toFixed(2),
         change: rate.change_percent,
+        meta: `${sourceLabel((rate as any).source)}, ${asOfLabel((rate as any).fetched_at)}`,
       });
     }
   });
@@ -114,6 +116,7 @@ const EconomicIndicatorStrip = () => {
         label: cleanCommodityName(c.commodity),
         value: `$${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
         change: c.change_percent,
+        meta: `${sourceLabel((c as any).source)}, ${asOfLabel((c as any).fetched_at)}`,
       });
     });
 
@@ -165,6 +168,9 @@ const EconomicIndicatorStrip = () => {
                 <span className="font-ui text-[12px] text-white font-medium">
                   {item.value}
                 </span>
+                {item.meta && (
+                  <span className="font-ui text-[9px] text-white/60">({item.meta})</span>
+                )}
                 {item.change !== null && item.change !== undefined && (
                   <span
                     className={`flex items-center gap-0.5 font-ui text-[11px] ${

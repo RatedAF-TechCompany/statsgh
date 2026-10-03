@@ -19,6 +19,7 @@ import {
   Fuel,
   Globe,
 } from "lucide-react";
+import { sourceLabel, isStale, GSE_STALE_DAYS, GSE_SOURCE } from "@/lib/dataProvenance";
 import { format } from "date-fns";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
@@ -59,6 +60,7 @@ const CommodityTracker = () => {
       const { data, error } = await supabase
         .from("commodity_prices")
         .select("*")
+        .not("source", "in", "(market_estimate,world_bank_estimate)")
         .order("commodity", { ascending: true });
       if (error) throw error;
       // Get latest per commodity
@@ -98,7 +100,7 @@ const CommodityTracker = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gse_stocks")
-        .select("symbol, name, current_price, change_percent")
+        .select("symbol, name, current_price, change_percent, last_updated")
         .order("market_cap", { ascending: false })
         .limit(5);
       if (error) throw error;
@@ -130,7 +132,7 @@ const CommodityTracker = () => {
 
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="default">Live</Badge>
+            <Badge variant="default">Sourced</Badge>
             <Badge variant="outline">Markets</Badge>
           </div>
           <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
@@ -138,7 +140,7 @@ const CommodityTracker = () => {
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl">
             Track global commodity prices and exchange rates that impact Ghana's economy. 
-            Updated automatically from free public data sources.
+            Exchange rates refresh hourly (ExchangeRate-API). Oil prices are daily EIA figures and cocoa is the monthly IMF price, both via FRED, so they lag the market.
           </p>
         </header>
 
@@ -171,7 +173,7 @@ const CommodityTracker = () => {
                       </div>
                       {rate.fetched_at && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(rate.fetched_at), "d MMM yyyy, HH:mm")}
+                          Source: {sourceLabel(rate.source)} · as of {format(new Date(rate.fetched_at), "d MMM yyyy, HH:mm")}
                         </p>
                       )}
                     </CardContent>
@@ -218,7 +220,7 @@ const CommodityTracker = () => {
                         </div>
                         {commodity.fetched_at && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            {format(new Date(commodity.fetched_at), "d MMM yyyy, HH:mm")}
+                            Source: {sourceLabel(commodity.source)} · as of {format(new Date(commodity.fetched_at), "d MMM yyyy, HH:mm")}
                           </p>
                         )}
                       </CardContent>
@@ -253,11 +255,20 @@ const CommodityTracker = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-mono font-semibold">GHS {Number(stock.current_price).toFixed(2)}</p>
-                            {renderChange(stock.change_percent ? Number(stock.change_percent) : null)}
+                            {!isStale((stock as any).last_updated, GSE_STALE_DAYS) && renderChange(stock.change_percent ? Number(stock.change_percent) : null)}
                           </div>
                         </div>
                       ))}
                     </div>
+                    {(() => {
+                      const last = gseStocks.reduce<string | null>((m, s: any) => (s.last_updated && (!m || s.last_updated > m) ? s.last_updated : m), null);
+                      return (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {isStale(last, GSE_STALE_DAYS) ? "Illustrative data — not a live feed. " : ""}
+                          Source: {GSE_SOURCE} · as of {last ? format(new Date(last), "d MMM yyyy, HH:mm") : "—"}
+                        </p>
+                      );
+                    })()}
                     <Button
                       variant="ghost"
                       className="w-full mt-2"
@@ -277,9 +288,9 @@ const CommodityTracker = () => {
           <CardContent className="py-6">
             <h3 className="font-serif font-semibold mb-2">About This Tracker</h3>
             <p className="text-sm text-muted-foreground">
-              Commodity prices and exchange rates are fetched automatically from free public APIs 
-              including the World Bank Commodity API, Open Exchange Rates, and Bank of Ghana. 
-              Data is refreshed every 6 hours. For historical exchange rate data, visit the{" "}
+              Exchange rates come from ExchangeRate-API (open.er-api.com) and are checked hourly.
+              Brent and WTI are daily U.S. EIA spot prices and cocoa is the monthly IMF price, both via FRED.
+              Share prices come from the GSE feed at dev.kwayisi.org during trading hours. For historical exchange rate data, visit the{" "}
               <button
                 onClick={() => navigate("/data/exchange-rate-ghs-usd")}
                 className="text-primary hover:underline"

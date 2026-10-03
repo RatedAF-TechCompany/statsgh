@@ -1,137 +1,104 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Market data refresh — real, sourced feeds only. Never writes estimates.
+// FX: open.er-api.com (hourly). Brent/WTI: FRED daily (EIA). Cocoa: FRED monthly (IMF).
+// GSE: dev.kwayisi.org live feed, only during Accra trading hours (Mon–Fri).
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+async function fetchT(url: string, ms = 15000) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { signal: c.signal, headers: { "User-Agent": "StatsGH/1.0 (+https://statsgh.com)" } }); }
+  finally { clearTimeout(t); }
+}
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+// Last two valid observations from a FRED series CSV (no key needed).
+async function fredLatest(id: string) {
+  const res = await fetchT(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`);
+  if (!res.ok) throw new Error(`FRED ${id} HTTP ${res.status}`);
+  const rows = (await res.text()).trim().split("\n").slice(1)
+    .map((l) => l.split(",")).filter(([, v]) => v && v !== "." && !isNaN(Number(v)));
+  if (rows.length < 1) throw new Error(`FRED ${id} empty`);
+  const [d, v] = rows[rows.length - 1];
+  const prev = rows.length > 1 ? Number(rows[rows.length - 2][1]) : null;
+  return { date: d, value: Number(v), prev };
+}
 
-  const results: string[] = [];
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const report: Record<string, string> = {};
 
-  // 1. Fetch commodity prices from free APIs
+  // ── FX ──
   try {
-    // Gold price from metals API (free)
-    const goldRes = await fetch("https://api.metals.dev/v1/latest?api_key=demo&currency=USD&unit=ounce");
-    if (goldRes.ok) {
-      const goldData = await goldRes.json();
-      if (goldData?.metals?.gold) {
-        await supabase.from("commodity_prices").insert({
-          commodity: "gold",
-          price: goldData.metals.gold,
-          currency: "USD",
-          unit: "per_ounce",
-          source: "metals.dev",
-        });
-        results.push(`Gold: $${goldData.metals.gold}/oz`);
-      }
+    const res = await fetchT("https://open.er-api.com/v6/latest/USD");
+    const d = await res.json();
+    if (d.result !== "success" || !d.rates?.GHS) throw new Error("no GHS rate");
+    const asOf = new Date(d.time_last_update_unix * 1000).toISOString();
+    const ghs = d.rates.GHS;
+    for (const [base, rate] of [["USD", ghs], ["EUR", ghs / d.rates.EUR], ["GBP", ghs / d.rates.GBP]] as [string, number][]) {
+      const { data: prev } = await supabase.from("currency_rates").select("rate, fetched_at")
+        .eq("base_currency", base).eq("target_currency", "GHS").eq("source", "open.er-api.com")
+        .order("fetched_at", { ascending: false }).limit(1).maybeSingle();
+      if (prev && new Date(prev.fetched_at!).getTime() === new Date(asOf).getTime()) { report[`${base}/GHS`] = "unchanged"; continue; }
+      const p = prev ? Number(prev.rate) : null;
+      await supabase.from("currency_rates").insert({
+        base_currency: base, target_currency: "GHS", rate,
+        previous_rate: p, change_percent: p ? ((rate - p) / p) * 100 : null,
+        source: "open.er-api.com", fetched_at: asOf,
+      });
+      report[`${base}/GHS`] = `${rate.toFixed(4)} as of ${asOf}`;
     }
-  } catch (e) {
-    results.push(`Gold fetch error: ${e.message}`);
+  } catch (e) { report.fx = `FAILED: ${(e as Error).message}`; }
+
+  // ── Commodities via FRED ──
+  const series = [
+    { commodity: "oil_brent", id: "DCOILBRENTEU", unit: "per_barrel", source: "FRED (EIA) DCOILBRENTEU" },
+    { commodity: "oil_wti", id: "DCOILWTICO", unit: "per_barrel", source: "FRED (EIA) DCOILWTICO" },
+    { commodity: "cocoa", id: "PCOCOUSDM", unit: "per_tonne", source: "FRED (IMF) PCOCOUSDM" },
+  ];
+  for (const s of series) {
+    try {
+      const o = await fredLatest(s.id);
+      const asOf = new Date(`${o.date}T00:00:00Z`).toISOString();
+      const { data: existing } = await supabase.from("commodity_prices").select("id")
+        .eq("commodity", s.commodity).eq("source", s.source).eq("fetched_at", asOf).limit(1);
+      if (existing && existing.length) { report[s.commodity] = `unchanged (${o.date})`; continue; }
+      await supabase.from("commodity_prices").insert({
+        commodity: s.commodity, price: o.value, currency: "USD", unit: s.unit,
+        previous_close: o.prev, change_percent: o.prev ? ((o.value - o.prev) / o.prev) * 100 : null,
+        source: s.source, fetched_at: asOf,
+      });
+      report[s.commodity] = `${o.value} as of ${o.date}`;
+    } catch (e) { report[s.commodity] = `FAILED: ${(e as Error).message}`; }
   }
 
-  // Cocoa from World Bank commodity API
-  try {
-    const cocoaRes = await fetch(
-      "https://api.worldbank.org/v2/country/GHA/indicator/COCOA?format=json&per_page=1&date=2024"
-    );
-    // Fallback: use a known recent price if API fails
-    await supabase.from("commodity_prices").insert({
-      commodity: "cocoa",
-      price: 4200,
-      currency: "USD",
-      unit: "per_tonne",
-      source: "world_bank_estimate",
-      change_percent: -15.2,
-    });
-    results.push("Cocoa: $4,200/tonne (WB estimate)");
-  } catch (e) {
-    results.push(`Cocoa fetch error: ${e.message}`);
-  }
-
-  // Oil prices from free API
-  try {
-    // Use exchangerate-api as a proxy for common data
-    await supabase.from("commodity_prices").upsert([
-      {
-        commodity: "oil_brent",
-        price: 76.50,
-        currency: "USD",
-        unit: "per_barrel",
-        source: "market_estimate",
-        change_percent: -0.8,
-      },
-      {
-        commodity: "oil_wti",
-        price: 72.30,
-        currency: "USD",
-        unit: "per_barrel",
-        source: "market_estimate",
-        change_percent: -1.1,
-      },
-    ]);
-    results.push("Oil prices updated (estimates)");
-  } catch (e) {
-    results.push(`Oil fetch error: ${e.message}`);
-  }
-
-  // 2. Fetch currency rates
-  try {
-    // Open Exchange Rates free tier or exchangerate.host
-    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
-    if (fxRes.ok) {
-      const fxData = await fxRes.json();
-      const rates = fxData.rates;
-      
-      if (rates) {
-        const ghsRate = rates.GHS || 12.0;
-        const pairs = [
-          { base: "USD", rate: ghsRate },
-          { base: "EUR", rate: rates.EUR ? ghsRate / rates.EUR : null },
-          { base: "GBP", rate: rates.GBP ? ghsRate / rates.GBP : null },
-        ];
-
-        for (const pair of pairs) {
-          if (pair.rate) {
-            // Get previous rate for change calc
-            const { data: prev } = await supabase
-              .from("currency_rates")
-              .select("rate")
-              .eq("base_currency", pair.base)
-              .eq("target_currency", "GHS")
-              .order("fetched_at", { ascending: false })
-              .limit(1)
-              .single();
-
-            const prevRate = prev ? Number(prev.rate) : null;
-            const changePct = prevRate ? ((pair.rate - prevRate) / prevRate) * 100 : null;
-
-            await supabase.from("currency_rates").insert({
-              base_currency: pair.base,
-              target_currency: "GHS",
-              rate: pair.rate,
-              previous_rate: prevRate,
-              change_percent: changePct,
-              source: "open.er-api.com",
-            });
-            results.push(`${pair.base}/GHS: ${pair.rate.toFixed(4)}`);
-          }
-        }
+  // ── GSE (Accra = UTC; trading Mon–Fri ~10:00–15:00, refresh 09–16 UTC) ──
+  const now = new Date();
+  const force = new URL(req.url).searchParams.get("gse") === "force";
+  const trading = now.getUTCDay() >= 1 && now.getUTCDay() <= 5 && now.getUTCHours() >= 9 && now.getUTCHours() <= 16;
+  if (trading || force) {
+    try {
+      const res = await fetchT("https://dev.kwayisi.org/apis/gse/live", 25000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json() as { name: string; price: number; change: number; volume: number }[];
+      if (!Array.isArray(rows) || !rows.length) throw new Error("empty");
+      let n = 0;
+      for (const r of rows) {
+        if (!r.name || typeof r.price !== "number" || r.price <= 0) continue;
+        const prevClose = r.price - (r.change ?? 0);
+        const { error } = await supabase.from("gse_stocks").update({
+          current_price: r.price, previous_close: prevClose, volume: r.volume ?? null,
+          change_percent: prevClose > 0 ? ((r.change ?? 0) / prevClose) * 100 : null,
+          last_updated: now.toISOString(),
+        }).eq("symbol", r.name);
+        if (!error) n++;
       }
-    }
-  } catch (e) {
-    results.push(`FX fetch error: ${e.message}`);
-  }
+      report.gse = `${n}/${rows.length} symbols updated`;
+    } catch (e) { report.gse = `FAILED: ${(e as Error).message}`; }
+  } else report.gse = "skipped (outside trading hours)";
 
-  return new Response(
-    JSON.stringify({ success: true, results, timestamp: new Date().toISOString() }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
+  return json({ success: true, report, timestamp: now.toISOString() });
 });
