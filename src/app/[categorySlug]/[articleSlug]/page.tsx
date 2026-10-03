@@ -54,7 +54,7 @@ export async function generateMetadata({
 
   const canonicalUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   const absoluteImageUrl =
-    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/social/statsgh-og-1200x630.png`;
+    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}`;
   const description = article.seo_description || article.summary || "";
   const keywords = article.tags?.join(", ") || "";
 
