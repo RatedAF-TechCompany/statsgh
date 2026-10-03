@@ -8,6 +8,27 @@
       "when": 1791040731569,
       "tag": "0000_public_article_source",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791041628339,
+      "tag": "0001_security_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791041651016,
+      "tag": "0002_tighten_public_inserts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791041725736,
+      "tag": "0003_most_read_rpc",
+      "breakpoints": true
     }
   ]
 }

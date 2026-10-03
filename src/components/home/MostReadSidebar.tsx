@@ -13,17 +13,13 @@ const MostReadSidebar = () => {
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
       const { data: viewCounts, error: viewError } = await supabase
-        .from("article_views")
-        .select("article_id")
-        .gte("viewed_at", oneDayAgo.toISOString());
+        .rpc("get_most_read_counts" as any, { p_since: oneDayAgo.toISOString(), p_limit: 10 });
 
       if (viewError) throw viewError;
 
       const articleViewCounts: Record<string, number> = {};
-      (viewCounts || []).forEach((view) => {
-        if (view.article_id) {
-          articleViewCounts[view.article_id] = (articleViewCounts[view.article_id] || 0) + 1;
-        }
+      ((viewCounts as any[]) || []).forEach((v: any) => {
+        if (v.article_id) articleViewCounts[v.article_id] = Number(v.views);
       });
 
       const topArticleIds = Object.entries(articleViewCounts)
