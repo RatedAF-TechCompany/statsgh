@@ -18,10 +18,8 @@ const MostReadSidebar = () => {
       if (viewError) throw viewError;
 
       const articleViewCounts: Record<string, number> = {};
-      (viewCounts || []).forEach((view) => {
-        if (view.article_id) {
-          articleViewCounts[view.article_id] = (articleViewCounts[view.article_id] || 0) + 1;
-        }
+      ((viewCounts as any[]) || []).forEach((v: any) => {
+        if (v.article_id) articleViewCounts[v.article_id] = Number(v.views);
       });
 
       const topArticleIds = Object.entries(articleViewCounts)
