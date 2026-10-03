@@ -12,7 +12,7 @@ const toNum = (v: unknown) => (typeof v === "number" ? v : Number(String(v ?? ""
 function stats(raw: unknown): KeyDatum[] {
   if (!Array.isArray(raw)) return [];
   return (raw as KeyDatum[]).filter(
-    (k) => k?.label && Number.isFinite(toNum(k.value)) && !(k.unit && MONTHS.test(k.unit.trim())) && !NON_STAT_LABEL.test(k.label),
+    (k) => k?.label && Number.isFinite(toNum(k.value)) && !(k.unit && (MONTHS.test(k.unit.trim()) || /^(years?|months?|days?|hours?|weeks?)$/i.test(k.unit.trim()))) && !NON_STAT_LABEL.test(k.label),
   ).slice(0, 3);
 }
 
@@ -57,9 +57,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
             {items.map((k, i) => (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", background: CREAM, borderLeft: `8px solid ${RED}`, padding: "20px 24px" }}>
                 <div style={{ fontSize: 52, fontWeight: 800, color: INK, display: "flex" }}>
-                  {toNum(k.value).toLocaleString("en-GB", { maximumFractionDigits: 2 })}{k.unit ? ` ${k.unit}` : ""}
+                  {toNum(k.value).toLocaleString("en-GB", { maximumFractionDigits: 2 })}{k.unit && k.unit.length <= 6 ? ` ${k.unit}` : ""}
                 </div>
-                <div style={{ fontSize: 22, color: GREY, marginTop: 6, display: "flex" }}>{String(k.label).slice(0, 60)}</div>
+                <div style={{ fontSize: 22, color: GREY, marginTop: 6, display: "flex" }}>{`${k.unit && k.unit.length > 6 ? k.unit + " — " : ""}${k.label}`.slice(0, 70)}</div>
               </div>
             ))}
           </div>
