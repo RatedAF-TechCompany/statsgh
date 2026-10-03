@@ -97,7 +97,8 @@ const DataIndicators = () => {
   });
 
   const ghanaIndicators = indicators?.filter((i) => i.is_ghana_core) || [];
-  const otherIndicators = indicators?.filter((i) => !i.is_ghana_core) || [];
+  // "All Indicators" lists every indicator, including the core ones shown above.
+  const allIndicators = indicators || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,9 +212,9 @@ const DataIndicators = () => {
                 <Skeleton key={i} className="h-40" />
               ))}
             </div>
-          ) : otherIndicators.length > 0 ? (
+          ) : allIndicators.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {otherIndicators.map((indicator) => (
+              {allIndicators.map((indicator) => (
                 <Card
                   key={indicator.id}
                   className="cursor-pointer hover:shadow-lg transition-shadow"

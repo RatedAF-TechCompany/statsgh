@@ -1,5 +1,6 @@
 export const SECTION_TO_CATEGORIES: Record<string, string[]> = {
-  'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news', 'security-governance'],
+  'top-stories': ['top-stories', 'general', 'news'],
+  'crime-justice': ['crime-justice', 'crime', 'crime-and-justice', 'justice', 'security-governance', 'ghanacrimes', 'courts', 'security'],
   'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy', 'economy-inflation', 'labour-salaries', 'population'],
   'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities', 'financial-markets', 'capital-markets', 'gse', 'currency'],
   'business': ['banking-and-finance', 'trade-and-industry', 'infrastructure-and-transport', 'business', 'corporate', 'sme', 'trade-investment', 'infrastructure-transport'],

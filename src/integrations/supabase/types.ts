@@ -3067,6 +3067,13 @@ export type Database = {
         Args: { p_article_id: string; p_decision: string; p_note: string }
         Returns: undefined
       }
+      get_article_source: {
+        Args: { p_article_id: string }
+        Returns: {
+          source_name: string
+          source_url: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

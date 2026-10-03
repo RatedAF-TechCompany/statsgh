@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { format } from "date-fns";
 import { JournalistByline } from "@/components/JournalistByline";
+import { KeyNumbers } from "@/components/KeyNumbers";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
@@ -221,30 +222,14 @@ const ArticleContent = ({ article }: { article: any }) => {
             </div>
           </div>
 
+          {/* Key numbers — only when real statistics were extracted */}
+          <KeyNumbers articleId={article.id} keyData={article.key_data} />
+
           {/* Hero Image */}
           {article.hero_image_url && (
             <figure className="mb-10">
               <img src={article.hero_image_url} alt={article.title} className="w-full aspect-[16/9] object-cover" itemProp="image" />
             </figure>
-          )}
-
-          {/* Key Data */}
-          {Array.isArray((article as any).key_data) && (article as any).key_data.length > 0 && (
-            <aside className="mb-10 border-l-4 border-[#E3120B] bg-[#FAF7F2] p-5">
-              <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B] mb-4">Key Data</h2>
-              <ul className="space-y-3">
-                {(article as any).key_data.map((k: any, i: number) => (
-                  <li key={i} className="flex flex-col">
-                    <span className="font-mono text-2xl font-bold text-[#121212]">
-                      {k.value}{k.unit ? ` ${k.unit}` : ""}
-                    </span>
-                    <span className="font-ui text-sm text-[#5B5B5B]">
-                      {k.label}{k.context ? ` — ${k.context}` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </aside>
           )}
 
           {/* Article Body */}

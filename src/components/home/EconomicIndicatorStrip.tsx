@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isEstimateSource } from "@/lib/dataProvenance";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -76,7 +77,7 @@ const EconomicIndicatorStrip = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commodity_prices")
-        .select("id, commodity, price, change_percent, currency")
+        .select("id, commodity, price, change_percent, currency, source")
         .order("fetched_at", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -105,14 +106,16 @@ const EconomicIndicatorStrip = () => {
     }
   });
 
-  // Commodities — use clean display names
-  (commodities || []).forEach((c) => {
-    items.push({
-      label: cleanCommodityName(c.commodity),
-      value: `$${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-      change: c.change_percent,
+  // Commodities — only real quotes; fixed estimates are not shown in a live ticker.
+  (commodities || [])
+    .filter((c: any) => !isEstimateSource(c.source))
+    .forEach((c) => {
+      items.push({
+        label: cleanCommodityName(c.commodity),
+        value: `$${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+        change: c.change_percent,
+      });
     });
-  });
 
   // Validation: drop any item whose label is empty, pure numeric, or whose value isn't a valid string
   const validItems = items.filter((it) => {
