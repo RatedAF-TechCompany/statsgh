@@ -29,6 +29,13 @@
       "when": 1791041725736,
       "tag": "0003_most_read_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791044470887,
+      "tag": "0004_restore_public_read_policies",
+      "breakpoints": true
     }
   ]
 }
