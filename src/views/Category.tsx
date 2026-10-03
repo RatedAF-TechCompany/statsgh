@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
-import { getCategoriesForSection } from "@/lib/sectionMapping";
+import { getCategoriesForSection, crimeJusticeOrFilter, SECTION_INTROS } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import NotFound from "./NotFound";
@@ -54,7 +54,7 @@ const Category = () => {
         `section.eq.${categoryParam}`,
       ];
       if (categoryParam === "crime-justice") {
-        filters.push(`tags.ov.{crime,justice,security-governance}`);
+        filters.splice(0, filters.length, crimeJusticeOrFilter());
       }
       const { data, error } = await supabase
         .from("articles")
@@ -105,6 +105,14 @@ const Category = () => {
         {/* Section title */}
         <div className="border-b border-[#E3120B] pb-3 mb-8">
           <h1 className="section-label text-base">{categoryLabel}</h1>
+          {categoryParam && SECTION_INTROS[categoryParam] && (
+            <p className="font-serif text-[15px] text-[#5B5B5B] mt-2 max-w-3xl leading-relaxed">
+              {SECTION_INTROS[categoryParam]}
+              {categoryParam === "crime-justice" && (
+                <> <a href="/feeds/crime-justice.xml" className="font-ui text-[12px] text-[#E3120B] hover:underline whitespace-nowrap">RSS feed</a></>
+              )}
+            </p>
+          )}
         </div>
 
         {isLoading ? (
