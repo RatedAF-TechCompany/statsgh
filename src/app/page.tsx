@@ -33,11 +33,20 @@ const jsonLd = [
 ];
 
 export default async function HomePage() {
-  const sb = createReadOnlyServerClient();
-  const [initialArticles, initialMostRead] = await Promise.all([
-    fetchHomepageArticles(sb),
-    fetchMostRead(sb),
-  ]);
+  // Server prefetch is an optimisation only: if it fails, the page still
+  // renders and the client fetches the same data instead of a 500.
+  let initialArticles: Awaited<ReturnType<typeof fetchHomepageArticles>> | undefined;
+  let initialMostRead: Awaited<ReturnType<typeof fetchMostRead>> | undefined;
+  try {
+    const sb = createReadOnlyServerClient();
+    const [a, m] = await Promise.allSettled([fetchHomepageArticles(sb), fetchMostRead(sb)]);
+    if (a.status === "fulfilled") initialArticles = a.value;
+    else console.error("Homepage articles prefetch failed", a.reason);
+    if (m.status === "fulfilled") initialMostRead = m.value;
+    else console.error("Most read prefetch failed", m.reason);
+  } catch (error) {
+    console.error("Homepage prefetch failed", error);
+  }
 
   return (
     <>
