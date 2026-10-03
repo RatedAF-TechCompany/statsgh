@@ -196,6 +196,7 @@ async function fetchAllCardsFromDB(): Promise<GlanceCard[]> {
     .eq('data_series.is_primary', true)
     .eq('data_series.geography.is_ghana', true)
     .in('data_series.indicator.slug', slugs)
+    .lte('date', new Date().toISOString().slice(0, 10))
     .order('date', { ascending: false });
 
   if (error) {

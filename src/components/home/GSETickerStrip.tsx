@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isStale, GSE_STALE_DAYS } from "@/lib/dataProvenance";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -19,17 +20,19 @@ const GSETickerStrip = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("gse_stocks")
-        .select("id, symbol, name, current_price, change_percent")
+        .select("id, symbol, name, current_price, change_percent, last_updated")
         .order("symbol", { ascending: true })
         .limit(10);
 
       if (error) throw error;
-      return data as Stock[];
+      return data as (Stock & { last_updated: string | null })[];
     },
     refetchInterval: 60000, // Refresh every minute
   });
 
-  if (isLoading || !stocks || stocks.length === 0) {
+  // Never scroll stale prices as if they were live.
+  const freshStocks = (stocks || []).filter((s) => !isStale(s.last_updated, GSE_STALE_DAYS));
+  if (isLoading || freshStocks.length === 0) {
     return null;
   }
 
@@ -53,7 +56,7 @@ const GSETickerStrip = () => {
   };
 
   // Duplicate for seamless loop
-  const tickerItems = [...stocks, ...stocks];
+  const tickerItems = [...freshStocks, ...freshStocks];
 
   return (
     <div 

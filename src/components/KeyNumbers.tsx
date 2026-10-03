@@ -1,0 +1,76 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ExternalLink } from "lucide-react";
+
+interface KeyDatum {
+  label?: string;
+  value?: number | string;
+  unit?: string;
+  context?: string;
+}
+
+const MONTHS = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*$/i;
+// Logistical / calendar labels never count as a statistic.
+const NON_STAT_LABEL = /\b(date|day|days|time|hour|year|month|edition|anniversary|session|deadline|phone)\b/i;
+
+export function realStats(raw: unknown): KeyDatum[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as KeyDatum[]).filter((k) => {
+    if (!k || !k.label) return false;
+    const n = typeof k.value === "number" ? k.value : Number(String(k.value ?? "").replace(/,/g, ""));
+    if (!Number.isFinite(n)) return false;
+    if (k.unit && MONTHS.test(k.unit.trim())) return false;
+    if (NON_STAT_LABEL.test(k.label)) return false;
+    return true;
+  });
+}
+
+const fmt = (v: number | string | undefined) => {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/,/g, ""));
+  return Number.isFinite(n) ? n.toLocaleString("en-GB", { maximumFractionDigits: 2 }) : String(v);
+};
+
+export const KeyNumbers = ({ articleId, keyData }: { articleId: string; keyData: unknown }) => {
+  const stats = realStats(keyData).slice(0, 4);
+
+  const { data: source } = useQuery({
+    queryKey: ["article-source", articleId],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_article_source", { p_article_id: articleId });
+      return (Array.isArray(data) ? data[0] : data) as { source_name: string; source_url: string } | undefined;
+    },
+    enabled: stats.length > 0,
+    staleTime: Infinity,
+  });
+
+  if (stats.length === 0) return null;
+
+  return (
+    <aside aria-label="Key numbers" className="mb-8 border-l-4 border-[#E3120B] bg-[#FAF7F2] p-5">
+      <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B] mb-4">Key numbers</h2>
+      <ul className="grid gap-4 sm:grid-cols-2">
+        {stats.map((k, i) => (
+          <li key={i} className="flex flex-col">
+            <span className="font-mono text-2xl font-bold text-[#121212]">
+              {fmt(k.value)}{k.unit ? ` ${k.unit}` : ""}
+            </span>
+            <span className="font-ui text-sm text-[#5B5B5B]">
+              {k.label}{k.context ? ` — ${k.context}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {source?.source_url && (
+        <a
+          href={source.source_url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="mt-4 inline-flex items-center gap-1 font-ui text-xs text-[#5B5B5B] hover:text-[#E3120B] underline"
+        >
+          Source: {source.source_name || new URL(source.source_url).hostname}
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+    </aside>
+  );
+};

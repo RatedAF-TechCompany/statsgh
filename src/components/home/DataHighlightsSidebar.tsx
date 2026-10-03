@@ -84,6 +84,7 @@ const DataHighlightsSidebar = () => {
             .from("data_points")
             .select("value, date")
             .eq("series_id", series.id)
+            .lte("date", new Date().toISOString().slice(0, 10))
             .order("date", { ascending: false })
             .limit(2);
 

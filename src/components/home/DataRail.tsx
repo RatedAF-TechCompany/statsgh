@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isEstimateSource, isStale, GSE_STALE_DAYS } from "@/lib/dataProvenance";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -60,7 +61,7 @@ const DataRail = () => {
     queryKey: ["rail-commodities"],
     queryFn: async () => {
       const { data, error } = await supabase.from("commodity_prices")
-        .select("id, commodity, price, change_percent, currency")
+        .select("id, commodity, price, change_percent, currency, source")
         .in("commodity", ["gold", "cocoa", "oil_brent", "oil_wti", "natural_gas"])
         .order("fetched_at", { ascending: false }).limit(20);
       if (error) throw error;
@@ -76,13 +77,17 @@ const DataRail = () => {
     queryKey: ["rail-gse"],
     queryFn: async () => {
       const { data, error } = await supabase.from("gse_stocks")
-        .select("symbol, current_price, change_percent")
+        .select("symbol, current_price, change_percent, last_updated")
         .order("market_cap", { ascending: false }).limit(5);
       if (error) throw error;
       return data;
     },
     refetchInterval: 60000,
   });
+
+  const gseLatest = (gseIndex || []).reduce<string | null>(
+    (m, s) => (s.last_updated && (!m || s.last_updated > m) ? s.last_updated : m), null);
+  const gseStale = isStale(gseLatest, GSE_STALE_DAYS);
 
   const isLoading = currLoading || comLoading;
 
@@ -127,12 +132,20 @@ const DataRail = () => {
             {/* Commodities */}
             <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#5B5B5B] mb-2">Commodities</h3>
             <div className="space-y-0 mb-4">
-              {(commodities || []).slice(0, 4).map((c) => (
+              {(commodities || []).length === 0 && (
+                <p className="py-1.5 border-t border-[#D9D9D9] font-ui text-[11px] text-[#5B5B5B]">Data unavailable</p>
+              )}
+              {(commodities || []).slice(0, 4).map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between py-1.5 border-t border-[#D9D9D9]">
-                  <span className="font-ui text-[11px] font-medium text-[#121212]">{cleanCommodityName(c.commodity)}</span>
+                  <span className="font-ui text-[11px] font-medium text-[#121212]">
+                    {cleanCommodityName(c.commodity)}
+                    {isEstimateSource(c.source) && (
+                      <span className="ml-1.5 font-ui text-[9px] uppercase tracking-[0.08em] text-[#5B5B5B]" title="Fixed estimate, not a live market quote">Illustrative</span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-2">
                     <span className="font-ui text-[12px] font-semibold text-[#121212]">${c.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                    <ChangeIndicator change={c.change_percent} />
+                    {!isEstimateSource(c.source) && <ChangeIndicator change={c.change_percent} />}
                   </div>
                 </div>
               ))}
@@ -141,18 +154,24 @@ const DataRail = () => {
             {/* GSE */}
             {gseIndex && gseIndex.length > 0 && (
               <>
-                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#5B5B5B] mb-2">GSE Stocks</h3>
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#5B5B5B] mb-2">
+                  GSE Stocks
+                  {gseStale && <span className="ml-1.5 text-[9px] font-normal">· Illustrative data</span>}
+                </h3>
                 <div className="space-y-0 mb-3">
                   {gseIndex.map((s) => (
                     <div key={s.symbol} className="flex items-center justify-between py-1.5 border-t border-[#D9D9D9]">
                       <span className="font-ui text-[11px] font-medium text-[#121212]">{s.symbol}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-ui text-[12px] font-semibold text-[#121212]">₵{s.current_price.toFixed(2)}</span>
-                        <ChangeIndicator change={s.change_percent} />
+                        {!gseStale && <ChangeIndicator change={s.change_percent} />}
                       </div>
                     </div>
                   ))}
                 </div>
+                {gseStale && (
+                  <p className="font-ui text-[10px] text-[#5B5B5B] mb-2">Not a live feed. Not refreshed since {new Date(gseLatest || 0).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.</p>
+                )}
                 <Link to="/dashboards/gse" className="font-ui text-[11px] text-[#E3120B] hover:underline">
                   Full GSE dashboard →
                 </Link>

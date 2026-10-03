@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isStale, GSE_STALE_DAYS } from "@/lib/dataProvenance";
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +118,12 @@ const GhanaStockExchange = () => {
     },
   });
 
+  const latestPriceUpdate = (stocks || []).reduce<string | null>(
+    (max, s: any) => (s.last_updated && (!max || s.last_updated > max) ? s.last_updated : max),
+    null,
+  );
+  const gseStale = isStale(latestPriceUpdate, GSE_STALE_DAYS);
+
   // Calculate summary stats
   const summaryStats = stocks
     ? {
@@ -164,10 +171,12 @@ const GhanaStockExchange = () => {
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="default">Dashboard</Badge>
             <Badge variant="outline">GSE</Badge>
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <BarChart3 size={12} />
-              Live Data
-            </Badge>
+            {!gseStale && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <BarChart3 size={12} />
+                Live Data
+              </Badge>
+            )}
           </div>
           <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
             Ghana Stock Exchange
@@ -179,13 +188,23 @@ const GhanaStockExchange = () => {
           <div className="flex items-center gap-4 mt-3">
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <Calendar size={14} />
-              Last updated: {dataUpdatedAt ? format(new Date(dataUpdatedAt), "dd MMM yyyy, HH:mm") : "—"}
+              Prices last updated: {latestPriceUpdate ? format(new Date(latestPriceUpdate), "dd MMM yyyy, HH:mm") : "—"}
             </p>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw size={14} className="mr-1" />
               Refresh
             </Button>
           </div>
+          {gseStale && (
+            <div role="note" className="mt-4 border-l-4 border-primary bg-muted p-4 max-w-3xl">
+              <p className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-foreground">Illustrative data</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                These prices are not a live Ghana Stock Exchange feed. They have not been refreshed
+                since {latestPriceUpdate ? format(new Date(latestPriceUpdate), "d MMMM yyyy") : "an unknown date"} and
+                should not be used for trading or reporting.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}

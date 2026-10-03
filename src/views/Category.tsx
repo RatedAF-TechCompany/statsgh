@@ -22,8 +22,15 @@ const getTimeAgo = (publishedAt: string | null) => {
   if (minutesAgo < 60) return `${minutesAgo}m ago`;
   const hoursAgo = Math.floor(minutesAgo / 60);
   if (hoursAgo < 24) return `${hoursAgo}h ago`;
-  return `${Math.floor(hoursAgo / 24)}d ago`;
+  return published.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
+
+const Meta = ({ author, publishedAt, className }: { author?: string | null; publishedAt: string | null; className: string }) => (
+  <span className={`font-ui text-xs text-[#5B5B5B] block ${className}`}>
+    {author ? <>By {author}{publishedAt ? " · " : ""}</> : null}
+    {publishedAt && <time dateTime={publishedAt}>{getTimeAgo(publishedAt)}</time>}
+  </span>
+);
 
 const Category = () => {
   const { categorySlug, slug } = useParams();
@@ -42,11 +49,18 @@ const Category = () => {
       const to = from + ARTICLES_PER_PAGE - 1;
 
       // Query by both category_slug (mapped values) AND section column for full coverage
+      const filters = [
+        `category_slug.in.(${categorySlugs.map(s => `"${s}"`).join(',')})`,
+        `section.eq.${categoryParam}`,
+      ];
+      if (categoryParam === "crime-justice") {
+        filters.push(`tags.ov.{crime,justice,security-governance}`);
+      }
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at")
+        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at, author_name")
         .eq("is_published", true)
-        .or(`category_slug.in.(${categorySlugs.map(s => `"${s}"`).join(',')}),section.eq.${categoryParam}`)
+        .or(filters.join(","))
         .order("published_at", { ascending: false })
         .range(from, to);
       if (error) throw error;
