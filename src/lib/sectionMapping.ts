@@ -25,3 +25,17 @@ export function getSectionForCategory(categorySlug: string): string {
   }
   return 'top-stories';
 }
+
+/** Tags that place a (Ghana-relevant) story in Crime & Justice. */
+export const CRIME_JUSTICE_TAGS = ['crime', 'justice', 'security-governance'];
+
+/** PostgREST `or` filter listing every Crime & Justice story. */
+export function crimeJusticeOrFilter(): string {
+  const cats = SECTION_TO_CATEGORIES['crime-justice'].map((s) => `"${s}"`).join(',');
+  return `category_slug.in.(${cats}),section.eq.crime-justice,tags.ov.{${CRIME_JUSTICE_TAGS.join(',')}}`;
+}
+
+export const SECTION_INTROS: Record<string, string> = {
+  'crime-justice':
+    "Crime, courts, policing and corruption in Ghana, reported through the numbers: cases, sentences, sums lost and recovered, and the institutions handling them — from the Ghana Police Service and EOCO to the Office of the Special Prosecutor and the courts.",
+};
