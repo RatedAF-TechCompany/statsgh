@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
-import { getCategoriesForSection } from "@/lib/sectionMapping";
+import { getCategoriesForSection, crimeJusticeOrFilter, SECTION_INTROS } from "@/lib/sectionMapping";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import NotFound from "./NotFound";

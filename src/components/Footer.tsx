@@ -15,6 +15,11 @@ const Footer = () => {
               data-driven reporting on Ghana's economy, markets, and public
               policy.
             </p>
+            <ul className="mt-4 space-y-2">
+              <li><Link to="/about" className="font-ui text-[13px] text-[#E3120B] hover:underline">About &amp; Methodology</Link></li>
+              <li><Link to="/about#corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
+              <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>
+            </ul>
           </div>
 
           {/* Sections */}
