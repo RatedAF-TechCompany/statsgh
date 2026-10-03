@@ -9,13 +9,18 @@ const nextConfig = {
   reactStrictMode: true,
   // The codebase reads NEXT_PUBLIC_SUPABASE_* but the project env only defines
   // VITE_SUPABASE_*. Map them so the values are inlined at build time on any
-  // host (Next loads .env before this config runs).
+  // host. These values are public by design (they ship to the browser; RLS
+  // protects the data), so literal fallbacks are safe and keep the build
+  // working even where .env is not present.
   env: {
     NEXT_PUBLIC_SUPABASE_URL:
-      process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.VITE_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_URL ??
+      process.env.VITE_SUPABASE_URL ??
+      "https://ofhejtwaigiqyejbvncz.supabase.co",
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-      process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9maGVqdHdhaWdpcXllamJ2bmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyOTE1NjUsImV4cCI6MjA3ODg2NzU2NX0.l01PfzD7KDaGQJKRoLFxoBuA46z8OsAM7F0Xc4DTLEo",
   },
   // The existing codebase predates Next's lint/type strictness and the old
   // Vite build never enforced them. Don't let lint/type errors gate the build.
