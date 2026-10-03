@@ -1,3 +1,5 @@
 # Roadmap
 
-- [ ] Fix live homepage 500: inline NEXT_PUBLIC_SUPABASE_* from VITE_* via next.config env mapping; verify with production build simulating live env; republish; verify / and /crime-justice live.
+- [ ] Restore public SELECT (anon+authenticated) on all non-personal tables the site reads; keep writes admin/service-only; keep personal tables locked.
+- [ ] Test anonymous reads for each table via the data API.
+- [ ] Republish and verify live / and /crime-justice (deploy currently fails with "Build incomplete").
