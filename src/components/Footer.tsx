@@ -1,5 +1,6 @@
 import { SITE_SECTIONS } from "@/lib/navigation";
 import { Link } from "react-router-dom";
+import { NewsletterSignup } from "@/components/NewsletterSignup";
 
 const Footer = () => {
   return (
@@ -20,6 +21,7 @@ const Footer = () => {
               <li><Link to="/about#corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
               <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>
             </ul>
+            <NewsletterSignup source="footer" />
           </div>
 
           {/* Sections */}

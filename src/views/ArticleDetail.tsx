@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Bookmark, Share2, TrendingUp, Database, ExternalLink } from "lucide-react";
+import { Bookmark, Share2, TrendingUp, Database, ExternalLink, MessageCircle } from "lucide-react";
 import { ReadingTime } from "@/components/ReadingTime";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -255,6 +255,7 @@ const ArticleDetail = () => {
 
   const bodyWithHighlightedNumbers = highlightNumbers(sanitizedBody);
   const sectionLabel = getSectionLabel(article.category_slug);
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${article.title} https://statsgh.com/${article.category_slug}/${article.slug}`)}`;
 
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
@@ -270,6 +271,16 @@ const ArticleDetail = () => {
         >
           <Share2 size={16} className="text-[#121212]" />
         </button>
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-10 h-10 flex items-center justify-center border border-[#D9D9D9] bg-[#FFFFFF] hover:bg-[#D9D9D9] transition-colors"
+          title="Share on WhatsApp"
+          aria-label="Share on WhatsApp"
+        >
+          <MessageCircle size={16} className="text-[#121212]" />
+        </a>
         <button
           onClick={() => toggleBookmark.mutate()}
           className="w-10 h-10 flex items-center justify-center border border-[#D9D9D9] bg-[#FFFFFF] hover:bg-[#D9D9D9] transition-colors"
@@ -342,6 +353,9 @@ const ArticleDetail = () => {
               </div>
               {/* Mobile share buttons */}
               <div className="flex items-center gap-1 lg:hidden">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="p-2 hover:opacity-70" aria-label="Share on WhatsApp">
+                  <MessageCircle size={16} className="text-[#5B5B5B]" />
+                </a>
                 <button onClick={handleShare} className="p-2 hover:opacity-70" aria-label="Share article">
                   <Share2 size={16} className="text-[#5B5B5B]" />
                 </button>

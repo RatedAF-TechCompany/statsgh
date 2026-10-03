@@ -43,6 +43,13 @@
       "when": 1791069455722,
       "tag": "0005_article_views_public_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791070715605,
+      "tag": "0006_newsletter_subscribers",
+      "breakpoints": true
     }
   ]
 }
