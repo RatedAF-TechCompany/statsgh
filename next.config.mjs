@@ -7,6 +7,16 @@ const routerShim = path.resolve(__dirname, "src/compat/react-router-dom.tsx");
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // The codebase reads NEXT_PUBLIC_SUPABASE_* but the project env only defines
+  // VITE_SUPABASE_*. Map them so the values are inlined at build time on any
+  // host (Next loads .env before this config runs).
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL:
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.VITE_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  },
   // The existing codebase predates Next's lint/type strictness and the old
   // Vite build never enforced them. Don't let lint/type errors gate the build.
   eslint: { ignoreDuringBuilds: true },
