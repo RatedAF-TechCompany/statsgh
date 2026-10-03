@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import { JournalistByline } from "@/components/JournalistByline";
 import { KeyNumbers } from "@/components/KeyNumbers";
+import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
@@ -221,6 +222,9 @@ const ArticleContent = ({ article }: { article: any }) => {
               </div>
             </div>
           </div>
+
+          {/* Correction note — shown when this article has a published correction */}
+          <ArticleCorrectionNote articleId={article.id} />
 
           {/* Key numbers — only when real statistics were extracted */}
           <KeyNumbers articleId={article.id} keyData={article.key_data} />

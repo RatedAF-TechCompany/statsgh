@@ -28,6 +28,7 @@ const STATIC_PAGES = [
   { url: `${BASE_URL}/charts-explainers`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/crime-justice`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/about`, changeFrequency: "monthly" as const, priority: 0.5 },
+  { url: `${BASE_URL}/corrections`, changeFrequency: "weekly" as const, priority: 0.4 },
   { url: `${BASE_URL}/sources`, changeFrequency: "weekly" as const, priority: 0.5 },
   { url: `${BASE_URL}/search`, changeFrequency: "weekly" as const, priority: 0.5 },
 ];
