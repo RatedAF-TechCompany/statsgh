@@ -15,6 +15,13 @@
       "when": 1791041628339,
       "tag": "0001_security_lockdown",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791041651016,
+      "tag": "0002_tighten_public_inserts",
+      "breakpoints": true
     }
   ]
 }
