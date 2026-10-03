@@ -816,6 +816,64 @@ export type Database = {
         }
         Relationships: []
       }
+      corrections: {
+        Row: {
+          article_id: string | null
+          article_title: string
+          article_url: string
+          corrected_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          what_was_fixed: string
+          what_was_wrong: string
+        }
+        Insert: {
+          article_id?: string | null
+          article_title: string
+          article_url: string
+          corrected_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          what_was_fixed: string
+          what_was_wrong: string
+        }
+        Update: {
+          article_id?: string | null
+          article_title?: string
+          article_url?: string
+          corrected_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          what_was_fixed?: string
+          what_was_wrong?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corrections_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corrections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "author_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corrections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_rates: {
         Row: {
           base_currency: string | null
