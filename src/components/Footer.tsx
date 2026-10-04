@@ -20,6 +20,11 @@ const Footer = () => {
             <ul className="mt-4 space-y-2">
               <li><Link to="/about" className="font-ui text-[13px] text-[#E3120B] hover:underline">About &amp; Methodology</Link></li>
               <li><Link to="/corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
+              <li><Link to="/contact" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Contact</Link></li>
+              <li><Link to="/advertise" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Advertise</Link></li>
+              <li><Link to="/newsletter" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Newsletter</Link></li>
+              <li><Link to="/privacy" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Privacy</Link></li>
+              <li><Link to="/terms" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Terms</Link></li>
               <li><Link to="/glossary" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Glossary</Link></li>
               <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>
               <li><a href="/feed.xml" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">RSS feed</a></li>

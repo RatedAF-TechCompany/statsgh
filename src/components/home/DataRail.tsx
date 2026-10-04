@@ -186,9 +186,6 @@ const DataRail = () => {
                 ) : (
                   <p className="font-ui text-[9px] text-[#5B5B5B] mb-2">Source: {GSE_SOURCE} · as of {asOfLabel(gseLatest)}</p>
                 )}
-                <Link to="/dashboards/gse" className="font-ui text-[11px] text-[#E3120B] hover:underline">
-                  Full GSE dashboard →
-                </Link>
               </>
             )}
           </>
@@ -201,7 +198,8 @@ const DataRail = () => {
         <div className="space-y-1.5">
           {[
             { label: "All Data Indicators", href: "/data" },
-            { label: "Economic Calendar", href: "/calendar" },
+            { label: "Cedi Exchange Rates", href: "/markets/forex" },
+            { label: "T-bill & Policy Rates", href: "/markets/rates" },
             { label: "Finance Dashboard", href: "/dashboards/finance" },
           ].map((link) => (
             <Link key={link.href} to={link.href} className="block font-ui text-[11px] text-[#E3120B] hover:underline">
