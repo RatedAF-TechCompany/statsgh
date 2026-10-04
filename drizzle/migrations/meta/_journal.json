@@ -92,6 +92,13 @@
       "when": 1791072995663,
       "tag": "0012_week_in_numbers_dedupe_value",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791074260374,
+      "tag": "0013_crime_stats_confidence",
+      "breakpoints": true
     }
   ]
 }
