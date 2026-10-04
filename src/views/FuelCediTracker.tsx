@@ -20,6 +20,22 @@ const daily = (rows: { t: string; v: number }[]): Pt[] => {
   return [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }));
 };
 
+/** Official Bank of Ghana interbank mid-rate history (one point per BoG business day). */
+async function fetchBogFxSeries(base: string): Promise<Pt[]> {
+  const since = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+  const { data } = await (supabase as any).from("bog_fx_rates").select("rate_date, mid")
+    .eq("pair", `${base}GHS`).gte("rate_date", since).order("rate_date", { ascending: true }).limit(1000);
+  return (data || []).map((r: any) => ({ date: r.rate_date, value: Number(r.mid) }));
+}
+
+export type FxSeries = { points: Pt[]; official: boolean };
+/** Official BoG rate first; open.er-api market mid-rate only when no official figure is stored. */
+export async function fetchFxPreferBog(base: string): Promise<FxSeries> {
+  const bog = await fetchBogFxSeries(base);
+  if (bog.length) return { points: bog, official: true };
+  return { points: await fetchFx(base), official: false };
+}
+
 export async function fetchFx(base: string): Promise<Pt[]> {
   const since = new Date(Date.now() - 365 * 864e5).toISOString();
   const { data } = await supabase
@@ -133,9 +149,12 @@ const ChartCard = ({
 };
 
 const FuelCediTracker = () => {
-  const usd = useQuery({ queryKey: ["fct-fx", "USD"], queryFn: () => fetchFx("USD") });
-  const eur = useQuery({ queryKey: ["fct-fx", "EUR"], queryFn: () => fetchFx("EUR") });
-  const gbp = useQuery({ queryKey: ["fct-fx", "GBP"], queryFn: () => fetchFx("GBP") });
+  const usd = useQuery({ queryKey: ["fct-fx2", "USD"], queryFn: () => fetchFxPreferBog("USD") });
+  const eur = useQuery({ queryKey: ["fct-fx2", "EUR"], queryFn: () => fetchFxPreferBog("EUR") });
+  const gbp = useQuery({ queryKey: ["fct-fx2", "GBP"], queryFn: () => fetchFxPreferBog("GBP") });
+  const fxProps = (q: { data?: FxSeries }) => q.data?.official === false
+    ? { points: q.data.points, source: "open.er-api.com (market mid-rate, not official)", sourceHref: "https://open.er-api.com", note: "Official Bank of Ghana figures unavailable; showing an open-market mid-rate." }
+    : { points: q.data?.points, source: "Bank of Ghana — daily interbank FX rates", sourceHref: "https://www.bog.gov.gh/treasury-and-the-markets/daily-interbank-fx-rates/", note: "Official BoG interbank mid-rate. Full table on our Cedi exchange rates page (/markets/forex)." };
   const brent = useQuery({ queryKey: ["fct-brent"], queryFn: fetchBrent });
   const pump = useQuery({ queryKey: ["fct-pump"], queryFn: fetchPump });
 
@@ -158,9 +177,9 @@ const FuelCediTracker = () => {
           Where history is short we say when tracking started rather than fill gaps.
         </p>
 
-        <ChartCard embed="usd" title="US dollar to cedi (USD/GHS)" unit="GHS per US$" points={usd.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
-        <ChartCard embed="eur" title="Euro to cedi (EUR/GHS)" unit="GHS per €" points={eur.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
-        <ChartCard embed="gbp" title="Pound to cedi (GBP/GHS)" unit="GHS per £" points={gbp.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
+        <ChartCard embed="usd" title="US dollar to cedi (USD/GHS)" unit="GHS per US$" {...fxProps(usd)} />
+        <ChartCard embed="eur" title="Euro to cedi (EUR/GHS)" unit="GHS per €" {...fxProps(eur)} />
+        <ChartCard embed="gbp" title="Pound to cedi (GBP/GHS)" unit="GHS per £" {...fxProps(gbp)} />
         <ChartCard embed="brent"
           title="Brent crude"
           unit="US$ per barrel"
