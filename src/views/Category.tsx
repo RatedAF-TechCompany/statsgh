@@ -1,4 +1,5 @@
 "use client";
+import { FollowButton } from "@/components/FollowButton";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,6 +106,7 @@ const Category = () => {
         {/* Section title */}
         <div className="border-b border-[#E3120B] pb-3 mb-8">
           <h1 className="section-label text-base">{categoryLabel}</h1>
+          <div className="mt-2"><FollowButton type="topic" targetKey={String(categorySlug || categoryLabel)} label={String(categoryLabel)} /></div>
           {categoryParam && SECTION_INTROS[categoryParam] && (
             <p className="font-serif text-[15px] text-[#5B5B5B] mt-2 max-w-3xl leading-relaxed">
               {SECTION_INTROS[categoryParam]}

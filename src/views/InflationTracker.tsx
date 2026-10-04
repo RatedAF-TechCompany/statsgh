@@ -1,4 +1,5 @@
 "use client";
+import { FollowButton } from "@/components/FollowButton";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
@@ -91,6 +92,7 @@ const InflationTracker = () => {
             <Link to="/markets-data" className="hover:underline">Markets &amp; Data</Link> · Trackers
           </p>
           <h1 className="section-label text-base">Inflation Explainer</h1>
+          <div className="mt-2"><FollowButton type="indicator" targetKey="cpi-inflation" label="CPI inflation" /></div>
         </div>
         <p className="font-serif text-[19px] leading-[1.6] text-[#5B5B5B] py-4">
           Ghana's monthly consumer price inflation — headline, food and non-food — as published by the Ghana
