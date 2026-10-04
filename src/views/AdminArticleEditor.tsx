@@ -65,6 +65,10 @@ const AdminArticleEditor = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [isMostRead, setIsMostRead] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dealType, setDealType] = useState("");
+  const [isSponsored, setIsSponsored] = useState(false);
+  const [sponsorName, setSponsorName] = useState("");
+  const [sponsorDisclosure, setSponsorDisclosure] = useState("");
   const [tweeting, setTweeting] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   
@@ -129,6 +133,10 @@ const AdminArticleEditor = () => {
 
   useEffect(() => {
     if (article) {
+      setDealType((article as any).deal_type || "");
+      setIsSponsored(!!(article as any).is_sponsored);
+      setSponsorName((article as any).sponsor_name || "");
+      setSponsorDisclosure((article as any).sponsor_disclosure || "");
       setTitle(article.title);
       setSubtitle(article.subtitle || "");
       setSlug(article.slug);
@@ -307,7 +315,16 @@ const AdminArticleEditor = () => {
         twitter_post: twitterPost || null,
         instagram_comment: instagramComment || null,
         instagram_compressed: instagramCompressed || null,
+        deal_type: isSponsored ? null : dealType || null,
+        is_sponsored: isSponsored,
+        sponsor_name: isSponsored ? sponsorName.trim() || null : null,
+        sponsor_disclosure: isSponsored ? sponsorDisclosure.trim() || null : null,
       };
+      if (isSponsored && !sponsorName.trim()) {
+        toast.error("Sponsored articles must name the sponsor.");
+        setLoading(false);
+        return;
+      }
 
       if (isEditing) {
         const { error } = await supabase
@@ -598,6 +615,32 @@ const AdminArticleEditor = () => {
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="economy, markets, tech (auto-generated)"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deal-type">Deal type <span className="text-xs text-muted-foreground">(blank = automatic keyword tag)</span></Label>
+                <select id="deal-type" value={dealType} onChange={(e) => setDealType(e.target.value)} className="w-full border rounded h-9 px-2 text-sm bg-background">
+                  <option value="">None / automatic</option>
+                  <option value="m_and_a">M&amp;A</option>
+                  <option value="bond">Bond issue</option>
+                  <option value="eurobond">Eurobond</option>
+                  <option value="ipo">IPO / listing</option>
+                  <option value="capital_raise">Capital raise</option>
+                  <option value="contract">Large contract</option>
+                </select>
+              </div>
+
+              <div className="space-y-2 border rounded p-3">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={isSponsored} onChange={(e) => setIsSponsored(e.target.checked)} />
+                  Sponsored article (labelled, excluded from news sitemap and editorial automation)
+                </label>
+                {isSponsored && (
+                  <>
+                    <Input value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} placeholder="Sponsor name (required)" />
+                    <Textarea value={sponsorDisclosure} onChange={(e) => setSponsorDisclosure(e.target.value)} placeholder="Disclosure text (optional; a standard disclosure is shown if blank)" />
+                  </>
+                )}
               </div>
 
               <div className="space-y-2">

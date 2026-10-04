@@ -20,9 +20,12 @@ import {
 } from "@/components/ui/breadcrumb";
 import { format } from "date-fns";
 import { JournalistByline } from "@/components/JournalistByline";
+import { NewsletterSignup } from "@/components/NewsletterSignup";
+import { useCompanies, linkCompanies } from "@/lib/companies";
 
 const ArticleDetail = () => {
   const { articleSlug: slug, categorySlug } = useParams();
+  const companies = useCompanies();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -322,6 +325,9 @@ const ArticleDetail = () => {
             {sectionLabel}
           </Link>
 
+          {(article as any).is_sponsored && (
+            <p className="inline-block mb-3 px-2 py-0.5 bg-[#B8860B] text-white font-ui text-[11px] font-bold uppercase tracking-wider">Sponsored</p>
+          )}
           {/* Headline */}
           <h1 className="font-headline text-[32px] md:text-[38px] font-bold leading-[1.15] text-[#121212] mb-4" itemProp="headline">
             {article.title}
@@ -378,13 +384,24 @@ const ArticleDetail = () => {
             </figure>
           )}
 
+          {(article as any).is_sponsored && (
+            <aside className="sponsored-disclosure mb-6 border-l-4 border-[#B8860B] bg-[#FFF8E6] p-4 font-ui text-[13px] text-[#4A3B00]" aria-label="Sponsored content disclosure">
+              <strong className="uppercase tracking-wide text-[11px] block mb-1">Sponsored · {(article as any).sponsor_name}</strong>
+              {(article as any).sponsor_disclosure || `This article was paid for by ${(article as any).sponsor_name}. It is not StatsGH journalism and was not produced by our newsroom. Sponsors have no say over our editorial coverage.`}
+            </aside>
+          )}
+
           {/* Article Body */}
           <section
             data-article-body="true"
             className="prose prose-lg max-w-none mb-8"
             itemProp="articleBody"
-            dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
+            dangerouslySetInnerHTML={{ __html: linkCompanies(bodyWithHighlightedNumbers, companies) }}
           />
+
+          <div className="mb-10 border-t border-[#D9D9D9] pt-4">
+            <NewsletterSignup source="article" />
+          </div>
 
           {/* Comments */}
           <div className="mb-12">

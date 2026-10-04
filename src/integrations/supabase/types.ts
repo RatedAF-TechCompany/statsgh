@@ -310,6 +310,7 @@ export type Database = {
           category_id: string | null
           category_slug: string
           created_at: string
+          deal_type: string | null
           dedupe_key: string | null
           editorial_category: string | null
           editorial_note: string | null
@@ -327,6 +328,7 @@ export type Database = {
           is_breaking: boolean
           is_most_read: boolean
           is_published: boolean
+          is_sponsored: boolean
           is_wire: boolean
           key_data: Json
           meta_title: string | null
@@ -339,6 +341,8 @@ export type Database = {
           seo_description: string | null
           slug: string
           source_published_at: string | null
+          sponsor_disclosure: string | null
+          sponsor_name: string | null
           status: string | null
           subtitle: string | null
           summary: string
@@ -362,6 +366,7 @@ export type Database = {
           category_id?: string | null
           category_slug: string
           created_at?: string
+          deal_type?: string | null
           dedupe_key?: string | null
           editorial_category?: string | null
           editorial_note?: string | null
@@ -379,6 +384,7 @@ export type Database = {
           is_breaking?: boolean
           is_most_read?: boolean
           is_published?: boolean
+          is_sponsored?: boolean
           is_wire?: boolean
           key_data?: Json
           meta_title?: string | null
@@ -391,6 +397,8 @@ export type Database = {
           seo_description?: string | null
           slug: string
           source_published_at?: string | null
+          sponsor_disclosure?: string | null
+          sponsor_name?: string | null
           status?: string | null
           subtitle?: string | null
           summary: string
@@ -414,6 +422,7 @@ export type Database = {
           category_id?: string | null
           category_slug?: string
           created_at?: string
+          deal_type?: string | null
           dedupe_key?: string | null
           editorial_category?: string | null
           editorial_note?: string | null
@@ -431,6 +440,7 @@ export type Database = {
           is_breaking?: boolean
           is_most_read?: boolean
           is_published?: boolean
+          is_sponsored?: boolean
           is_wire?: boolean
           key_data?: Json
           meta_title?: string | null
@@ -443,6 +453,8 @@ export type Database = {
           seo_description?: string | null
           slug?: string
           source_published_at?: string | null
+          sponsor_disclosure?: string | null
+          sponsor_name?: string | null
           status?: string | null
           subtitle?: string | null
           summary?: string
@@ -951,6 +963,42 @@ export type Database = {
           price?: number
           source?: string | null
           unit?: string | null
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          aliases: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sector: string | null
+          slug: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sector?: string | null
+          slug: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sector?: string | null
+          slug?: string
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1885,6 +1933,36 @@ export type Database = {
         }
         Relationships: []
       }
+      follows: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          manage_token: string
+          target_key: string
+          target_label: string | null
+          target_type: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          manage_token?: string
+          target_key: string
+          target_label?: string | null
+          target_type: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          manage_token?: string
+          target_key?: string
+          target_label?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
       geographies: {
         Row: {
           code: string | null
@@ -2630,7 +2708,11 @@ export type Database = {
           frequency: string
           id: string
           is_active: boolean
+          manage_token: string
           source: string | null
+          updated_at: string
+          wants_daily: boolean
+          wants_weekly: boolean
         }
         Insert: {
           created_at?: string
@@ -2638,7 +2720,11 @@ export type Database = {
           frequency?: string
           id?: string
           is_active?: boolean
+          manage_token?: string
           source?: string | null
+          updated_at?: string
+          wants_daily?: boolean
+          wants_weekly?: boolean
         }
         Update: {
           created_at?: string
@@ -2646,7 +2732,11 @@ export type Database = {
           frequency?: string
           id?: string
           is_active?: boolean
+          manage_token?: string
           source?: string | null
+          updated_at?: string
+          wants_daily?: boolean
+          wants_weekly?: boolean
         }
         Relationships: []
       }
@@ -3110,6 +3200,7 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          ad_rates: Json | null
           default_seo_description: string | null
           favicon_url: string | null
           footer_text: string | null
@@ -3117,11 +3208,15 @@ export type Database = {
           logo_url: string | null
           site_name: string | null
           social_image_url: string | null
+          telegram_url: string | null
           theme_colors: Json | null
           updated_at: string | null
           updated_by: string | null
+          whatsapp_url: string | null
+          x_url: string | null
         }
         Insert: {
+          ad_rates?: Json | null
           default_seo_description?: string | null
           favicon_url?: string | null
           footer_text?: string | null
@@ -3129,11 +3224,15 @@ export type Database = {
           logo_url?: string | null
           site_name?: string | null
           social_image_url?: string | null
+          telegram_url?: string | null
           theme_colors?: Json | null
           updated_at?: string | null
           updated_by?: string | null
+          whatsapp_url?: string | null
+          x_url?: string | null
         }
         Update: {
+          ad_rates?: Json | null
           default_seo_description?: string | null
           favicon_url?: string | null
           footer_text?: string | null
@@ -3141,9 +3240,12 @@ export type Database = {
           logo_url?: string | null
           site_name?: string | null
           social_image_url?: string | null
+          telegram_url?: string | null
           theme_colors?: Json | null
           updated_at?: string | null
           updated_by?: string | null
+          whatsapp_url?: string | null
+          x_url?: string | null
         }
         Relationships: [
           {
@@ -3710,11 +3812,37 @@ export type Database = {
           url: string
         }[]
       }
+      classify_deal_type: {
+        Args: { p_summary: string; p_title: string }
+        Returns: string
+      }
+      company_articles: {
+        Args: { p_limit?: number; p_results_only?: boolean; p_symbol: string }
+        Returns: {
+          category_slug: string
+          deal_type: string
+          id: string
+          published_at: string
+          slug: string
+          summary: string
+          tags: string[]
+          title: string
+        }[]
+      }
       compile_gse_week: { Args: { p_day?: string }; Returns: number }
       compile_week_in_numbers: { Args: { p_day?: string }; Returns: number }
       editor_decide_article: {
         Args: { p_article_id: string; p_decision: string; p_note: string }
         Returns: undefined
+      }
+      follow_target: {
+        Args: {
+          p_email: string
+          p_key: string
+          p_label: string
+          p_type: string
+        }
+        Returns: string
       }
       get_article_source: {
         Args: { p_article_id: string }
@@ -3739,6 +3867,15 @@ export type Database = {
           views: number
         }[]
       }
+      get_newsletter_prefs: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          is_active: boolean
+          wants_daily: boolean
+          wants_weekly: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3758,7 +3895,28 @@ export type Database = {
       refresh_crime_stats: { Args: never; Returns: number }
       refresh_inflation_readings: { Args: never; Returns: number }
       release_stale_tweet_claims: { Args: never; Returns: number }
+      subscribe_newsletter: {
+        Args: {
+          p_daily: boolean
+          p_email: string
+          p_source: string
+          p_weekly: boolean
+        }
+        Returns: {
+          manage_token: string
+          status: string
+        }[]
+      }
       trigger_newsroom_scan: { Args: never; Returns: undefined }
+      update_newsletter_prefs: {
+        Args: {
+          p_active: boolean
+          p_daily: boolean
+          p_token: string
+          p_weekly: boolean
+        }
+        Returns: boolean
+      }
       verify_scheduler_token: { Args: { p_token: string }; Returns: boolean }
     }
     Enums: {

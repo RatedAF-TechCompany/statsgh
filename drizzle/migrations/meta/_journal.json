@@ -148,6 +148,13 @@
       "when": 1791134701658,
       "tag": "0020_macro_series_and_calendar_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791135520892,
+      "tag": "0021_batch4_companies_deals_newsletter_follows_sponsored",
+      "breakpoints": true
     }
   ]
 }
