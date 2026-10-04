@@ -24,6 +24,20 @@ const TRACKERS: CatalogItem[] = [
   { id: "fx-USD", kind: "tracker", name: "US dollar to cedi (USD/GHS)", group: "Fuel & Cedi", unit: "GHS", href: "/trackers/fuel-and-cedi" },
   { id: "fx-EUR", kind: "tracker", name: "Euro to cedi (EUR/GHS)", group: "Fuel & Cedi", unit: "GHS", href: "/trackers/fuel-and-cedi" },
   { id: "fx-GBP", kind: "tracker", name: "Pound to cedi (GBP/GHS)", group: "Fuel & Cedi", unit: "GHS", href: "/trackers/fuel-and-cedi" },
+  { id: "bogfx-USDGHS", kind: "tracker", name: "USD/GHS official (Bank of Ghana)", group: "Markets", unit: "GHS", href: "/markets/forex" },
+  { id: "bogfx-GBPGHS", kind: "tracker", name: "GBP/GHS official (Bank of Ghana)", group: "Markets", unit: "GHS", href: "/markets/forex" },
+  { id: "bogfx-EURGHS", kind: "tracker", name: "EUR/GHS official (Bank of Ghana)", group: "Markets", unit: "GHS", href: "/markets/forex" },
+  { id: "tbill-91", kind: "tracker", name: "91-day T-bill rate", group: "Markets", unit: "%", href: "/markets/rates" },
+  { id: "tbill-182", kind: "tracker", name: "182-day T-bill rate", group: "Markets", unit: "%", href: "/markets/rates" },
+  { id: "tbill-364", kind: "tracker", name: "364-day T-bill rate", group: "Markets", unit: "%", href: "/markets/rates" },
+  { id: "policy-rate", kind: "tracker", name: "Bank of Ghana policy rate", group: "Markets", unit: "%", href: "/markets/rates" },
+  { id: "gse-ci", kind: "tracker", name: "GSE Composite Index", group: "Markets", unit: "pts", href: "/markets/gse" },
+  { id: "gse-fsi", kind: "tracker", name: "GSE Financial Stocks Index", group: "Markets", unit: "pts", href: "/markets/gse" },
+  { id: "macro-wb_cpi", kind: "tracker", name: "CPI inflation, annual (World Bank)", group: "Macro", unit: "%", href: "/trackers/cpi" },
+  { id: "macro-wb_gdp", kind: "tracker", name: "Real GDP growth, annual (World Bank)", group: "Macro", unit: "%", href: "/trackers/gdp" },
+  { id: "macro-imf_debt", kind: "tracker", name: "Public debt, % of GDP (IMF, outturns)", group: "Macro", unit: "%", href: "/dashboards/budget-and-debt" },
+  { id: "macro-imf_balance", kind: "tracker", name: "Budget balance, % of GDP (IMF, outturns)", group: "Macro", unit: "%", href: "/dashboards/budget-and-debt" },
+  { id: "macro-gold_usd", kind: "tracker", name: "Gold, international spot price", group: "Commodities", unit: "USD/oz", href: "/dashboards/finance" },
   { id: "com-oil_brent", kind: "tracker", name: "Brent crude", group: "Commodities", unit: "USD/barrel", href: "/trackers/fuel-and-cedi" },
   { id: "com-oil_wti", kind: "tracker", name: "WTI crude", group: "Commodities", unit: "USD/barrel" },
   { id: "com-cocoa", kind: "tracker", name: "Cocoa (world price)", group: "Commodities", unit: "USD/tonne" },
@@ -88,6 +102,28 @@ function daily(rows: { t: string; v: number }[]): Pt[] {
 
 export async function loadSeries(item: CatalogItem): Promise<SeriesData> {
   const id = item.id;
+  if (id.startsWith("bogfx-")) {
+    const { data } = await supabase.from("bog_fx_rates").select("rate_date, mid, source_url, fetched_at").eq("pair", id.slice(6)).order("rate_date", { ascending: true }).limit(2000);
+    return { points: (data || []).map((r: any) => ({ date: r.rate_date, value: Number(r.mid) })), source: "Bank of Ghana interbank FX", sourceUrl: data?.[0]?.source_url, updated: data?.[data.length - 1]?.fetched_at ?? null };
+  }
+  if (id.startsWith("tbill-")) {
+    const { data } = await supabase.from("bog_tbill_rates").select("issue_date, interest_rate, source_url, fetched_at").eq("tenor_days", Number(id.slice(6))).order("issue_date", { ascending: true }).limit(2000);
+    return { points: (data || []).map((r: any) => ({ date: r.issue_date, value: Number(r.interest_rate) })), source: "Bank of Ghana T-bill rates", sourceUrl: data?.[0]?.source_url, updated: data?.[data.length - 1]?.fetched_at ?? null };
+  }
+  if (id === "policy-rate") {
+    const { data } = await supabase.from("bog_policy_rates").select("effective_date, rate, source_url, fetched_at").order("effective_date", { ascending: true }).limit(500);
+    return { points: (data || []).map((r: any) => ({ date: r.effective_date, value: Number(r.rate) })), source: "Bank of Ghana policy rate trends", sourceUrl: data?.[0]?.source_url, updated: data?.[data.length - 1]?.fetched_at ?? null };
+  }
+  if (id.startsWith("gse-")) {
+    const col = id === "gse-ci" ? "gse_ci" : "gse_fsi";
+    const { data } = await supabase.from("gse_index_daily").select(`trade_date, ${col}, source_url, fetched_at`).order("trade_date", { ascending: true }).limit(2000);
+    return { points: (data || []).filter((r: any) => r[col] != null).map((r: any) => ({ date: r.trade_date, value: Number(r[col]) })), source: "Ghana Stock Exchange (end-of-day)", sourceUrl: data?.[0]?.source_url, updated: data?.[data.length - 1]?.fetched_at ?? null };
+  }
+  if (id.startsWith("macro-")) {
+    const { data } = await supabase.from("macro_series").select("period, value, source, source_url, fetched_at").eq("series_key", id.slice(6)).eq("is_projection", false).order("period", { ascending: true }).limit(500);
+    return { points: (data || []).map((r: any) => ({ date: r.period, value: Number(r.value) })), source: data?.[0]?.source ?? "—", sourceUrl: data?.[0]?.source_url, updated: data?.[data.length - 1]?.fetched_at ?? null,
+      note: id.includes("imf_") ? "IMF projections excluded; recent years may be IMF estimates." : undefined };
+  }
   if (id.startsWith("fx-")) {
     const { data } = await supabase.from("currency_rates").select("rate, fetched_at")
       .eq("base_currency", id.slice(3)).eq("target_currency", "GHS").eq("source", "open.er-api.com")
