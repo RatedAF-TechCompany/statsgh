@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { BOG_SOURCE, BOG_URLS, downloadCsv, fetchBogFx, fmtDay, latestFx } from "@/lib/bogRates";
 import { KeyNumbersBox, Methodology, PageShell, ShareRow, TimeChart } from "@/components/markets/MarketBits";
+import { GseTicker } from "@/components/markets/GseTicker";
 import { supabase } from "@/integrations/supabase/client";
 
 const PAIRS = [
@@ -61,7 +62,9 @@ const MarketsForex = () => {
         <span className="font-bold">Forex</span>
         <Link to="/markets/rates" className="underline text-[#E3120B]">Interest rates</Link>
         <Link to="/trackers/fuel-and-cedi" className="underline text-[#E3120B]">Fuel &amp; Cedi</Link>
+        <Link to="/markets/gse" className="underline text-[#E3120B]">GSE</Link>
       </nav>
+      <GseTicker />
 
       {fx.isLoading ? <p className="text-sm text-[#5B5B5B]">Loading…</p> : (
         <KeyNumbersBox items={keyItems} source={`${BOG_SOURCE} — daily interbank FX rates`} sourceHref={BOG_URLS.fx} asOf={asOf} />

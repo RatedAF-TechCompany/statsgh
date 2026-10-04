@@ -34,6 +34,7 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/charts-explainers`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/crime-justice`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/forex`, changeFrequency: "daily" as const, priority: 0.8 },
+  { url: `${BASE_URL}/markets/gse`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/rates`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/dashboards/finance`, changeFrequency: "daily" as const, priority: 0.6 },
   { url: `${BASE_URL}/contact`, changeFrequency: "yearly" as const, priority: 0.3 },

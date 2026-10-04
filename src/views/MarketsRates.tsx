@@ -1,4 +1,5 @@
 "use client";
+import { GseTicker } from "@/components/markets/GseTicker";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -52,7 +53,9 @@ const MarketsRates = () => {
         <Link to="/markets/forex" className="underline text-[#E3120B]">Forex</Link>
         <span className="font-bold">Interest rates</span>
         <Link to="/trackers/inflation" className="underline text-[#E3120B]">Inflation</Link>
+        <Link to="/markets/gse" className="underline text-[#E3120B]">GSE</Link>
       </nav>
+      <GseTicker />
 
       {tb.isLoading || pol.isLoading ? <p className="text-sm text-[#5B5B5B]">Loading…</p> : (
         <KeyNumbersBox items={items} source={`${BOG_SOURCE} — Treasury bill rates and policy rate`} sourceHref={BOG_URLS.tbills} asOf={t91?.date} />
