@@ -59,6 +59,23 @@ export const metadata: Metadata = {
   },
 };
 
+const ORG_LD = {
+  "@context": "https://schema.org",
+  "@type": ["Organization", "NewsMediaOrganization"],
+  "@id": "https://www.statsgh.com/#organization",
+  name: "StatsGH",
+  url: "https://www.statsgh.com",
+  logo: { "@type": "ImageObject", url: "https://www.statsgh.com/icon-512.png", width: 512, height: 512 },
+  description: "Ghana data-journalism site. Every story is built around a real, sourced statistic.",
+  areaServed: "Ghana",
+  sameAs: ["https://x.com/StatsGH"],
+  publishingPrinciples: "https://www.statsgh.com/editorial-standards",
+  correctionsPolicy: "https://www.statsgh.com/corrections",
+  ethicsPolicy: "https://www.statsgh.com/editorial-standards",
+  masthead: "https://www.statsgh.com/about/team",
+  contactPoint: { "@type": "ContactPoint", contactType: "editorial", url: "https://www.statsgh.com/contact" },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -67,6 +84,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
         <Providers>{children}<InstallPrompt /></Providers>
       </body>
     </html>
