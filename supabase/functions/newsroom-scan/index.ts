@@ -1873,13 +1873,12 @@ serve(async (req) => {
     const openai = new OpenAI({ apiKey: openaiApiKey });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id || null;
+    const auth = await authorizeCaller(req, supabase);
+    console.log("newsroom-scan caller auth:", auth.via, auth.ok);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const userId: string | null = auth.userId;
 
     const body = await req.json().catch(() => ({}));
     const triggerType = body.trigger_type || body.triggerType || "manual";
