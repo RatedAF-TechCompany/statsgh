@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import { Metadata } from "next";
 import Corrections from "@/views/Corrections";
 

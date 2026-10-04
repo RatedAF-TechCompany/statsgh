@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import DataIndicators from "@/views/DataIndicators";
 

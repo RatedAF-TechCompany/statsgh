@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import { redirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
