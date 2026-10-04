@@ -155,6 +155,13 @@
       "when": 1791135520892,
       "tag": "0021_batch4_companies_deals_newsletter_follows_sponsored",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791135942015,
+      "tag": "0022_tighten_deal_classifier",
+      "breakpoints": true
     }
   ]
 }
