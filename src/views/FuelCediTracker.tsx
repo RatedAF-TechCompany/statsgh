@@ -19,7 +19,7 @@ const daily = (rows: { t: string; v: number }[]): Pt[] => {
   return [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }));
 };
 
-async function fetchFx(base: string): Promise<Pt[]> {
+export async function fetchFx(base: string): Promise<Pt[]> {
   const since = new Date(Date.now() - 365 * 864e5).toISOString();
   const { data } = await supabase
     .from("currency_rates")
@@ -47,7 +47,7 @@ async function fetchBrent(): Promise<Pt[]> {
 type PumpPt = Pt & { slug: string; cat: string; title: string };
 const EXCLUDE = /relief|levy|margin|increase|decrease|reduc|cut|rise|hike|change|drop|subsid|tax|difference|gap|per cent|%/i;
 
-async function fetchPump(): Promise<{ petrol: PumpPt[]; diesel: PumpPt[] }> {
+export async function fetchPump(): Promise<{ petrol: PumpPt[]; diesel: PumpPt[] }> {
   const { data } = await supabase
     .from("articles")
     .select("slug, category_slug, title, published_at, key_data")
@@ -185,6 +185,7 @@ const FuelCediTracker = () => {
           </section>
         )}
       </main>
+      <div className="max-w-3xl mx-auto px-4 pb-8"><a href="/tools/cost-of-living" className="text-sm font-semibold text-[#E3120B] underline">Cost of Living Calculator: what these prices mean for your budget →</a></div>
       <Footer />
     </div>
   );

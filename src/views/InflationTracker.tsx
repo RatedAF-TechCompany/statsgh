@@ -26,7 +26,7 @@ const monthLabel = (d: string) =>
 const dayLabel = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-async function fetchReadings(): Promise<Reading[]> {
+export async function fetchReadings(): Promise<Reading[]> {
   const { data, error } = await supabase
     .from("inflation_readings")
     .select("kind, period, value, article_slug, category_slug, article_title, source_count, extracted_at")
@@ -178,6 +178,7 @@ const InflationTracker = () => {
           </>
         )}
       </main>
+      <div className="max-w-3xl mx-auto px-4 pb-8"><a href="/tools/cost-of-living" className="text-sm font-semibold text-[#E3120B] underline">Cost of Living Calculator: what these prices mean for your budget →</a></div>
       <Footer />
     </div>
   );
