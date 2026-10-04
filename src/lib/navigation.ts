@@ -9,6 +9,7 @@ export const SITE_SECTIONS = [
   { label: "Business", slug: "business", href: "/business" },
   { label: "Politics & Policy", slug: "politics-policy", href: "/politics-policy" },
   { label: "Crime & Justice", slug: "crime-justice", href: "/crime-justice" },
+  { label: "Crime Stats", slug: "trackers-crime-justice", href: "/trackers/crime-justice" },
   { label: "Energy & Resources", slug: "energy-resources", href: "/energy-resources" },
   { label: "Agriculture", slug: "agriculture", href: "/agriculture" },
   { label: "Technology", slug: "technology", href: "/technology" },

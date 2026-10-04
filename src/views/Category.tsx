@@ -109,7 +109,7 @@ const Category = () => {
             <p className="font-serif text-[15px] text-[#5B5B5B] mt-2 max-w-3xl leading-relaxed">
               {SECTION_INTROS[categoryParam]}
               {categoryParam === "crime-justice" && (
-                <> <a href="/feeds/crime-justice.xml" className="font-ui text-[12px] text-[#E3120B] hover:underline whitespace-nowrap">RSS feed</a></>
+                <> <a href="/trackers/crime-justice" className="font-ui text-[12px] text-[#E3120B] hover:underline whitespace-nowrap">Crime &amp; justice statistics tracker</a> · <a href="/feeds/crime-justice.xml" className="font-ui text-[12px] text-[#E3120B] hover:underline whitespace-nowrap">RSS feed</a></>
               )}
             </p>
           )}
