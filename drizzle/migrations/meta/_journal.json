@@ -120,6 +120,13 @@
       "when": 1791123675834,
       "tag": "0016_private_cron_auth_store",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791124824468,
+      "tag": "0017_revalidate_pages_on_publish",
+      "breakpoints": true
     }
   ]
 }
