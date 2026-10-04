@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
-    alternates: { canonical: `https://www.statsgh.com/entity/${slug, types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } }` },
+    alternates: { canonical: `https://www.statsgh.com/entity/${slug}`, types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     openGraph: { title, description, url: `https://www.statsgh.com/entity/${slug}`, siteName: "StatsGH" },
   };
 }
