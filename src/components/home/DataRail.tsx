@@ -169,8 +169,8 @@ const DataRail = () => {
             {gseIndex && gseIndex.length > 0 && (
               <>
                 <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#5B5B5B] mb-2">
-                  GSE Stocks
-                  {gseStale && <span className="ml-1.5 text-[9px] font-normal">· Illustrative data</span>}
+                  <a href="/markets/gse" className="hover:underline">GSE Stocks</a>
+                  <span className="ml-1.5 text-[9px] font-normal">· end-of-day{gseStale ? ` · last updated ${asOfLabel(gseLatest)}` : ""}</span>
                 </h3>
                 <div className="space-y-0 mb-3">
                   {gseIndex.map((s) => (
