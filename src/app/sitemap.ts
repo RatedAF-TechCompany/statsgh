@@ -27,6 +27,7 @@ const STATIC_PAGES = [
   { url: `${BASE_URL}/trackers/fuel-and-cedi`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/inflation`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/crime-justice`, changeFrequency: "daily" as const, priority: 0.7 },
+  { url: `${BASE_URL}/week-in-numbers`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/politics-policy`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/charts-explainers`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/crime-justice`, changeFrequency: "daily" as const, priority: 0.8 },

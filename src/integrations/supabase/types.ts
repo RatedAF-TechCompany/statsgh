@@ -347,6 +347,7 @@ export type Database = {
           twitter_post: string | null
           updated_at: string
           video_url: string | null
+          why_it_matters: string | null
           word_count: number | null
         }
         Insert: {
@@ -398,6 +399,7 @@ export type Database = {
           twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
+          why_it_matters?: string | null
           word_count?: number | null
         }
         Update: {
@@ -449,6 +451,7 @@ export type Database = {
           twitter_post?: string | null
           updated_at?: string
           video_url?: string | null
+          why_it_matters?: string | null
           word_count?: number | null
         }
         Relationships: [
@@ -3155,6 +3158,30 @@ export type Database = {
           },
         ]
       }
+      week_in_numbers: {
+        Row: {
+          compiled_at: string
+          id: string
+          items: Json
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          compiled_at?: string
+          id?: string
+          items?: Json
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          compiled_at?: string
+          id?: string
+          items?: Json
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       author_profiles: {
@@ -3257,6 +3284,7 @@ export type Database = {
           url: string
         }[]
       }
+      compile_week_in_numbers: { Args: { p_day?: string }; Returns: number }
       editor_decide_article: {
         Args: { p_article_id: string; p_decision: string; p_note: string }
         Returns: undefined

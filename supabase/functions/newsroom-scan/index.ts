@@ -3020,10 +3020,12 @@ Return ONLY valid JSON with these exact keys:
 "author_name": "",
 "tags": [],
 "key_data": [{"label":"GDP growth","value":"3.2","unit":"%","context":"Q2 2026"}],
+"why_it_matters": "",
 "entities": [{"name":"Bank of Ghana","type":"ministry"},{"name":"Ernest Addison","type":"person"}]
 }
 
-KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, prices, volumes, growth figures). Each item must have a specific numeric value. Skip if the article has no quantitative substance.
+KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, prices, volumes, growth figures). Each item must have a specific numeric value. Skip if the article has no quantitative substance. List the 1-3 most important figures first; every figure must appear in the source text.
+WHY_IT_MATTERS RULES: One plain sentence (max 160 characters) explaining what the key numbers mean for Ghanaians, businesses or the economy. Factual, no hype, no invented figures.
 ENTITIES RULES: Extract named entities that appear in the article. type must be one of: person, company, ministry, law, indicator, organization. 3-8 items typical. Skip generic terms like "government" or "citizens".`;
 
           const aiModel = "google/gemini-2.5-flash";
@@ -3348,6 +3350,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               twitter_post: null,
               status: "published",
               key_data: cleanKeyData,
+              why_it_matters: typeof generated.why_it_matters === "string" && generated.why_it_matters.trim()
+                ? generated.why_it_matters.trim().slice(0, 200)
+                : null,
               article_type: isPrimaryData ? "primary_data" : "analysis",
             })
 

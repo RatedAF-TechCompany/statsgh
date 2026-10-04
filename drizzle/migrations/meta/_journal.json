@@ -71,6 +71,27 @@
       "when": 1791072576483,
       "tag": "0009_crime_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791072802992,
+      "tag": "0010_why_it_matters_and_week_in_numbers",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791072911421,
+      "tag": "0011_week_in_numbers_tighten",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791072995663,
+      "tag": "0012_week_in_numbers_dedupe_value",
+      "breakpoints": true
     }
   ]
 }
