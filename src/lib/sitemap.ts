@@ -36,7 +36,6 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/about`, changeFrequency: "monthly" as const, priority: 0.5 },
   { url: `${BASE_URL}/corrections`, changeFrequency: "weekly" as const, priority: 0.4 },
   { url: `${BASE_URL}/sources`, changeFrequency: "weekly" as const, priority: 0.5 },
-  { url: `${BASE_URL}/search`, changeFrequency: "weekly" as const, priority: 0.5 },
 ];
 
 export const esc = (s: string) =>

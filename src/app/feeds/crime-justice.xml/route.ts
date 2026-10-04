@@ -1,8 +1,7 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { crimeJusticeOrFilter } from "@/lib/sectionMapping";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
 
 const BASE_URL = "https://www.statsgh.com";
 
@@ -45,6 +44,6 @@ ${items}
 </rss>`;
 
   return new Response(xml, {
-    headers: { "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": "public, max-age=900" },
+    headers: { "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=600" },
   });
 }
