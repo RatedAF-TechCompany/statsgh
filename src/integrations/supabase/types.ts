@@ -1106,6 +1106,36 @@ export type Database = {
           },
         ]
       }
+      data_alerts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          link_url: string | null
+          message: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          link_url?: string | null
+          message: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          link_url?: string | null
+          message?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_imports: {
         Row: {
           completed_at: string | null
