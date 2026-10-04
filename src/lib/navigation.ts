@@ -6,6 +6,7 @@ export const SITE_SECTIONS = [
   { label: "Markets & Data", slug: "markets-data", href: "/markets-data" },
   { label: "Fuel & Cedi", slug: "trackers-fuel-and-cedi", href: "/trackers/fuel-and-cedi" },
   { label: "Inflation", slug: "trackers-inflation", href: "/trackers/inflation" },
+  { label: "Data Explorer", slug: "explorer", href: "/explorer" },
   { label: "Business", slug: "business", href: "/business" },
   { label: "Politics & Policy", slug: "politics-policy", href: "/politics-policy" },
   { label: "Crime & Justice", slug: "crime-justice", href: "/crime-justice" },

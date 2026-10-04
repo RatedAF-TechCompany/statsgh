@@ -1,0 +1,17 @@
+import type { Metadata } from "next";
+import DataExplorer from "@/views/DataExplorer";
+
+const title = "Data Explorer — Ghana statistics | StatsGH";
+const description = "Search and chart every indicator, tracker and key number stored on StatsGH, with sources, last-updated dates, CSV downloads and shareable cards.";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: "https://statsgh.com/explorer" },
+  openGraph: { type: "website", title, description, url: "https://statsgh.com/explorer", siteName: "StatsGH" },
+  twitter: { card: "summary_large_image", site: "@StatsGH" },
+};
+
+export default function Page() {
+  return <DataExplorer />;
+}
