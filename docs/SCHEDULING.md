@@ -8,9 +8,10 @@ The 15-minute publishing cadence comes from the **pg_cron job `newsroom-15min-sc
 (`*/15 * * * *`), which calls the `newsroom-scan` function directly.
 Any change to publishing cadence must be documented here.
 
-> Security note: `newsroom-scan` itself does not yet require a caller secret, and
-> this job calls it without one. Gating `newsroom-scan` needs this job to send a
-> secret header first; see "Open items".
+> Security: this job sends `Authorization: Bearer <scheduler token>` built at run time by
+> `private.scheduler_headers()` (token stored in `private.scheduler_auth`, not in any
+> migration). `newsroom-scan` and `newsroom-scheduled` reject callers without a valid
+> token, service role key, `CRON_SECRET` or admin/editor login (401).
 
 ## GitHub Actions workflows (`.github/workflows/`)
 

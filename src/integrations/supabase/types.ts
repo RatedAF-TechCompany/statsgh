@@ -3416,6 +3416,7 @@ export type Database = {
       refresh_inflation_readings: { Args: never; Returns: number }
       release_stale_tweet_claims: { Args: never; Returns: number }
       trigger_newsroom_scan: { Args: never; Returns: undefined }
+      verify_scheduler_token: { Args: { p_token: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "editor" | "contributor" | "viewer"
