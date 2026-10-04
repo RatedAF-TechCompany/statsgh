@@ -79,7 +79,7 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
     >
       {author && <span className="font-medium text-[#666] truncate min-w-0 flex-shrink">{author}</span>}
       {author && time && <span className="flex-shrink-0 px-1.5 text-[#999]">|</span>}
-      {time && <span className="flex-shrink-0 text-[#999]">{time}</span>}
+      {time && <span suppressHydrationWarning className="flex-shrink-0 text-[#999]">{time}</span>}
     </div>
   );
 };
@@ -133,7 +133,7 @@ export const StoryItem = ({
             </h3>
             {showSummary && article.summary && <p className="mt-2 hidden max-w-2xl font-serif text-[15px] leading-[1.4] text-white/85 sm:line-clamp-2">{article.summary}</p>}
             <div className="mt-2 font-ui text-[11px] text-white/75">
-              {[article.author_name, getTimeAgo(article.published_at ?? null)].filter(Boolean).join(" · ")}
+              <span suppressHydrationWarning>{[article.author_name, getTimeAgo(article.published_at ?? null)].filter(Boolean).join(" · ")}</span>
             </div>
           </div>
         </Link>
