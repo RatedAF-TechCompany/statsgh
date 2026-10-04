@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { PageShell } from "@/components/markets/MarketBits";
 import { ContactForm } from "@/components/ContactForm";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export const CONTACT_EMAIL = "officeofstatsgh@gmail.com";
 const Mail = () => <a href={`mailto:${CONTACT_EMAIL}`} className="underline text-[#E3120B]">{CONTACT_EMAIL}</a>;
