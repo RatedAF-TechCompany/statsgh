@@ -59,6 +59,12 @@ export const TermsPage = () => (
   </PageShell>
 );
 
+const AdRates = () => {
+  const { data } = useQuery({ queryKey: ["ad-rates"], queryFn: async () => (await (supabase as any).from("site_settings").select("ad_rates").limit(1).maybeSingle()).data?.ad_rates });
+  if (!Array.isArray(data) || !data.length) return <p>Rates on request.</p>;
+  return (<><h3>Rates</h3><ul>{data.map((r: any, i: number) => <li key={i}><strong>{String(r.format)}:</strong> {String(r.price)}</li>)}</ul></>);
+};
+
 export const AdvertisePage = () => (
   <PageShell title="Advertise with StatsGH" intro="Reach readers who follow Ghana's economy, markets and policy through numbers.">
     <Prose>
@@ -71,6 +77,14 @@ export const AdvertisePage = () => (
         <li><strong>Display placements:</strong> banners on the homepage, section pages and articles.</li>
         <li><strong>Data partnerships:</strong> sponsorship of a tracker or dashboard, credited "Supported by".</li>
       </ul>
+      <h2>Media kit</h2>
+      <ul>
+        <li><strong>Sponsored article:</strong> one article on statsgh.com, marked "Sponsored" above the headline with the sponsor's name and a disclosure box. It stays out of our news sitemap, our editorial newsletter sections and automatic social posts.</li>
+        <li><strong>Newsletter sponsorship:</strong> one labelled sponsor line in the Morning Brief or Week in numbers (available once our mailing service is live).</li>
+        <li><strong>Display:</strong> homepage, section and article banner placements.</li>
+        <li><strong>Tracker or dashboard partnership:</strong> "Supported by" credit on a data page. Sponsors never change the data.</li>
+      </ul>
+      <AdRates />
       <h2>Our rules</h2>
       <p>Sponsored content is <strong>always labelled "Sponsored"</strong> and never presented as news. Sponsors have no say over our editorial coverage. Statistics in sponsored content must be sourced, the same as in our own reporting.</p>
       <p>Email <Mail /> or use the form below.</p>
@@ -80,7 +94,7 @@ export const AdvertisePage = () => (
 );
 
 export const NewsletterPage = () => (
-  <PageShell title="The StatsGH daily digest" intro="Ghana's key numbers in your inbox: the cedi, rates, inflation and the stories behind them.">
+  <PageShell title="StatsGH newsletters" intro="Ghana's key numbers in your inbox: the cedi, rates, inflation and the stories behind them.">
     <Prose>
       <p>One short email, with every figure sourced. Unsubscribe any time. We never share your address. See our <Link to="/privacy" className="underline text-[#E3120B]">privacy policy</Link>.</p>
     </Prose>
