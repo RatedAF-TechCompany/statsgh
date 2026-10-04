@@ -63,3 +63,7 @@ last published article (status `stale` when > 6 h between 06:00 and 23:00 Accra)
 | `bog-rates-daily` | `15 7 * * *` | `bog-rates-scrape?job=tbills,policy,interbank` | T-bill auctions, policy rate history, interbank rate |
 
 Both authenticate with `private.scheduler_headers()`. Each run is logged in `market_scrape_runs`.
+
+## GSE end-of-day snapshots
+- `gse-eod-twice-daily` — pg_cron `30 15,17 * * 1-5` (UTC = Accra): calls `gse-scrape?job=daily` with `private.scheduler_headers()`. Stores the latest GSE trading day into `gse_daily_prices` and `gse_index_daily`.
+- `compile-week-in-numbers` (Sunday 21:00) now also runs `compile_gse_week()` for the "GSE week" section (needs ≥2 trading days).

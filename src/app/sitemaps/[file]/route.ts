@@ -14,7 +14,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
   const { file } = await params;
 
   if (file === "pages.xml") {
-    return xmlResponse(urlset(STATIC_PAGES.map((p) =>
+    // GSE stock pages: one per symbol in the latest stored snapshot.
+    const { data: d } = await createReadOnlyServerClient().from("gse_daily_prices").select("trade_date").order("trade_date", { ascending: false }).limit(1);
+    const { data: syms } = d?.[0] ? await createReadOnlyServerClient().from("gse_daily_prices").select("symbol").eq("trade_date", d[0].trade_date) : { data: [] };
+    const gse = (syms ?? []).map((s: { symbol: string }) => ({ url: `${BASE_URL}/markets/gse/${encodeURIComponent(s.symbol)}`, changeFrequency: "daily" as const, priority: 0.5 }));
+    return xmlResponse(urlset([...STATIC_PAGES, ...gse].map((p) =>
       `  <url><loc>${p.url}</loc><changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`).join("\n")));
   }
 

@@ -1,2 +1,3 @@
-export const dynamic = "force-dynamic";
-export { default } from "@/views/GhanaStockExchange";
+import { permanentRedirect } from "next/navigation";
+
+export default function Page() { permanentRedirect("/markets/gse"); }

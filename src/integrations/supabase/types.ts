@@ -2012,6 +2012,102 @@ export type Database = {
           },
         ]
       }
+      gse_daily_prices: {
+        Row: {
+          change: number | null
+          change_percent: number | null
+          close: number
+          fetched_at: string
+          id: string
+          last_trade: number | null
+          name: string | null
+          open: number | null
+          previous_close: number | null
+          sector: string | null
+          source: string
+          source_url: string
+          symbol: string
+          trade_date: string
+          value_traded: number | null
+          volume: number | null
+          year_high: number | null
+          year_low: number | null
+        }
+        Insert: {
+          change?: number | null
+          change_percent?: number | null
+          close: number
+          fetched_at?: string
+          id?: string
+          last_trade?: number | null
+          name?: string | null
+          open?: number | null
+          previous_close?: number | null
+          sector?: string | null
+          source: string
+          source_url: string
+          symbol: string
+          trade_date: string
+          value_traded?: number | null
+          volume?: number | null
+          year_high?: number | null
+          year_low?: number | null
+        }
+        Update: {
+          change?: number | null
+          change_percent?: number | null
+          close?: number
+          fetched_at?: string
+          id?: string
+          last_trade?: number | null
+          name?: string | null
+          open?: number | null
+          previous_close?: number | null
+          sector?: string | null
+          source?: string
+          source_url?: string
+          symbol?: string
+          trade_date?: string
+          value_traded?: number | null
+          volume?: number | null
+          year_high?: number | null
+          year_low?: number | null
+        }
+        Relationships: []
+      }
+      gse_index_daily: {
+        Row: {
+          fetched_at: string
+          gse_ci: number | null
+          gse_fsi: number | null
+          market_cap_m: number | null
+          source: string
+          source_url: string
+          trade_date: string
+          volume: number | null
+        }
+        Insert: {
+          fetched_at?: string
+          gse_ci?: number | null
+          gse_fsi?: number | null
+          market_cap_m?: number | null
+          source: string
+          source_url: string
+          trade_date: string
+          volume?: number | null
+        }
+        Update: {
+          fetched_at?: string
+          gse_ci?: number | null
+          gse_fsi?: number | null
+          market_cap_m?: number | null
+          source?: string
+          source_url?: string
+          trade_date?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       gse_stocks: {
         Row: {
           change_percent: number | null
@@ -3440,6 +3536,7 @@ export type Database = {
       week_in_numbers: {
         Row: {
           compiled_at: string
+          gse: Json | null
           id: string
           items: Json
           week_end: string
@@ -3447,6 +3544,7 @@ export type Database = {
         }
         Insert: {
           compiled_at?: string
+          gse?: Json | null
           id?: string
           items?: Json
           week_end: string
@@ -3454,6 +3552,7 @@ export type Database = {
         }
         Update: {
           compiled_at?: string
+          gse?: Json | null
           id?: string
           items?: Json
           week_end?: string
@@ -3563,6 +3662,7 @@ export type Database = {
           url: string
         }[]
       }
+      compile_gse_week: { Args: { p_day?: string }; Returns: number }
       compile_week_in_numbers: { Args: { p_day?: string }; Returns: number }
       editor_decide_article: {
         Args: { p_article_id: string; p_decision: string; p_note: string }

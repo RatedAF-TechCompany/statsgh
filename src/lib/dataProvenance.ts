@@ -13,7 +13,7 @@ export const isStale = (iso: string | null | undefined, days: number) => {
 
 // GSE prices older than this are not presented as current.
 export const GSE_STALE_DAYS = 7;
-export const GSE_SOURCE = "GSE via dev.kwayisi.org";
+export const GSE_SOURCE = "Ghana Stock Exchange, end-of-day";
 
 /** Short human label for a stored source key. */
 export const sourceLabel = (source: string | null | undefined) => {

@@ -1,6 +1,6 @@
 // Market data refresh — real, sourced feeds only. Never writes estimates.
 // FX: open.er-api.com (hourly). Brent/WTI: FRED daily (EIA). Cocoa: FRED monthly (IMF).
-// GSE: dev.kwayisi.org live feed, only during Accra trading hours (Mon–Fri).
+// GSE: handled by gse-scrape.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
@@ -75,30 +75,7 @@ Deno.serve(async (req) => {
     } catch (e) { report[s.commodity] = `FAILED: ${(e as Error).message}`; }
   }
 
-  // ── GSE (Accra = UTC; trading Mon–Fri ~10:00–15:00, refresh 09–16 UTC) ──
+  // GSE prices are written by gse-scrape (official end-of-day snapshots), not here.
   const now = new Date();
-  const force = new URL(req.url).searchParams.get("gse") === "force";
-  const trading = now.getUTCDay() >= 1 && now.getUTCDay() <= 5 && now.getUTCHours() >= 9 && now.getUTCHours() <= 16;
-  if (trading || force) {
-    try {
-      const res = await fetchT("https://dev.kwayisi.org/apis/gse/live", 25000);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rows = await res.json() as { name: string; price: number; change: number; volume: number }[];
-      if (!Array.isArray(rows) || !rows.length) throw new Error("empty");
-      let n = 0;
-      for (const r of rows) {
-        if (!r.name || typeof r.price !== "number" || r.price <= 0) continue;
-        const prevClose = r.price - (r.change ?? 0);
-        const { error } = await supabase.from("gse_stocks").update({
-          current_price: r.price, previous_close: prevClose, volume: r.volume ?? null,
-          change_percent: prevClose > 0 ? ((r.change ?? 0) / prevClose) * 100 : null,
-          last_updated: now.toISOString(),
-        }).eq("symbol", r.name);
-        if (!error) n++;
-      }
-      report.gse = `${n}/${rows.length} symbols updated`;
-    } catch (e) { report.gse = `FAILED: ${(e as Error).message}`; }
-  } else report.gse = "skipped (outside trading hours)";
-
   return json({ success: true, report, timestamp: now.toISOString() });
 });

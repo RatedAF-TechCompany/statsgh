@@ -134,6 +134,13 @@
       "when": 1791125718960,
       "tag": "0018_bog_market_tables_and_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791131256304,
+      "tag": "0019_gse_daily_snapshots",
+      "breakpoints": true
     }
   ]
 }
