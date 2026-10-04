@@ -2640,6 +2640,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_health: {
+        Row: {
+          checked_at: string
+          consecutive_failed_runs: number
+          hours_since_publish: number | null
+          id: string
+          in_active_window: boolean
+          last_published_at: string | null
+          last_run_at: string | null
+          last_run_status: string | null
+          notes: string | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          consecutive_failed_runs?: number
+          hours_since_publish?: number | null
+          id?: string
+          in_active_window: boolean
+          last_published_at?: string | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          notes?: string | null
+          status: string
+        }
+        Update: {
+          checked_at?: string
+          consecutive_failed_runs?: number
+          hours_since_publish?: number | null
+          id?: string
+          in_active_window?: boolean
+          last_published_at?: string | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          notes?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

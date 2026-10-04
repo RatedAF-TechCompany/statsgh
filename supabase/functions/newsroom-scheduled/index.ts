@@ -1,64 +1,45 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Deployed: 2026-02-15
+// Scheduled newsroom trigger.
+// Auth: Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY> or Bearer <CRON_SECRET> (if set).
+// Returns 202 immediately and runs newsroom-scan in the background so callers
+// never hit the 150s idle timeout.
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-// Simple secret token for webhook security (prevents random calls)
-const WEBHOOK_SECRET = "statsgh-newsroom-2026";
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-// This function can be called by external cron services (e.g., cron-job.org)
-// URL: https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled?token=statsgh-newsroom-2026
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+function safeEqual(a: string, b: string) {
+  if (!a || !b || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
 
-  try {
-    // Simple token verification for webhook security
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
-    
-    if (token !== WEBHOOK_SECRET) {
-      console.log('Invalid or missing webhook token');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const ok = safeEqual(bearer, serviceKey) || (cronSecret.length > 0 && safeEqual(bearer, cronSecret));
+  if (!ok) return json({ error: "Unauthorized" }, 401);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const job = (async () => {
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/newsroom-scan`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ triggerType: "scheduled" }),
+      });
+      console.log("newsroom-scan finished", res.status);
+    } catch (e) {
+      console.error("newsroom-scan failed", (e as Error).message);
     }
+  })();
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    console.log('Scheduled newsroom scan triggered via webhook');
-
-    // Call the main newsroom-scan function
-    const response = await fetch(`${supabaseUrl}/functions/v1/newsroom-scan`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        triggerType: 'scheduled'
-      }),
-    });
-
-    const result = await response.json();
-    console.log('Scheduled scan result:', result);
-
-    return new Response(
-      JSON.stringify({ success: true, ...result }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('Scheduled newsroom error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(job);
+  return json({ accepted: true, started_at: new Date().toISOString() }, 202);
 });

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PipelineStatusCard } from "@/components/PipelineStatusCard";
 import { ManualArticleSubmit } from "@/components/ManualArticleSubmit";
 import { useEffect } from "react";
 import {
@@ -135,6 +136,8 @@ const Dashboard = () => {
             Create Article
           </Button>
         </div>
+
+        <PipelineStatusCard />
 
         {/* Quick Publish Section */}
         <div className="mb-8">
