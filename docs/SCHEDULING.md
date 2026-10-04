@@ -55,3 +55,11 @@ last published article (status `stale` when > 6 h between 06:00 and 23:00 Accra)
 
 - Set `CRON_SECRET` (edge function secret and GitHub repository secret, same value).
 - The retired token remains in git history; it no longer works (`newsroom-scheduled` returns 401 for it).
+
+## Bank of Ghana scrapers (added Oct 2026)
+| Job | Schedule (UTC) | Calls | Why |
+|---|---|---|---|
+| `bog-fx-twice-daily` | `30 10,16 * * 1-5` | `bog-rates-scrape?job=fx` | Official BoG daily interbank FX rates, twice per business day |
+| `bog-rates-daily` | `15 7 * * *` | `bog-rates-scrape?job=tbills,policy,interbank` | T-bill auctions, policy rate history, interbank rate |
+
+Both authenticate with `private.scheduler_headers()`. Each run is logged in `market_scrape_runs`.
