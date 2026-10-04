@@ -5,7 +5,7 @@ import About from "@/views/About";
 export const metadata: Metadata = {
   title: "About & Methodology | StatsGH",
   description: "How StatsGH sources and verifies the numbers in its reporting, our corrections policy, and how to contact us.",
-  alternates: { canonical: "https://www.statsgh.com/about" },
+  alternates: { canonical: "https://www.statsgh.com/about" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: {
     type: "website",
     title: "About & Methodology | StatsGH",

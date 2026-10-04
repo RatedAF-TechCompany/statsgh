@@ -35,7 +35,7 @@ export async function generateMetadata({
   return {
     title: `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60),
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: canonicalUrl , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     openGraph: {
       type: "website",
       title: `${indicator.name} — Ghana Data | StatsGH`,

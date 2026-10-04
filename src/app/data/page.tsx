@@ -9,7 +9,7 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://www.statsgh.com/data" },
+  alternates: { canonical: "https://www.statsgh.com/data" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: {
     type: "website",
     title,

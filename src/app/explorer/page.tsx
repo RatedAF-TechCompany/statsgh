@@ -8,7 +8,7 @@ const description = "Search and chart every indicator, tracker and key number st
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://www.statsgh.com/explorer" },
+  alternates: { canonical: "https://www.statsgh.com/explorer" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: { type: "website", title, description, url: "https://www.statsgh.com/explorer", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };

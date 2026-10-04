@@ -8,7 +8,7 @@ const description = "Arrests, convictions, cases and sums involved in Ghana crim
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://www.statsgh.com/trackers/crime-justice" },
+  alternates: { canonical: "https://www.statsgh.com/trackers/crime-justice" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: { type: "website", title, description, url: "https://www.statsgh.com/trackers/crime-justice", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };

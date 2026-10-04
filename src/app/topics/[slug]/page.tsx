@@ -34,7 +34,7 @@ export async function generateMetadata({
   return {
     title: `${topic.name} — Ghana Data | StatsGH`,
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: canonicalUrl , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     openGraph: {
       type: "website",
       title: `${topic.name} — Ghana Data | StatsGH`,

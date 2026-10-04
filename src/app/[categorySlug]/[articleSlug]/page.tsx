@@ -66,9 +66,7 @@ export async function generateMetadata({
     title: `${article.title} | StatsGH`,
     description,
     keywords: keywords || undefined,
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: { canonical: canonicalUrl, types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     robots: {
       index: true,
       follow: true,
