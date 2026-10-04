@@ -24,6 +24,7 @@ export async function GET() {
     .from("articles")
     .select("slug, category_slug, title, published_at, updated_at")
     .eq("is_published", true)
+    .eq("is_sponsored", false)
     .gte("published_at", fortyEightHoursAgo.toISOString())
     .order("published_at", { ascending: false })
     .limit(1000);

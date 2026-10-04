@@ -18,6 +18,10 @@ const SiteSettings = () => {
   const [footerText, setFooterText] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [defaultSeoDescription, setDefaultSeoDescription] = useState("");
+  const [whatsappUrl, setWhatsappUrl] = useState("");
+  const [telegramUrl, setTelegramUrl] = useState("");
+  const [xUrl, setXUrl] = useState("");
+  const [adRates, setAdRates] = useState("");
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -61,6 +65,11 @@ const SiteSettings = () => {
       setFooterText(settings.footer_text || "");
       setLogoUrl(settings.logo_url || "");
       setDefaultSeoDescription(settings.default_seo_description || "");
+      setWhatsappUrl((settings as any).whatsapp_url || "");
+      setTelegramUrl((settings as any).telegram_url || "");
+      setXUrl((settings as any).x_url || "");
+      const r = (settings as any).ad_rates;
+      setAdRates(Array.isArray(r) ? r.map((x: any) => `${x.format} | ${x.price}`).join("\n") : "");
     }
   }, [settings]);
 
@@ -97,7 +106,14 @@ const SiteSettings = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const urlOk = (u: string) => !u.trim() || /^https:\/\//i.test(u.trim());
+    if (![whatsappUrl, telegramUrl, xUrl].every(urlOk)) { toast.error("Channel links must start with https://"); return; }
+    const rates = adRates.split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((x) => x[0] && x[1]).map(([format, price]) => ({ format, price }));
     saveSettingsMutation.mutate({
+      whatsapp_url: whatsappUrl.trim() || null,
+      telegram_url: telegramUrl.trim() || null,
+      x_url: xUrl.trim() || null,
+      ad_rates: rates.length ? rates : null,
       site_name: siteName,
       footer_text: footerText,
       logo_url: logoUrl,
@@ -162,6 +178,20 @@ const SiteSettings = () => {
               placeholder="Your trusted source for news and analysis"
             />
           </div>
+
+          <div className="border-t pt-4 space-y-4">
+            <h2 className="font-semibold">Distribution channels</h2>
+            <p className="text-sm text-muted-foreground">Follow buttons appear on the site only for links filled in here.</p>
+            <div><Label htmlFor="wa">WhatsApp channel URL</Label><Input id="wa" value={whatsappUrl} onChange={(e) => setWhatsappUrl(e.target.value)} placeholder="https://whatsapp.com/channel/..." /></div>
+            <div><Label htmlFor="tg">Telegram channel URL</Label><Input id="tg" value={telegramUrl} onChange={(e) => setTelegramUrl(e.target.value)} placeholder="https://t.me/..." /></div>
+            <div><Label htmlFor="xu">X profile URL</Label><Input id="xu" value={xUrl} onChange={(e) => setXUrl(e.target.value)} placeholder="https://x.com/StatsGH" /></div>
+          </div>
+          <div className="border-t pt-4 space-y-2">
+            <h2 className="font-semibold">Advertising rates (optional)</h2>
+            <p className="text-sm text-muted-foreground">One per line: <code>Format | Price</code>, e.g. <code>Sponsored article | GH₵5,000</code>. Leave blank to show no prices on /advertise.</p>
+            <Textarea value={adRates} onChange={(e) => setAdRates(e.target.value)} rows={4} />
+          </div>
+          <div className="border-t pt-4 text-sm"><a href="/admin/brief-preview" className="underline">Preview this morning's brief</a></div>
 
           <Button type="submit" disabled={saveSettingsMutation.isPending}>
             {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}

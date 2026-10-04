@@ -1,4 +1,5 @@
 "use client";
+import { FollowButton } from "@/components/FollowButton";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,7 @@ const GseStock = () => {
         ...(l.year_high != null && l.year_low != null ? [{ label: "52-week range (GSE)", value: `${l.year_low.toFixed(2)}–${l.year_high.toFixed(2)}` }] : []),
       ]} />
       <p className="font-ui text-[12px] text-[#5B5B5B]">Last updated {fmtDay(l.trade_date)} · source: {l.source}</p>
+      <div className="my-2"><FollowButton type="company" targetKey={symbol} label={name} /></div>
       <ShareRow text={`${name} (${symbol}) closed at ${ghs(l.close)} on the GSE, ${pct(l.change_percent)} (${fmtDay(l.trade_date)})`} path={`/markets/gse/${symbol}`} />
 
       <section className="py-4">

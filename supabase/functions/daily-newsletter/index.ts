@@ -8,6 +8,10 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // Email sending is disabled until the owner connects an email provider and sets EMAIL_SENDING_ENABLED=true.
+  if (Deno.env.get("EMAIL_SENDING_ENABLED") !== "true") {
+    return new Response(JSON.stringify({ skipped: true, reason: "email sending disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,

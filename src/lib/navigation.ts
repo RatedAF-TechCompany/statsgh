@@ -20,6 +20,7 @@ export const SITE_SECTIONS = [
   { label: "Agriculture", slug: "agriculture", href: "/agriculture" },
   { label: "Technology", slug: "technology", href: "/technology" },
   { label: "Companies", slug: "companies", href: "/companies" },
+  { label: "Deals", slug: "deals", href: "/deals" },
   { label: "Opinion & Analysis", slug: "opinion-analysis", href: "/opinion-analysis" },
   { label: "Research", slug: "research", href: "/research" },
   { label: "Financial Literacy", slug: "financial-literacy", href: "/financial-literacy" },

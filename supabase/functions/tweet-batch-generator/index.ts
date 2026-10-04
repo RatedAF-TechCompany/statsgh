@@ -132,6 +132,7 @@ serve(async (req) => {
       .from("articles")
       .select("id, title, summary, body, slug, category_slug, published_at, event_id, event_fingerprint, editorial_category")
       .eq("is_published", true)
+      .eq("is_sponsored", false)
       .gte("published_at", since)
       .order("published_at", { ascending: false })
       .limit(60);
@@ -143,6 +144,7 @@ serve(async (req) => {
         .from("articles")
         .select("id, title, summary, body, slug, category_slug, published_at, event_id, event_fingerprint, editorial_category")
         .eq("is_published", true)
+        .eq("is_sponsored", false)
         .gte("published_at", wider)
         .order("published_at", { ascending: false })
         .limit(60);

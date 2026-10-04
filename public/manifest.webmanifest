@@ -1,17 +1,15 @@
 {
-  "name": "StatsGH",
+  "name": "StatsGH – Ghana's numbers",
   "short_name": "StatsGH",
-  "description": "Ghana's premier data journalism platform.",
-  "start_url": "/",
+  "description": "Ghana's data journalism: the cedi, rates, inflation, GSE and the stories behind them.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
