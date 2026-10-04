@@ -110,8 +110,11 @@ const DataRail = () => {
           <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] text-[#121212]">Ghana At A Glance</span>
           <div className="flex-1 h-px bg-[#D9D9D9]" />
         </div>
-        <Link to="/trackers/fuel-and-cedi" className="block mb-3 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
+        <Link to="/trackers/fuel-and-cedi" className="block mb-1 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
           Fuel &amp; Cedi Weekly tracker →
+        </Link>
+        <Link to="/trackers/inflation" className="block mb-3 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
+          Inflation Explainer →
         </Link>
 
         {isLoading ? (
