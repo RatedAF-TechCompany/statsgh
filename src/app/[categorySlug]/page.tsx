@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
 import { getSectionLabel } from "@/lib/navigation";
 import Category from "@/views/Category";
+import { notFound } from "next/navigation";
+import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { feedCategories, isKnownSectionSlug } from "@/lib/sitemap";
+
+export const revalidate = 120;
+export const dynamicParams = true;
+export async function generateStaticParams() { return []; }
+
+// Unknown slugs must return a real 404 rather than an empty listing.
+async function sectionExists(slug: string) {
+  if (isKnownSectionSlug(slug)) return true;
+  if (!/^[a-z0-9-]+$/.test(slug)) return false;
+  const { count } = await createReadOnlyServerClient().from("articles")
+    .select("id", { count: "exact", head: true }).eq("is_published", true).in("category_slug", feedCategories(slug));
+  return (count ?? 0) > 0;
+}
 
 interface CategoryPageProps {
   params: Promise<{ categorySlug: string }>;
@@ -17,7 +33,10 @@ export async function generateMetadata({
   return {
     title: `${label} | StatsGH`,
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: {
+      canonical: canonicalUrl,
+      types: { "application/rss+xml": [{ url: `https://www.statsgh.com/feeds/${categorySlug}.xml`, title: `${label} | StatsGH` }] },
+    },
     openGraph: {
       type: "website",
       title: `${label} | StatsGH`,
@@ -34,6 +53,8 @@ export async function generateMetadata({
   };
 }
 
-export default function CategoryPage() {
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { categorySlug } = await params;
+  if (!(await sectionExists(categorySlug))) notFound();
   return <Category />;
 }

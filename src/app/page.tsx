@@ -7,8 +7,14 @@ export const metadata: Metadata = {
   title: "StatsGH – Ghana's Premier Data Journalism Platform",
   description:
     "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",
-  alternates: { canonical: "https://www.statsgh.com/" },
+  alternates: {
+    canonical: "https://www.statsgh.com/",
+    types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] },
+  },
 };
+
+// ISR: regenerate at most every 120s; /api/revalidate refreshes it when an article publishes.
+export const revalidate = 120;
 
 const jsonLd = [
   {

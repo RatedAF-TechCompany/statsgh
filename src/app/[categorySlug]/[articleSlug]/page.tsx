@@ -11,6 +11,10 @@ interface ArticlePageProps {
   }>;
 }
 
+export const revalidate = 120;
+export const dynamicParams = true;
+export async function generateStaticParams() { return []; }
+
 // Fetch article data for both metadata and page rendering
 async function getArticle(articleSlug: string) {
   const supabase = createReadOnlyServerClient();
