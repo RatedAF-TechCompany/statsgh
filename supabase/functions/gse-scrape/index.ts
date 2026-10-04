@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
   const backfill = u.searchParams.get("job") === "backfill";
   const days = Math.min(Number(u.searchParams.get("days") || 60), 180);
   const report: Record<string, unknown> = { job: backfill ? "backfill" : "daily" };
-  const started = new Date().toISOString();
 
   let prices: Record<string, unknown>[] = [];
   try {
@@ -115,6 +114,6 @@ Deno.serve(async (req) => {
     }
     report.latest_trade_date = latest;
   }
-  await db.from("market_scrape_runs").insert({ job: "gse", status: prices.length ? "success" : "failed", detail: report, started_at: started } as never).then(() => {}, () => {});
+  await db.from("market_scrape_runs").insert({ scraper: backfill ? "gse_backfill" : "gse", status: prices.length ? "success" : "failed", rows_upserted: prices.length, error: prices.length ? null : JSON.stringify(report) });
   return json({ success: prices.length > 0, report });
 });
