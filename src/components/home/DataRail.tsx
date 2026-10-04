@@ -115,7 +115,8 @@ const DataRail = () => {
         <Link to="/trackers/fuel-and-cedi" className="block mb-1 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
           Fuel &amp; Cedi Weekly tracker →
         </Link>
-        <Link to="/trackers/inflation" className="block mb-1 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
+        <Link to="/calendar" className="block mb-1 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">Release calendar →</Link>
+        <Link to="/trackers/cpi" className="block mb-1 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">
           Inflation Explainer →
         </Link>
         <Link to="/week-in-numbers" className="block mb-3 font-ui text-[11px] font-semibold text-[#E3120B] hover:underline">

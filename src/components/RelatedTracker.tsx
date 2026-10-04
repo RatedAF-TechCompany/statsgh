@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const TRACKERS = [
   { href: "/trackers/fuel-and-cedi", title: "Fuel & Cedi Weekly", blurb: "Cedi exchange rates, Brent crude and Ghana pump prices.", re: /\b(fuel|petrol|diesel|pump price|crude|brent|oil price|cedi|exchange rate|forex|depreciat|lpg)\b/i },
-  { href: "/trackers/inflation", title: "Inflation Explainer", blurb: "Monthly headline, food and non-food inflation and what it means for your money.", re: /\b(inflation|cpi|consumer price|cost of living)\b/i },
+  { href: "/trackers/cpi", title: "Inflation Explainer", blurb: "Monthly headline, food and non-food inflation and what it means for your money.", re: /\b(inflation|cpi|consumer price|cost of living)\b/i },
   { href: "/trackers/crime-justice", title: "Crime & Justice Statistics", blurb: "Arrests, convictions, cases and sums involved in Ghana crime stories.", re: /\b(crime|court|police|arrest|convict|fraud|corruption|robbery|prosecut|osp|eoco|judge|sentenc)\b/i },
 ];
 

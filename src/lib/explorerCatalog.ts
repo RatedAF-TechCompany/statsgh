@@ -27,9 +27,9 @@ const TRACKERS: CatalogItem[] = [
   { id: "com-oil_brent", kind: "tracker", name: "Brent crude", group: "Commodities", unit: "USD/barrel", href: "/trackers/fuel-and-cedi" },
   { id: "com-oil_wti", kind: "tracker", name: "WTI crude", group: "Commodities", unit: "USD/barrel" },
   { id: "com-cocoa", kind: "tracker", name: "Cocoa (world price)", group: "Commodities", unit: "USD/tonne" },
-  { id: "inf-headline", kind: "tracker", name: "CPI inflation — headline", group: "Inflation", unit: "%", href: "/trackers/inflation" },
-  { id: "inf-food", kind: "tracker", name: "CPI inflation — food", group: "Inflation", unit: "%", href: "/trackers/inflation" },
-  { id: "inf-non_food", kind: "tracker", name: "CPI inflation — non-food", group: "Inflation", unit: "%", href: "/trackers/inflation" },
+  { id: "inf-headline", kind: "tracker", name: "CPI inflation — headline", group: "Inflation", unit: "%", href: "/trackers/cpi" },
+  { id: "inf-food", kind: "tracker", name: "CPI inflation — food", group: "Inflation", unit: "%", href: "/trackers/cpi" },
+  { id: "inf-non_food", kind: "tracker", name: "CPI inflation — non-food", group: "Inflation", unit: "%", href: "/trackers/cpi" },
 ];
 
 const MONTHS = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*$/i;
@@ -107,7 +107,7 @@ export async function loadSeries(item: CatalogItem): Promise<SeriesData> {
       .eq("kind", id.slice(4)).order("period", { ascending: true });
     const pts = (data || []).map((r: any) => ({ date: String(r.period).slice(0, 10), value: Number(r.value) }));
     const upd = (data || []).reduce<string | null>((a, r: any) => (!a || r.extracted_at > a ? r.extracted_at : a), null);
-    return { points: pts, source: "Ghana Statistical Service figures, as reported in StatsGH articles", sourceUrl: "/trackers/inflation", updated: upd };
+    return { points: pts, source: "Ghana Statistical Service figures, as reported in StatsGH articles", sourceUrl: "/trackers/cpi", updated: upd };
   }
   if (id.startsWith("kn-")) {
     const k = (await loadKeyNumbers()).get(id);
