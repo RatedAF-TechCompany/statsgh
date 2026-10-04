@@ -11,7 +11,7 @@ AS $$
 BEGIN
   -- Make HTTP POST request to the newsroom-scheduled edge function
   PERFORM net.http_post(
-    url := 'https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled?token=statsgh-newsroom-2026',
+    url := 'https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled',
     headers := '{"Content-Type": "application/json"}'::jsonb,
     body := '{"triggerType": "scheduled"}'::jsonb
   );

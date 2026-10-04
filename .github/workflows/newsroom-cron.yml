@@ -2,20 +2,23 @@ name: Newsroom Scheduled Scan
 
 on:
   schedule:
-    # Budget-optimized: 4 runs/day (00:00, 06:00, 12:00, 18:00 UTC).
-    # Each run sweeps ~6h of news. ~£25/month cap.
+    # 4 runs/day (00:00, 06:00, 12:00, 18:00 UTC). Backup to the pg_cron trigger.
     - cron: '0 0,6,12,18 * * *'
-  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
   trigger-scan:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Newsroom Scan
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET repository secret is not set"; exit 1; fi
           curl -X POST \
-            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled?token=statsgh-newsroom-2026" \
+            "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/newsroom-scheduled" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
             -d '{"triggerType": "scheduled"}' \
             --fail-with-body \
-            --max-time 300
+            --max-time 60
