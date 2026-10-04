@@ -28,7 +28,7 @@ const AdminBriefPreview = () => {
   if (!allowed.data) return <div><Header /><p className="p-8 font-ui">Admins and editors only. <Link to="/auth" className="underline">Sign in</Link>.</p></div>;
 
   const rows = fx.data || [];
-  const pairs = ["USD", "GBP", "EUR"].map((c) => ({ c, l: latestFx(rows, `${c}/GHS`) || latestFx(rows, c) }));
+  const pairs = ["USD", "GBP", "EUR"].map((c) => ({ c, l: latestFx(rows, `${c}GHS`) }));
   const movers = (gse.data || []).filter((p) => (p.change_percent ?? 0) !== 0).sort((a, b) => Math.abs(b.change_percent!) - Math.abs(a.change_percent!)).slice(0, 5);
   const top = stories.data || [];
   const kd = top.flatMap((a: any) => (Array.isArray(a.key_data) ? a.key_data.map((k: any) => ({ ...k, a })) : [])).find((k: any) => k?.label && k?.value);
