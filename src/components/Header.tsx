@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 import { DataAlertBanner } from "@/components/DataAlertBanner";
 import { X_URL, WHATSAPP_CHANNEL_URL } from "@/lib/social";
 import EconomicIndicatorStrip from "@/components/home/EconomicIndicatorStrip";
+import { CediRateBar } from "@/components/CediRateBar";
 
 export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
   const navigate = useNavigate();
@@ -70,6 +71,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
   return (
     <header className="sticky top-0 z-50">
       <DataAlertBanner />
+      <CediRateBar />
       {/* Ticker */}
       {showTicker && <EconomicIndicatorStrip />}
 
