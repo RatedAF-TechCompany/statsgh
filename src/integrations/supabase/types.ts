@@ -1657,16 +1657,20 @@ export type Database = {
         Row: {
           actual_value: string | null
           created_at: string | null
+          date_precision: string
           description: string | null
           event_type: string
+          external_id: string | null
           id: string
           impact_level: string | null
           indicator_slug: string | null
           is_recurring: boolean | null
+          origin: string
           previous_value: string | null
           recurrence_rule: string | null
           scheduled_date: string
           source_name: string | null
+          source_url: string | null
           status: string | null
           title: string
           updated_at: string | null
@@ -1674,16 +1678,20 @@ export type Database = {
         Insert: {
           actual_value?: string | null
           created_at?: string | null
+          date_precision?: string
           description?: string | null
           event_type?: string
+          external_id?: string | null
           id?: string
           impact_level?: string | null
           indicator_slug?: string | null
           is_recurring?: boolean | null
+          origin?: string
           previous_value?: string | null
           recurrence_rule?: string | null
           scheduled_date: string
           source_name?: string | null
+          source_url?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
@@ -1691,16 +1699,20 @@ export type Database = {
         Update: {
           actual_value?: string | null
           created_at?: string | null
+          date_precision?: string
           description?: string | null
           event_type?: string
+          external_id?: string | null
           id?: string
           impact_level?: string | null
           indicator_slug?: string | null
           is_recurring?: boolean | null
+          origin?: string
           previous_value?: string | null
           recurrence_rule?: string | null
           scheduled_date?: string
           source_name?: string | null
+          source_url?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
@@ -2398,6 +2410,42 @@ export type Database = {
           name?: string
           photo_url?: string | null
           specialization?: string
+        }
+        Relationships: []
+      }
+      macro_series: {
+        Row: {
+          fetched_at: string
+          id: string
+          is_projection: boolean
+          period: string
+          series_key: string
+          source: string
+          source_url: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          is_projection?: boolean
+          period: string
+          series_key: string
+          source: string
+          source_url: string
+          unit: string
+          value: number
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          is_projection?: boolean
+          period?: string
+          series_key?: string
+          source?: string
+          source_url?: string
+          unit?: string
+          value?: number
         }
         Relationships: []
       }
