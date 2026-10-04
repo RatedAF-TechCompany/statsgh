@@ -162,6 +162,13 @@
       "when": 1791135942015,
       "tag": "0022_tighten_deal_classifier",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791136814544,
+      "tag": "0023_lock_anonymous_email_table_reads",
+      "breakpoints": true
     }
   ]
 }
