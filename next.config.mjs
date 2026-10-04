@@ -37,6 +37,10 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.statsgh.com",
+      },
+      {
+        protocol: "https",
         hostname: "ofhejtwaigiqyejbvncz.supabase.co",
       },
     ],
