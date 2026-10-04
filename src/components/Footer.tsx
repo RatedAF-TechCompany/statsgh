@@ -2,6 +2,7 @@ import { SITE_SECTIONS } from "@/lib/navigation";
 import { Link } from "react-router-dom";
 import { X_URL, X_HANDLE, WHATSAPP_CHANNEL_URL } from "@/lib/social";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
+import { ChannelButtons } from "@/components/ChannelButtons";
 
 const Footer = () => {
   return (
@@ -75,19 +76,7 @@ const Footer = () => {
           <p className="font-ui text-[12px] text-[#757575]">
             © 2026 StatsGH. Accuracy is our policy.
           </p>
-          <div className="flex gap-4">
-          {WHATSAPP_CHANNEL_URL && (
-            <a href={WHATSAPP_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="font-ui text-[12px] text-[#E3120B] hover:underline">Follow on WhatsApp</a>
-          )}
-          <a
-            href={X_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-ui text-[12px] text-[#E3120B] hover:underline"
-          >
-            Follow {X_HANDLE} on X
-          </a>
-          </div>
+          <div className="text-[#E3120B]"><ChannelButtons /></div>
         </div>
       </div>
     </footer>

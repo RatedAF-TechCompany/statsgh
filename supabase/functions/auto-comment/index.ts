@@ -153,10 +153,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch article details
     const { data: article, error: articleError } = await supabase
       .from("articles")
-      .select("title, summary, category_slug")
+      .select("title, summary, category_slug, is_sponsored")
       .eq("id", articleId)
       .single();
 
+    if ((article as any)?.is_sponsored) {
+      return new Response(JSON.stringify({ skipped: true, reason: "sponsored article" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (articleError || !article) {
       console.error("Error fetching article:", articleError);
       return new Response(

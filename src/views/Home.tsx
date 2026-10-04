@@ -1,4 +1,5 @@
 "use client";
+import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -181,6 +182,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
             </div>
           </>
         )}
+        <div className="max-w-[520px] mx-auto px-4 pb-10"><NewsletterSignup source="homepage" /></div>
       </main>
 
       <Footer />

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 // No site-wide force-dynamic: home, section and article pages use ISR (revalidate 120s,
 // plus on-demand revalidation via /api/revalidate); other pages opt into dynamic themselves.
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] },
   },
   applicationName: "StatsGH",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     title: "StatsGH",
     capable: true,
@@ -65,7 +67,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>{children}<InstallPrompt /></Providers>
       </body>
     </html>
   );
