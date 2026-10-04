@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { explainLabel } from "@/lib/glossary";
 
 interface KeyDatum {
   label?: string;
@@ -60,6 +62,7 @@ export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: st
             <span className="font-ui text-sm text-[#5B5B5B]">
               {k.label}{k.context ? ` — ${k.context}` : ""}
             </span>
+            <Explain label={`${k.label} ${k.unit ?? ""}`} />
           </li>
         ))}
       </ul>
@@ -81,5 +84,24 @@ export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: st
         </a>
       )}
     </aside>
+  );
+};
+
+const Explain = ({ label }: { label: string }) => {
+  const [open, setOpen] = useState(false);
+  const term = explainLabel(label);
+  if (!term) return null;
+  return (
+    <span className="mt-1">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="font-ui text-[11px] font-semibold text-[#E3120B] underline">
+        {open ? "Hide explanation" : "Explain this number"}
+      </button>
+      {open && (
+        <span className="block mt-1 font-serif text-[13px] leading-snug text-[#121212]">
+          <strong>{term.term}:</strong> {term.definition}{" "}
+          <a href={`/glossary#${term.slug}`} className="text-[#E3120B] underline">Glossary</a>
+        </span>
+      )}
+    </span>
   );
 };

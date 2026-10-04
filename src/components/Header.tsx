@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_SECTIONS } from "@/lib/navigation";
 import { useRef, useState } from "react";
+import { DataAlertBanner } from "@/components/DataAlertBanner";
+import { X_URL, WHATSAPP_CHANNEL_URL } from "@/lib/social";
 import EconomicIndicatorStrip from "@/components/home/EconomicIndicatorStrip";
 
 export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
@@ -67,6 +69,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
 
   return (
     <header className="sticky top-0 z-50">
+      <DataAlertBanner />
       {/* Ticker */}
       {showTicker && <EconomicIndicatorStrip />}
 
@@ -88,6 +91,10 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
           </span>
 
           <div className="flex items-center gap-2 ml-auto md:ml-6 flex-shrink-0">
+            <a href={X_URL} target="_blank" rel="noopener noreferrer" className="hidden sm:inline font-ui text-[12px] font-semibold text-[#121212] hover:text-[#E3120B] px-1" aria-label="Follow StatsGH on X">Follow on X</a>
+            {WHATSAPP_CHANNEL_URL && (
+              <a href={WHATSAPP_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="hidden sm:inline font-ui text-[12px] font-semibold text-[#121212] hover:text-[#E3120B] px-1">Follow on WhatsApp</a>
+            )}
             <button
               onClick={() => navigate("/search")}
               className="p-2 hover:opacity-80"
