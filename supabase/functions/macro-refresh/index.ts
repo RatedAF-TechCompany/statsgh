@@ -97,13 +97,14 @@ Deno.serve(async (req) => {
     try {
       const { data } = await db.from("bog_policy_rates").select("*").order("effective_date", { ascending: false }).limit(24);
       for (const r of (data || []) as any[]) {
-        const d = r.effective_date ?? r.rate_date ?? r.date;
+        const d = r.effective_date;
         if (!d) continue;
         events.push({
-          external_id: `bog-mpc-${d}`, title: `Bank of Ghana MPC decision: policy rate ${Number(r.rate ?? r.policy_rate).toFixed(1)}%`,
+          external_id: `bog-mpc-${d}`, title: `Bank of Ghana MPC decision: policy rate ${Number(r.rate).toFixed(1)}%`,
           origin: "auto", date_precision: "exact", event_type: "policy_meeting", source_name: "Bank of Ghana",
           source_url: r.source_url || "https://www.bog.gov.gh/monetary-policy/policy-rate-trends/",
-          scheduled_date: `${d}T12:00:00Z`, status: "released", actual_value: `${Number(r.rate ?? r.policy_rate).toFixed(1)}%`, impact_level: "high",
+          description: r.mpc_dates ? `MPC meeting ${r.meeting_no ?? ""} (${r.mpc_dates}); rate effective ${d}.` : null,
+          scheduled_date: `${d}T12:00:00Z`, status: "released", actual_value: `${Number(r.rate).toFixed(1)}%`, impact_level: "high",
         });
       }
       report.mpc = `${(data || []).length} past decisions`;

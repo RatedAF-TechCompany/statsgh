@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.gse-scrape]
 verify_jwt = false
+
+[functions.macro-refresh]
+verify_jwt = false
