@@ -578,6 +578,54 @@ export type Database = {
           },
         ]
       }
+      authors: {
+        Row: {
+          bio: string | null
+          byline_aliases: string[]
+          created_at: string
+          display_name: string
+          expertise: string[]
+          id: string
+          is_active: boolean
+          journalist_id: string | null
+          kind: string
+          role: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          byline_aliases?: string[]
+          created_at?: string
+          display_name: string
+          expertise?: string[]
+          id?: string
+          is_active?: boolean
+          journalist_id?: string | null
+          kind?: string
+          role?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          byline_aliases?: string[]
+          created_at?: string
+          display_name?: string
+          expertise?: string[]
+          id?: string
+          is_active?: boolean
+          journalist_id?: string | null
+          kind?: string
+          role?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bog_fx_rates: {
         Row: {
           buying: number | null
@@ -3198,6 +3246,36 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          compiled_at: string
+          data: Json
+          edition: string
+          id: string
+          kind: string
+          period_end: string
+          period_start: string
+        }
+        Insert: {
+          compiled_at?: string
+          data: Json
+          edition: string
+          id?: string
+          kind: string
+          period_end: string
+          period_start: string
+        }
+        Update: {
+          compiled_at?: string
+          data?: Json
+          edition?: string
+          id?: string
+          kind?: string
+          period_end?: string
+          period_start?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           ad_rates: Json | null
@@ -3781,6 +3859,9 @@ export type Database = {
       }
     }
     Functions: {
+      _fx_at: { Args: { p_day: string; p_pair: string }; Returns: Json }
+      _gse_at: { Args: { p_day: string }; Returns: Json }
+      _tbill_at: { Args: { p_day: string; p_tenor: number }; Returns: Json }
       assign_journalist: {
         Args: { p_article_id: string; p_category: string }
         Returns: string
@@ -3829,6 +3910,8 @@ export type Database = {
           title: string
         }[]
       }
+      compile_cedi_report: { Args: { p_month?: string }; Returns: string }
+      compile_economy_scorecard: { Args: { p_day?: string }; Returns: string }
       compile_gse_week: { Args: { p_day?: string }; Returns: number }
       compile_week_in_numbers: { Args: { p_day?: string }; Returns: number }
       editor_decide_article: {
