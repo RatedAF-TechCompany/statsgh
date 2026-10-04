@@ -11,6 +11,8 @@ export const SITE_SECTIONS = [
   { label: "Dashboards", slug: "dashboards", href: "/dashboards" },
   { label: "Calendar", slug: "calendar", href: "/calendar" },
   { label: "Data Explorer", slug: "explorer", href: "/explorer" },
+  { label: "Data Vault", slug: "data-vault", href: "/data-vault" },
+  { label: "Reports", slug: "reports", href: "/reports" },
   { label: "Tools", slug: "tools-cost-of-living", href: "/tools/cost-of-living" },
   { label: "Business", slug: "business", href: "/business" },
   { label: "Politics & Policy", slug: "politics-policy", href: "/politics-policy" },

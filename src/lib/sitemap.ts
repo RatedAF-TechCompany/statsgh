@@ -51,6 +51,11 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/terms`, changeFrequency: "yearly" as const, priority: 0.2 },
   { url: `${BASE_URL}/about`, changeFrequency: "monthly" as const, priority: 0.5 },
   { url: `${BASE_URL}/corrections`, changeFrequency: "weekly" as const, priority: 0.4 },
+  { url: `${BASE_URL}/data-vault`, changeFrequency: "daily" as const, priority: 0.7 },
+  { url: `${BASE_URL}/reports`, changeFrequency: "weekly" as const, priority: 0.7 },
+  { url: `${BASE_URL}/reports/economy-scorecard`, changeFrequency: "weekly" as const, priority: 0.7 },
+  { url: `${BASE_URL}/reports/state-of-the-cedi`, changeFrequency: "monthly" as const, priority: 0.7 },
+  { url: `${BASE_URL}/about/team`, changeFrequency: "monthly" as const, priority: 0.4 },
   { url: `${BASE_URL}/sources`, changeFrequency: "weekly" as const, priority: 0.5 },
 ];
 

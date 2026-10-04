@@ -121,7 +121,7 @@ export async function generateMetadata({
 }
 
 // JSON-LD structured data for Google News
-function generateJsonLd(article: any) {
+function generateJsonLd(article: any, authorSlug?: string | null) {
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   const imageUrl =
     makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/social/statsgh-og-1200x630.png`;
@@ -139,7 +139,7 @@ function generateJsonLd(article: any) {
     author: {
       "@type": "Person",
       name: article.author_name || "StatsGH Editorial",
-      url: baseUrl,
+      url: authorSlug ? `${baseUrl}/authors/${authorSlug}` : `${baseUrl}/about/team`,
     },
     publisher: {
       "@type": "NewsMediaOrganization",
@@ -181,7 +181,12 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     redirect(`/${article.category_slug}/${article.slug}`);
   }
 
-  const jsonLd = generateJsonLd(article);
+  let authorSlug: string | null = null;
+  if (article.author_name) {
+    const { data: au } = await createReadOnlyServerClient().from("authors").select("slug").contains("byline_aliases", [article.author_name]).limit(1);
+    authorSlug = au?.[0]?.slug ?? null;
+  }
+  const jsonLd = generateJsonLd(article, authorSlug);
 
   return (
     <>
