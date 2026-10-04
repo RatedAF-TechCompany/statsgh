@@ -1908,6 +1908,56 @@ export type Database = {
           },
         ]
       }
+      inflation_readings: {
+        Row: {
+          article_id: string | null
+          article_published_at: string | null
+          article_slug: string | null
+          article_title: string | null
+          category_slug: string | null
+          extracted_at: string
+          id: string
+          kind: string
+          period: string
+          source_count: number
+          value: number
+        }
+        Insert: {
+          article_id?: string | null
+          article_published_at?: string | null
+          article_slug?: string | null
+          article_title?: string | null
+          category_slug?: string | null
+          extracted_at?: string
+          id?: string
+          kind: string
+          period: string
+          source_count?: number
+          value: number
+        }
+        Update: {
+          article_id?: string | null
+          article_published_at?: string | null
+          article_slug?: string | null
+          article_title?: string | null
+          category_slug?: string | null
+          extracted_at?: string
+          id?: string
+          kind?: string
+          period?: string
+          source_count?: number
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inflation_readings_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingestion_runs: {
         Row: {
           created_at: string
@@ -3191,6 +3241,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_inflation_readings: { Args: never; Returns: number }
       release_stale_tweet_claims: { Args: never; Returns: number }
       trigger_newsroom_scan: { Args: never; Returns: undefined }
     }
