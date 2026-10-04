@@ -55,17 +55,17 @@ Deno.serve(async (req) => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://statsgh.com/</loc>
+    <loc>https://www.statsgh.com/</loc>
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
 ${categories.map(cat => `  <url>
-    <loc>https://statsgh.com/${cat}</loc>
+    <loc>https://www.statsgh.com/${cat}</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>`).join('\n')}
 ${articles?.map(article => `  <url>
-    <loc>https://statsgh.com/${article.category_slug}/${article.slug}</loc>
+    <loc>https://www.statsgh.com/${article.category_slug}/${article.slug}</loc>
     <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
     <lastmod>${article.updated_at || article.published_at}</lastmod>
     <changefreq>weekly</changefreq>

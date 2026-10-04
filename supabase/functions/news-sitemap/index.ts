@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${articles?.map(article => `  <url>
-    <loc>https://statsgh.com/${article.category_slug}/${article.slug}/</loc>
+    <loc>https://www.statsgh.com/${article.category_slug}/${article.slug}/</loc>
     <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
     <news:news>
       <news:publication>

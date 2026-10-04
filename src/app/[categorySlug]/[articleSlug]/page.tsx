@@ -11,6 +11,10 @@ interface ArticlePageProps {
   }>;
 }
 
+export const revalidate = 120;
+export const dynamicParams = true;
+export async function generateStaticParams() { return []; }
+
 // Fetch article data for both metadata and page rendering
 async function getArticle(articleSlug: string) {
   const supabase = createReadOnlyServerClient();
@@ -29,7 +33,7 @@ async function getArticle(articleSlug: string) {
   return article;
 }
 
-const baseUrl = "https://statsgh.com";
+const baseUrl = "https://www.statsgh.com";
 
 const makeAbsoluteUrl = (url: string | null) => {
   if (!url) return null;
@@ -62,9 +66,7 @@ export async function generateMetadata({
     title: `${article.title} | StatsGH`,
     description,
     keywords: keywords || undefined,
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: { canonical: canonicalUrl, types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     robots: {
       index: true,
       follow: true,

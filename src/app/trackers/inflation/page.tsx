@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import InflationTracker from "@/views/InflationTracker";
 
@@ -7,8 +8,8 @@ const description = "Ghana's monthly CPI inflation — headline, food and non-fo
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/trackers/inflation" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/trackers/inflation", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/trackers/inflation" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/trackers/inflation", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 

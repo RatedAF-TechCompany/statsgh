@@ -34,6 +34,6 @@ Disallow: /wp-includes/
 Disallow: /index.php
 Disallow: /*.php$
 
-# Sitemaps
-Sitemap: https://statsgh.com/sitemap.xml
-Sitemap: https://statsgh.com/news-sitemap.xml
+# Sitemaps (index lists the page, article and news sitemaps)
+Sitemap: https://www.statsgh.com/sitemap.xml
+Sitemap: https://www.statsgh.com/news-sitemap.xml

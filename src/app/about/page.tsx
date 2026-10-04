@@ -1,15 +1,16 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import About from "@/views/About";
 
 export const metadata: Metadata = {
   title: "About & Methodology | StatsGH",
   description: "How StatsGH sources and verifies the numbers in its reporting, our corrections policy, and how to contact us.",
-  alternates: { canonical: "https://statsgh.com/about" },
+  alternates: { canonical: "https://www.statsgh.com/about" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: {
     type: "website",
     title: "About & Methodology | StatsGH",
     description: "How StatsGH sources and verifies numbers, our corrections policy, and contact details.",
-    url: "https://statsgh.com/about",
+    url: "https://www.statsgh.com/about",
     siteName: "StatsGH",
   },
   twitter: { card: "summary_large_image", site: "@StatsGH" },

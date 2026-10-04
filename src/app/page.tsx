@@ -7,18 +7,24 @@ export const metadata: Metadata = {
   title: "StatsGH – Ghana's Premier Data Journalism Platform",
   description:
     "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",
-  alternates: { canonical: "https://statsgh.com/" },
+  alternates: {
+    canonical: "https://www.statsgh.com/",
+    types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] },
+  },
 };
+
+// ISR: regenerate at most every 120s; /api/revalidate refreshes it when an article publishes.
+export const revalidate = 120;
 
 const jsonLd = [
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "StatsGH",
-    url: "https://statsgh.com",
+    url: "https://www.statsgh.com",
     potentialAction: {
       "@type": "SearchAction",
-      target: "https://statsgh.com/search?q={search_term_string}",
+      target: "https://www.statsgh.com/search?q={search_term_string}",
       "query-input": "required name=search_term_string",
     },
   },
@@ -26,8 +32,8 @@ const jsonLd = [
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "StatsGH",
-    url: "https://statsgh.com",
-    logo: "https://statsgh.com/social/statsgh-og-1200x630.png",
+    url: "https://www.statsgh.com",
+    logo: "https://www.statsgh.com/social/statsgh-og-1200x630.png",
     sameAs: ["https://twitter.com/StatsGH"],
   },
 ];

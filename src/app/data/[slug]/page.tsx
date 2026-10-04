@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import IndicatorDetail from "@/views/IndicatorDetail";
@@ -25,7 +26,7 @@ export async function generateMetadata({
     };
   }
 
-  const canonicalUrl = `https://statsgh.com/data/${indicator.slug}`;
+  const canonicalUrl = `https://www.statsgh.com/data/${indicator.slug}`;
   const description = (
     indicator.description ||
     `Live data and historical trends for ${indicator.name} in Ghana, from StatsGH.`
@@ -34,7 +35,7 @@ export async function generateMetadata({
   return {
     title: `${indicator.name} — Ghana Data | StatsGH`.slice(0, 60),
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: canonicalUrl , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     openGraph: {
       type: "website",
       title: `${indicator.name} — Ghana Data | StatsGH`,

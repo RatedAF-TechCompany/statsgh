@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import TopicDashboard from "@/views/TopicDashboard";
@@ -25,7 +26,7 @@ export async function generateMetadata({
     };
   }
 
-  const canonicalUrl = `https://statsgh.com/topics/${topic.slug}`;
+  const canonicalUrl = `https://www.statsgh.com/topics/${topic.slug}`;
   const description =
     topic.description ||
     `Explore Ghana's ${topic.name.toLowerCase()} data, indicators, and related coverage from StatsGH.`;
@@ -33,7 +34,7 @@ export async function generateMetadata({
   return {
     title: `${topic.name} — Ghana Data | StatsGH`,
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: canonicalUrl , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
     openGraph: {
       type: "website",
       title: `${topic.name} — Ghana Data | StatsGH`,

@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 
-// News content changes constantly and most pages fetch live data, so render
-// on-demand (SSR) rather than statically prerendering at build time. Article
-// pages still emit full server-rendered HTML + metadata for crawlers.
-export const dynamic = "force-dynamic";
+// No site-wide force-dynamic: home, section and article pages use ISR (revalidate 120s,
+// plus on-demand revalidation via /api/revalidate); other pages opt into dynamic themselves.
 
 export const metadata: Metadata = {
   title: "StatsGH – Ghana's Premier Data Journalism Platform",
   description:
     "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",
-  metadataBase: new URL("https://statsgh.com"),
+  metadataBase: new URL("https://www.statsgh.com"),
+  // Self-referencing canonical on every page (resolved against metadataBase); pages may override.
+  alternates: {
+    canonical: "./",
+    types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] },
+  },
   applicationName: "StatsGH",
   appleWebApp: {
     title: "StatsGH",
@@ -25,7 +28,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    url: "https://statsgh.com/",
+    url: "https://www.statsgh.com/",
     title: "StatsGH – Ghana's Premier Data Journalism Platform",
     description:
       "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",

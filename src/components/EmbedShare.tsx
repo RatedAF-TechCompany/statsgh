@@ -4,12 +4,12 @@ import { toast } from "sonner";
 /** "Embed / share" control for a public chart at /embed/<series>. */
 export const EmbedShare = ({ series, title }: { series: string; title: string }) => {
   const [open, setOpen] = useState(false);
-  const url = `https://statsgh.com/embed/${series}`;
+  const url = `https://www.statsgh.com/embed/${series}`;
   const code = `<iframe src="${url}" title="${title.replace(/"/g, "")} — StatsGH" width="100%" height="360" style="border:1px solid #D9D9D9" loading="lazy"></iframe>`;
   const copy = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); toast.success(`${what} copied`); } catch { toast.error("Could not copy"); }
   };
-  const page = "https://statsgh.com/trackers/fuel-and-cedi";
+  const page = "https://www.statsgh.com/trackers/fuel-and-cedi";
   return (
     <div className="mt-2">
       <button type="button" onClick={() => setOpen((o) => !o)} className="font-ui text-xs font-semibold text-[#E3120B] underline" aria-expanded={open}>

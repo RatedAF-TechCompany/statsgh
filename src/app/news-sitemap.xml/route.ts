@@ -1,9 +1,8 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
 
-const BASE_URL = "https://statsgh.com";
+const BASE_URL = "https://www.statsgh.com";
 
 function escapeXml(str: string): string {
   return str
@@ -55,7 +54,7 @@ ${urls}
   return new Response(xml, {
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=600",
     },
   });
 }

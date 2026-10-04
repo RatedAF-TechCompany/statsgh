@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import FuelCediTracker from "@/views/FuelCediTracker";
 
@@ -7,8 +8,8 @@ const description = "Weekly tracker of the cedi against the dollar, euro and pou
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/trackers/fuel-and-cedi" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/trackers/fuel-and-cedi", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/trackers/fuel-and-cedi" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/trackers/fuel-and-cedi", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 

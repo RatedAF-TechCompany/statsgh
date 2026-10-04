@@ -37,6 +37,10 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.statsgh.com",
+      },
+      {
+        protocol: "https",
         hostname: "ofhejtwaigiqyejbvncz.supabase.co",
       },
     ],
@@ -61,6 +65,10 @@ const nextConfig = {
       { source: `${from}/:path*`, destination: to, permanent: true },
     ];
     return [
+      // RSS aliases
+      { source: "/rss.xml", destination: "/feed.xml", permanent: true },
+      { source: "/rss", destination: "/feed.xml", permanent: true },
+      { source: "/feed", destination: "/feed.xml", permanent: true },
       // Old category slugs → new category slugs
       ...pair("/democracy", "/security-governance"),
       ...pair("/energy", "/energy-resources"),

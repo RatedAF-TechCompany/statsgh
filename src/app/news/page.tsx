@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import News from "@/views/News";
 
@@ -8,12 +9,12 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/news" },
+  alternates: { canonical: "https://www.statsgh.com/news" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
   openGraph: {
     type: "website",
     title,
     description,
-    url: "https://statsgh.com/news",
+    url: "https://www.statsgh.com/news",
     siteName: "StatsGH",
   },
   twitter: { card: "summary_large_image", site: "@StatsGH", title, description },

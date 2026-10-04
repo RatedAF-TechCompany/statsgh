@@ -44,7 +44,7 @@ const EmbedChart = ({ series }: { series: string }) => {
       </div>
       <p className="text-[11px] text-[#5B5B5B] mt-1">
         Source: {cfg.source}{last ? ` · Last updated ${fmt(last.date)}` : ""} ·{" "}
-        <a href="https://statsgh.com/trackers/fuel-and-cedi" target="_blank" rel="noopener noreferrer" className="text-[#E3120B] font-semibold">StatsGH</a>
+        <a href="https://www.statsgh.com/trackers/fuel-and-cedi" target="_blank" rel="noopener noreferrer" className="text-[#E3120B] font-semibold">StatsGH</a>
       </p>
     </div>
   );

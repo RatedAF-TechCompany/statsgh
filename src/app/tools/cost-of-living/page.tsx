@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import CostOfLiving from "@/views/CostOfLiving";
 
@@ -7,8 +8,8 @@ const description = "Estimate how Ghana's latest fuel prices, cedi rate and CPI 
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/tools/cost-of-living" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/tools/cost-of-living", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/tools/cost-of-living" , types: { "application/rss+xml": [{ url: "https://www.statsgh.com/feed.xml", title: "StatsGH" }] } },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/tools/cost-of-living", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 
