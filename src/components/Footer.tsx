@@ -20,6 +20,10 @@ const Footer = () => {
             </p>
             <ul className="mt-4 space-y-2">
               <li><Link to="/about" className="font-ui text-[13px] text-[#E3120B] hover:underline">About &amp; Methodology</Link></li>
+              <li><Link to="/about#methodology" className="font-ui text-[13px] font-semibold text-[#E3120B] hover:underline">Data sources and methodology</Link></li>
+              <li><Link to="/data-vault" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Data Vault</Link></li>
+              <li><Link to="/reports" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Reports</Link></li>
+              <li><Link to="/about/team" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Our team</Link></li>
               <li><Link to="/corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
               <li><Link to="/contact" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Contact</Link></li>
               <li><Link to="/advertise" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Advertise</Link></li>

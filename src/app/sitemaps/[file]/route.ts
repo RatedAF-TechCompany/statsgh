@@ -1,4 +1,5 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { DATASETS } from "@/lib/dataVault";
 import { ARTICLES_PER_SITEMAP, BASE_URL, STATIC_PAGES, esc, xmlResponse } from "@/lib/sitemap";
 
 export const revalidate = 300;
@@ -18,7 +19,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
     const { data: d } = await createReadOnlyServerClient().from("gse_daily_prices").select("trade_date").order("trade_date", { ascending: false }).limit(1);
     const { data: syms } = d?.[0] ? await createReadOnlyServerClient().from("gse_daily_prices").select("symbol").eq("trade_date", d[0].trade_date) : { data: [] };
     const gse = (syms ?? []).map((s: { symbol: string }) => ({ url: `${BASE_URL}/markets/gse/${encodeURIComponent(s.symbol)}`, changeFrequency: "daily" as const, priority: 0.5 }));
-    return xmlResponse(urlset([...STATIC_PAGES, ...gse].map((p) =>
+    const sb0 = createReadOnlyServerClient();
+    const [{ data: reps }, { data: auths }] = await Promise.all([
+      sb0.from("reports").select("kind, edition"),
+      sb0.from("authors").select("slug").eq("is_active", true),
+    ]);
+    const extra = [
+      ...DATASETS.map((d) => ({ url: `${BASE_URL}/data-vault/${d.slug}`, changeFrequency: "daily" as const, priority: 0.6 })),
+      ...(reps ?? []).map((r: { kind: string; edition: string }) => ({ url: `${BASE_URL}/reports/${r.kind}/${r.edition}`, changeFrequency: "monthly" as const, priority: 0.5 })),
+      ...(auths ?? []).map((a: { slug: string }) => ({ url: `${BASE_URL}/authors/${a.slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
+    ];
+    return xmlResponse(urlset([...STATIC_PAGES, ...gse, ...extra].map((p) =>
       `  <url><loc>${p.url}</loc><changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`).join("\n")));
   }
 

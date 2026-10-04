@@ -24,7 +24,7 @@ const About = () => (
         statistic, and links to where that number came from.
       </p>
 
-      <Section title="How we source numbers">
+      <Section id="methodology" title="Data sources and methodology">
         <p>
           Our stories start from reporting by Ghanaian news outlets and from primary publishers: the Bank of
           Ghana, the Ghana Statistical Service, the Ministry of Finance, the Ghana Stock Exchange, regulators,
@@ -35,6 +35,12 @@ const About = () => (
           to. Exchange rates come from ExchangeRate-API. Brent and WTI oil prices are U.S. EIA figures and cocoa
           is the IMF monthly price, both published via FRED. If a feed is unavailable, we say so instead of
           showing an estimate.
+        </p>
+        <p>
+          Official Bank of Ghana rates, Ghana Stock Exchange end-of-day prices, World Bank and IMF series are
+          stored with their source link and date. You can browse and download every dataset in
+          our <Link to="/data-vault" className="text-[#E3120B] hover:underline">Data Vault</Link>, and read the
+          automatically compiled <Link to="/reports" className="text-[#E3120B] hover:underline">reports</Link> built from them.
         </p>
       </Section>
 

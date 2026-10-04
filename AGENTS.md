@@ -16,3 +16,6 @@
 - Newsletter signup, preferences and follows go through SECURITY DEFINER RPCs (`subscribe_newsletter`, `get/update_newsletter_prefs`, `follow_target`); anon never reads subscriber or follow rows.
 - Email sending is hard-disabled unless `EMAIL_SENDING_ENABLED=true` is set on the email functions — no automatic mail until the owner connects a provider.
 - WhatsApp/Telegram/X follow links and ad rates live in `site_settings` and render only when set.
+- Data Vault datasets are declared once in `src/lib/dataVault.ts` (table, columns, source, chart) and served by `/data-vault/[slug]` and `/api/data/[slug]` (rate-limited, s-maxage 300) straight from stored rows — one registry, no derived numbers.
+- Reports (`reports` table) are compiled only by the SQL functions `compile_economy_scorecard` / `compile_cedi_report` run by pg_cron inside the database; report prose is generated in `src/lib/reports.ts` from the stored numbers only — no invented claims.
+- Author profiles live in `authors` (editor-managed via /admin/authors), created only from bylines already on published articles; articles map to a profile via `byline_aliases`.
