@@ -52,10 +52,14 @@ export function useParams<T extends Record<string, string | undefined> = Record<
 }
 
 // --- useLocation -----------------------------------------------------------
+// Reads the query string from window (after mount) instead of Next's useSearchParams,
+// which would force every statically cached (ISR) page to bail out of server rendering.
 export function useLocation() {
   const pathname = usePathname() || "/";
-  const searchParams = useNextSearchParams();
-  const search = searchParams && searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const [search, setSearch] = React.useState("");
+  React.useEffect(() => {
+    setSearch(window.location.search || "");
+  }, [pathname]);
   return {
     pathname,
     search,
