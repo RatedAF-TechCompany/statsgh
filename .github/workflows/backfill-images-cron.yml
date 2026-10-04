@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Number of articles to process (default 50)'
+        description: 'Number of articles to process (max 5 per run)'
         required: false
-        default: '50'
+        default: '5'
 
 jobs:
   backfill:
@@ -20,6 +20,6 @@ jobs:
             "https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/backfill-images" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9maGVqdHdhaWdpcXllamJ2bmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyOTE1NjUsImV4cCI6MjA3ODg2NzU2NX0.l01PfzD7KDaGQJKRoLFxoBuA46z8OsAM7F0Xc4DTLEo" \
             -H "Content-Type: application/json" \
-            -d "{\"limit\": ${{ github.event.inputs.limit || '50' }}}" \
+            -d "{\"limit\": ${{ github.event.inputs.limit || '5' }}}" \
             --fail-with-body \
             --max-time 300

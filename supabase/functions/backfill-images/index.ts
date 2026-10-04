@@ -6,6 +6,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Resource limits: the job previously hit WORKER_RESOURCE_LIMIT. Keep each run small.
+const MAX_PER_RUN = 5;
+const FETCH_TIMEOUT_MS = 10_000;
+const AI_TIMEOUT_MS = 45_000;
+const ARTICLE_TIMEOUT_MS = 60_000;
+
+function timedFetch(url: string, init: RequestInit = {}, ms = FETCH_TIMEOUT_MS) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`${label} timed out`)), ms))]);
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 // ---------- Query derivation ----------
 const STOPWORDS = new Set([
   "the","a","an","and","or","but","of","to","in","on","for","with","at","by","from",
@@ -29,7 +50,7 @@ function deriveQuery(title: string, category: string): string {
 async function fetchOpenverse(query: string): Promise<{ url: string; creator: string } | null> {
   try {
     const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license_type=commercial&aspect_ratio=wide&size=large&page_size=5`;
-    const res = await fetch(url, { headers: { "User-Agent": "StatsGH/1.0 (editorial)" } });
+    const res = await timedFetch(url, { headers: { "User-Agent": "StatsGH/1.0 (editorial)" } });
     if (!res.ok) return null;
     const data = await res.json();
     const hit = (data.results || []).find((r: any) => r.url && (r.width ?? 0) >= 700);
@@ -47,8 +68,8 @@ async function fetchWikimedia(query: string): Promise<{ url: string; creator: st
   try {
     const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&list=search&srsearch=${encodeURIComponent(
       query + " filetype:bitmap"
-    )}&srnamespace=6&srlimit=10&origin=*`;
-    const sres = await fetch(searchUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
+    )}&srnamespace=6&srlimit=5&origin=*`;
+    const sres = await timedFetch(searchUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
     if (!sres.ok) return null;
     const sdata = await sres.json();
     const hits = sdata.query?.search || [];
@@ -57,7 +78,7 @@ async function fetchWikimedia(query: string): Promise<{ url: string; creator: st
       const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&titles=${encodeURIComponent(
         title
       )}&iiprop=url|size|extmetadata&origin=*`;
-      const ires = await fetch(infoUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
+      const ires = await timedFetch(infoUrl, { headers: { "User-Agent": "StatsGH/1.0" } });
       if (!ires.ok) continue;
       const idata = await ires.json();
       const pages = idata.query?.pages || {};
@@ -84,7 +105,7 @@ async function generateAiImage(prompt: string, supabase: any, slug: string): Pro
   try {
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) return null;
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await timedFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -97,14 +118,14 @@ async function generateAiImage(prompt: string, supabase: any, slug: string): Pro
         ],
         modalities: ["image", "text"],
       }),
-    });
+    }, AI_TIMEOUT_MS);
     if (!res.ok) return null;
     const data = await res.json();
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     const m = imageData?.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!m) return null;
     const [, fmt, b64] = m;
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const bytes = base64ToBytes(b64);
     const ext = fmt === "png" ? "png" : "jpg";
     const path = `newsroom/${slug}-ai.${ext}`;
     const { error } = await supabase.storage
@@ -127,7 +148,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
     const body = await req.json().catch(() => ({}));
-    const limit = Number(body.limit ?? 10);
+    const limit = Math.min(Math.max(1, Number(body.limit ?? MAX_PER_RUN) || MAX_PER_RUN), MAX_PER_RUN);
     const force = Boolean(body.force ?? false);
 
     let q = supabase
@@ -141,56 +162,48 @@ serve(async (req) => {
     const { data: articles, error } = await q;
     if (error) throw error;
 
-    const counts = { openverse: 0, wikimedia: 0, ai: 0, none: 0 };
+    const counts = { openverse: 0, wikimedia: 0, ai: 0, none: 0, failed: 0 };
     const results: any[] = [];
 
+    // One article at a time, each with its own time budget; a failure is logged and skipped.
     for (const a of articles || []) {
       const query = deriveQuery(a.title, a.category_slug || a.section || "");
-      let url: string | null = null;
-      let source = "none";
-      let caption = "";
-
-      const ov = await fetchOpenverse(query);
-      if (ov) {
-        url = ov.url;
-        source = "openverse";
-        caption = `Photo: ${ov.creator} / Openverse`;
-        counts.openverse++;
-      } else {
-        const wm = await fetchWikimedia(query);
-        if (wm) {
-          url = wm.url;
-          source = "wikimedia";
-          caption = `Photo: ${wm.creator} / Wikimedia Commons`;
-          counts.wikimedia++;
-        } else {
+      try {
+        const r = await withTimeout((async () => {
+          const ov = await fetchOpenverse(query);
+          if (ov) return { url: ov.url, source: "openverse", caption: `Photo: ${ov.creator} / Openverse` };
+          const wm = await fetchWikimedia(query);
+          if (wm) return { url: wm.url, source: "wikimedia", caption: `Photo: ${wm.creator} / Wikimedia Commons` };
           const ai = await generateAiImage(a.title, supabase, a.slug);
-          if (ai) {
-            url = ai;
-            source = "ai_illustration";
-            caption = "Photo illustration: StatsGH";
-            counts.ai++;
-          } else {
-            counts.none++;
-          }
-        }
-      }
+          if (ai) return { url: ai, source: "ai_illustration", caption: "Photo illustration: StatsGH" };
+          return null;
+        })(), ARTICLE_TIMEOUT_MS, "article");
 
-      if (url) {
-        await supabase
-          .from("articles")
-          .update({ hero_image_url: url, image_source: source, image_caption: caption })
-          .eq("id", a.id);
+        if (r) {
+          const { error: upErr } = await supabase.from("articles")
+            .update({ hero_image_url: r.url, image_source: r.source, image_caption: r.caption }).eq("id", a.id);
+          if (upErr) throw upErr;
+          (counts as any)[r.source === "ai_illustration" ? "ai" : r.source]++;
+          results.push({ id: a.id, source: r.source, query });
+        } else {
+          counts.none++;
+          results.push({ id: a.id, source: "none", query });
+        }
+      } catch (e) {
+        counts.failed++;
+        results.push({ id: a.id, source: "failed", error: (e as Error).message, query });
       }
-      results.push({ id: a.id, title: a.title, source, query });
       await new Promise((r) => setTimeout(r, 300));
     }
+
+    console.log("backfill-images result", JSON.stringify({ processed: results.length, counts, results }));
 
     return new Response(
       JSON.stringify({ success: true, processed: results.length, counts, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
+    console.error("backfill-images failed", (e as Error).message);
     return new Response(
       JSON.stringify({ success: false, error: (e as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
