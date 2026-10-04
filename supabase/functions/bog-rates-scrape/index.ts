@@ -89,6 +89,8 @@ const jobs: Record<string, (db: any) => Promise<number>> = {
     const recs = tableRows(await get(URLS.policy), "103").map((r) => ({
       meeting_no: parseInt(r[0]), mpc_dates: r[1] || null, effective_date: toDate(r[2]), rate: num(r[3]), source_url: URLS.policy,
     })).filter((r) => r.meeting_no > 0 && r.effective_date && r.rate !== null);
+    const byNo = new Map(recs.map((r) => [r.meeting_no, r]));
+    recs.splice(0, recs.length, ...byNo.values());
     if (recs.length < 10) throw new Error(`only ${recs.length} policy rows parsed`);
     const { error } = await db.from("bog_policy_rates").upsert(recs.map((r) => ({ ...r, fetched_at: new Date().toISOString() })), { onConflict: "meeting_no" });
     if (error) throw error;
@@ -122,7 +124,7 @@ Deno.serve(async (req) => {
       results[n] = { ok: true, rows };
       await db.from("market_scrape_runs").insert({ scraper: `bog_${n}`, status: "success", rows_upserted: rows });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = e instanceof Error ? e.message : (typeof e === "object" ? JSON.stringify(e) : String(e));
       console.error(`bog_${n} failed:`, msg);
       results[n] = { ok: false, error: msg };
       await db.from("market_scrape_runs").insert({ scraper: `bog_${n}`, status: "failed", error: msg.slice(0, 500) });
