@@ -22,6 +22,7 @@ const Footer = () => {
               <li><Link to="/corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
               <li><Link to="/glossary" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Glossary</Link></li>
               <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>
+              <li><a href="/feed.xml" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">RSS feed</a></li>
             </ul>
             <NewsletterSignup source="footer" />
           </div>
