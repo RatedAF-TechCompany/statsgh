@@ -4,6 +4,7 @@ import { isEstimateSource, isStale, GSE_STALE_DAYS, GSE_SOURCE, sourceLabel, asO
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CediRatesBox } from "@/components/home/CediRatesBox";
 
 const COMMODITY_NAMES: Record<string, string> = {
   oil_wti: "WTI Crude",
@@ -103,6 +104,7 @@ const DataRail = () => {
 
   return (
     <aside className="sticky top-[130px]">
+      <CediRatesBox />
       {/* Ghana At A Glance */}
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-3">
