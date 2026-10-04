@@ -23,10 +23,7 @@ interface SectionBlockProps {
 }
 
 export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlockProps) => {
-  // Minimum 4 articles to render a section
-  if (articles.length < 4) return null;
-
-  const lead = articles[0];
+  if (articles.length === 0) return null;
   const visible = articles.slice(0, 8);
 
   return (

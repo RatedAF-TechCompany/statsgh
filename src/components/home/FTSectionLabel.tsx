@@ -10,7 +10,7 @@ const labelClass =
   "font-ui text-[18px] font-bold text-[#0D0D0D] hover:text-[#E3120B] transition-colors bg-transparent border-0 p-0 leading-none";
 
 export const FTSectionLabel = ({ label, to, onClick }: FTSectionLabelProps) => (
-  <div className="mb-5">
+  <div className="mb-3 border-t-4 border-[#E3120B] pt-2">
     <span className="rubric-bar" />
     <h2 className="m-0 p-0">
       {to ? (
