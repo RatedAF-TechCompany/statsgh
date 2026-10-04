@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useEffect } from "react";
 import { CommentSection } from "@/components/CommentSection";
 import { RelatedArticles } from "@/components/RelatedArticles";
+import { RelatedTracker } from "@/components/RelatedTracker";
 import { getSectionLabel } from "@/lib/navigation";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList,
@@ -227,7 +228,7 @@ const ArticleContent = ({ article }: { article: any }) => {
           <ArticleCorrectionNote articleId={article.id} />
 
           {/* Key numbers — only when real statistics were extracted */}
-          <KeyNumbers articleId={article.id} keyData={article.key_data} />
+          <KeyNumbers articleId={article.id} keyData={article.key_data} whyItMatters={(article as any).why_it_matters} />
 
           {/* Hero Image */}
           {article.hero_image_url && (
@@ -338,6 +339,7 @@ const ArticleContent = ({ article }: { article: any }) => {
         )}
 
         {/* Related Articles */}
+        <RelatedTracker title={article.title} tags={article.tags} category_slug={article.category_slug} section={(article as any).section} />
         <RelatedArticles articleId={article.id} tags={article.tags} categorySlug={article.category_slug} maxItems={3} />
       </main>
 

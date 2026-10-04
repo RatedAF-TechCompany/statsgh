@@ -30,8 +30,8 @@ const fmt = (v: number | string | undefined) => {
   return Number.isFinite(n) ? n.toLocaleString("en-GB", { maximumFractionDigits: 2 }) : String(v);
 };
 
-export const KeyNumbers = ({ articleId, keyData }: { articleId: string; keyData: unknown }) => {
-  const stats = realStats(keyData).slice(0, 4);
+export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: string; keyData: unknown; whyItMatters?: string | null }) => {
+  const stats = realStats(keyData).slice(0, 3);
 
   const { data: source } = useQuery({
     queryKey: ["article-source", articleId],
@@ -47,8 +47,11 @@ export const KeyNumbers = ({ articleId, keyData }: { articleId: string; keyData:
 
   return (
     <aside aria-label="Key numbers" className="mb-8 border-l-4 border-[#E3120B] bg-[#FAF7F2] p-5">
-      <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B] mb-4">Key numbers</h2>
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <div className="flex items-center gap-2 mb-4">
+        <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B]">Key numbers</h2>
+        <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] bg-[#E3120B] text-white px-1.5 py-0.5 rounded-sm">Data</span>
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-3">
         {stats.map((k, i) => (
           <li key={i} className="flex flex-col">
             <span className="font-mono text-2xl font-bold text-[#121212]">
@@ -60,6 +63,12 @@ export const KeyNumbers = ({ articleId, keyData }: { articleId: string; keyData:
           </li>
         ))}
       </ul>
+      {whyItMatters && whyItMatters.trim() && (
+        <p className="mt-4 font-serif text-[15px] leading-snug text-[#121212]">
+          <strong className="font-ui text-xs uppercase tracking-[0.1em] text-[#E3120B] mr-2">Why it matters</strong>
+          {whyItMatters.trim()}
+        </p>
+      )}
       {source?.source_url && (
         <a
           href={source.source_url}
