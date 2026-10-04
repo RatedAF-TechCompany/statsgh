@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
+import { LongRunMacro } from "@/components/markets/LongRunMacro";
 import { supabase } from "@/integrations/supabase/client";
 
 type Reading = {
@@ -177,6 +178,7 @@ const InflationTracker = () => {
             </section>
           </>
         )}
+        <LongRunMacro title="Annual CPI inflation since 1960, % (World Bank and IMF)" wbKey="wb_cpi" imfKey="imf_cpi" csvName="ghana-cpi-inflation-annual" from={1965} />
       </main>
       <div className="max-w-3xl mx-auto px-4 pb-8"><a href="/tools/cost-of-living" className="text-sm font-semibold text-[#E3120B] underline">Cost of Living Calculator: what these prices mean for your budget →</a></div>
       <Footer />

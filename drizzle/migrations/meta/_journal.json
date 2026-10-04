@@ -141,6 +141,13 @@
       "when": 1791131256304,
       "tag": "0019_gse_daily_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791134701658,
+      "tag": "0020_macro_series_and_calendar_sources",
+      "breakpoints": true
     }
   ]
 }

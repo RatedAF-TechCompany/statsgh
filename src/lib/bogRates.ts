@@ -73,9 +73,10 @@ export async function fetchBogSnapshot() {
   };
 }
 
-export function downloadCsv(filename: string, header: string[], rows: (string | number | null)[][]) {
+export function downloadCsv(filename: string, header: string[] | (string | number | null)[][], rows?: (string | number | null)[][]) {
+  if (!rows) { const all = header as (string | number | null)[][]; header = all[0] as string[]; rows = all.slice(1); }
   const esc = (v: string | number | null) => (v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-  const csv = [header, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+  const csv = [header as string[], ...rows].map((r) => r.map(esc).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
   const a = document.createElement("a");
   a.href = url; a.download = filename; a.click();

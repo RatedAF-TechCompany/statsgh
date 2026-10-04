@@ -6,7 +6,7 @@ const LINKS = [
   { href: "/", label: "Homepage" },
   { href: "/markets/forex", label: "Cedi exchange rates" },
   { href: "/markets/rates", label: "T-bill and policy rates" },
-  { href: "/trackers/inflation", label: "Inflation tracker" },
+  { href: "/trackers/cpi", label: "Inflation tracker" },
   { href: "/explorer", label: "Data Explorer" },
   { href: "/economy", label: "Economy news" },
   { href: "/contact", label: "Contact us" },

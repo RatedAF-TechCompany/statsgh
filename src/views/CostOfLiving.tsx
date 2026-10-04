@@ -153,7 +153,7 @@ const CostOfLiving = () => {
             <li>The cedi line is shown for context and is not added to your totals, to avoid double-counting with inflation.</li>
             <li>These are estimates for an average household, not a forecast. Your own prices may differ. Nothing is made up: a missing figure is shown as unavailable.</li>
           </ul>
-          <p className="text-sm mt-3">See the <a className="underline" href="/trackers/fuel-and-cedi">Fuel &amp; Cedi tracker</a>, the <a className="underline" href="/trackers/inflation">Inflation Explainer</a> and <a className="underline" href="/about">About &amp; Methodology</a>.</p>
+          <p className="text-sm mt-3">See the <a className="underline" href="/trackers/fuel-and-cedi">Fuel &amp; Cedi tracker</a>, the <a className="underline" href="/trackers/cpi">Inflation Explainer</a> and <a className="underline" href="/about">About &amp; Methodology</a>.</p>
         </section>
       </main>
       <Footer />

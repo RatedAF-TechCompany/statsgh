@@ -52,7 +52,7 @@ const MarketsRates = () => {
       <nav className="font-ui text-[12px] flex gap-4 mb-2">
         <Link to="/markets/forex" className="underline text-[#E3120B]">Forex</Link>
         <span className="font-bold">Interest rates</span>
-        <Link to="/trackers/inflation" className="underline text-[#E3120B]">Inflation</Link>
+        <Link to="/trackers/cpi" className="underline text-[#E3120B]">Inflation</Link>
         <Link to="/markets/gse" className="underline text-[#E3120B]">GSE</Link>
       </nav>
       <GseTicker />

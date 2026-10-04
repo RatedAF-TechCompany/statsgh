@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
@@ -122,6 +122,26 @@ const DataExplorer = () => {
     if (target !== "download") toast({ title: "Image card downloaded", description: "Attach it to your post." });
   };
 
+  // Compare: overlay up to 4 series on one chart.
+  const [cmp, setCmp] = useState<string[]>([]);
+  const cmpItems = (catalog || []).filter((c) => cmp.includes(c.id));
+  const { data: cmpData } = useQuery({
+    queryKey: ["explorer-compare", cmp.join("|")],
+    enabled: cmpItems.length > 0,
+    queryFn: async () => Promise.all(cmpItems.map(async (c) => ({ item: c, data: await loadSeries(c) }))),
+  });
+  const cmpRows = useMemo(() => {
+    const m = new Map<string, Record<string, any>>();
+    (cmpData || []).forEach(({ item, data }) => data.points.forEach((p) => { const r = m.get(p.date) || { date: p.date }; r[item.id] = p.value; m.set(p.date, r); }));
+    return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [cmpData]);
+  const COLORS = ["#E3120B", "#1F5C99", "#2E8B57", "#B8860B"];
+  const cmpCsv = () => {
+    const ids = (cmpData || []).map((x) => x.item.id);
+    const lines = [["date", ...ids].join(","), ...cmpRows.map((r) => [r.date, ...ids.map((i) => r[i] ?? "")].join(","))];
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })); a.download = "statsgh-compare.csv"; a.click();
+  };
+
   const pts = series?.points ?? [];
   const last = pts[pts.length - 1];
 
@@ -204,11 +224,43 @@ const DataExplorer = () => {
                   <Button size="sm" variant="outline" onClick={() => shareCard("download")} disabled={!pts.length}><ImageIcon className="h-4 w-4 mr-1" />Image card</Button>
                   <Button size="sm" variant="outline" onClick={() => shareCard("x")} disabled={!pts.length}>Share to X</Button>
                   <Button size="sm" variant="outline" onClick={() => shareCard("whatsapp")} disabled={!pts.length}>Share to WhatsApp</Button>
+                  {selected.kind !== "key-number" && (
+                    <Button size="sm" variant={cmp.includes(selected.id) ? "default" : "outline"} disabled={!pts.length || (!cmp.includes(selected.id) && cmp.length >= 4)}
+                      onClick={() => setCmp(cmp.includes(selected.id) ? cmp.filter((x) => x !== selected.id) : [...cmp, selected.id])}>
+                      {cmp.includes(selected.id) ? "Remove from comparison" : "Add to comparison"}
+                    </Button>
+                  )}
                 </div>
               </>
             )}
           </section>
         </div>
+        {cmpItems.length > 0 && (
+          <section className="border border-border p-5 mt-6">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h2 className="font-serif text-2xl font-bold">Compare</h2>
+              <Button size="sm" variant="outline" onClick={cmpCsv} disabled={!cmpRows.length}><Download className="h-4 w-4 mr-1" />Download CSV</Button>
+              <Button size="sm" variant="outline" onClick={() => setCmp([])}>Clear</Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">Each series uses its own unit; series with different units are shown on separate axes (left: first series).</p>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={cmpRows}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={30} />
+                  <YAxis yAxisId="l" tick={{ fontSize: 11 }} domain={["auto", "auto"]} width={60} />
+                  <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} domain={["auto", "auto"]} width={60} />
+                  <Tooltip formatter={(v: number) => fmt(v)} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {(cmpData || []).map(({ item }, i) => (
+                    <Line key={item.id} yAxisId={item.unit === cmpItems[0].unit ? "l" : "r"} type="monotone" dataKey={item.id} name={`${item.name} (${item.unit})`} stroke={COLORS[i]} dot={false} strokeWidth={2} connectNulls />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Sources: {(cmpData || []).map(({ item, data }) => `${item.name}: ${data.source}`).join(" · ")}</p>
+          </section>
+        )}
       </main>
       <Footer />
     </div>
