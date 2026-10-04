@@ -1,5 +1,6 @@
 import { SITE_SECTIONS } from "@/lib/navigation";
 import { Link } from "react-router-dom";
+import { X_URL, X_HANDLE, WHATSAPP_CHANNEL_URL } from "@/lib/social";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 
 const Footer = () => {
@@ -19,6 +20,7 @@ const Footer = () => {
             <ul className="mt-4 space-y-2">
               <li><Link to="/about" className="font-ui text-[13px] text-[#E3120B] hover:underline">About &amp; Methodology</Link></li>
               <li><Link to="/corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
+              <li><Link to="/glossary" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Glossary</Link></li>
               <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>
             </ul>
             <NewsletterSignup source="footer" />
@@ -67,14 +69,19 @@ const Footer = () => {
           <p className="font-ui text-[12px] text-[#757575]">
             © 2026 StatsGH. Accuracy is our policy.
           </p>
+          <div className="flex gap-4">
+          {WHATSAPP_CHANNEL_URL && (
+            <a href={WHATSAPP_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="font-ui text-[12px] text-[#E3120B] hover:underline">Follow on WhatsApp</a>
+          )}
           <a
-            href="https://twitter.com/StatsGH"
+            href={X_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="font-ui text-[12px] text-[#E3120B] hover:underline"
           >
-            @StatsGH on X
+            Follow {X_HANDLE} on X
           </a>
+          </div>
         </div>
       </div>
     </footer>

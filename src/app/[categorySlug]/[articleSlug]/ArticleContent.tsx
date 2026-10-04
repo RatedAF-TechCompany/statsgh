@@ -21,6 +21,7 @@ import {
 import { format } from "date-fns";
 import { JournalistByline } from "@/components/JournalistByline";
 import { KeyNumbers } from "@/components/KeyNumbers";
+import { NumbersBehindStory } from "@/components/NumbersBehindStory";
 import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
@@ -339,6 +340,7 @@ const ArticleContent = ({ article }: { article: any }) => {
         )}
 
         {/* Related Articles */}
+        <NumbersBehindStory articleId={article.id} keyData={article.key_data} publishedAt={(article as any).published_at} />
         <RelatedTracker title={article.title} tags={article.tags} category_slug={article.category_slug} section={(article as any).section} />
         <RelatedArticles articleId={article.id} tags={article.tags} categorySlug={article.category_slug} maxItems={3} />
       </main>

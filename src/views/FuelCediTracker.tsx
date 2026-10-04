@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { EmbedShare } from "@/components/EmbedShare";
 
 type Pt = { date: string; value: number };
 const MIN_POINTS = 2;
@@ -80,9 +81,9 @@ export async function fetchPump(): Promise<{ petrol: PumpPt[]; diesel: PumpPt[] 
 }
 
 const ChartCard = ({
-  title, unit, points, source, sourceHref, decimals = 2, note,
+  title, unit, points, source, sourceHref, decimals = 2, note, embed,
 }: {
-  title: string; unit: string; points: Pt[] | undefined; source: string; sourceHref?: string; decimals?: number; note?: string;
+  embed?: string; title: string; unit: string; points: Pt[] | undefined; source: string; sourceHref?: string; decimals?: number; note?: string;
 }) => {
   const last = points?.[points.length - 1];
   const first = points?.[0];
@@ -124,6 +125,7 @@ const ChartCard = ({
             {" "}· Last updated {fmtDate(last!.date)}
           </p>
           {note && <p className="text-xs text-[#5B5B5B] mt-1">{note}</p>}
+          {embed && <EmbedShare series={embed} title={title} />}
         </>
       )}
     </section>
@@ -156,10 +158,10 @@ const FuelCediTracker = () => {
           Where history is short we say when tracking started rather than fill gaps.
         </p>
 
-        <ChartCard title="US dollar to cedi (USD/GHS)" unit="GHS per US$" points={usd.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
-        <ChartCard title="Euro to cedi (EUR/GHS)" unit="GHS per €" points={eur.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
-        <ChartCard title="Pound to cedi (GBP/GHS)" unit="GHS per £" points={gbp.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
-        <ChartCard
+        <ChartCard embed="usd" title="US dollar to cedi (USD/GHS)" unit="GHS per US$" points={usd.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
+        <ChartCard embed="eur" title="Euro to cedi (EUR/GHS)" unit="GHS per €" points={eur.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
+        <ChartCard embed="gbp" title="Pound to cedi (GBP/GHS)" unit="GHS per £" points={gbp.data} source="open.er-api.com" sourceHref="https://open.er-api.com" />
+        <ChartCard embed="brent"
           title="Brent crude"
           unit="US$ per barrel"
           points={brent.data}
@@ -167,8 +169,8 @@ const FuelCediTracker = () => {
           sourceHref="https://fred.stlouisfed.org/series/DCOILBRENTEU"
           note="Daily EIA spot price; published with a lag of several days."
         />
-        <ChartCard title="Ghana petrol pump price" unit="GHS per litre" points={pump.data?.petrol} source="Figures cited in StatsGH articles" note="Taken from the key numbers of published articles, dated by article publication. Not an official price series." />
-        <ChartCard title="Ghana diesel pump price" unit="GHS per litre" points={pump.data?.diesel} source="Figures cited in StatsGH articles" note="Taken from the key numbers of published articles, dated by article publication. Not an official price series." />
+        <ChartCard embed="petrol" title="Ghana petrol pump price" unit="GHS per litre" points={pump.data?.petrol} source="Figures cited in StatsGH articles" note="Taken from the key numbers of published articles, dated by article publication. Not an official price series." />
+        <ChartCard embed="diesel" title="Ghana diesel pump price" unit="GHS per litre" points={pump.data?.diesel} source="Figures cited in StatsGH articles" note="Taken from the key numbers of published articles, dated by article publication. Not an official price series." />
 
         {pumpList.length > 0 && (
           <section className="border-t border-[#D9D9D9] py-6">
