@@ -27,12 +27,11 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
   if (articles.length < 4) return null;
 
   const lead = articles[0];
-  const supporting = articles.slice(1, 7); // up to 6 supporting
+  const visible = articles.slice(0, 8);
 
   return (
-    <div className="pt-10 pb-6">
-      <div className="mb-5">
-        <span className="rubric-bar" />
+    <section className="border-b border-[#D9D9D9] py-5 md:py-6">
+      <div className="mb-3 border-t-4 border-[#E3120B] pt-2">
         <div className="flex items-end justify-between gap-3">
           <h2 className="m-0 p-0">
             <Link
@@ -51,23 +50,19 @@ export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlo
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 divide-x-0 md:divide-x md:divide-[#D9D9D9]">
-        <div className="md:pr-6">
-          <StoryItem
-            article={lead}
-            variant="secondary"
-            showImage
-            showSummary
-          />
-        </div>
-        <div className="md:col-span-2 md:pl-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:divide-x sm:divide-[#D9D9D9]">
-          {supporting.map((article, i) => (
-            <div key={article.id} className={i % 2 === 1 ? "sm:pl-6" : ""}>
-              <StoryItem article={article} variant="compact" hideRubric />
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-x-5">
+        {visible.map((article, index) => (
+          <div key={article.id} className="min-w-0 border-b border-[#E8E8E8] last:border-b-0 sm:border-b-0">
+            <StoryItem
+              article={article}
+              variant={index === 0 ? "secondary" : "compact"}
+              showImage={index < 4}
+              showSummary={index === 0}
+              hideRubric={index !== 0}
+            />
+          </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 };
