@@ -127,6 +127,13 @@
       "when": 1791124824468,
       "tag": "0017_revalidate_pages_on_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791125718960,
+      "tag": "0018_bog_market_tables_and_contact",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ export const SITE_SECTIONS = [
   { label: "Top Stories", slug: "top-stories", href: "/" },
   { label: "Economy", slug: "economy", href: "/economy" },
   { label: "Markets & Data", slug: "markets-data", href: "/markets-data" },
+  { label: "Markets", slug: "markets-forex", href: "/markets/forex" },
   { label: "Fuel & Cedi", slug: "trackers-fuel-and-cedi", href: "/trackers/fuel-and-cedi" },
   { label: "Inflation", slug: "trackers-inflation", href: "/trackers/inflation" },
   { label: "Data Explorer", slug: "explorer", href: "/explorer" },

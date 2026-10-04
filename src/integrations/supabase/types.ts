@@ -566,6 +566,105 @@ export type Database = {
           },
         ]
       }
+      bog_fx_rates: {
+        Row: {
+          buying: number | null
+          currency: string
+          fetched_at: string
+          id: string
+          mid: number
+          pair: string
+          rate_date: string
+          selling: number | null
+          source_name: string
+          source_url: string
+        }
+        Insert: {
+          buying?: number | null
+          currency: string
+          fetched_at?: string
+          id?: string
+          mid: number
+          pair: string
+          rate_date: string
+          selling?: number | null
+          source_name?: string
+          source_url: string
+        }
+        Update: {
+          buying?: number | null
+          currency?: string
+          fetched_at?: string
+          id?: string
+          mid?: number
+          pair?: string
+          rate_date?: string
+          selling?: number | null
+          source_name?: string
+          source_url?: string
+        }
+        Relationships: []
+      }
+      bog_interbank_rates: {
+        Row: {
+          fetched_at: string
+          id: string
+          rate: number
+          rate_date: string
+          source_name: string
+          source_url: string
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          rate: number
+          rate_date: string
+          source_name?: string
+          source_url: string
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          rate?: number
+          rate_date?: string
+          source_name?: string
+          source_url?: string
+        }
+        Relationships: []
+      }
+      bog_policy_rates: {
+        Row: {
+          effective_date: string
+          fetched_at: string
+          id: string
+          meeting_no: number
+          mpc_dates: string | null
+          rate: number
+          source_name: string
+          source_url: string
+        }
+        Insert: {
+          effective_date: string
+          fetched_at?: string
+          id?: string
+          meeting_no: number
+          mpc_dates?: string | null
+          rate: number
+          source_name?: string
+          source_url: string
+        }
+        Update: {
+          effective_date?: string
+          fetched_at?: string
+          id?: string
+          meeting_no?: number
+          mpc_dates?: string | null
+          rate?: number
+          source_name?: string
+          source_url?: string
+        }
+        Relationships: []
+      }
       bog_scan_items: {
         Row: {
           bog_url: string
@@ -643,6 +742,42 @@ export type Database = {
           notes?: string | null
           run_time_utc?: string
           status?: string
+        }
+        Relationships: []
+      }
+      bog_tbill_rates: {
+        Row: {
+          discount_rate: number | null
+          fetched_at: string
+          id: string
+          interest_rate: number
+          issue_date: string
+          source_name: string
+          source_url: string
+          tender_no: string | null
+          tenor_days: number
+        }
+        Insert: {
+          discount_rate?: number | null
+          fetched_at?: string
+          id?: string
+          interest_rate: number
+          issue_date: string
+          source_name?: string
+          source_url: string
+          tender_no?: string | null
+          tenor_days: number
+        }
+        Update: {
+          discount_rate?: number | null
+          fetched_at?: string
+          id?: string
+          interest_rate?: number
+          issue_date?: string
+          source_name?: string
+          source_url?: string
+          tender_no?: string | null
+          tenor_days?: number
         }
         Relationships: []
       }
@@ -816,6 +951,39 @@ export type Database = {
           price?: number
           source?: string | null
           unit?: string | null
+        }
+        Relationships: []
+      }
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          kind: string
+          message: string
+          name: string
+          organisation: string | null
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          kind?: string
+          message: string
+          name: string
+          organisation?: string | null
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          kind?: string
+          message?: string
+          name?: string
+          organisation?: string | null
+          subject?: string | null
         }
         Relationships: []
       }
@@ -2134,6 +2302,33 @@ export type Database = {
           name?: string
           photo_url?: string | null
           specialization?: string
+        }
+        Relationships: []
+      }
+      market_scrape_runs: {
+        Row: {
+          error: string | null
+          id: string
+          ran_at: string
+          rows_upserted: number
+          scraper: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_upserted?: number
+          scraper: string
+          status: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_upserted?: number
+          scraper?: string
+          status?: string
         }
         Relationships: []
       }
