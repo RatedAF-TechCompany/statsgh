@@ -32,8 +32,12 @@ export const HomeKeyNumbers = () => {
   const { data } = useQuery({
     queryKey: ["homepage-key-numbers"],
     queryFn: async () => {
-      const [bog, indexes, cpi] = await Promise.all([fetchBogSnapshot(), fetchGseIndex(2), fetchLatestCpi()]);
-      return { bog, indexes, cpi };
+      const [bogResult, indexResult, cpiResult] = await Promise.allSettled([fetchBogSnapshot(), fetchGseIndex(2), fetchLatestCpi()]);
+      return {
+        bog: bogResult.status === "fulfilled" ? bogResult.value : null,
+        indexes: indexResult.status === "fulfilled" ? indexResult.value : [],
+        cpi: cpiResult.status === "fulfilled" ? cpiResult.value : null,
+      };
     },
     staleTime: 10 * 60_000,
   });
@@ -46,7 +50,7 @@ export const HomeKeyNumbers = () => {
     : null;
 
   const items: NumberItem[] = [
-    data.bog.usd && {
+    data.bog?.usd && {
       label: "USD/GHS",
       value: data.bog.usd.value.toFixed(4),
       date: data.bog.usd.date,
@@ -54,7 +58,7 @@ export const HomeKeyNumbers = () => {
       sourceUrl: "https://www.bog.gov.gh/treasury-and-the-markets/daily-interbank-fx-rates/",
       href: "/markets/forex",
     },
-    data.bog.t91 && {
+    data.bog?.t91 && {
       label: "91-day T-bill",
       value: `${data.bog.t91.value.toFixed(2)}%`,
       date: data.bog.t91.date,
@@ -62,7 +66,7 @@ export const HomeKeyNumbers = () => {
       sourceUrl: "https://www.bog.gov.gh/treasury-and-the-markets/treasury-bill-rates/",
       href: "/markets/rates",
     },
-    data.bog.policy && {
+    data.bog?.policy && {
       label: "Policy rate",
       value: `${data.bog.policy.value.toFixed(1)}%`,
       date: data.bog.policy.date,

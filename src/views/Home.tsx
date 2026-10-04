@@ -57,12 +57,9 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
 
   // Date string
   const today = new Date();
-  const dateStr = today.toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dateStr = `${weekdays[today.getUTCDay()]} ${today.getUTCDate()} ${months[today.getUTCMonth()]} ${today.getUTCFullYear()}`;
 
   return (
     <div className="min-h-screen bg-white">
@@ -95,7 +92,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
             <section className="py-5 md:py-6 border-b border-[#D9D9D9]">
               <FTSectionLabel label="Top Stories" to="/" />
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-stretch lg:gap-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] md:items-stretch md:gap-5">
                 <div className="min-w-0">
                   {leadStory && (
                     <StoryItem
@@ -109,7 +106,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 </div>
 
                 {/* Right column — stacked secondaries with thumbs */}
-                <div className="min-w-0 border-t border-[#D9D9D9] pt-1 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                <div className="min-w-0 border-t border-[#D9D9D9] pt-1 md:border-l md:border-t-0 md:pl-5 md:pt-0">
                   {[...col2Stories, ...col3Stories].slice(0, 4).map((a) => (
                     <StoryItem key={a.id} article={a as any} variant="secondary" showImage />
                   ))}

@@ -61,12 +61,9 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
   };
 
   const today = new Date();
-  const dateString = today.toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dateString = `${weekdays[today.getUTCDay()]} ${today.getUTCDate()} ${months[today.getUTCMonth()]} ${today.getUTCFullYear()}`;
 
   return (
     <header className="sticky top-0 z-50">
