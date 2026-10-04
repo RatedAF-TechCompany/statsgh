@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "StatsGH – Ghana's Premier Data Journalism Platform",
   description:
     "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",
-  metadataBase: new URL("https://statsgh.com"),
+  metadataBase: new URL("https://www.statsgh.com"),
   applicationName: "StatsGH",
   appleWebApp: {
     title: "StatsGH",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    url: "https://statsgh.com/",
+    url: "https://www.statsgh.com/",
     title: "StatsGH – Ghana's Premier Data Journalism Platform",
     description:
       "Ghana's premier data journalism platform. We retell the story with numbers, openly sourced.",

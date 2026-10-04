@@ -113,7 +113,7 @@ const ArticleContent = ({ article }: { article: any }) => {
   });
 
   const handleShare = async () => {
-    const url = `https://statsgh.com/${article?.category_slug}/${article?.slug}`;
+    const url = `https://www.statsgh.com/${article?.category_slug}/${article?.slug}`;
     if (navigator.share) {
       try { await navigator.share({ title: article?.title, text: article?.summary, url }); } catch {}
     } else {

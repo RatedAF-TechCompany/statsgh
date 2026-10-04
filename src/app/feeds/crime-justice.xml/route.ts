@@ -4,7 +4,7 @@ import { crimeJusticeOrFilter } from "@/lib/sectionMapping";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const BASE_URL = "https://statsgh.com";
+const BASE_URL = "https://www.statsgh.com";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

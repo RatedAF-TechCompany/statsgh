@@ -8,12 +8,12 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/dashboards" },
+  alternates: { canonical: "https://www.statsgh.com/dashboards" },
   openGraph: {
     type: "website",
     title,
     description,
-    url: "https://statsgh.com/dashboards",
+    url: "https://www.statsgh.com/dashboards",
     siteName: "StatsGH",
   },
   twitter: { card: "summary_large_image", site: "@StatsGH", title, description },

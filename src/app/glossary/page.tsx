@@ -7,8 +7,8 @@ const description = "Plain-English definitions of CPI, T-bill yields, the policy
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/glossary" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/glossary", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/glossary" },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/glossary", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 

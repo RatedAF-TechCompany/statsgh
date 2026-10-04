@@ -144,8 +144,8 @@ const ArticleDetail = () => {
       if (existingRobots && existingRobots.getAttribute('content')?.includes('noindex')) {
         existingRobots.parentNode?.removeChild(existingRobots);
       }
-      const canonicalUrl = `https://statsgh.com/${article.category_slug}/${article.slug}`;
-      const baseUrl = "https://statsgh.com";
+      const canonicalUrl = `https://www.statsgh.com/${article.category_slug}/${article.slug}`;
+      const baseUrl = "https://www.statsgh.com";
       const makeAbsoluteUrl = (url: string | null) => {
         if (!url) return null;
         if (url.startsWith('http')) return url;
@@ -200,7 +200,7 @@ const ArticleDetail = () => {
   }, [article, isLoading]);
 
   const handleShare = async () => {
-    const url = `https://statsgh.com/${article?.category_slug}/${article?.slug}`;
+    const url = `https://www.statsgh.com/${article?.category_slug}/${article?.slug}`;
     if (navigator.share) {
       try { await navigator.share({ title: article?.title, text: article?.summary, url }); } catch {}
     } else {
@@ -255,7 +255,7 @@ const ArticleDetail = () => {
 
   const bodyWithHighlightedNumbers = highlightNumbers(sanitizedBody);
   const sectionLabel = getSectionLabel(article.category_slug);
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${article.title} https://statsgh.com/${article.category_slug}/${article.slug}`)}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${article.title} https://www.statsgh.com/${article.category_slug}/${article.slug}`)}`;
 
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
@@ -474,8 +474,8 @@ const ArticleDetail = () => {
           "datePublished": article.published_at,
           "dateModified": article.updated_at,
           "author": { "@type": "Person", "name": article.author_name },
-          "publisher": { "@type": "Organization", "name": "StatsGH", "logo": { "@type": "ImageObject", "url": "https://statsgh.com/social/statsgh-og-1200x630.png" } },
-          "mainEntityOfPage": { "@type": "WebPage", "@id": `https://statsgh.com/${article.category_slug}/${article.slug}` }
+          "publisher": { "@type": "Organization", "name": "StatsGH", "logo": { "@type": "ImageObject", "url": "https://www.statsgh.com/social/statsgh-og-1200x630.png" } },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.statsgh.com/${article.category_slug}/${article.slug}` }
         })
       }} />
     </div>

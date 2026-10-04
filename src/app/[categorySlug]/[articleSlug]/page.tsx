@@ -29,7 +29,7 @@ async function getArticle(articleSlug: string) {
   return article;
 }
 
-const baseUrl = "https://statsgh.com";
+const baseUrl = "https://www.statsgh.com";
 
 const makeAbsoluteUrl = (url: string | null) => {
   if (!url) return null;

@@ -4,7 +4,7 @@ import { createReadOnlyServerClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const BASE_URL = "https://statsgh.com";
+const BASE_URL = "https://www.statsgh.com";
 
 const STATIC_PAGES = [
   { url: `${BASE_URL}/`, changeFrequency: "hourly" as const, priority: 1.0 },

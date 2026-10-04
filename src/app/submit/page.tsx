@@ -8,8 +8,8 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/submit" },
-  openGraph: { title, description, url: "https://statsgh.com/submit", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/submit" },
+  openGraph: { title, description, url: "https://www.statsgh.com/submit", siteName: "StatsGH" },
 };
 
 export default function SubmitPage() {

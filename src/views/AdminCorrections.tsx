@@ -61,7 +61,7 @@ const AdminCorrections = () => {
     mutationFn: async () => {
       // Resolve the article from the pasted URL (/<category>/<slug>)
       const match = articleUrl.match(/statsgh\.com\/([^/]+)\/([^/?#]+)/) || articleUrl.match(/^\/([^/]+)\/([^/?#]+)/);
-      if (!match) throw new Error("Paste a full article URL like https://statsgh.com/economy/some-story");
+      if (!match) throw new Error("Paste a full article URL like https://www.statsgh.com/economy/some-story");
       const slug = match[2];
       const { data: article, error } = await supabase
         .from("articles")
@@ -123,7 +123,7 @@ const AdminCorrections = () => {
         <div className="border border-[#D9D9D9] p-5 mb-10 space-y-3">
           <h2 className="font-ui text-sm font-bold uppercase tracking-[0.1em] text-[#5B5B5B]">Add a correction</h2>
           <Input
-            placeholder="Article URL (https://statsgh.com/economy/some-story)"
+            placeholder="Article URL (https://www.statsgh.com/economy/some-story)"
             value={articleUrl}
             onChange={(e) => setArticleUrl(e.target.value)}
             className="font-ui"

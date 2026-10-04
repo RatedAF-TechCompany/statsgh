@@ -7,8 +7,8 @@ const description = "Estimate how Ghana's latest fuel prices, cedi rate and CPI 
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/tools/cost-of-living" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/tools/cost-of-living", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/tools/cost-of-living" },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/tools/cost-of-living", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 

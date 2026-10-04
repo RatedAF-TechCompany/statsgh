@@ -7,8 +7,8 @@ const description = "The week's most-read Ghana stories, each told through its h
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://statsgh.com/week-in-numbers" },
-  openGraph: { type: "website", title, description, url: "https://statsgh.com/week-in-numbers", siteName: "StatsGH" },
+  alternates: { canonical: "https://www.statsgh.com/week-in-numbers" },
+  openGraph: { type: "website", title, description, url: "https://www.statsgh.com/week-in-numbers", siteName: "StatsGH" },
   twitter: { card: "summary_large_image", site: "@StatsGH" },
 };
 

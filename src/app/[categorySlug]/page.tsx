@@ -11,7 +11,7 @@ export async function generateMetadata({
 }: CategoryPageProps): Promise<Metadata> {
   const { categorySlug } = await params;
   const label = getSectionLabel(categorySlug) || "News";
-  const canonicalUrl = `https://statsgh.com/${categorySlug}`;
+  const canonicalUrl = `https://www.statsgh.com/${categorySlug}`;
   const description = `Latest ${label} news and data from StatsGH — Ghana's data journalism platform.`;
 
   return {

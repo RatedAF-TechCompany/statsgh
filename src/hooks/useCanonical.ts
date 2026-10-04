@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-const CANONICAL_ORIGIN = "https://statsgh.com";
+const CANONICAL_ORIGIN = "https://www.statsgh.com";
 
 /**
  * Sets a self-referencing canonical <link> tag on every route change.
  * Normalizes:
- *  - origin → https://statsgh.com (strips www, http)
+ *  - origin → https://www.statsgh.com (forces www, https)
  *  - removes query string and hash
  *  - removes trailing slash (except for root "/")
  */

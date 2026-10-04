@@ -25,7 +25,7 @@ export async function generateMetadata({
     };
   }
 
-  const canonicalUrl = `https://statsgh.com/topics/${topic.slug}`;
+  const canonicalUrl = `https://www.statsgh.com/topics/${topic.slug}`;
   const description =
     topic.description ||
     `Explore Ghana's ${topic.name.toLowerCase()} data, indicators, and related coverage from StatsGH.`;
