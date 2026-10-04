@@ -10,6 +10,8 @@ import DataRail from "@/components/home/DataRail";
 import MostReadRail from "@/components/home/MostReadRail";
 import { FTSectionLabel } from "@/components/home/FTSectionLabel";
 import { StoryItem } from "@/components/home/StoryItem";
+import { HomeKeyNumbers } from "@/components/home/HomeKeyNumbers";
+import { HomeGseMarkets } from "@/components/home/HomeGseMarkets";
 import { SITE_SECTIONS, getSectionLabel } from "@/lib/navigation";
 import { getSectionForCategory } from "@/lib/sectionMapping";
 import {
@@ -55,12 +57,9 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
 
   // Date string
   const today = new Date();
-  const dateStr = today.toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dateStr = `${weekdays[today.getUTCDay()]} ${today.getUTCDate()} ${months[today.getUTCMonth()]} ${today.getUTCFullYear()}`;
 
   return (
     <div className="min-h-screen bg-white">
@@ -90,12 +89,11 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
         ) : (
           <>
             {/* ═══ ZONE A — TOP STORIES ═══ */}
-            <div className="py-6 border-b border-[#D9D9D9]">
+            <section className="py-5 md:py-6 border-b border-[#D9D9D9]">
               <FTSectionLabel label="Top Stories" to="/" />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
-                {/* Lead spans 2 columns — image-left/text-right inside */}
-                <div className="min-w-0 md:col-span-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] md:items-stretch md:gap-5">
+                <div className="min-w-0">
                   {leadStory && (
                     <StoryItem
                       article={leadStory as any}
@@ -108,26 +106,28 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 </div>
 
                 {/* Right column — stacked secondaries with thumbs */}
-                <div className="min-w-0 md:border-l md:border-[#D9D9D9] md:pl-6">
+                <div className="min-w-0 border-t border-[#D9D9D9] pt-1 md:border-l md:border-t-0 md:pl-5 md:pt-0">
                   {[...col2Stories, ...col3Stories].slice(0, 4).map((a) => (
                     <StoryItem key={a.id} article={a as any} variant="secondary" showImage />
                   ))}
                 </div>
               </div>
-            </div>
+            </section>
+
+            <HomeKeyNumbers />
 
             {/* ═══ ZONE B — SPOTLIGHT ═══ */}
             {spotlightStories.length >= 3 && (
-              <div className="py-5 border-b border-[#D9D9D9]">
+              <section className="py-5 md:py-6 border-b border-[#D9D9D9]">
                 <FTSectionLabel
                   label={getSectionLabel(spotlightStories[0].category_slug)}
                   to={`/${getSectionForCategory(spotlightStories[0].category_slug)}`}
                 />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-0 gap-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 md:gap-x-5">
                   {spotlightStories.map((a, i) => (
                     <div
                       key={a.id}
-                      className={`${i > 0 ? "md:border-l md:border-[#D9D9D9] md:pl-5" : ""} ${i < 2 ? "md:pr-5" : ""}`}
+                      className="min-w-0"
                     >
                       <StoryItem
                         article={a as any}
@@ -138,11 +138,11 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* ═══ ZONE C — MAIN + RIGHT RAIL ═══ */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-x-8 py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-x-6 xl:gap-x-8">
               {/* Main content — section blocks */}
               <div>
                 {(() => {
@@ -151,10 +151,18 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                     : null;
                   const renderedSlugs = new Set<string>();
                   if (spotlightSection) renderedSlugs.add(spotlightSection);
-                  return SITE_SECTIONS.filter((s) => s.slug !== "top-stories").map((section) => {
+                  const priority = ["economy", "business", "crime-justice"];
+                  const orderedSections = [...SITE_SECTIONS]
+                    .filter((s) => s.slug !== "top-stories")
+                    .sort((a, b) => {
+                      const ai = priority.indexOf(a.slug);
+                      const bi = priority.indexOf(b.slug);
+                      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+                    });
+                  return orderedSections.map((section) => {
                     if (renderedSlugs.has(section.slug)) return null;
                     const arts = sectionArticles[section.slug];
-                    if (!arts || arts.length < 4) return null;
+                    if (!arts || arts.length === 0) return null;
                     renderedSlugs.add(section.slug);
                     return (
                       <SectionBlock
@@ -166,6 +174,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                     );
                   });
                 })()}
+                <HomeGseMarkets />
               </div>
 
               {/* Right rail */}
@@ -176,13 +185,13 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
             </div>
 
             {/* Mobile: right rail content at bottom */}
-            <div className="lg:hidden py-6 border-t border-[#D9D9D9]">
+            <div className="lg:hidden py-5 border-t border-[#D9D9D9]">
               <MostReadRail initialData={initialMostRead} />
               <DataRail />
             </div>
           </>
         )}
-        <div className="max-w-[520px] mx-auto px-4 pb-10"><NewsletterSignup source="homepage" /></div>
+        <div className="max-w-[520px] mx-auto py-6"><NewsletterSignup source="homepage" /></div>
       </main>
 
       <Footer />

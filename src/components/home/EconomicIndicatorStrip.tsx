@@ -152,8 +152,8 @@ const EconomicIndicatorStrip = () => {
 
   return (
     <div className="bg-[#121212] overflow-hidden">
-      <div className="flex items-center">
-        <div className="flex-shrink-0 px-4 py-2">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 flex items-center">
+        <div className="flex-shrink-0 pr-4 py-2">
           <span className="font-ui text-[10px] font-bold tracking-[0.15em] uppercase text-[#B8860B]">
             Markets
           </span>

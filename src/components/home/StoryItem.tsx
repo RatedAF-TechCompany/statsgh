@@ -79,7 +79,7 @@ const Byline = ({ author, publishedAt }: { author?: string | null; publishedAt: 
     >
       {author && <span className="font-medium text-[#666] truncate min-w-0 flex-shrink">{author}</span>}
       {author && time && <span className="flex-shrink-0 px-1.5 text-[#999]">|</span>}
-      {time && <span className="flex-shrink-0 text-[#999]">{time}</span>}
+      {time && <span suppressHydrationWarning className="flex-shrink-0 text-[#999]">{time}</span>}
     </div>
   );
 };
@@ -112,25 +112,39 @@ export const StoryItem = ({
 
   // LEAD — image left, text right; collapse image column when no image
   if (variant === "lead") {
+    if (hasImage) {
+      return (
+        <Link to={href} className="group relative block h-full min-h-[340px] overflow-hidden bg-[#121212] md:min-h-[430px]">
+          <img
+            src={article.hero_image_url as string}
+            alt=""
+            loading={eager ? "eager" : "lazy"}
+            fetchPriority={eager ? "high" : "auto"}
+            decoding="async"
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-4 text-white md:p-6">
+            {article.is_breaking && <span className="mb-2 block font-ui text-[11px] font-bold uppercase text-[#FFB3AF]">Breaking</span>}
+            <span className="mb-2 block font-ui text-[10px] font-bold uppercase text-white/80">{label}</span>
+            <h3 className="font-headline text-[28px] font-bold leading-[1.12] text-white md:text-[38px] line-clamp-4">
+              {showNew && <NewTag />}{article.title}
+            </h3>
+            {showSummary && article.summary && <p className="mt-2 hidden max-w-2xl font-serif text-[15px] leading-[1.4] text-white/85 sm:line-clamp-2">{article.summary}</p>}
+            <div className="mt-2 font-ui text-[11px] text-white/75">
+              <span suppressHydrationWarning>{[article.author_name, getTimeAgo(article.published_at ?? null)].filter(Boolean).join(" · ")}</span>
+            </div>
+          </div>
+        </Link>
+      );
+    }
     return (
       <Link
         to={href}
         className="block group"
       >
-        <div className={`grid grid-cols-1 ${hasImage ? "md:grid-cols-[55%_45%]" : "md:grid-cols-1"} gap-x-6 gap-y-4`}>
-          {hasImage && (
-            <div className="overflow-hidden bg-[#F5F5F5] aspect-[3/2]">
-              <img
-                src={article.hero_image_url!}
-                alt=""
-                loading={eager ? "eager" : "lazy"}
-                fetchPriority={eager ? "high" : "auto"}
-                decoding="async"
-                onError={() => setImgError(true)}
-                className="hover-fade w-full h-full object-cover"
-              />
-            </div>
-          )}
+        <div className="grid grid-cols-1 gap-y-4">
           <div className="min-w-0">
             {!hideRubric && <Rubric label={label} topic={rubricTopic} />}
             {article.is_breaking && (
@@ -164,7 +178,7 @@ export const StoryItem = ({
         {hasImage && (
           <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F5F5]">
             <img
-              src={article.hero_image_url!}
+              src={article.hero_image_url as string}
               alt=""
               loading="lazy"
               decoding="async"
