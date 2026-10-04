@@ -3,6 +3,8 @@
 // Returns 202 immediately and runs newsroom-scan in the background so callers
 // never hit the 150s idle timeout.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -21,9 +23,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
-  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  const ok = safeEqual(bearer, serviceKey) || (cronSecret.length > 0 && safeEqual(bearer, cronSecret));
+  const auth = await authorizeCaller(req, createClient(Deno.env.get("SUPABASE_URL")!, serviceKey));
+  const ok = auth.ok;
   if (!ok) return json({ error: "Unauthorized" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

@@ -1,7 +1,8 @@
 // Caller authentication for newsroom functions.
 // Accepted: Bearer <SUPABASE_SERVICE_ROLE_KEY>, Bearer <CRON_SECRET env>, Bearer <database scheduler token>
 // (private.scheduler_auth, checked via verify_scheduler_token RPC), or a signed-in admin/editor (manual admin button).
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
 
 function safeEqual(a: string, b: string) {
   if (!a || !b || a.length !== b.length) return false;
