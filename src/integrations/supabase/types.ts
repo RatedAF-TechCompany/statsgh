@@ -874,6 +874,65 @@ export type Database = {
           },
         ]
       }
+      crime_stats: {
+        Row: {
+          article_id: string
+          article_slug: string
+          article_title: string
+          category_slug: string
+          context: string | null
+          currency: string | null
+          extracted_at: string
+          id: string
+          label: string
+          metric: string
+          published_at: string
+          region: string | null
+          unit: string | null
+          value: number
+        }
+        Insert: {
+          article_id: string
+          article_slug: string
+          article_title: string
+          category_slug: string
+          context?: string | null
+          currency?: string | null
+          extracted_at?: string
+          id?: string
+          label: string
+          metric: string
+          published_at: string
+          region?: string | null
+          unit?: string | null
+          value: number
+        }
+        Update: {
+          article_id?: string
+          article_slug?: string
+          article_title?: string
+          category_slug?: string
+          context?: string | null
+          currency?: string | null
+          extracted_at?: string
+          id?: string
+          label?: string
+          metric?: string
+          published_at?: string
+          region?: string | null
+          unit?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crime_stats_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_rates: {
         Row: {
           base_currency: string | null
@@ -3241,6 +3300,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_crime_stats: { Args: never; Returns: number }
       refresh_inflation_readings: { Args: never; Returns: number }
       release_stale_tweet_claims: { Args: never; Returns: number }
       trigger_newsroom_scan: { Args: never; Returns: undefined }

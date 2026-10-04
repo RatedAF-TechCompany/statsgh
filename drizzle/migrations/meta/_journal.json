@@ -64,6 +64,13 @@
       "when": 1791072153497,
       "tag": "0008_inflation_readings",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791072576483,
+      "tag": "0009_crime_stats",
+      "breakpoints": true
     }
   ]
 }
