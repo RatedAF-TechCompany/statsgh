@@ -883,14 +883,19 @@ export type Database = {
           article_slug: string
           article_title: string
           category_slug: string
+          confidence: string
+          confidence_reason: string | null
           context: string | null
           currency: string | null
           extracted_at: string
+          hidden_reason: string | null
           id: string
+          is_hidden: boolean
           label: string
           metric: string
           published_at: string
           region: string | null
+          region_source: string | null
           unit: string | null
           value: number
         }
@@ -899,14 +904,19 @@ export type Database = {
           article_slug: string
           article_title: string
           category_slug: string
+          confidence?: string
+          confidence_reason?: string | null
           context?: string | null
           currency?: string | null
           extracted_at?: string
+          hidden_reason?: string | null
           id?: string
+          is_hidden?: boolean
           label: string
           metric: string
           published_at: string
           region?: string | null
+          region_source?: string | null
           unit?: string | null
           value: number
         }
@@ -915,14 +925,19 @@ export type Database = {
           article_slug?: string
           article_title?: string
           category_slug?: string
+          confidence?: string
+          confidence_reason?: string | null
           context?: string | null
           currency?: string | null
           extracted_at?: string
+          hidden_reason?: string | null
           id?: string
+          is_hidden?: boolean
           label?: string
           metric?: string
           published_at?: string
           region?: string | null
+          region_source?: string | null
           unit?: string | null
           value?: number
         }
