@@ -33,7 +33,7 @@ export async function fetchFx(base: string): Promise<Pt[]> {
   return daily((data || []).map((r) => ({ t: r.fetched_at as string, v: Number(r.rate) })));
 }
 
-async function fetchBrent(): Promise<Pt[]> {
+export async function fetchBrent(): Promise<Pt[]> {
   const { data } = await supabase
     .from("commodity_prices")
     .select("price, fetched_at, source")
