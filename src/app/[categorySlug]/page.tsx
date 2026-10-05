@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { feedCategories, isKnownSectionSlug } from "@/lib/sitemap";
 
-export const revalidate = 120;
+export const revalidate = 600;
 export const dynamicParams = true;
 export async function generateStaticParams() { return []; }
 

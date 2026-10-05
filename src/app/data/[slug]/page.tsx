@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic"; // personalised/live page: render per request
+export const revalidate = 600; // cached listing page: revalidate at most every 10 minutes
 import type { Metadata } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import IndicatorDetail from "@/views/IndicatorDetail";
