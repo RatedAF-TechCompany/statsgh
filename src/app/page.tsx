@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   },
 };
 
-// ISR: regenerate at most every 120s; /api/revalidate refreshes it when an article publishes.
-export const revalidate = 120;
+// ISR: regenerate at most every 600s; /api/revalidate refreshes it when an article publishes.
+export const revalidate = 600;
 
 const jsonLd = [
   {
