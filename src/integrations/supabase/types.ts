@@ -336,9 +336,11 @@ export type Database = {
           reject_reason: string | null
           reject_tier: string | null
           rejected_at: string | null
+          research_scope: string | null
           scheduled_at: string | null
           section: string
           seo_description: string | null
+          skip_auto_tweet: boolean
           slug: string
           source_published_at: string | null
           sponsor_disclosure: string | null
@@ -392,9 +394,11 @@ export type Database = {
           reject_reason?: string | null
           reject_tier?: string | null
           rejected_at?: string | null
+          research_scope?: string | null
           scheduled_at?: string | null
           section: string
           seo_description?: string | null
+          skip_auto_tweet?: boolean
           slug: string
           source_published_at?: string | null
           sponsor_disclosure?: string | null
@@ -448,9 +452,11 @@ export type Database = {
           reject_reason?: string | null
           reject_tier?: string | null
           rejected_at?: string | null
+          research_scope?: string | null
           scheduled_at?: string | null
           section?: string
           seo_description?: string | null
+          skip_auto_tweet?: boolean
           slug?: string
           source_published_at?: string | null
           sponsor_disclosure?: string | null
