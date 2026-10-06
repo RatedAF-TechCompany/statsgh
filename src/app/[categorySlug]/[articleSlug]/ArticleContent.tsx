@@ -178,6 +178,10 @@ const ArticleContent = ({ article }: { article: any }) => {
           <Link to={`/${article.category_slug}`} className="section-label hover:underline mb-3 inline-block">
             {sectionLabel}
           </Link>
+          {Array.isArray(article.tags) && article.tags.includes("Ghana Research Watch") && (
+            <span className="section-label mb-3 inline-block"> · Ghana Research Watch</span>
+          )}
+
 
           {/* Headline */}
           <h1 className="font-headline text-[32px] md:text-[38px] font-bold leading-[1.15] text-[#121212] mb-4" itemProp="headline">
@@ -245,6 +249,12 @@ const ArticleContent = ({ article }: { article: any }) => {
             itemProp="articleBody"
             dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
           />
+          {article.research_scope?.trim() && !(article.body || "").includes("Research Scope") && (
+            <aside className="mb-8 border border-[#D9D9D9] p-4">
+              <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#5B5B5B] mb-2">Research Scope</h3>
+              <p className="font-serif text-[15px] text-[#121212] whitespace-pre-line">{article.research_scope}</p>
+            </aside>
+          )}
 
           {/* Predictive scenarios */}
           {Array.isArray((article as any).article_scenarios) && (article as any).article_scenarios.length > 0 && (

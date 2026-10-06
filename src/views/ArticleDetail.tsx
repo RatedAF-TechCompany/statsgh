@@ -324,6 +324,10 @@ const ArticleDetail = () => {
           <Link to={`/${article.category_slug}`} className="section-label hover:underline mb-3 inline-block">
             {sectionLabel}
           </Link>
+          {Array.isArray(article.tags) && article.tags.includes("Ghana Research Watch") && (
+            <span className="section-label mb-3 inline-block"> · Ghana Research Watch</span>
+          )}
+
 
           {(article as any).is_sponsored && (
             <p className="inline-block mb-3 px-2 py-0.5 bg-[#B8860B] text-white font-ui text-[11px] font-bold uppercase tracking-wider">Sponsored</p>
@@ -398,6 +402,12 @@ const ArticleDetail = () => {
             itemProp="articleBody"
             dangerouslySetInnerHTML={{ __html: linkCompanies(bodyWithHighlightedNumbers, companies) }}
           />
+          {(article as any).research_scope?.trim() && !(article.body || "").includes("Research Scope") && (
+            <aside className="mb-8 border border-[#D9D9D9] p-4">
+              <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#5B5B5B] mb-2">Research Scope</h3>
+              <p className="font-serif text-[15px] text-[#121212] whitespace-pre-line">{(article as any).research_scope}</p>
+            </aside>
+          )}
 
           <div className="mb-10 border-t border-[#D9D9D9] pt-4">
             <NewsletterSignup source="article" />
