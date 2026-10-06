@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.macro-refresh]
 verify_jwt = false
+
+[functions.research-watch-publish]
+verify_jwt = false

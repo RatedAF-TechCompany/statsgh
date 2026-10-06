@@ -59,7 +59,7 @@ const Category = () => {
       }
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at, author_name")
+        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at, author_name, tags")
         .eq("is_published", true)
         .or(filters.join(","))
         .order("published_at", { ascending: false })
@@ -132,6 +132,7 @@ const Category = () => {
               <article className="relative pb-8 border-b border-[#D9D9D9] mb-6 group">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
+                    {(leadArticle as any).tags?.includes("Ghana Research Watch") && <span className="section-label block mb-2">Ghana Research Watch</span>}
                     <h2 className="font-headline text-[28px] md:text-[34px] font-bold leading-[1.15] text-[#121212] group-hover:text-[#E3120B] transition-colors">
                       <Link
                         to={`/${leadArticle.category_slug}/${leadArticle.slug}`}
@@ -170,6 +171,7 @@ const Category = () => {
                   className="relative py-4 border-b border-[#D9D9D9] group flex gap-4"
                 >
                   <div className="flex-1 min-w-0">
+                    {(article as any).tags?.includes("Ghana Research Watch") && <span className="section-label block mb-1">Ghana Research Watch</span>}
                     <h3 className="font-headline text-lg font-semibold leading-snug text-[#121212] group-hover:text-[#E3120B] transition-colors">
                       <Link
                         to={`/${article.category_slug}/${article.slug}`}

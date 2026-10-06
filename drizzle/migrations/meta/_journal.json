@@ -176,6 +176,13 @@
       "when": 1791141136799,
       "tag": "0024_authors_and_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791281282463,
+      "tag": "0025_research_watch_columns",
+      "breakpoints": true
     }
   ]
 }
