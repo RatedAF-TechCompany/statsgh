@@ -385,6 +385,12 @@ const ArticleDetail = () => {
           {article.hero_image_url && (
             <figure className="mb-10">
               <img src={article.hero_image_url} alt={article.title} className="w-full aspect-[16/9] object-cover" itemProp="image" />
+              {(article.hero_image_caption || article.hero_image_credit) && (
+                <figcaption className="mt-2 font-ui text-[13px] text-[#5B5B5B]">
+                  {article.hero_image_caption && <span className="block">{article.hero_image_caption}</span>}
+                  {article.hero_image_credit && <span className="block text-xs text-[#767676]">Photo: {article.hero_image_credit}</span>}
+                </figcaption>
+              )}
             </figure>
           )}
 
