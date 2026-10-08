@@ -319,6 +319,8 @@ export type Database = {
           event_id: string | null
           formula_breakdown: Json | null
           formula_score: number | null
+          hero_image_caption: string | null
+          hero_image_credit: string | null
           hero_image_url: string | null
           id: string
           image_caption: string | null
@@ -377,6 +379,8 @@ export type Database = {
           event_id?: string | null
           formula_breakdown?: Json | null
           formula_score?: number | null
+          hero_image_caption?: string | null
+          hero_image_credit?: string | null
           hero_image_url?: string | null
           id?: string
           image_caption?: string | null
@@ -435,6 +439,8 @@ export type Database = {
           event_id?: string | null
           formula_breakdown?: Json | null
           formula_score?: number | null
+          hero_image_caption?: string | null
+          hero_image_credit?: string | null
           hero_image_url?: string | null
           id?: string
           image_caption?: string | null
