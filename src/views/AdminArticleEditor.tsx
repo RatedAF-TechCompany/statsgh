@@ -56,6 +56,8 @@ const AdminArticleEditor = () => {
   const [body, setBody] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [heroImageCaption, setHeroImageCaption] = useState("");
+  const [heroImageCredit, setHeroImageCredit] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
   const [tags, setTags] = useState("");
@@ -146,6 +148,8 @@ const AdminArticleEditor = () => {
       setBody(article.body);
       setAuthorName(article.author_name);
       setHeroImageUrl(article.hero_image_url || "");
+      setHeroImageCaption((article as any).hero_image_caption || "");
+      setHeroImageCredit((article as any).hero_image_credit || "");
       setVideoUrl(article.video_url || "");
       setAudioUrl(article.audio_url || "");
       setTags(article.tags?.join(", ") || "");
@@ -303,6 +307,8 @@ const AdminArticleEditor = () => {
         author_name: authorName,
         author_id: session?.user?.id || null,
         hero_image_url: heroImageUrl || null,
+        hero_image_caption: heroImageCaption.trim() || null,
+        hero_image_credit: heroImageCredit.trim() || null,
         video_url: videoUrl || null,
         audio_url: audioUrl || null,
         tags: tagsArray,
@@ -514,6 +520,8 @@ const AdminArticleEditor = () => {
                   currentImage={heroImageUrl}
                   onRemove={() => setHeroImageUrl("")}
                 />
+                <Input id="hero-image-caption" value={heroImageCaption} onChange={(e) => setHeroImageCaption(e.target.value)} placeholder="Image caption (optional)" aria-label="Image caption" />
+                <Input id="hero-image-credit" value={heroImageCredit} onChange={(e) => setHeroImageCredit(e.target.value)} placeholder="Image credit (optional)" aria-label="Image credit" />
               </div>
 
               <div className="space-y-2">
@@ -587,9 +595,13 @@ const AdminArticleEditor = () => {
                           {item.label}
                         </SelectItem>
                       ))}
+                    {!SITE_NAVIGATION.categories.some((i: any) => i.type === 'category' && i.slug === 'crime-justice') && (
+                      <SelectItem value="crime-justice">Crime &amp; Justice</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
