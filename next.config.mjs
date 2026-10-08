@@ -65,6 +65,12 @@ const nextConfig = {
       { source: `${from}/:path*`, destination: to, permanent: true },
     ];
     return [
+      { source: "/regulation-and-policy/baffour-awuah-pleads-not-guilty-sic-life-ghs-9-85-million-loss", destination: "/crime-justice/baffour-awuah-pleads-not-guilty-sic-life-ghs-9-85-million-loss", statusCode: 301 },
+      { source: "/regulation-and-policy/media-worker-journalist-remanded-alleged-ghc800000-spiritual-fraud", destination: "/crime-justice/media-worker-journalist-remanded-alleged-ghc800000-spiritual-fraud", statusCode: 301 },
+      { source: "/regulation-and-policy/naimos-seizes-10-excavators-river-pra-illegal-mining-raids", destination: "/crime-justice/naimos-seizes-10-excavators-river-pra-illegal-mining-raids", statusCode: 301 },
+      { source: "/regulation-and-policy/nchiraa-yam-festival-shooting-two-killed-14-injured", destination: "/crime-justice/nchiraa-yam-festival-shooting-two-killed-14-injured", statusCode: 301 },
+      { source: "/regulation-and-policy/nsa-director-general-suspended-world-cup-visa-probe", destination: "/crime-justice/nsa-director-general-suspended-world-cup-visa-probe", statusCode: 301 },
+      { source: "/regulation-and-policy/tamale-three-children-found-dead-car-boot-murder-investigation", destination: "/crime-justice/tamale-three-children-found-dead-car-boot-murder-investigation", statusCode: 301 },
       // RSS aliases
       { source: "/rss.xml", destination: "/feed.xml", permanent: true },
       { source: "/rss", destination: "/feed.xml", permanent: true },

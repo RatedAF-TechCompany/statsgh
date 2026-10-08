@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import ArticleContent from "./ArticleContent";
@@ -178,7 +178,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   // Canonicalize: if the category in the URL doesn't match the article's, redirect.
   if (article.category_slug !== categorySlug) {
-    redirect(`/${article.category_slug}/${article.slug}`);
+    permanentRedirect(`/${article.category_slug}/${article.slug}`);
   }
 
   let authorSlug: string | null = null;
