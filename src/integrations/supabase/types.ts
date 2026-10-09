@@ -3931,6 +3931,8 @@ export type Database = {
       }
       x_autopost_settings: {
         Row: {
+          allow_long_posts: boolean
+          block_crime: boolean
           daily_cap: number
           id: number
           last_run_at: string | null
@@ -3939,6 +3941,7 @@ export type Database = {
           lookback_hours: number
           max_candidates_per_run: number
           max_model_calls_per_day: number
+          max_weighted_chars: number
           min_gap_minutes: number
           mode: string
           model: string
@@ -3950,6 +3953,8 @@ export type Database = {
           utm: string
         }
         Insert: {
+          allow_long_posts?: boolean
+          block_crime?: boolean
           daily_cap?: number
           id?: number
           last_run_at?: string | null
@@ -3958,6 +3963,7 @@ export type Database = {
           lookback_hours?: number
           max_candidates_per_run?: number
           max_model_calls_per_day?: number
+          max_weighted_chars?: number
           min_gap_minutes?: number
           mode?: string
           model?: string
@@ -3969,6 +3975,8 @@ export type Database = {
           utm?: string
         }
         Update: {
+          allow_long_posts?: boolean
+          block_crime?: boolean
           daily_cap?: number
           id?: number
           last_run_at?: string | null
@@ -3977,6 +3985,7 @@ export type Database = {
           lookback_hours?: number
           max_candidates_per_run?: number
           max_model_calls_per_day?: number
+          max_weighted_chars?: number
           min_gap_minutes?: number
           mode?: string
           model?: string
