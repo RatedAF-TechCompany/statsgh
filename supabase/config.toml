@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.statsgh-x-autopost]
 verify_jwt = false
+
+[functions.editorial-publish]
+verify_jwt = false
