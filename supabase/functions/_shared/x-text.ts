@@ -40,3 +40,11 @@ export function weightedLength(text: string): number {
   }
   return total + plainWeight(s.slice(last));
 }
+
+// Words = whitespace-separated tokens that contain at least one letter or digit.
+export const countWords = (s: string) => (s || "").split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).length;
+export const X_LONG_POST_MAX = 1000;   // @StatsGH is X Premium (verified blue)
+export const X_STANDARD_MAX = 280;
+// Allowed word range for v3 posts (owner decision: 45 to 110).
+export const WORDS_MIN = 45;
+export const WORDS_MAX = 110;
