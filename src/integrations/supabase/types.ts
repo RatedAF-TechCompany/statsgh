@@ -3371,6 +3371,7 @@ export type Database = {
           impressions: number | null
           key_number: string | null
           link_clicks: number | null
+          link_mode: string | null
           metrics_pulled_at: string | null
           model: string | null
           model_output: Json | null
@@ -3380,6 +3381,9 @@ export type Database = {
           prompt_version: string | null
           reject_reason: string | null
           replies: number | null
+          reply_post_id: string | null
+          reply_status: string | null
+          reply_text: string | null
           reposts: number | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -3389,7 +3393,9 @@ export type Database = {
           topic_key: string | null
           updated_at: string | null
           url: string | null
+          x_post_deleted_at: string | null
           x_post_id: string | null
+          x_steps: Json | null
         }
         Insert: {
           alt_text?: string | null
@@ -3407,6 +3413,7 @@ export type Database = {
           impressions?: number | null
           key_number?: string | null
           link_clicks?: number | null
+          link_mode?: string | null
           metrics_pulled_at?: string | null
           model?: string | null
           model_output?: Json | null
@@ -3416,6 +3423,9 @@ export type Database = {
           prompt_version?: string | null
           reject_reason?: string | null
           replies?: number | null
+          reply_post_id?: string | null
+          reply_status?: string | null
+          reply_text?: string | null
           reposts?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -3425,7 +3435,9 @@ export type Database = {
           topic_key?: string | null
           updated_at?: string | null
           url?: string | null
+          x_post_deleted_at?: string | null
           x_post_id?: string | null
+          x_steps?: Json | null
         }
         Update: {
           alt_text?: string | null
@@ -3443,6 +3455,7 @@ export type Database = {
           impressions?: number | null
           key_number?: string | null
           link_clicks?: number | null
+          link_mode?: string | null
           metrics_pulled_at?: string | null
           model?: string | null
           model_output?: Json | null
@@ -3452,6 +3465,9 @@ export type Database = {
           prompt_version?: string | null
           reject_reason?: string | null
           replies?: number | null
+          reply_post_id?: string | null
+          reply_status?: string | null
+          reply_text?: string | null
           reposts?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -3461,7 +3477,9 @@ export type Database = {
           topic_key?: string | null
           updated_at?: string | null
           url?: string | null
+          x_post_deleted_at?: string | null
           x_post_id?: string | null
+          x_steps?: Json | null
         }
         Relationships: []
       }
