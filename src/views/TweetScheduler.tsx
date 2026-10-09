@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { weightedLength } from "@/lib/xText";
+import { weightedLength, countWords, WORDS_MIN, WORDS_MAX } from "@/lib/xText";
 
 const STATUSES = ["all", "held", "approved", "posted", "post_failed", "rejected_crime", "rejected_duplicate", "rejected_ineligible", "rejected_model", "discarded", "expired", "test"];
 const accra = (iso?: string | null) =>
@@ -23,11 +23,12 @@ const accra = (iso?: string | null) =>
 
 type Row = any;
 
-function ReviewCard({ row, title, onDone }: { row: Row; title?: string; onDone: () => void }) {
+function ReviewCard({ row, title, max, onDone }: { row: Row; title?: string; max: number; onDone: () => void }) {
   const [text, setText] = useState<string>(row.edited_text ?? row.post_text ?? "");
   const [busy, setBusy] = useState(false);
   const wl = weightedLength(text);
-  const limit = row.format === "then_now" ? 140 : 120;
+  const words = countWords(text);
+  const outOfRange = wl > max || words < WORDS_MIN || words > WORDS_MAX;
   const liveOnX = !!row.x_post_id && !row.x_post_deleted_at;
   const failed = Object.entries(row.code_checks_json || {})
     .filter(([k, v]: any) => !k.startsWith("_") && v && v.pass === false)
@@ -55,9 +56,14 @@ function ReviewCard({ row, title, onDone }: { row: Row; title?: string; onDone: 
         <a className="underline" href={row.url} target="_blank" rel="noreferrer">{title || row.url}</a>
         <span className="text-muted-foreground">{accra(row.created_at)}</span>
       </div>
-      <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
-      <p className={`text-xs ${wl > limit ? "text-destructive" : "text-muted-foreground"}`}>{wl}/{limit} (X weighted, 🇬🇭 = 2, no links in the post)</p>
-      <p className="text-xs text-muted-foreground break-all">Reply: {row.reply_text}</p>
+      <Label className="text-xs">Model draft</Label>
+      <pre className="whitespace-pre-wrap break-words text-sm bg-muted p-3">{row.post_text}</pre>
+      <Label className="text-xs">Edit and approve</Label>
+      <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} className="whitespace-pre-wrap" />
+      <p className={`text-xs ${outOfRange ? "text-destructive" : "text-muted-foreground"}`}>{words} words (target 55–100, allowed {WORDS_MIN}–{WORDS_MAX}) · {wl}/{max} weighted</p>
+      <p className="text-xs text-muted-foreground">No emoji, hashtags, links or long dashes in the post</p>
+      <p className="text-xs text-muted-foreground break-all">Reply (posted by code as the first reply): {row.reply_text}</p>
+      {row.reject_reason === "no_qualifying_article" && <p className="text-xs">Model: no qualifying article</p>}
       {liveOnX && <p className="text-xs text-destructive font-semibold">Main post still live on X: delete it manually</p>}
       {row.reject_reason && <p className="text-xs"><strong>Reason:</strong> {row.reject_reason}</p>}
       {failed.length > 0 && <p className="text-xs text-destructive"><strong>Failed checks:</strong> {failed.join("; ")}</p>}
@@ -129,7 +135,7 @@ const TweetScheduler = () => {
   const saveSettings = async () => {
     const f = form;
     const patch = {
-      mode: f.mode, daily_cap: Math.min(6, Math.max(1, Number(f.daily_cap))), min_gap_minutes: Math.max(60, Number(f.min_gap_minutes)),
+      mode: f.mode, block_crime: !!f.block_crime, allow_long_posts: f.allow_long_posts !== false, daily_cap: Math.min(6, Math.max(1, Number(f.daily_cap))), min_gap_minutes: Math.max(60, Number(f.min_gap_minutes)),
       quiet_start_utc: Number(f.quiet_start_utc), quiet_end_utc: Number(f.quiet_end_utc), model: f.model, temperature: Number(f.temperature),
     };
     const { error } = await supabase.from("x_autopost_settings").update(patch).eq("id", 1);
@@ -191,6 +197,22 @@ const TweetScheduler = () => {
               <Label htmlFor="autopost">Autopost {flag?.enabled ? "on" : "off"}</Label>
             </div>
             {form && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <Switch checked={!!form.block_crime} onCheckedChange={(v) => setForm({ ...form, block_crime: v })} id="block-crime" />
+                    <Label htmlFor="block-crime">Block Crime &amp; Justice on X</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Off: court and allegation stories are allowed under the v3 legal and fairness rules</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch checked={form.allow_long_posts !== false} onCheckedChange={(v) => setForm({ ...form, allow_long_posts: v })} id="allow-long" />
+                  <Label htmlFor="allow-long">Allow long posts (X Premium, up to 1,000 weighted chars)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">Link: {settings?.link_mode === "first_reply" ? "first reply" : settings?.link_mode ?? "—"}</p>
+              </div>
+            )}
+            {form && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <Label>Mode</Label>
@@ -242,7 +264,7 @@ const TweetScheduler = () => {
           <CardHeader><CardTitle>Review queue ({queue.length})</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {queue.length === 0 && <p className="text-sm text-muted-foreground">Nothing waiting for review.</p>}
-            {queue.map((r: Row) => <ReviewCard key={r.id + (r.updated_at || "")} row={r} title={titles[r.article_id]} onDone={refresh} />)}
+            {queue.map((r: Row) => <ReviewCard key={r.id + (r.updated_at || "")} row={r} title={titles[r.article_id]} max={settings?.allow_long_posts === false ? 280 : (settings?.max_weighted_chars ?? 1000)} onDone={refresh} />)}
           </CardContent>
         </Card>
 
@@ -265,7 +287,7 @@ const TweetScheduler = () => {
                     <TableCell className="whitespace-nowrap text-xs">{accra(r.posted_at || r.created_at)}</TableCell>
                     <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
                     <TableCell className="text-xs max-w-[200px]"><a className="underline" href={r.url} target="_blank" rel="noreferrer">{titles[r.article_id] || r.url}</a></TableCell>
-                    <TableCell className="text-xs max-w-[320px] whitespace-pre-line">{r.edited_text || r.post_text || "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[420px] whitespace-pre-wrap">{r.edited_text || r.post_text || "—"}</TableCell>
                     <TableCell className="text-xs max-w-[220px]">{r.reject_reason || ""}</TableCell>
                     <TableCell className="text-xs">{r.reply_status || ""}{r.reply_post_id && <> <a className="underline" href={`https://x.com/i/web/status/${r.reply_post_id}`} target="_blank" rel="noreferrer">view</a></>}</TableCell>
                     <TableCell className="text-xs">{r.x_post_id ? <a className="underline" href={`https://x.com/i/web/status/${r.x_post_id}`} target="_blank" rel="noreferrer">view</a> : ""}</TableCell>
