@@ -1,26 +1,25 @@
 // THE ONLY StatsGH X autopost path.
-// crime gate + duplicate gate + eligibility BEFORE the model -> master prompt ->
-// code-side house checks -> review queue (social_posts) -> post (cap/gap/quiet hours).
+// duplicate gate + eligibility (+ crime gate only if block_crime) -> master prompt v3 (plain text) ->
+// code-side house checks -> review queue (social_posts) -> post + first reply (cap, gap, quiet hours).
 // Kill switch: system_flags AUTO_TWEET_ENABLED. Defaults to review_only mode.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { autoTweetEnabled } from "../_shared/auto-tweet-flag.ts";
-import { callGateway, parseJson, GatewayHaltError } from "../_shared/ai-gateway.ts";
+import { callGateway, GatewayHaltError } from "../_shared/ai-gateway.ts";
 import { loadTwitterCredentials, postTweet, deleteTweet } from "../_shared/twitter-oauth.ts";
 import { headlineSimilarity, validateStatisticalArticle } from "../_shared/statistical-validator.ts";
 import { finalTweetValidator } from "../_shared/editorial-gate.ts";
 import { crimeGate } from "../_shared/crime-gate.ts";
 import { runHouseChecks, failedChecks, DOMAIN_LIKE_RE, REPLY_RE } from "../_shared/statsgh-house-checks.ts";
-import { weightedLength } from "../_shared/x-text.ts";
+import { weightedLength, X_LONG_POST_MAX, X_STANDARD_MAX } from "../_shared/x-text.ts";
+import { parseV3Output, articleUrl, buildReply } from "../_shared/statsgh-output.ts";
 import { STATSGH_MASTER_PROMPT, PROMPT_VERSION } from "../_shared/statsgh-master-prompt.ts";
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-const SITE = "https://www.statsgh.com";
-const articleUrl = (a: any) => `${SITE}/${a.category_slug}/${a.slug}`;
-const replyFor = (a: any) => `Read more: ${articleUrl(a)}`;
+const replyFor = buildReply;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function loadPrimarySource(db: any, articleId: string) {
   return (await db.rpc("get_article_source", { p_article_id: articleId })).data?.[0] ?? null;
@@ -45,6 +44,10 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await db.from("x_autopost_settings").select("*").eq("id", 1).maybeSingle();
   if (!settings) return json({ error: "x_autopost_settings missing" }, 500);
+  const blockCrime = settings.block_crime === true;          // default false
+  const allowLong = settings.allow_long_posts !== false;     // default true
+  const maxWeighted = allowLong ? Math.min(Number(settings.max_weighted_chars ?? X_LONG_POST_MAX), X_LONG_POST_MAX) : X_STANDARD_MAX;
+  const hcOpts = { allowLongPosts: allowLong, maxWeighted, blockCrime };
 
   /* ---------------- review actions (admin/editor only, no AI, no posting) ---------------- */
   if (action === "approve" || action === "discard") {
@@ -58,15 +61,16 @@ Deno.serve(async (req) => {
     }
     const { data: art } = await db.from("articles").select(ARTICLE_COLS).eq("id", row.article_id).maybeSingle();
     if (!art) return json({ error: "Article missing" }, 404);
-    if (crimeGate(art).blocked) return json({ status: "held", failed: ["crime"] }, 422);
+    if (blockCrime && crimeGate(art).blocked) return json({ status: "held", failed: ["crime"] }, 422);
     if (row.x_post_id && !row.x_post_deleted_at) return json({ error: "main post still live on X; delete it manually first" }, 409);
-    const text = (body.edited_text ?? row.edited_text ?? row.post_text ?? "").trim();
+    const text = String(body.edited_text ?? row.edited_text ?? row.post_text ?? "").replace(/\r\n?/g, "\n").trim();
     const recent = await recentTopics(db, row.id);
     const primarySource = await loadPrimarySource(db, art.id);
-    const hc = runHouseChecks({ post: text, reply: replyFor(art), article: art, url: articleUrl(art), modelJson: row.model_output, primarySource, recentTopicKeys: recent });
+    const hc = runHouseChecks({ post: text, reply: replyFor(art), article: art, url: articleUrl(art), modelJson: row.model_output, primarySource,
+      ...hcOpts, topicKey: row.topic_key, recentTopicKeys: recent, recentHeadlines: await recentHeadlines(db, row.id) });
     const failed = failedChecks(hc.checks);
     await db.from("social_posts").update({
-      edited_text: body.edited_text ?? row.edited_text, code_checks_json: hc.checks, char_count: weightedLength(text),
+      edited_text: body.edited_text != null ? text : row.edited_text, code_checks_json: hc.checks, char_count: weightedLength(text),
       ...(failed.length ? { reject_reason: `failed: ${failed.join(",")}` } : { status: "approved", reviewed_by: auth.userId, reviewed_at: now, reply_text: replyFor(art), reply_status: null, link_mode: "first_reply" }),
     }).eq("id", row.id);
     if (failed.length) return json({ status: "held", failed, checks: hc.checks }, 422);
@@ -84,7 +88,7 @@ Deno.serve(async (req) => {
     const testRow = {
       status: "test", article_id: null, model: null, url: "https://www.statsgh.com/",
       post_text: "StatsGH system test, please ignore. This post will be deleted shortly.",
-      reply_text: "Read more: https://www.statsgh.com/", link_mode: "first_reply",
+      reply_text: "Source: https://www.statsgh.com/", link_mode: "first_reply",
       reviewed_by: auth.userId, prompt_version: PROMPT_VERSION,
     };
     const tcreds = loadTwitterCredentials();
@@ -163,16 +167,17 @@ Deno.serve(async (req) => {
     const row = approved[0];
     const { data: art } = await db.from("articles").select(ARTICLE_COLS).eq("id", row.article_id).maybeSingle();
     const text = (row.edited_text ?? row.post_text ?? "").trim();
-    if (!art || crimeGate(art).blocked) {
-      await db.from("social_posts").update({ status: "held", reject_reason: "article missing or crime" }).eq("id", row.id);
+    if (!art || (blockCrime && crimeGate(art).blocked)) {
+      await db.from("social_posts").update({ status: "held", reject_reason: blockCrime ? "article missing or crime" : "article missing" }).eq("id", row.id);
       return finish({ step: "approved", result: "held_recheck_failed" });
     }
-    const hc = runHouseChecks({ post: text, reply: replyFor(art), article: art, url: articleUrl(art), modelJson: row.model_output, primarySource: await loadPrimarySource(db, art.id), recentTopicKeys: await recentTopics(db, row.id) });
+    const hc = runHouseChecks({ post: text, reply: replyFor(art), article: art, url: articleUrl(art), modelJson: row.model_output, primarySource: await loadPrimarySource(db, art.id),
+      ...hcOpts, topicKey: row.topic_key, recentTopicKeys: await recentTopics(db, row.id), recentHeadlines: await recentHeadlines(db, row.id) });
     if (!hc.pass) {
       await db.from("social_posts").update({ status: "held", code_checks_json: hc.checks, reject_reason: `failed: ${failedChecks(hc.checks).join(",")}` }).eq("id", row.id);
       return finish({ step: "approved", result: "held_recheck_failed" });
     }
-    const r = await doPost(db, row.id, text, replyFor(art), art, creds);
+    const r = await doPost(db, row.id, text, replyFor(art), art, creds, maxWeighted);
     return finish({ step: "approved", result: r });
   }
 
@@ -192,15 +197,16 @@ Deno.serve(async (req) => {
   const { data: postedArts } = postedIds.length ? await db.from("articles").select("title").in("id", postedIds) : { data: [] };
   const postedTitles = (postedArts || []).map((p: any) => p.title as string);
   const topics24 = (posted24 || []).map((p: any) => p.topic_key).filter(Boolean) as string[];
+  const headlines24 = await recentHeadlines(db);
 
   const base = (a: any) => ({ article_id: a.id, url: articleUrl(a), section: a.section, category_slug: a.category_slug, prompt_version: PROMPT_VERSION });
   const log = (r: unknown) => (summary.rows as unknown[]).push(r);
-  const survivors: { a: any; score: number; keyword: boolean; kwReason: string }[] = [];
+  const survivors: { a: any; score: number }[] = [];
 
   for (const a of list) {
     if (seenIds.has(a.id)) continue;
-    const cg = crimeGate(a);
-    if (cg.blocked) {
+    const cg = blockCrime ? crimeGate(a) : null;
+    if (cg?.blocked) {
       if (!dry) await db.from("social_posts").insert({ ...base(a), status: "rejected_crime", reject_reason: cg.reason });
       log({ id: a.id, status: "rejected_crime", reason: cg.reason });
       continue;
@@ -224,7 +230,7 @@ Deno.serve(async (req) => {
       log({ id: a.id, status: "rejected_ineligible", reason });
       continue;
     }
-    survivors.push({ a, score: v.score, keyword: cg.keyword_review, kwReason: cg.reason });
+    survivors.push({ a, score: v.score });
   }
   survivors.sort((x, y) => y.score - x.score);
 
@@ -237,49 +243,48 @@ Deno.serve(async (req) => {
       title: a.title, section: a.section || a.category_slug, url, published_at: a.published_at, tags: a.tags || [],
       primary_source: primarySource,
       text: `${a.summary || ""}\n${stripHtml(a.body || "")}`.slice(0, 8000),
-      topics_posted_last_24h: topics24,
+      recent_posts_last_24h: headlines24,
     };
-    let mj: any = null, promptTok = 0, complTok = 0, parseFail = false;
+    let content = "", promptTok = 0, complTok = 0;
     try {
-      for (let attempt = 0; attempt < 2 && !mj; attempt++) {
-        callsLeft--;
-        const r = await callGateway({
-          model: settings.model, temperature: Number(settings.temperature), max_tokens: 800, json: true,
-          messages: [{ role: "system", content: STATSGH_MASTER_PROMPT }, { role: "user", content: JSON.stringify(userPayload) }],
-        });
-        promptTok += r.prompt_tokens; complTok += r.completion_tokens;
-        try { mj = parseJson(r.content); } catch { mj = null; }
-      }
-      parseFail = !mj;
+      callsLeft--;
+      const r = await callGateway({
+        model: settings.model, temperature: Number(settings.temperature), max_tokens: 800,
+        messages: [{ role: "system", content: STATSGH_MASTER_PROMPT }, { role: "user", content: JSON.stringify(userPayload) }],
+      });
+      promptTok = r.prompt_tokens; complTok = r.completion_tokens; content = r.content ?? "";
     } catch (err) {
       if (err instanceof GatewayHaltError) { summary.halted = err.reason; break; }
       log({ id: a.id, error: (err as Error).message });
       continue;
     }
 
-    const common = { ...base(a), model: settings.model, prompt_tokens: promptTok, completion_tokens: complTok, model_output: mj };
-    if (parseFail) {
-      if (!dry) await db.from("social_posts").insert({ ...common, status: "held", reject_reason: "json_parse_failed" });
-      log({ id: a.id, status: "held", reason: "json_parse_failed" });
+    const p = parseV3Output(content);
+    const modelOutput = { raw: content, reply_from_model: p.modelReply, marker_found: p.markerFound, warnings: p.warnings };
+    const common = { ...base(a), model: settings.model, prompt_tokens: promptTok, completion_tokens: complTok, model_output: modelOutput };
+    if (p.kind === "no_qualifying") {
+      if (!dry) await db.from("social_posts").insert({ ...common, status: "rejected_model", reject_reason: "no_qualifying_article" });
+      log({ id: a.id, status: "rejected_model", reason: "no_qualifying_article" });
       continue;
     }
-    const post = String(mj.post ?? "").trim();
+    if (p.kind === "empty") {
+      if (!dry) await db.from("social_posts").insert({ ...common, status: "held", reject_reason: "empty_model_output" });
+      log({ id: a.id, status: "held", reason: "empty_model_output" });
+      continue;
+    }
+    const post = p.post;
+    const topicKey = a.event_fingerprint || `article:${a.id}`;
     const fields = {
-      ...common, topic_key: mj.topic_key ?? null, format: mj.format ?? null, post_text: post || null,
-      char_count: weightedLength(post), key_number: mj.key_number ?? null, source: mj.source ?? null,
-      chart_suggestion: mj.image_suggestion ?? mj.chart_suggestion ?? null, reply_text: replyFor(a), link_mode: "first_reply", alt_text: mj.alt_text ?? null, checks_json: mj.checks ?? null,
+      ...common, topic_key: topicKey, format: "v3", post_text: post,
+      char_count: weightedLength(post), key_number: null, source: primarySource?.source_name ?? null,
+      chart_suggestion: null, reply_text: replyFor(a), link_mode: "first_reply", alt_text: null, checks_json: null,
     };
-    if (mj.status === "REJECT") {
-      if (!dry) await db.from("social_posts").insert({ ...fields, status: "rejected_model", reject_reason: String(mj.reason || "model reject").slice(0, 500) });
-      log({ id: a.id, status: "rejected_model", reason: mj.reason });
-      continue;
-    }
-    const hc = runHouseChecks({ post, reply: replyFor(a), article: a, url, modelJson: mj, primarySource, recentTopicKeys: topics24 });
+    const hc = runHouseChecks({ post, reply: replyFor(a), article: a, url, modelJson: modelOutput, primarySource,
+      ...hcOpts, topicKey, recentTopicKeys: topics24, recentHeadlines: headlines24 });
     const failed = failedChecks(hc.checks);
     const codeChecks = { ...hc.checks, _warnings: hc.warnings };
     let status = "held", reason = "";
     if (failed.length) reason = `failed: ${failed.join(",")}`;
-    else if (c.keyword) reason = "crime_keyword_review";
     else if (settings.mode !== "auto" || dry) reason = dry ? "dry_run" : "review_only";
     else status = "post";
 
@@ -290,7 +295,7 @@ Deno.serve(async (req) => {
     if (insErr || !ins) { log({ id: a.id, error: insErr?.message }); continue; }
     if (status !== "post") { log({ id: a.id, status: "held", reason }); continue; }
 
-    const r = await doPost(db, ins.id, post, replyFor(a), a, creds);
+    const r = await doPost(db, ins.id, post, replyFor(a), a, creds, maxWeighted);
     log({ id: a.id, status: r });
     break; // max one post per run (and stop on failure)
   }
@@ -303,12 +308,19 @@ async function recentTopics(db: any, excludeId?: string): Promise<string[]> {
   return (data || []).filter((r: any) => r.id !== excludeId).map((r: any) => r.topic_key).filter(Boolean);
 }
 
-async function doPost(db: any, rowId: string, post: string, replyText: string, art: any, creds: any): Promise<string> {
+async function recentHeadlines(db: any, excludeId?: string): Promise<string[]> {
+  const { data } = await db.from("social_posts").select("id, edited_text, post_text").eq("status", "posted")
+    .gte("posted_at", new Date(Date.now() - DAY).toISOString());
+  return (data || []).filter((r: any) => r.id !== excludeId)
+    .map((r: any) => String(r.edited_text ?? r.post_text ?? "").split("\n")[0].trim()).filter(Boolean);
+}
+
+async function doPost(db: any, rowId: string, post: string, replyText: string, art: any, creds: any, maxWeighted: number): Promise<string> {
   if (!creds) {
     await db.from("social_posts").update({ status: "post_failed", reject_reason: "X credentials not configured" }).eq("id", rowId);
     return "post_failed";
   }
-  if (DOMAIN_LIKE_RE.test(post) || !REPLY_RE.test(replyText)) {
+  if (DOMAIN_LIKE_RE.test(post) || !REPLY_RE.test(replyText) || weightedLength(post) > maxWeighted || !/^[^\n]+\n\n[^\n]+\n\n[^\n]+$/.test(post)) {
     await db.from("social_posts").update({ status: "held", reject_reason: "pre_post_assert_failed" }).eq("id", rowId);
     return "held";
   }
