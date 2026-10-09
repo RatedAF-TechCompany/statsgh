@@ -930,11 +930,6 @@ Return ONLY valid JSON:
           body: JSON.stringify({ articleId: newArticle.id }),
         }).catch(e => console.log(`Indicator extraction failed: ${e}`));
 
-        fetch(`${fnUrl}/functions/v1/tweet-article`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${fnKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ articleId: newArticle.id }),
-        }).catch(e => console.log(`Auto-tweet failed: ${e}`));
 
       } catch (itemError) {
         console.log(`Error processing "${item.title.substring(0, 40)}": ${itemError instanceof Error ? itemError.message : "Unknown"}`);

@@ -43,7 +43,11 @@ Any change to publishing cadence must be documented here.
 | source-health-check-6h | `0 */6 * * *` | source-health-check function |
 | statsgh-weekly-digest | `0 6 * * 1` | weekly-digest function (stores digest; no tweets) |
 
-Tweet jobs are unscheduled (`AUTO_TWEET_ENABLED=false`).
+| statsgh-x-autopost-job | `*/30 6-22 * * *` | statsgh-x-autopost function (`private.scheduler_headers()`); the only X path |
+
+All old tweet jobs (tweet-batch-generator, tweet-hourly-poster, scheduled-tweet-poster*, hourly-tweet-*, daily-batch-tweet-filter, tweet-article) are unscheduled and those functions return 410.
+The autopost job exits immediately while `system_flags.AUTO_TWEET_ENABLED` is false; mode defaults to `review_only`
+(drafts are held for admin approval at /admin/tweet-scheduler). Cap, gap and quiet hours live in `x_autopost_settings`.
 
 ## Watchdog
 

@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.research-watch-publish]
 verify_jwt = false
+
+[functions.statsgh-x-autopost]
+verify_jwt = false

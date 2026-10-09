@@ -1,5 +1,6 @@
 export const SECTION_TO_CATEGORIES: Record<string, string[]> = {
   'top-stories': ['top-stories', 'general', 'news'],
+  // MUST stay in sync with CRIME_JUSTICE_SLUGS in supabase/functions/_shared/crime-gate.ts (X autopost crime gate).
   'crime-justice': ['crime-justice', 'crime', 'crime-and-justice', 'justice', 'security-governance', 'ghanacrimes', 'courts', 'security'],
   'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy', 'economy-inflation', 'labour-salaries', 'population'],
   'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities', 'financial-markets', 'capital-markets', 'gse', 'currency'],
