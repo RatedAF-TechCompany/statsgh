@@ -19,3 +19,4 @@
 - Data Vault datasets are declared once in `src/lib/dataVault.ts` (table, columns, source, chart) and served by `/data-vault/[slug]` and `/api/data/[slug]` (rate-limited, s-maxage 300) straight from stored rows — one registry, no derived numbers.
 - Reports (`reports` table) are compiled only by the SQL functions `compile_economy_scorecard` / `compile_cedi_report` run by pg_cron inside the database; report prose is generated in `src/lib/reports.ts` from the stored numbers only — no invented claims.
 - Author profiles live in `authors` (editor-managed via /admin/authors), created only from bylines already on published articles; articles map to a profile via `byline_aliases`.
+- The only X autopost path is statsgh-x-autopost (crime gate + duplicate gate before the model, master prompt in _shared/statsgh-master-prompt.ts, code-side house checks, review queue in social_posts, cap/gap/quiet hours in x_autopost_settings, kill switch system_flags AUTO_TWEET_ENABLED).

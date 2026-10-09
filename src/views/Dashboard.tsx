@@ -250,11 +250,11 @@ const Dashboard = () => {
           <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-blue-500/30" onClick={() => navigate("/admin/tweet-scheduler")}>
             <CardHeader>
               <CalendarClock className="h-8 w-8 mb-2 text-blue-500" />
-              <CardTitle>Tweet Scheduler</CardTitle>
+              <CardTitle>X Autopost</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Hourly tweet bank and scheduling
+                Review queue and autopost controls for @StatsGH
               </p>
             </CardContent>
           </Card>

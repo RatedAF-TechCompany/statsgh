@@ -3354,6 +3354,117 @@ export type Database = {
           },
         ]
       }
+      social_posts: {
+        Row: {
+          alt_text: string | null
+          article_id: string | null
+          category_slug: string | null
+          char_count: number | null
+          chart_suggestion: string | null
+          checks_json: Json | null
+          code_checks_json: Json | null
+          completion_tokens: number | null
+          created_at: string | null
+          edited_text: string | null
+          format: string | null
+          id: string
+          impressions: number | null
+          key_number: string | null
+          link_clicks: number | null
+          metrics_pulled_at: string | null
+          model: string | null
+          model_output: Json | null
+          post_text: string | null
+          posted_at: string | null
+          prompt_tokens: number | null
+          prompt_version: string | null
+          reject_reason: string | null
+          replies: number | null
+          reposts: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          section: string | null
+          source: string | null
+          status: string
+          topic_key: string | null
+          updated_at: string | null
+          url: string | null
+          x_post_id: string | null
+        }
+        Insert: {
+          alt_text?: string | null
+          article_id?: string | null
+          category_slug?: string | null
+          char_count?: number | null
+          chart_suggestion?: string | null
+          checks_json?: Json | null
+          code_checks_json?: Json | null
+          completion_tokens?: number | null
+          created_at?: string | null
+          edited_text?: string | null
+          format?: string | null
+          id?: string
+          impressions?: number | null
+          key_number?: string | null
+          link_clicks?: number | null
+          metrics_pulled_at?: string | null
+          model?: string | null
+          model_output?: Json | null
+          post_text?: string | null
+          posted_at?: string | null
+          prompt_tokens?: number | null
+          prompt_version?: string | null
+          reject_reason?: string | null
+          replies?: number | null
+          reposts?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          section?: string | null
+          source?: string | null
+          status: string
+          topic_key?: string | null
+          updated_at?: string | null
+          url?: string | null
+          x_post_id?: string | null
+        }
+        Update: {
+          alt_text?: string | null
+          article_id?: string | null
+          category_slug?: string | null
+          char_count?: number | null
+          chart_suggestion?: string | null
+          checks_json?: Json | null
+          code_checks_json?: Json | null
+          completion_tokens?: number | null
+          created_at?: string | null
+          edited_text?: string | null
+          format?: string | null
+          id?: string
+          impressions?: number | null
+          key_number?: string | null
+          link_clicks?: number | null
+          metrics_pulled_at?: string | null
+          model?: string | null
+          model_output?: Json | null
+          post_text?: string | null
+          posted_at?: string | null
+          prompt_tokens?: number | null
+          prompt_version?: string | null
+          reject_reason?: string | null
+          replies?: number | null
+          reposts?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          section?: string | null
+          source?: string | null
+          status?: string
+          topic_key?: string | null
+          updated_at?: string | null
+          url?: string | null
+          x_post_id?: string | null
+        }
+        Relationships: []
+      }
       system_flags: {
         Row: {
           enabled: boolean
@@ -3797,6 +3908,66 @@ export type Database = {
           items?: Json
           week_end?: string
           week_start?: string
+        }
+        Relationships: []
+      }
+      x_autopost_settings: {
+        Row: {
+          daily_cap: number
+          id: number
+          last_run_at: string | null
+          last_run_summary: Json | null
+          link_mode: string
+          lookback_hours: number
+          max_candidates_per_run: number
+          max_model_calls_per_day: number
+          min_gap_minutes: number
+          mode: string
+          model: string
+          prompt_version: string
+          quiet_end_utc: number
+          quiet_start_utc: number
+          temperature: number
+          updated_at: string | null
+          utm: string
+        }
+        Insert: {
+          daily_cap?: number
+          id?: number
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          link_mode?: string
+          lookback_hours?: number
+          max_candidates_per_run?: number
+          max_model_calls_per_day?: number
+          min_gap_minutes?: number
+          mode?: string
+          model?: string
+          prompt_version?: string
+          quiet_end_utc?: number
+          quiet_start_utc?: number
+          temperature?: number
+          updated_at?: string | null
+          utm?: string
+        }
+        Update: {
+          daily_cap?: number
+          id?: number
+          last_run_at?: string | null
+          last_run_summary?: Json | null
+          link_mode?: string
+          lookback_hours?: number
+          max_candidates_per_run?: number
+          max_model_calls_per_day?: number
+          min_gap_minutes?: number
+          mode?: string
+          model?: string
+          prompt_version?: string
+          quiet_end_utc?: number
+          quiet_start_utc?: number
+          temperature?: number
+          updated_at?: string | null
+          utm?: string
         }
         Relationships: []
       }
