@@ -165,7 +165,10 @@ export function runHouseChecks(input: HouseCheckInput): HouseCheckOutput {
   const simHit = (input.recentHeadlines || []).find((h) => h && headlineSimilarity(firstLine, h) >= 0.55);
   set("not_duplicate_topic", !(tk && recent.includes(tk)) && !simHit, simHit ? `similar to: ${simHit.slice(0, 80)}` : tk);
 
-  if (input.blockCrime === true) set("not_crime", !crimeTextHit(text), "");
+  if (input.blockCrime === true) {
+    const hit = crimeTextHit(text) || crimeTextHit(articleText);
+    set("not_crime", !hit, hit ? "crime keyword in post or article" : "");
+  }
 
   if (countWords(firstLine) >= 15) warnings.push("headline has 15 or more words");
 
