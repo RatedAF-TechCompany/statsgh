@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { weightedLength } from "@/lib/xText";
 
-const STATUSES = ["all", "held", "approved", "posted", "post_failed", "rejected_crime", "rejected_duplicate", "rejected_ineligible", "rejected_model", "discarded", "expired"];
+const STATUSES = ["all", "held", "approved", "posted", "post_failed", "rejected_crime", "rejected_duplicate", "rejected_ineligible", "rejected_model", "discarded", "expired", "test"];
 const accra = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Accra", dateStyle: "medium", timeStyle: "short" }) : "—";
 
@@ -27,6 +27,8 @@ function ReviewCard({ row, title, onDone }: { row: Row; title?: string; onDone: 
   const [text, setText] = useState<string>(row.edited_text ?? row.post_text ?? "");
   const [busy, setBusy] = useState(false);
   const wl = weightedLength(text);
+  const limit = row.format === "then_now" ? 140 : 120;
+  const liveOnX = !!row.x_post_id && !row.x_post_deleted_at;
   const failed = Object.entries(row.code_checks_json || {})
     .filter(([k, v]: any) => !k.startsWith("_") && v && v.pass === false)
     .map(([k, v]: any) => `${k}${v.detail ? ` (${v.detail})` : ""}`);
@@ -54,12 +56,14 @@ function ReviewCard({ row, title, onDone }: { row: Row; title?: string; onDone: 
         <span className="text-muted-foreground">{accra(row.created_at)}</span>
       </div>
       <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
-      <p className={`text-xs ${wl > 280 ? "text-destructive" : "text-muted-foreground"}`}>{wl}/280 (X weighted, URL = 23)</p>
+      <p className={`text-xs ${wl > limit ? "text-destructive" : "text-muted-foreground"}`}>{wl}/{limit} (X weighted, 🇬🇭 = 2, no links in the post)</p>
+      <p className="text-xs text-muted-foreground break-all">Reply: {row.reply_text}</p>
+      {liveOnX && <p className="text-xs text-destructive font-semibold">Main post still live on X: delete it manually</p>}
       {row.reject_reason && <p className="text-xs"><strong>Reason:</strong> {row.reject_reason}</p>}
       {failed.length > 0 && <p className="text-xs text-destructive"><strong>Failed checks:</strong> {failed.join("; ")}</p>}
       {row.alt_text && <p className="text-xs text-muted-foreground"><strong>Alt text:</strong> {row.alt_text}</p>}
       <div className="flex gap-2">
-        <Button size="sm" disabled={busy} onClick={() => act("approve")}>Approve</Button>
+        <Button size="sm" disabled={busy || liveOnX} onClick={() => act("approve")}>Approve</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => act("discard")}>Discard</Button>
       </div>
     </div>
@@ -72,6 +76,7 @@ const TweetScheduler = () => {
   const [filter, setFilter] = useState("all");
   const [form, setForm] = useState<any>(null);
   const [running, setRunning] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -140,6 +145,19 @@ const TweetScheduler = () => {
     refresh();
   };
 
+  const selfReplyTest = async () => {
+    if (!window.confirm("This publishes a test post and a reply on @StatsGH, then deletes both within seconds. Continue?")) return;
+    setTesting(true);
+    const { data, error } = await supabase.functions.invoke("statsgh-x-autopost", { body: { action: "self_reply_test" } });
+    setTesting(false);
+    if (error) toast.error(`Self-reply test: ${error.message}`);
+    else {
+      const steps = (data?.steps || []) as any[];
+      toast(steps.length ? `Self-reply test: ${steps.map((x) => `${x.step} ${x.http_status}`).join(" · ")}` : `Self-reply test: ${data?.result || "no steps"}`);
+    }
+    refresh();
+  };
+
   if (!session || isLoadingAuth || !isAdmin) return null;
 
   const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
@@ -155,6 +173,7 @@ const TweetScheduler = () => {
     if (quiet) { if (h >= qe) t.setUTCDate(t.getUTCDate() + 1); t.setUTCHours(qe, 0, 0, 0); }
     nextSlot = postedToday >= Math.min(settings.daily_cap, 6) ? "tomorrow after quiet hours" : accra(t.toISOString());
   }
+  const lastTest = rows.find((r: Row) => r.status === "test");
   const queue = rows.filter((r: Row) => r.status === "held" || r.status === "approved");
   const logRows = filter === "all" ? rows : rows.filter((r: Row) => r.status === filter);
 
@@ -195,10 +214,21 @@ const TweetScheduler = () => {
               <Button variant="secondary" onClick={saveSettings}>Save settings</Button>
               <Button disabled={running} onClick={() => runNow(false)}>Run now</Button>
               <Button disabled={running} variant="outline" onClick={() => runNow(true)}>Dry run</Button>
+              {isAdmin && <Button disabled={testing} variant="outline" onClick={selfReplyTest}>Self-reply test</Button>}
             </div>
             <p className="text-sm text-muted-foreground">
               Posted today {postedToday}/{settings ? Math.min(settings.daily_cap, 6) : "—"} · last post {accra(lastPosted?.posted_at)} · next eligible slot {nextSlot}
             </p>
+            {lastTest && (
+              <details className="text-xs">
+                <summary className="cursor-pointer">Last self-reply test {accra(lastTest.created_at)}: {lastTest.reject_reason}</summary>
+                <ul className="mt-1 space-y-0.5">
+                  {((lastTest.x_steps || []) as any[]).map((st, i) => (
+                    <li key={i}>{st.step}: HTTP {st.http_status} {st.ok ? "ok" : "failed"}{st.note ? ` (${st.note})` : ""}{st.error ? ` ${st.error}` : ""}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
             {settings?.last_run_summary && (
               <details className="text-xs">
                 <summary className="cursor-pointer">Last run {accra(settings.last_run_at)}</summary>
@@ -227,7 +257,7 @@ const TweetScheduler = () => {
           <CardContent className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Time (Accra)</TableHead><TableHead>Status</TableHead><TableHead>Article</TableHead><TableHead>Post</TableHead><TableHead>Reason</TableHead><TableHead>X</TableHead></TableRow>
+                <TableRow><TableHead>Time (Accra)</TableHead><TableHead>Status</TableHead><TableHead>Article</TableHead><TableHead>Post</TableHead><TableHead>Reason</TableHead><TableHead>Reply</TableHead><TableHead>X</TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {logRows.map((r: Row) => (
@@ -235,8 +265,9 @@ const TweetScheduler = () => {
                     <TableCell className="whitespace-nowrap text-xs">{accra(r.posted_at || r.created_at)}</TableCell>
                     <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
                     <TableCell className="text-xs max-w-[200px]"><a className="underline" href={r.url} target="_blank" rel="noreferrer">{titles[r.article_id] || r.url}</a></TableCell>
-                    <TableCell className="text-xs max-w-[320px]">{r.edited_text || r.post_text || "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[320px] whitespace-pre-line">{r.edited_text || r.post_text || "—"}</TableCell>
                     <TableCell className="text-xs max-w-[220px]">{r.reject_reason || ""}</TableCell>
+                    <TableCell className="text-xs">{r.reply_status || ""}{r.reply_post_id && <> <a className="underline" href={`https://x.com/i/web/status/${r.reply_post_id}`} target="_blank" rel="noreferrer">view</a></>}</TableCell>
                     <TableCell className="text-xs">{r.x_post_id ? <a className="underline" href={`https://x.com/i/web/status/${r.x_post_id}`} target="_blank" rel="noreferrer">view</a> : ""}</TableCell>
                   </TableRow>
                 ))}

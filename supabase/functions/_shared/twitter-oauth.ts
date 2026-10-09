@@ -63,8 +63,8 @@ export interface PostTweetResult {
   raw: unknown;
 }
 
-export async function postTweet(text: string, creds: TwitterCredentials): Promise<PostTweetResult> {
-  const url = "https://api.x.com/2/tweets";
+async function oauthHeader(method: string, url: string, creds: TwitterCredentials): Promise<string> {
+  const baseUrl = url.split("?")[0];
   const oauthParams: Record<string, string> = {
     oauth_consumer_key: creds.consumerKey,
     oauth_nonce: generateNonce(),
@@ -73,25 +73,43 @@ export async function postTweet(text: string, creds: TwitterCredentials): Promis
     oauth_token: creds.accessToken,
     oauth_version: "1.0",
   };
-  const signature = await createOAuthSignature(
-    "POST",
-    url,
-    oauthParams,
-    creds.consumerSecret,
-    creds.accessTokenSecret,
-  );
-  const authHeader = "OAuth " +
+  const signature = await createOAuthSignature(method, baseUrl, oauthParams, creds.consumerSecret, creds.accessTokenSecret);
+  return "OAuth " +
     Object.entries({ ...oauthParams, oauth_signature: signature })
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`)
       .join(", ");
+}
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: authHeader, "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  const raw = await resp.json().catch(() => ({}));
-  const tweetId = (raw as any)?.data?.id ?? undefined;
-  return { ok: resp.ok, status: resp.status, tweetId, raw };
+export async function postTweet(
+  text: string,
+  creds: TwitterCredentials,
+  opts?: { replyToId?: string },
+): Promise<PostTweetResult> {
+  const url = "https://api.x.com/2/tweets";
+  const payload: Record<string, unknown> = { text };
+  if (opts?.replyToId) payload.reply = { in_reply_to_tweet_id: opts.replyToId };
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: await oauthHeader("POST", url, creds), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const raw = await resp.json().catch(() => ({}));
+    const tweetId = (raw as any)?.data?.id ?? undefined;
+    return { ok: resp.ok, status: resp.status, tweetId, raw };
+  } catch (e) {
+    return { ok: false, status: 0, raw: { error: (e as Error).message } };
+  }
+}
+
+export async function deleteTweet(id: string, creds: TwitterCredentials): Promise<{ ok: boolean; status: number; raw: unknown }> {
+  const url = `https://api.x.com/2/tweets/${id}`;
+  try {
+    const resp = await fetch(url, { method: "DELETE", headers: { Authorization: await oauthHeader("DELETE", url, creds) } });
+    const raw = await resp.json().catch(() => ({}));
+    return { ok: resp.ok && (raw as any)?.data?.deleted === true, status: resp.status, raw };
+  } catch (e) {
+    return { ok: false, status: 0, raw: { error: (e as Error).message } };
+  }
 }
