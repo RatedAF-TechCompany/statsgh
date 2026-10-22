@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Fix backend backlog retries, AI failure handling/live call accounting, and headline/RSS-only sports checks; preserve all other rules and schedules.
+- [x] Fix backend backlog retries, AI failure handling/live call accounting, and headline/RSS-only sports checks; preserve all other rules and schedules. Backend type validation and 43 regression tests passed; no live publishing run invoked.
 
 - [x] Tighten homepage spacing, top stories, responsive grids, key numbers and existing-data sections; verified at 390/820/1280 with no horizontal overflow.
 - [x] Verify anonymous visitors cannot read any table containing email/contact data; removed anonymous table reads while preserving insert-only public forms and safe public views.

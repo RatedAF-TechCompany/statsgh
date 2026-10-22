@@ -2297,9 +2297,14 @@ serve(async (req) => {
           await supabase.from("newsroom_articles").update(failureState(row.attempts, row.error_message || "Retry limit reached")).eq("id", row.id);
           continue;
         }
-        row.attempts = (row.attempts || 0) + 1;
-        const { error } = await supabase.from("newsroom_articles").update({ attempts: row.attempts }).eq("id", row.id);
+        const priorAttempts = row.attempts || 0;
+        row.attempts = priorAttempts + 1;
+        const { data: claimed, error } = await supabase.from("newsroom_articles")
+          .update({ attempts: row.attempts }).eq("id", row.id)
+          .eq("attempts", priorAttempts).in("processing_status", ["pending", "pending_ai"])
+          .select("id");
         if (error) throw new Error(`Backlog attempt update failed: ${error.message}`);
+        if (!claimed?.length) continue;
         attemptedBacklog.set(row.id, row);
       }
 
