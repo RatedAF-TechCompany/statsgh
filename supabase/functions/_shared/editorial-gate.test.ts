@@ -16,6 +16,37 @@ import {
 const s = (title: string, summary = "", body = "") => ({ title, summary, body });
 
 describe("RULE 1 — absolute sports ban", () => {
+  it("ignores soft sports terms in footer/body content", () => {
+    expect(isExcludedTopic(s("Ghana inflation falls to 11.2%", "GSS releases consumer price data.", "Related links: sport sports stadium tournament")).excluded).toBe(false);
+  });
+
+  it("ignores hard sports terms in footer/body content", () => {
+    expect(isExcludedTopic(s("Ghana inflation falls to 11.2%", "GSS releases consumer price data.", "Related links: football Arsenal Premier League")).excluded).toBe(false);
+  });
+
+  it("still rejects whole-word sports subjects in the RSS summary", () => {
+    expect(isExcludedTopic(s("Ghana event opens today", "A sports tournament opens in Accra.")).code).toBe("REJECT_SPORTS");
+    expect(isExcludedTopic(s("Ghana event opens today", "Arsenal football coverage.")).code).toBe("REJECT_SPORTS");
+  });
+
+  it("does not match sports substrings in transport or inflation", () => {
+    expect(isExcludedTopic(s("Ghana transport inflation falls to 11.2%", "Infrastructure spending data.")).excluded).toBe(false);
+  });
+
+  it("uses the original RSS description rather than a generated summary when supplied", () => {
+    expect(isExcludedTopic({
+      ...s("Ghana inflation falls to 11.2%", "Related links: Arsenal football", "Consumer prices eased."),
+      rss_summary: "GSS releases consumer price data.",
+    }).excluded).toBe(false);
+    expect(isExcludedTopic({
+      ...s("Ghana event opens", "Accra hosts the event"),
+      rss_summary: "Arsenal football coverage",
+    }).code).toBe("REJECT_SPORTS");
+  });
+
+  it("preserves the public-expenditure rescue for summary sports terms", () => {
+    expect(isExcludedTopic(s("Ghana government spent GHS 195 million", "Sports tournament expenditure exceeded the budget by 31%.", "Parliament confirmed taxpayer spending in Accra.")).excluded).toBe(false);
+  });
   it("rejects a football transfer even with a huge number", () => {
     const r = isExcludedTopic(s(
       "Arsenal sign Ghanaian midfielder for £30 million",

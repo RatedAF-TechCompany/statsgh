@@ -32,6 +32,7 @@ export type GateCode =
 export interface StoryLike {
   title: string;
   summary?: string | null;
+  rss_summary?: string | null;
   body?: string | null;
   category_slug?: string | null;
 }
@@ -331,7 +332,8 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   }
 
   // --- HARD SPORTS BAN ---------------------------------------------------
-  const hardSport = has(t, SPORTS_HARD_TERMS);
+  const sportsHead = `${a.title || ""} ${a.rss_summary ?? a.summary ?? ""}`.toLowerCase();
+  const hardSport = has(sportsHead, SPORTS_HARD_TERMS);
   if (hardSport) {
     return {
       excluded: true,
@@ -340,7 +342,7 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
       reason: `hard sports term: "${hardSport}" (a transfer fee is not a StatsGH statistic)`,
     };
   }
-  const softSport = has(t, SPORTS_SOFT_TERMS);
+  const softSport = has(sportsHead, SPORTS_SOFT_TERMS);
   if (softSport) {
     // The very limited exception: Ghana public expenditure where sport is incidental.
     const publicMoney = hasRe(t, PUBLIC_MONEY_RE) && hasRe(t, GHANA_MONEY_RE) &&

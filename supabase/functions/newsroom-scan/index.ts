@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, failureState, writeWithRetries } from "./retry.ts";
+import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -261,6 +263,8 @@ function headlineIsBlocklisted(headline: string): { blocked: boolean; matchedTer
 async function batchEditorialFilter(
   items: Array<{ title: string; description: string; source_name: string }>,
   lovableApiKey: string,
+  usage: any,
+  beforeCall: () => Promise<void>,
 ): Promise<Map<string, { pass: boolean; reason: string }>> {
   const results = new Map<string, { pass: boolean; reason: string }>();
   
@@ -303,12 +307,13 @@ Respond in this exact format, one per line:
     const { callGateway, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
     let content = "";
     try {
+      await beforeCall();
       const res = await callGateway({
         model: "google/gemini-2.5-flash-lite",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.15,
-        usage: (globalThis as any).__nrUsage,
+        usage,
       });
       content = res.content;
     } catch (err) {
@@ -1176,7 +1181,8 @@ async function fetchAndUploadImage(
 async function generateAiImage(
   prompt: string,
   supabase: any,
-  articleSlug: string
+  articleSlug: string,
+  beforeCall: () => Promise<void>,
 ): Promise<string | null> {
   try {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -1187,6 +1193,7 @@ async function generateAiImage(
     
     console.log(`Generating AI image for: ${articleSlug}`);
     
+    await beforeCall();
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -1925,7 +1932,7 @@ serve(async (req) => {
 
     // Build domain lookup from DB sources
     const sourceNameToDomain = new Map<string, string>();
-    for (const s of cappedSources) {
+    for (const s of activeDbSources) {
       try {
         const domain = new URL(s.rss_url).hostname.replace(/^www\./, "");
         sourceNameToDomain.set(s.name, domain);
@@ -1987,19 +1994,18 @@ serve(async (req) => {
     }
 
     // ============================================
-    // PHASE 0: PICK UP PENDING_AI ARTICLES FROM PREVIOUS RUNS
-    // These are overflow articles that couldn't be processed due to CPU limits
-    // ============================================
-    const { data: pendingAiArticles } = await supabase
+    // PHASE 0: recover accepted rows before spending time on discovery.
+    const runLimit = Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
+    const { data: backlogRows, error: backlogError } = await supabase
       .from("newsroom_articles")
       .select("*")
-      .eq("processing_status", "pending_ai")
+      .in("processing_status", ["pending", "pending_ai"])
+      .eq("dead_letter", false)
+      .gt("created_at", hoursAgo(BACKLOG_HOURS).toISOString())
       .order("created_at", { ascending: true })
-      .limit(AI_BATCH_SIZE);
-
-    if (pendingAiArticles && pendingAiArticles.length > 0) {
-      console.log(`Found ${pendingAiArticles.length} pending_ai articles from previous runs — processing first`);
-    }
+      .limit(runLimit);
+    if (backlogError) throw new Error(`Backlog lookup failed: ${backlogError.message}`);
+    const backlog = backlogRows || [];
 
     // ============================================
     // REPROCESS PENDING MODE (unchanged from original)
@@ -2110,9 +2116,37 @@ serve(async (req) => {
       }
     }
 
-    // Per-run AI usage tracker (Phase 2 cost visibility)
-    (globalThis as any).__nrUsage = { ai_calls: 0, prompt_tokens: 0, completion_tokens: 0, estimated_cost: 0, json_parse_failures: 0 };
-
+    // Request-local usage; persist the call count BEFORE each model request so
+    // even interrupted/failed calls remain visible on the running audit row.
+    const nrUsage = { ...createUsage(), estimated_cost: 0 };
+    let modelCalls = 0;
+    const beforeModelCall = async () => {
+      modelCalls++;
+      const { error } = await supabase.from("newsroom_runs").update({ ai_calls: modelCalls }).eq("id", run.id);
+      if (error) throw new Error(`AI call accounting failed: ${error.message}`);
+    };
+    let publishedCount = 0;
+    const publishErrors: string[] = [];
+    let processedCount = 0;
+    let foundCount = 0;
+    let deferredCount = 0;
+    let preFilterBlockedCount = 0;
+    let sourceSkippedCount = 0;
+    let staleRejectedCount = 0;
+    let invalidPubDateCount = 0;
+    const highRejectionSources = await getHighRejectionSources(supabase);
+    const DAILY_OPINION_LIMIT = 999;
+    const sourceTierMap = new Map<string, number>();
+    const sourcePrimaryMap = new Map<string, boolean>();
+    for (const source of activeDbSources) {
+      sourceTierMap.set(source.name, source.priority_tier || 5);
+      sourcePrimaryMap.set(source.name, !!source.is_primary_data);
+    }
+    const attemptedBacklog = new Map<string, any>();
+    // Both phases use the identical candidate, writing and publication code.
+    for (const backlogPhase of [true, false]) {
+      const phaseLimit = backlogPhase ? backlog.length : runLimit - backlog.length;
+      if (phaseLimit <= 0 || nrUsage.halted) continue;
     // ============================================
     // FETCH RSS FEEDS FROM ALL SOURCES
     // ============================================
@@ -2126,7 +2160,17 @@ serve(async (req) => {
       description: string;
       source_name: string;
       is_opinion?: boolean;
+      _newsroomRecord?: any;
     }> = [];
+
+    if (backlogPhase) {
+      allArticles.push(...backlog.map((row: any) => ({
+        title: row.original_headline, description: row.original_summary || "",
+        link: row.source_url, source_name: row.source_name,
+        pubDate: row.source_published_at || row.published_at || "",
+        _newsroomRecord: row,
+      })));
+    } else {
 
     const sourcesToFetch = isBackfill
       ? cappedSources.filter((s: any) => {
@@ -2196,6 +2240,7 @@ serve(async (req) => {
       }
     }
 
+    } // discovery only; backlog has already completed the shared path.
     console.log(`Total items after scraping: ${allArticles.length}`);
 
     // ============================================
@@ -2215,12 +2260,12 @@ serve(async (req) => {
       _dedupeKey: string;
       _dedupeKeyRaw: string;
       _isOpinion?: boolean;
+      _newsroomRecord?: any;
     }> = [];
 
     const perSourceCounts = new Map<string, number>();
 
     // No opinion daily limit
-    const DAILY_OPINION_LIMIT = 999;
     const { count: opinionCountLast24h } = await supabase
       .from("articles")
       .select("id", { count: "exact", head: true })
@@ -2237,12 +2282,7 @@ serve(async (req) => {
     const acceptedTitlesThisRun: string[] = [];
 
     // Optimization #5: Load high-rejection sources to skip
-    const highRejectionSources = await getHighRejectionSources(supabase);
-    let preFilterBlockedCount = 0;
-    let sourceSkippedCount = 0;
-    // V5.0: Counter for items rejected at the earliest RSS-parse stage as stale
-    let staleRejectedCount = 0;
-    let invalidPubDateCount = 0;
+
 
     // V5.0: Build a quick lookup of trust_pub_date per source name
     const sourceTrustMap = new Map<string, boolean>();
@@ -2251,6 +2291,23 @@ serve(async (req) => {
     }
 
     for (const article of allArticles) {
+      if (article._newsroomRecord) {
+        const row = article._newsroomRecord;
+        if (row.attempts >= MAX_ATTEMPTS) {
+          await supabase.from("newsroom_articles").update(failureState(row.attempts, row.error_message || "Retry limit reached")).eq("id", row.id);
+          continue;
+        }
+        const priorAttempts = row.attempts || 0;
+        row.attempts = priorAttempts + 1;
+        const { data: claimed, error } = await supabase.from("newsroom_articles")
+          .update({ attempts: row.attempts }).eq("id", row.id)
+          .eq("attempts", priorAttempts).in("processing_status", ["pending", "pending_ai"])
+          .select("id");
+        if (error) throw new Error(`Backlog attempt update failed: ${error.message}`);
+        if (!claimed?.length) continue;
+        attemptedBacklog.set(row.id, row);
+      }
+
       // ============================================
       // GATE 1 (V5.0): EARLIEST FRESHNESS CHECK — runs BEFORE any other filter.
       // An article is fresh only if its source RSS pubDate is within
@@ -2403,7 +2460,7 @@ serve(async (req) => {
       // Now we only check body-level number quality after fetching full text
 
       // Early exit: if we already have enough qualifying articles, stop processing
-      if (qualifyingArticles.length >= maxArticlesPerRun) {
+      if (qualifyingArticles.length >= phaseLimit) {
         console.log(`Reached max qualifying articles (${maxArticlesPerRun}), stopping candidate processing`);
         break;
       }
@@ -2508,11 +2565,11 @@ serve(async (req) => {
       // Check for duplicates in newsroom_articles
       const { data: seenNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline")
-        .eq("dedupe_key", dedupeKeyHash)
-        .limit(1);
+        .select("id, original_headline, created_at, processing_status")
+        .eq("dedupe_key", dedupeKeyHash);
 
-      if (seenNewsroom && seenNewsroom.length > 0) {
+      if (seenNewsroom?.some((row: any) => row.id !== article._newsroomRecord?.id &&
+        !(article._newsroomRecord && ["pending", "pending_ai"].includes(row.processing_status) && row.created_at > article._newsroomRecord.created_at))) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_NEWSROOM,
           `Matched existing newsroom article`, {
             pubDateParsed: pubDate,
@@ -2567,7 +2624,7 @@ serve(async (req) => {
       // Fetch recent newsroom articles using the LONGER window for semantic match
       const { data: recentNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline, original_summary, created_at")
+        .select("id, original_headline, original_summary, created_at, processing_status")
         .gte("created_at", cutoffSemantic)
         .order("created_at", { ascending: false })
         .limit(80);
@@ -2581,6 +2638,10 @@ serve(async (req) => {
       }
       if (recentNewsroom) {
         for (const rn of recentNewsroom) {
+          // The accepted row itself is not a duplicate. For queued siblings,
+          // oldest wins; the later row will see this earlier row on its turn.
+          if (rn.id === article._newsroomRecord?.id) continue;
+          if (article._newsroomRecord && ["pending", "pending_ai"].includes(rn.processing_status) && rn.created_at > article._newsroomRecord.created_at) continue;
           comparisons.push({ id: rn.id, title: rn.original_headline, text: [rn.original_headline, (rn as any).original_summary || ""].join(" ") });
         }
       }
@@ -2656,6 +2717,7 @@ serve(async (req) => {
         _dedupeKey: dedupeKeyHash,
         _dedupeKeyRaw: dedupeKeyRaw,
         _isOpinion: isOpinion,
+        _newsroomRecord: article._newsroomRecord,
       });
 
       console.log(`✓ PASSED ALL FILTERS: "${article.title.substring(0, 60)}..." (${numberAnalysis.qualifyingCount} qualifying numbers)`);
@@ -2669,50 +2731,8 @@ serve(async (req) => {
 
     console.log(`Qualifying articles after all filters: ${qualifyingArticles.length}`);
 
-    if (qualifyingArticles.length === 0) {
-      await supabase.from("newsroom_runs").update({
-        status: "completed",
-        articles_found: 0,
-        articles_created: 0,
-        completed_at: new Date().toISOString(),
-        metadata: { 
-          method: "rss-feeds", 
-          sources_checked: cappedSources.length, 
-          time_window: timeWindowHours,
-          version: "2.0",
-          qualifying_number_rules: true,
-          // V5.0 freshness reporting
-          stale_rejected_count: staleRejectedCount,
-          invalid_pubdate_count: invalidPubDateCount,
-          freshness_max_age_minutes: FRESHNESS_MAX_AGE_MINUTES,
-        }
-      }).eq("id", run.id);
-
-      return new Response(JSON.stringify({
-        success: true,
-        run_id: run.id,
-        method: "rss-feeds-v2",
-        sources_checked: cappedSources.length,
-        articles_found: 0,
-        articles_created: 0,
-        stale_rejected: staleRejectedCount,
-        invalid_pubdate: invalidPubDateCount,
-        message: `No qualifying articles found. ${staleRejectedCount} rejected as stale, ${invalidPubDateCount} invalid pubDate.`,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Build tier map for priority sorting and dedup
-    const sourceTierMap = new Map<string, number>();
-    const sourcePrimaryMap = new Map<string, boolean>();
-    for (const s of activeDbSources) {
-      sourceTierMap.set(s.name, s.priority_tier || 5);
-      sourcePrimaryMap.set(s.name, !!s.is_primary_data);
-    }
-
     // V4.0: PRIORITY QUEUE — sort by: (a) Tier 1 first, (b) most recent, (c) has numbers in headline
-    qualifyingArticles.sort((a, b) => {
+    if (!backlogPhase) qualifyingArticles.sort((a, b) => {
       const tierA = sourceTierMap.get(a.source_name) || 5;
       const tierB = sourceTierMap.get(b.source_name) || 5;
       // Tier 1 sources first
@@ -2745,7 +2765,7 @@ serve(async (req) => {
           // Keep the one from higher-priority (lower tier number) source
           const articleTier = sourceTierMap.get(article.source_name) || 5;
           const keptTier = sourceTierMap.get(kept.source_name) || 5;
-          if (articleTier < keptTier) {
+          if (!backlogPhase && articleTier < keptTier) {
             // Replace the kept one with this higher-priority source
             const idx = headlineDeduped.indexOf(kept);
             headlineDeduped[idx] = article;
@@ -2765,7 +2785,7 @@ serve(async (req) => {
     }
 
     const remainingDailySlots = DAILY_PUBLISH_LIMIT - currentDailyCount;
-    const toProcess = headlineDeduped.slice(0, Math.min(maxArticlesPerRun, remainingDailySlots));
+    const toProcess = headlineDeduped.slice(0, Math.min(phaseLimit, remainingDailySlots - publishedCount));
 
     console.log(`Processing ${toProcess.length} articles (limited by daily cap: ${remainingDailySlots} remaining)`);
 
@@ -2783,14 +2803,15 @@ serve(async (req) => {
       processing_status: "pending",
     }));
 
-    const { data: insertedNews, error: insertError } = await supabase
-      .from("newsroom_articles")
-      .insert(newsRecords)
-      .select();
-
-    if (insertError) {
-      throw new Error(`Failed to insert newsroom items: ${insertError.message}`);
+    let insertedNews: any[] = [];
+    if (backlogPhase) {
+      insertedNews = toProcess.map(item => item._newsroomRecord);
+    } else if (newsRecords.length) {
+      const { data, error } = await supabase.from("newsroom_articles").insert(newsRecords).select();
+      if (error) throw new Error(`Failed to insert newsroom items: ${error.message}`);
+      insertedNews = data || [];
     }
+    foundCount += insertedNews.length;
 
     // Log accepted candidates
     for (let i = 0; i < toProcess.length; i++) {
@@ -2808,7 +2829,7 @@ serve(async (req) => {
     }
 
     await supabase.from("newsroom_runs").update({
-      articles_found: insertedNews?.length || 0,
+      articles_found: foundCount,
     }).eq("id", run.id);
 
     // ============================================
@@ -2816,6 +2837,8 @@ serve(async (req) => {
     // ============================================
     const aiBatchItems = toProcess.slice(0, AI_BATCH_SIZE);
     const overflowItems = toProcess.slice(AI_BATCH_SIZE);
+    processedCount += backlogPhase ? backlog.length : aiBatchItems.length;
+    deferredCount += overflowItems.length;
 
     if (overflowItems.length > 0) {
       console.log(`⏳ ${overflowItems.length} articles exceed batch cap — marking as pending_ai for next run`);
@@ -2833,9 +2856,6 @@ serve(async (req) => {
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    let publishedCount = 0;
-    const publishErrors: string[] = [];
-
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
       await supabase.from("newsroom_runs").update({
@@ -2866,10 +2886,11 @@ serve(async (req) => {
         // Process in batches of 10
         for (let batch = 0; batch < nonAutoPassItems.length; batch += 10) {
           const batchItems = nonAutoPassItems.slice(batch, batch + 10);
-          const batchResults = await batchEditorialFilter(batchItems, lovableApiKey);
+          const batchResults = await batchEditorialFilter(batchItems, lovableApiKey, nrUsage, beforeModelCall);
           for (const [title, result] of batchResults) {
             batchFilterResults.set(title, result);
           }
+          if (nrUsage.halted) break;
         }
         
         const passCount = [...batchFilterResults.values()].filter(r => r.pass).length;
@@ -2880,7 +2901,12 @@ serve(async (req) => {
       for (let i = 0; i < aiBatchItems.length; i++) {
         const item = aiBatchItems[i];
         const newsroomRecord = insertedNews?.[i];
-        if (!newsroomRecord) continue;
+        if (!newsroomRecord || nrUsage.halted) continue;
+        if (!backlogPhase) {
+          newsroomRecord.attempts = (newsroomRecord.attempts || 0) + 1;
+          const { error } = await supabase.from("newsroom_articles").update({ attempts: newsroomRecord.attempts }).eq("id", newsroomRecord.id);
+          if (error) throw new Error(`Attempt update failed: ${error.message}`);
+        }
 
         // ============================================
         // GATE 2 (V5.0): STALE_BEFORE_AI — Re-check freshness right before
@@ -2905,8 +2931,7 @@ serve(async (req) => {
           if (batchResult && !batchResult.pass) {
             console.log(`⊘ Batch filter REJECTED: "${item.title.substring(0, 60)}..." — ${batchResult.reason}`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `Batch editorial filter: ${batchResult.reason}`,
+              ...failureState(newsroomRecord.attempts, `Batch editorial filter: ${batchResult.reason}`),
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -2961,8 +2986,7 @@ serve(async (req) => {
           if (articleText.length < 100) {
             console.log(`Article text too short (${articleText.length} chars), skipping`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "Source text too short for processing",
+              ...failureState(newsroomRecord.attempts, "Source text too short for processing"),
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -3033,124 +3057,22 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
 
           const { callGateway, parseJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
 
-          let useRssFallback = false;
-          let aiContent: string | null = null;
-          try {
-            const res = await callGateway({
-              model: aiModel,
-              messages: [{ role: "user", content: aiPrompt }],
-              max_tokens: 1500,
-              temperature: 0.3,
-              json: true,
-              usage: (globalThis as any).__nrUsage,
-            });
-            aiContent = res.content;
-            if (!aiContent) useRssFallback = true;
-            else if (aiContent.trim().toLowerCase().startsWith("rejected")) {
-              console.log(`AI REJECTED: "${item.title.substring(0, 60)}..." — using RSS fallback`);
-              useRssFallback = true;
-            }
-          } catch (err) {
-            if (err instanceof GatewayHaltError) {
-              console.log(`⛔ Halt (${err.reason}) — leaving remaining items PENDING`);
-              break;
-            }
-            console.log(`AI call failed: ${(err as Error).message} — using RSS fallback`);
-            useRssFallback = true;
-          }
-
-          // Parse JSON from AI response OR build RSS fallback
           let generated: any;
-
-          if (useRssFallback) {
-            // V6.0 FALLBACK: Publish a clean version from RSS data
-            const fallbackSlug = item.title
-              .toLowerCase()
-              .replace(/[^a-z0-9\s]/g, "")
-              .replace(/\s+/g, "-")
-              .substring(0, 80);
-            const fallbackBody = item.description
-              ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
-              : `<p>${item.title}</p>`;
-            const fallbackSummary = item.description
-              ? item.description.substring(0, 300)
-              : item.title;
-
-            generated = {
-              headline: item.title,
-              subtitle: null,
-              summary: fallbackSummary,
-              seo_description: fallbackSummary.substring(0, 140),
-              body_html: fallbackBody,
-              slug: fallbackSlug,
-              category_slug: DEFAULT_CATEGORY,
-              author_name: item.source_name,
-              tags: [],
-              twitter_post: null,
-              instagram_post: null,
-            };
-            console.log(`📋 RSS fallback article: "${item.title.substring(0, 60)}..."`);
-          } else {
-            try {
-              generated = parseJson(aiContent!);
-            } catch (parseErr) {
-              // One retry with a larger cap before falling back
-              console.log(`AI JSON parse failed; retrying once at 2200 tokens: ${parseErr}`);
-              try {
-                const retry = await callGateway({
-                  model: aiModel,
-                  messages: [{ role: "user", content: aiPrompt }],
-                  max_tokens: 2200,
-                  temperature: 0.3,
-                  json: true,
-                  usage: (globalThis as any).__nrUsage,
-                });
-                generated = parseJson(retry.content);
-              } catch (retryErr) {
-                console.log(`Retry also failed, using RSS fallback: ${retryErr}`);
-                const fallbackSlug = item.title
-                  .toLowerCase()
-                  .replace(/[^a-z0-9\s]/g, "")
-                  .replace(/\s+/g, "-")
-                  .substring(0, 80);
-                const fallbackBody = item.description
-                  ? `<p>${item.description.replace(/\n/g, "</p><p>")}</p>`
-                  : `<p>${item.title}</p>`;
-              const fallbackSummary = item.description
-                ? item.description.substring(0, 300)
-                : item.title;
-              
-              generated = {
-                headline: item.title,
-                subtitle: null,
-                summary: fallbackSummary,
-                seo_description: fallbackSummary.substring(0, 140),
-                body_html: fallbackBody,
-                slug: fallbackSlug,
-                category_slug: DEFAULT_CATEGORY,
-                author_name: item.source_name,
-                tags: [],
-                twitter_post: null,
-                instagram_post: null,
-              };
-              }
-            }
-
-
-
-            // Validate required fields — fallback if missing
-            if (!generated.headline || !generated.body_html || !generated.slug) {
-              console.log("Missing required fields in AI output, using RSS fallback");
-              const fallbackSlug = item.title
-                .toLowerCase()
-                .replace(/[^a-z0-9\s]/g, "")
-                .replace(/\s+/g, "-")
-                .substring(0, 80);
-              generated.headline = generated.headline || item.title;
-              generated.body_html = generated.body_html || `<p>${item.description || item.title}</p>`;
-              generated.slug = generated.slug || fallbackSlug;
-              generated.summary = generated.summary || item.description || item.title;
-            }
+          try {
+            generated = await writeWithRetries(async (max_tokens) => {
+              await beforeModelCall();
+              const result = await callGateway({
+                model: aiModel, messages: [{ role: "user", content: aiPrompt }],
+                max_tokens, temperature: 0.3, json: true, usage: nrUsage,
+              });
+              return result.content;
+            }, content => parseJson(content, nrUsage), error => error instanceof GatewayHaltError);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown AI failure";
+            await supabase.from("newsroom_articles").update(failureState(newsroomRecord.attempts, message)).eq("id", newsroomRecord.id);
+            publishErrors.push(message);
+            if (error instanceof GatewayHaltError) break;
+            continue;
           }
 
           // 6. WORD COUNT GATE — minimum 250 words
@@ -3160,8 +3082,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           if (wordCount < 250) {
             console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 250)`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `TOO_SHORT: ${wordCount} words (minimum 250)`,
+              ...failureState(newsroomRecord.attempts, `TOO_SHORT: ${wordCount} words (minimum 250)`),
             }).eq("id", newsroomRecord.id);
             publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
             continue;
@@ -3180,8 +3101,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           if (MALFORMED_CHARS.test(titleToCheck) || FRONT_PAGES.test(titleToCheck) || titleToCheck.length < 20 || excessiveCaps) {
             console.log(`❌ REJECTED (MALFORMED_TITLE): "${titleToCheck.substring(0, 60)}"`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: "MALFORMED_TITLE",
+              ...failureState(newsroomRecord.attempts, "MALFORMED_TITLE"),
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -3235,7 +3155,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             // image exists. Prevents any duplicate paid gen.
             if (isBreaking && !sourceImageUrl) {
               const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug);
+              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug, beforeModelCall);
             } else {
               console.log(`⏭️  Skipping AI image (not breaking or source image exists): "${item.title.substring(0, 60)}"`);
             }
@@ -3262,6 +3182,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           const storyForGate = {
             title: generated.headline || item.title,
             summary: generated.summary || item.description || "",
+            rss_summary: item.description || "",
             body: generated.body_html || item._fullText || "",
             category_slug: categorySlug,
           };
@@ -3298,8 +3219,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           if (claimError) {
             console.error(`Event claim failed: ${claimError.message}`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `event claim failed: ${claimError.message}`.substring(0, 500),
+              ...failureState(newsroomRecord.attempts, `event claim failed: ${claimError.message}`),
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -3362,8 +3282,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           if (articleError) {
             console.error(`Article insert failed: ${articleError.message}`);
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: `DB insert failed: ${articleError.message}`,
+              ...failureState(newsroomRecord.attempts, `DB insert failed: ${articleError.message}`),
             }).eq("id", newsroomRecord.id);
             publishErrors.push(`DB error for "${item.title.substring(0, 40)}"`);
             continue;
@@ -3407,6 +3326,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           await supabase.from("newsroom_articles").update({
             processing_status: "completed",
             generated_article_id: newArticle.id,
+            error_message: null,
           }).eq("id", newsroomRecord.id);
 
           publishedCount++;
@@ -3437,37 +3357,39 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           console.error(`Error processing article "${item.title.substring(0, 60)}":`, itemError);
           if (newsroomRecord) {
             await supabase.from("newsroom_articles").update({
-              processing_status: "failed",
-              error_message: itemError instanceof Error ? itemError.message : "Unknown processing error",
+              ...failureState(newsroomRecord.attempts, itemError instanceof Error ? itemError.message : "Unknown processing error"),
             }).eq("id", newsroomRecord.id);
           }
           publishErrors.push(`Error: ${item.title.substring(0, 40)}`);
         }
       }
 
-      // ============================================
-      // PROCESS PENDING_AI FROM PREVIOUS RUNS
-      // ============================================
-      // DEDUP (Phase 2 overhaul): the pending_ai duplicate rewriter branch was
-      // removed. The main path above already generates + publishes any
-      // fresh RSS item; pending_ai items are re-picked on the next run via
-      // the normal ingest flow. Keeping only the deferral bookkeeping.
-      // ============================================
     }
+    if (backlogPhase) {
+      const acceptedIds = new Set(toProcess.map(item => item._newsroomRecord?.id));
+      for (const row of attemptedBacklog.values()) {
+        if (!acceptedIds.has(row.id)) {
+          // Candidate rejection (including freshness/dedupe) is terminal,
+          // just as for discovery; do not resurrect editorial rejections.
+          await supabase.from("newsroom_articles").update({
+            processing_status: "rejected", error_message: "Candidate validation/deduplication rejected backlog item",
+          }).eq("id", row.id);
+        }
+      }
+    }
+    } // backlog first, discovery second
 
-
-    console.log(`\n=== Run complete: ${publishedCount} published out of ${aiBatchItems.length} processed (${overflowItems.length} deferred as pending_ai) ===`);
+    console.log(`\n=== Run complete: ${publishedCount} published out of ${processedCount} processed (${deferredCount} deferred as pending_ai) ===`);
     if (publishErrors.length > 0) {
       console.log(`Errors: ${publishErrors.join("; ")}`);
     }
 
     // Complete run metadata
-    const nrUsage = (globalThis as any).__nrUsage || {};
     await supabase.from("newsroom_runs").update({
       status: "completed",
       articles_created: publishedCount,
       completed_at: new Date().toISOString(),
-      ai_calls: nrUsage.ai_calls ?? 0,
+      ai_calls: modelCalls,
       prompt_tokens: nrUsage.prompt_tokens ?? 0,
       completion_tokens: nrUsage.completion_tokens ?? 0,
       estimated_cost: nrUsage.estimated_cost ?? 0,
@@ -3480,9 +3402,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
         qualifying_number_rules: true,
         daily_limit: DAILY_PUBLISH_LIMIT,
         opinion_limit: DAILY_OPINION_LIMIT,
-        candidates: toProcess.length,
-        ai_batch_processed: aiBatchItems.length,
-        deferred_pending_ai: overflowItems.length,
+        candidates: foundCount,
+        ai_batch_processed: processedCount,
+        deferred_pending_ai: deferredCount,
         published: publishedCount,
         // V5.0 freshness reporting
         stale_rejected_count: staleRejectedCount,
@@ -3503,10 +3425,10 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
       method: "rss-feeds-v3-optimized",
       version: "3.0",
       sources_checked: cappedSources.length,
-      articles_found: insertedNews?.length || 0,
+      articles_found: foundCount,
       articles_published: publishedCount,
-      articles_deferred: overflowItems.length,
-      articles_failed: aiBatchItems.length - publishedCount,
+      articles_deferred: deferredCount,
+      articles_failed: processedCount - publishedCount,
       time_window_hours: timeWindowHours,
       daily_limit: DAILY_PUBLISH_LIMIT,
       opinion_limit: DAILY_OPINION_LIMIT,
