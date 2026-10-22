@@ -1931,7 +1931,7 @@ serve(async (req) => {
 
     // Build domain lookup from DB sources
     const sourceNameToDomain = new Map<string, string>();
-    for (const s of cappedSources) {
+    for (const s of activeDbSources) {
       try {
         const domain = new URL(s.rss_url).hostname.replace(/^www\./, "");
         sourceNameToDomain.set(s.name, domain);
@@ -2883,6 +2883,7 @@ serve(async (req) => {
           for (const [title, result] of batchResults) {
             batchFilterResults.set(title, result);
           }
+          if (nrUsage.halted) break;
         }
         
         const passCount = [...batchFilterResults.values()].filter(r => r.pass).length;
@@ -3174,6 +3175,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           const storyForGate = {
             title: generated.headline || item.title,
             summary: generated.summary || item.description || "",
+            rss_summary: item.description || "",
             body: generated.body_html || item._fullText || "",
             category_slug: categorySlug,
           };
