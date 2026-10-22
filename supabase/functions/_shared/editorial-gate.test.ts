@@ -33,6 +33,17 @@ describe("RULE 1 — absolute sports ban", () => {
     expect(isExcludedTopic(s("Ghana transport inflation falls to 11.2%", "Infrastructure spending data.")).excluded).toBe(false);
   });
 
+  it("uses the original RSS description rather than a generated summary when supplied", () => {
+    expect(isExcludedTopic({
+      ...s("Ghana inflation falls to 11.2%", "Related links: Arsenal football", "Consumer prices eased."),
+      rss_summary: "GSS releases consumer price data.",
+    }).excluded).toBe(false);
+    expect(isExcludedTopic({
+      ...s("Ghana event opens", "Accra hosts the event"),
+      rss_summary: "Arsenal football coverage",
+    }).code).toBe("REJECT_SPORTS");
+  });
+
   it("preserves the public-expenditure rescue for summary sports terms", () => {
     expect(isExcludedTopic(s("Ghana government spent GHS 195 million", "Sports tournament expenditure exceeded the budget by 31%.", "Parliament confirmed taxpayer spending in Accra.")).excluded).toBe(false);
   });

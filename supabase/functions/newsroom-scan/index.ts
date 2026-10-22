@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, failureState, writeWithRetries } from "./retry.ts";
+import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -2117,7 +2118,7 @@ serve(async (req) => {
 
     // Request-local usage; persist the call count BEFORE each model request so
     // even interrupted/failed calls remain visible on the running audit row.
-    const nrUsage = { ai_calls: 0, prompt_tokens: 0, completion_tokens: 0, estimated_cost: 0, json_parse_failures: 0, halted: false };
+    const nrUsage = { ...createUsage(), estimated_cost: 0 };
     let modelCalls = 0;
     const beforeModelCall = async () => {
       modelCalls++;
@@ -2559,10 +2560,11 @@ serve(async (req) => {
       // Check for duplicates in newsroom_articles
       const { data: seenNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline")
+        .select("id, original_headline, created_at, processing_status")
         .eq("dedupe_key", dedupeKeyHash);
 
-      if (seenNewsroom?.some((row: any) => row.id !== article._newsroomRecord?.id)) {
+      if (seenNewsroom?.some((row: any) => row.id !== article._newsroomRecord?.id &&
+        !(article._newsroomRecord && ["pending", "pending_ai"].includes(row.processing_status) && row.created_at > article._newsroomRecord.created_at))) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.DEDUPED_NEWSROOM,
           `Matched existing newsroom article`, {
             pubDateParsed: pubDate,
@@ -2617,7 +2619,7 @@ serve(async (req) => {
       // Fetch recent newsroom articles using the LONGER window for semantic match
       const { data: recentNewsroom } = await supabase
         .from("newsroom_articles")
-        .select("id, original_headline, original_summary, created_at")
+        .select("id, original_headline, original_summary, created_at, processing_status")
         .gte("created_at", cutoffSemantic)
         .order("created_at", { ascending: false })
         .limit(80);
@@ -2634,7 +2636,7 @@ serve(async (req) => {
           // The accepted row itself is not a duplicate. For queued siblings,
           // oldest wins; the later row will see this earlier row on its turn.
           if (rn.id === article._newsroomRecord?.id) continue;
-          if (article._newsroomRecord && rn.created_at > article._newsroomRecord.created_at) continue;
+          if (article._newsroomRecord && ["pending", "pending_ai"].includes(rn.processing_status) && rn.created_at > article._newsroomRecord.created_at) continue;
           comparisons.push({ id: rn.id, title: rn.original_headline, text: [rn.original_headline, (rn as any).original_summary || ""].join(" ") });
         }
       }
