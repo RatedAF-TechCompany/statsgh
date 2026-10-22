@@ -331,7 +331,7 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
   }
 
   // --- HARD SPORTS BAN ---------------------------------------------------
-  const hardSport = has(t, SPORTS_HARD_TERMS);
+  const hardSport = has(head, SPORTS_HARD_TERMS);
   if (hardSport) {
     return {
       excluded: true,
@@ -340,7 +340,7 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
       reason: `hard sports term: "${hardSport}" (a transfer fee is not a StatsGH statistic)`,
     };
   }
-  const softSport = has(t, SPORTS_SOFT_TERMS);
+  const softSport = has(head, SPORTS_SOFT_TERMS);
   if (softSport) {
     // The very limited exception: Ghana public expenditure where sport is incidental.
     const publicMoney = hasRe(t, PUBLIC_MONEY_RE) && hasRe(t, GHANA_MONEY_RE) &&
