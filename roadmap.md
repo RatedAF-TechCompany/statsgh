@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Raise newsroom writing budgets, cap combined runs at three, add 110-second start guard and stale-run recovery, and persist publication counts; backend only.
+
 - [x] Fix backend backlog retries, AI failure handling/live call accounting, and headline/RSS-only sports checks; preserve all other rules and schedules. Backend type validation and 43 regression tests passed; no live publishing run invoked.
 
 - [x] Tighten homepage spacing, top stories, responsive grids, key numbers and existing-data sections; verified at 390/820/1280 with no horizontal overflow.
