@@ -22,6 +22,70 @@ export function failureState(attempts: number, message: string) {
   };
 }
 
+// Repair syntax only: never supply missing fields, complete truncated output,
+// evaluate model text, or substitute source/RSS copy.
+function repairJsonStrings(content: string): string {
+  let output = "";
+  let inString = false;
+  let isKey = false;
+  let previous = "";
+  const containers: string[] = [];
+
+  for (let i = 0; i < content.length; i += 1) {
+    const char = content[i];
+    if (!inString) {
+      output += char;
+      if (char === '"') {
+        inString = true;
+        isKey = containers.at(-1) === "{" && (previous === "{" || previous === ",");
+      } else if (char === "{" || char === "[") {
+        containers.push(char);
+      } else if (char === "}" || char === "]") {
+        containers.pop();
+      }
+      if (!/\s/.test(char)) previous = char;
+      continue;
+    }
+
+    if (char === "\\") {
+      // Preserve existing escapes (including escaped backslashes/quotes).
+      output += char;
+      if (i + 1 < content.length) output += content[++i];
+    } else if (char === '"') {
+      const rest = content.slice(i + 1).trimStart();
+      const closes = isKey
+        ? rest.startsWith(":")
+        : rest.startsWith("}") || rest.startsWith("]") || rest === "" ||
+          (rest.startsWith(",") && (containers.at(-1) === "[" || /^,\s*"(?:[^"\\]|\\.)*"\s*:/.test(rest)));
+      if (closes) {
+        output += char;
+        inString = false;
+        previous = char;
+      } else {
+        output += '\\"';
+      }
+    } else if (char.charCodeAt(0) < 32) {
+      // JSON strings cannot contain literal newlines or other control characters.
+      output += `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
+    } else {
+      output += char;
+    }
+  }
+  return output;
+}
+
+export function parseArticleJson(content: string, parse: (content: string) => any = JSON.parse) {
+  const unfenced = content.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+  const start = unfenced.indexOf("{");
+  const end = unfenced.lastIndexOf("}");
+  const object = start >= 0 && end > start ? unfenced.slice(start, end + 1) : unfenced;
+  try {
+    return parse(object);
+  } catch {
+    return parse(repairJsonStrings(object));
+  }
+}
+
 // Give all three writing attempts enough room for a complete article JSON.
 // No RSS text is ever substituted for a failed generation.
 export async function writeWithRetries(
@@ -34,7 +98,7 @@ export async function writeWithRetries(
     try {
       const content = await call(maxTokens);
       if (!content.trim()) throw new Error("AI returned empty content");
-      const generated = parse(content);
+      const generated = parseArticleJson(content, parse);
       const missing = ["headline", "body_html", "slug"].filter(
         (key) => typeof generated?.[key] !== "string" || !generated[key].trim(),
       );

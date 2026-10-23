@@ -3078,7 +3078,10 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             generated = await writeWithRetries(async (max_tokens) => {
               await beforeModelCall();
               const result = await callGateway({
-                model: aiModel, messages: [{ role: "user", content: aiPrompt }],
+                model: aiModel, messages: [
+                  { role: "system", content: "Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
+                  { role: "user", content: aiPrompt },
+                ],
                 max_tokens, temperature: 0.3, json: true, usage: nrUsage,
               });
               return result.content;

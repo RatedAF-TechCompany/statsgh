@@ -1,8 +1,48 @@
 import { describe, it, expect, vi } from "vitest";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, failureState, writeWithRetries } from "./retry";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, failureState, parseArticleJson, writeWithRetries } from "./retry";
 
 const valid = JSON.stringify({ headline: "Ghana inflation falls", body_html: "<p>Sourced article body</p>", slug: "ghana-inflation-falls" });
 const noHalt = () => false;
+
+describe("article JSON recovery", () => {
+  it("strips markdown fences before parsing", () => {
+    expect(parseArticleJson(`\`\`\`json\n${valid}\n\`\`\``)).toEqual(JSON.parse(valid));
+  });
+  it("extracts the outermost JSON object from surrounding text", () => {
+    expect(parseArticleJson(`Here is the JSON:\n${valid}\nEnd.`)).toEqual(JSON.parse(valid));
+  });
+  it("escapes raw newlines in body_html without changing its content", () => {
+    const body = "<p>Ghana inflation falls.\nThe sourced rate is lower.</p>";
+    const raw = valid.replace("<p>Sourced article body</p>", body);
+    expect(parseArticleJson(raw).body_html).toBe(body);
+  });
+  it("repairs unescaped double quotes in body_html and headlines", () => {
+    const body = '<p class="quote">The bank said "inflation fell".</p>';
+    const raw = valid.replace("<p>Sourced article body</p>", body).replace("Ghana inflation falls", 'Bank says "inflation falls"');
+    expect(parseArticleJson(raw)).toMatchObject({ body_html: body, headline: 'Bank says "inflation falls"' });
+  });
+  it("preserves existing escapes, arrays, and nested metadata while repairing", () => {
+    const article = { ...JSON.parse(valid), tags: ["Ghana", "rates"], key_data: [{ label: "Inflation", value: "3.2", unit: "%" }], subtitle: 'A "quoted" value with a \\ path' };
+    const raw = JSON.stringify(article).replace("<p>Sourced article body</p>", '<p title="value">First\r\nSecond\tline.</p>');
+    expect(parseArticleJson(raw)).toEqual({ ...article, body_html: '<p title="value">First\r\nSecond\tline.</p>' });
+  });
+  it("uses one model call when syntax can be recovered", async () => {
+    const call = vi.fn().mockResolvedValue(`\`\`\`json\n${valid.replace("<p>Sourced article body</p>", '<p>He said "lower".\nNext line.</p>')}\n\`\`\``);
+    expect((await writeWithRetries(call, JSON.parse, noHalt)).body_html).toBe('<p>He said "lower".\nNext line.</p>');
+    expect(call).toHaveBeenCalledTimes(1);
+  });
+  it("does not complete truncated JSON or invent missing article fields", () => {
+    expect(() => parseArticleJson(valid.slice(0, -2))).toThrow();
+    expect(parseArticleJson('{"summary":"Only a summary"}')).toEqual({ summary: "Only a summary" });
+  });
+  it("retries generation only after both parsing attempts fail", async () => {
+    const call = vi.fn().mockResolvedValueOnce('{"headline":"Unfinished').mockResolvedValue(valid);
+    const parse = vi.fn(JSON.parse);
+    expect((await writeWithRetries(call, parse, noHalt)).slug).toBe("ghana-inflation-falls");
+    expect(call.mock.calls).toEqual([[6000], [6000]]);
+    expect(parse).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe("newsroom retry policy", () => {
   it("caps the backlog and default combined run limit at 3 within 48 hours", () => {
