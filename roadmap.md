@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Raise newsroom writing budgets, cap combined runs at three, add 110-second start guard and stale-run recovery, and persist publication counts; backend only.
+- [x] Raise newsroom writing budgets to 6000 per attempt, cap combined runs at three, add 110-second start guard and stale-run recovery, and persist publication counts; deployed newsroom-scan, 45 regression tests passed. No live publication invoked.
 
 - [x] Fix backend backlog retries, AI failure handling/live call accounting, and headline/RSS-only sports checks; preserve all other rules and schedules. Backend type validation and 43 regression tests passed; no live publishing run invoked.
 
