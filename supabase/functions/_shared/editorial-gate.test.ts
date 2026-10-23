@@ -36,8 +36,8 @@ describe("RULE 1 — absolute sports ban", () => {
     expect(isExcludedTopic(s("Ghana inflation falls to 11.2%", "GSS releases consumer price data.", "Related links: football Arsenal Premier League")).excluded).toBe(false);
   });
 
-  it("still rejects whole-word sports subjects in the RSS summary", () => {
-    expect(isExcludedTopic(s("Ghana event opens today", "A sports tournament opens in Accra.")).code).toBe("REJECT_SPORTS");
+  it("requires generic sports subjects in the headline but keeps hard summary terms", () => {
+    expect(isExcludedTopic(s("Ghana event opens today", "A sports tournament opens in Accra.")).code).not.toBe("REJECT_SPORTS");
     expect(isExcludedTopic(s("Ghana event opens today", "Arsenal football coverage.")).code).toBe("REJECT_SPORTS");
   });
 

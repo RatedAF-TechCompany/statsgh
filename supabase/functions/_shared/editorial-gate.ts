@@ -359,7 +359,7 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
     const sportsTaxRevenue = /\b(gra|ghana revenue authority)\b.*\b(collects?|tax|revenue)\b/.test(sportsTitle);
     const publicMoney = (hasRe(t, PUBLIC_MONEY_RE) || sportsTaxRevenue) &&
       (hasRe(t, GHANA_MONEY_RE) || /(?:gh¢|gh₵|ghs)\s*\d/.test(t)) &&
-      hasMaterialNumber(a) && isGhanaCentral(a).central;
+      hasMaterialNumber(a) && (isGhanaCentral(a).central || sportsTaxRevenue);
     if (!publicMoney) {
       return {
         excluded: true,
