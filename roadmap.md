@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Restore steady newsroom discovery, queued freshness, authenticated scheduling and valid backlog statuses; preserve three writing attempts and all unrelated editorial gates, run tests and verify deployment.
+- [ ] Restore steady newsroom publishing: changes deployed, status migration/reset applied, authenticated 15-minute callback verified, 146 regression tests passed. BLOCKED: recent-candidate lookup times out and its required index cannot be created because database disk is full; publication acceptance remains unverified. Exact Deno suite also fails on existing Vitest imports.
 
 - [x] Harden newsroom article JSON parsing and structured-output instructions; deployed newsroom-scan and passed 53 tests covering syntax recovery and editorial regressions, preserving existing limits and rules. No live publishing run invoked.
 
