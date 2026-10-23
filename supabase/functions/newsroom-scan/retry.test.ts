@@ -51,7 +51,8 @@ describe("newsroom retry policy", () => {
     expect(BACKLOG_HOURS).toBe(12);
   });
   it("discovers eight candidates even when three backlog attempts fill the writing cap", () => {
-    expect(phaseCandidateLimit(true, 3, 3, 0)).toBe(3);
+    expect(phaseCandidateLimit(true, 3, 3, 0)).toBe(0);
+    expect(phaseCandidateLimit(true, 3, 10, 0)).toBe(2);
     expect(phaseCandidateLimit(false, 3, 3, 3)).toBe(8);
     expect(phaseCandidateLimit(false, 1, 1, 1)).toBe(8);
   });

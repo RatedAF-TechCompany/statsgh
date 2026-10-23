@@ -11,7 +11,7 @@ export const BACKLOG_FRESHNESS_MAX_AGE_MINUTES = 720;
 
 // Candidate discovery has its own allowance; writing remains capped separately.
 export function phaseCandidateLimit(backlogPhase: boolean, backlogCount: number, runLimit: number, attemptedBacklog: number) {
-  return backlogPhase ? Math.min(backlogCount, runLimit)
+  return backlogPhase ? Math.min(backlogCount, Math.max(0, runLimit - DISCOVERY_MIN_SLOTS))
     : Math.max(DISCOVERY_MIN_SLOTS, runLimit - attemptedBacklog);
 }
 
