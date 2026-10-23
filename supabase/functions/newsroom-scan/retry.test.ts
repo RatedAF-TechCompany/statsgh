@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, failureState, parseArticleJson, writeWithRetries } from "./retry";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, failureState, parseArticleJson, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry";
 
 const valid = JSON.stringify({ headline: "Ghana inflation falls", body_html: "<p>Sourced article body</p>", slug: "ghana-inflation-falls" });
 const noHalt = () => false;
@@ -45,10 +45,42 @@ describe("article JSON recovery", () => {
 });
 
 describe("newsroom retry policy", () => {
-  it("caps the backlog and default combined run limit at 3 within 48 hours", () => {
+  it("caps the backlog and default combined writing limit at 3 within 12 hours", () => {
     expect(BACKLOG_LIMIT).toBe(3);
     expect(DEFAULT_MAX_ARTICLES_PER_RUN).toBe(3);
-    expect(BACKLOG_HOURS).toBe(48);
+    expect(BACKLOG_HOURS).toBe(12);
+  });
+  it("discovers eight candidates even when three backlog attempts fill the writing cap", () => {
+    expect(phaseCandidateLimit(true, 3, 3, 0)).toBe(3);
+    expect(phaseCandidateLimit(false, 3, 3, 3)).toBe(8);
+    expect(phaseCandidateLimit(false, 1, 1, 1)).toBe(8);
+  });
+  it("uses six-hour discovery/publication and twelve-hour queued freshness", () => {
+    expect(FRESHNESS_MAX_AGE_MINUTES).toBe(360);
+    expect(BACKLOG_FRESHNESS_MAX_AGE_MINUTES).toBe(720);
+  });
+  it.each(["service_role", "cron_secret_env", "scheduler_token"])("applies the scheduled budget guard for %s", via => {
+    expect(inferTriggerType({}, via)).toBe("scheduled");
+  });
+  it("keeps explicit trigger types and authenticated manual runs", () => {
+    expect(inferTriggerType({ triggerType: "scheduled" }, "admin_user")).toBe("scheduled");
+    expect(inferTriggerType({}, "admin_user")).toBe("manual");
+  });
+  it.each([
+    ["Fri, 23 Oct 2026 12:00:00 WAT", "2026-10-23T11:00:00.000Z"],
+    ["Fri, 23 Oct 2026 12:00:00 BST", "2026-10-23T11:00:00.000Z"],
+    ["Fri, 23 Oct 2026 12:00:00 GMT", "2026-10-23T12:00:00.000Z"],
+    ["Fri, 23 Oct 2026 12:00:00 UTC", "2026-10-23T12:00:00.000Z"],
+    ["Fri, 23 Oct 2026 12:00:00 Z", "2026-10-23T12:00:00.000Z"],
+    ["2026-10-23T12:00:00", "2026-10-23T12:00:00.000Z"],
+    ["2026-10-23T12:00:00Z", "2026-10-23T12:00:00.000Z"],
+    ["2026-10-23T12:00:00+01:00", "2026-10-23T11:00:00.000Z"],
+  ])("parses feed date %s", (input, expected) => {
+    expect(parseFeedDate(input)?.toISOString()).toBe(expected);
+  });
+  it("does not invent missing publication dates", () => {
+    expect(parseFeedDate("")).toBeNull();
+    expect(parseFeedDate("not a date")).toBeNull();
   });
   it("stops starting articles only after 110 seconds", () => {
     expect(runTimeExceeded(1000, 111000)).toBe(false);
