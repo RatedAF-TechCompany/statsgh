@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, failureState, writeWithRetries } from "./retry.ts";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -85,7 +85,6 @@ function getSectionForCategory(categorySlug: string): string {
 // ============================================
 const DEFAULT_TIME_WINDOW_HOURS = 72; // V3.0: Widened to 72 hours (was 5)
 const BACKFILL_TIME_WINDOW_HOURS = 168; // 7 days for backfill
-const DEFAULT_MAX_ARTICLES_PER_RUN = 16; // V4.0: Increased to 16 (4 runs/hr × 16 = 64/hr)
 const AI_BATCH_SIZE = 16; // V4.0: Increased from 8 to 16 for 15-min scan cadence
 const DAILY_PUBLISH_LIMIT = 999; // No daily cap — publish everything that qualifies
 const MAX_PAGE_FETCHES_PER_RUN = 30; // V4.0: Increased from 20 to handle more sources
@@ -1869,6 +1868,7 @@ async function updateSourceHealth(
 }
 
 serve(async (req) => {
+  const runStartedAt = Date.now();
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -1887,6 +1887,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId: string | null = auth.userId;
+
+    const { error: recoveryError } = await supabase.from("newsroom_runs")
+      .update({ status: "failed", error_message: INTERRUPTED_RUN_ERROR })
+      .eq("status", "running")
+      .lt("started_at", interruptedRunCutoff(runStartedAt));
+    if (recoveryError) throw new Error(`Interrupted run recovery failed: ${recoveryError.message}`);
 
     const body = await req.json().catch(() => ({}));
     const triggerType = body.trigger_type || body.triggerType || "manual";
@@ -2146,6 +2152,7 @@ serve(async (req) => {
     // Both phases use the identical candidate, writing and publication code.
     for (const backlogPhase of [true, false]) {
       const phaseLimit = backlogPhase ? backlog.length : runLimit - backlog.length;
+      if (runTimeExceeded(runStartedAt)) break;
       if (phaseLimit <= 0 || nrUsage.halted) continue;
     // ============================================
     // FETCH RSS FEEDS FROM ALL SOURCES
@@ -2291,20 +2298,14 @@ serve(async (req) => {
     }
 
     for (const article of allArticles) {
+      if (runTimeExceeded(runStartedAt)) break;
       if (article._newsroomRecord) {
         const row = article._newsroomRecord;
         if (row.attempts >= MAX_ATTEMPTS) {
           await supabase.from("newsroom_articles").update(failureState(row.attempts, row.error_message || "Retry limit reached")).eq("id", row.id);
           continue;
         }
-        const priorAttempts = row.attempts || 0;
-        row.attempts = priorAttempts + 1;
-        const { data: claimed, error } = await supabase.from("newsroom_articles")
-          .update({ attempts: row.attempts }).eq("id", row.id)
-          .eq("attempts", priorAttempts).in("processing_status", ["pending", "pending_ai"])
-          .select("id");
-        if (error) throw new Error(`Backlog attempt update failed: ${error.message}`);
-        if (!claimed?.length) continue;
+        // Claim/increment only when this row actually starts processing below.
         attemptedBacklog.set(row.id, row);
       }
 
@@ -2880,7 +2881,7 @@ serve(async (req) => {
 
       let batchFilterResults = new Map<string, { pass: boolean; reason: string }>();
       
-      if (nonAutoPassItems.length > 0) {
+      if (nonAutoPassItems.length > 0 && !runTimeExceeded(runStartedAt)) {
         console.log(`\n=== Batch editorial pre-screen: ${nonAutoPassItems.length} headlines ===`);
         
         // Process in batches of 10
@@ -2901,11 +2902,26 @@ serve(async (req) => {
       for (let i = 0; i < aiBatchItems.length; i++) {
         const item = aiBatchItems[i];
         const newsroomRecord = insertedNews?.[i];
+        if (runTimeExceeded(runStartedAt)) {
+          const remainingIds = insertedNews.slice(i).map(row => row.id);
+          if (remainingIds.length) {
+            await supabase.from("newsroom_articles").update({ processing_status: "pending" })
+              .in("id", remainingIds).in("processing_status", ["pending", "pending_ai"]);
+          }
+          deferredCount += aiBatchItems.length - i;
+          console.log("Wall-clock guard: leaving remaining articles pending without incrementing attempts");
+          break;
+        }
         if (!newsroomRecord || nrUsage.halted) continue;
-        if (!backlogPhase) {
-          newsroomRecord.attempts = (newsroomRecord.attempts || 0) + 1;
-          const { error } = await supabase.from("newsroom_articles").update({ attempts: newsroomRecord.attempts }).eq("id", newsroomRecord.id);
+        {
+          const priorAttempts = newsroomRecord.attempts || 0;
+          const { data: claimed, error } = await supabase.from("newsroom_articles")
+            .update({ attempts: priorAttempts + 1 }).eq("id", newsroomRecord.id)
+            .eq("attempts", priorAttempts).in("processing_status", ["pending", "pending_ai"])
+            .select("id");
           if (error) throw new Error(`Attempt update failed: ${error.message}`);
+          if (!claimed?.length) continue;
+          newsroomRecord.attempts = priorAttempts + 1;
         }
 
         // ============================================
@@ -3289,6 +3305,10 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           }
 
           console.log(`✅ PUBLISHED: "${generated.headline.substring(0, 60)}..." (id: ${newArticle.id})`);
+          publishedCount++;
+          const { error: progressError } = await supabase.from("newsroom_runs")
+            .update({ articles_created: publishedCount }).eq("id", run.id);
+          if (progressError) console.error(`Publication accounting failed: ${progressError.message}`);
 
           // Bind the canonical event to its first article.
           await supabase.from("news_events")
@@ -3328,8 +3348,6 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             generated_article_id: newArticle.id,
             error_message: null,
           }).eq("id", newsroomRecord.id);
-
-          publishedCount++;
 
           // 8. Trigger indicator extraction (fire-and-forget)
           try {
