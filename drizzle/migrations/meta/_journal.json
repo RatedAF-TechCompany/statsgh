@@ -211,6 +211,13 @@
       "when": 1791557332931,
       "tag": "0029_statsgh_x_style_v3",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792785356964,
+      "tag": "0030_restore_newsroom_statuses_and_authenticated_trigger",
+      "breakpoints": true
     }
   ]
 }

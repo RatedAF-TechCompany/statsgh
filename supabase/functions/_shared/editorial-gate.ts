@@ -84,28 +84,30 @@ const hasRe = (t: string, re: RegExp) => re.test(t);
 // Terms that make a story sports FULL STOP. No monetary exception applies.
 const SPORTS_HARD_TERMS = [
   "football", "footballer", "premier league", "champions league", "europa league",
-  "la liga", "serie a", "bundesliga", "ligue 1", "chelsea", "arsenal",
+  "la liga", "serie a", "bundesliga", "ligue 1", "chelsea",
   "manchester united", "manchester city", "man utd", "liverpool fc", "tottenham",
-  "barcelona", "real madrid", "bayern munich", "paris saint-germain", "psg",
+  "fc barcelona", "arsenal fc", "real madrid", "bayern munich", "paris saint-germain", "psg",
   "juventus", "inter milan", "ac milan", "hearts of oak", "asante kotoko",
   "black stars", "black queens", "black satellites", "ghana premier league",
-  "transfer fee", "transfer window", "transfer deadline", "signs for",
-  "sign for", "signing fee", "loan deal", "free transfer", "release clause",
-  "goalkeeper", "midfielder", "striker", "centre-back", "center-back",
-  "left-back", "right-back", "winger", "defender for", "squad",
-  "afcon", "world cup", "fifa", "uefa", "caf ", "nba", "nfl", "wta", "atp tour",
+  "transfer fee", "transfer window", "transfer deadline",
+  "signing fee", "loan deal", "free transfer", "release clause",
+  "goalkeeper", "midfielder", "centre-back", "center-back",
+  "left-back", "right-back",
+  "afcon", "world cup", "fifa", "uefa", "caf champions league", "caf confederation cup", "caf awards", "nba", "nfl", "wta", "atp tour",
   "olympics", "commonwealth games", "boxing bout", "heavyweight title",
-  "match result", "full-time score", "kick-off", "kickoff", "penalty shootout",
-  "league table", "fixtures", "matchday", "man of the match", "hat-trick",
+  "match result", "full-time score", "penalty shootout",
+  "league table", "matchday", "man of the match", "hat-trick",
   "cup final", "quarter-final", "semi-final", "athletics championship",
-  "cricket", "rugby", "tennis", "basketball game", "sports betting",
-  "betting odds", "player valuation", "head coach", "club manager",
+  "cricket", "rugby", "tennis", "basketball game",
+  "player valuation", "club manager",
 ];
 
 // Softer sports words: allowed ONLY when the subject is Ghana public money.
 const SPORTS_SOFT_TERMS = [
   "sport", "sports", "stadium", "tournament", "athlete", "sporting",
   "national team", "sports ministry",
+  "squad", "fixtures", "striker", "winger", "defender for", "signs for", "sign for",
+  "kick-off", "kickoff", "barcelona", "arsenal", "head coach", "sports betting", "betting odds",
 ];
 
 // Public-finance framing that can rescue a sports-adjacent story.
@@ -342,11 +344,22 @@ export function isExcludedTopic(a: StoryLike): ExclusionResult {
       reason: `hard sports term: "${hardSport}" (a transfer fee is not a StatsGH statistic)`,
     };
   }
-  const softSport = has(sportsHead, SPORTS_SOFT_TERMS);
+  const sportsTitle = (a.title || "").toLowerCase();
+  // Generic subject words in feed boilerplate do not turn music or construction into sport.
+  // Police squads and government signings are not sports subjects either.
+  const softSport = SPORTS_SOFT_TERMS.find(term => {
+    if (["sport", "sports", "stadium", "tournament"].includes(term)) return matches(sportsTitle, term);
+    if (["squad", "signs for", "sign for", "fixtures", "kick-off", "kickoff"].includes(term)) {
+      return matches(sportsHead, term) && /\b(sport|sports|team|club|player|coach|striker|winger|arsenal|barcelona)\b/.test(sportsTitle);
+    }
+    return matches(sportsHead, term);
+  });
   if (softSport) {
     // The very limited exception: Ghana public expenditure where sport is incidental.
-    const publicMoney = hasRe(t, PUBLIC_MONEY_RE) && hasRe(t, GHANA_MONEY_RE) &&
-      hasMaterialNumber(a) && isGhanaCentral(a).central;
+    const sportsTaxRevenue = /\b(gra|ghana revenue authority)\b.*\b(collects?|tax|revenue)\b/.test(sportsTitle);
+    const publicMoney = (hasRe(t, PUBLIC_MONEY_RE) || sportsTaxRevenue) &&
+      (hasRe(t, GHANA_MONEY_RE) || /(?:gh¢|gh₵|ghs)\s*\d/.test(t)) &&
+      hasMaterialNumber(a) && (isGhanaCentral(a).central || sportsTaxRevenue);
     if (!publicMoney) {
       return {
         excluded: true,

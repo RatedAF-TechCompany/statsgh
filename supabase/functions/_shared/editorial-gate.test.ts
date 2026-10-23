@@ -16,6 +16,18 @@ import {
 const s = (title: string, summary = "", body = "") => ({ title, summary, body });
 
 describe("RULE 1 — absolute sports ban", () => {
+  it.each([
+    "Police anti-robbery squad seizes GH¢2m",
+    "Govt signs for $500m Eurobond buyback",
+    "GRA collects GH¢120m sports betting tax in Q3",
+    "Stonebwoy announces date for 2026 BHIM Festival",
+    "Kumasi is number one – Sarkodie reveals biggest music market",
+  ])("does not misclassify %s as sport", title => {
+    expect(isExcludedTopic(s(title, "Related coverage: sports stadium tournament.")).code).not.toBe("REJECT_SPORTS");
+  });
+  it.each(["Black Stars coach fee", "Chelsea signs striker"])("still rejects %s", title => {
+    expect(isExcludedTopic(s(title)).code).toBe("REJECT_SPORTS");
+  });
   it("ignores soft sports terms in footer/body content", () => {
     expect(isExcludedTopic(s("Ghana inflation falls to 11.2%", "GSS releases consumer price data.", "Related links: sport sports stadium tournament")).excluded).toBe(false);
   });
@@ -24,8 +36,8 @@ describe("RULE 1 — absolute sports ban", () => {
     expect(isExcludedTopic(s("Ghana inflation falls to 11.2%", "GSS releases consumer price data.", "Related links: football Arsenal Premier League")).excluded).toBe(false);
   });
 
-  it("still rejects whole-word sports subjects in the RSS summary", () => {
-    expect(isExcludedTopic(s("Ghana event opens today", "A sports tournament opens in Accra.")).code).toBe("REJECT_SPORTS");
+  it("requires generic sports subjects in the headline but keeps hard summary terms", () => {
+    expect(isExcludedTopic(s("Ghana event opens today", "A sports tournament opens in Accra.")).code).not.toBe("REJECT_SPORTS");
     expect(isExcludedTopic(s("Ghana event opens today", "Arsenal football coverage.")).code).toBe("REJECT_SPORTS");
   });
 
@@ -204,7 +216,8 @@ describe("final safety nets", () => {
   });
 
   it("blocks publication of an already-claimed event", () => {
-    const fp = finalEditorialValidator(good).fingerprint!;
+    const fp = finalEditorialValidator(good).fingerprint;
+    if (!fp) throw new Error("Expected qualifying event fingerprint");
     const r = finalEditorialValidator(good, { knownFingerprints: new Set([fp]) });
     expect(r.ok).toBe(false);
     expect(r.code).toBe("REJECT_DUPLICATE_EVENT");
@@ -217,7 +230,8 @@ describe("final safety nets", () => {
   });
 
   it("blocks tweeting an event already tweeted", () => {
-    const fp = finalTweetValidator(good).fingerprint!;
+    const fp = finalTweetValidator(good).fingerprint;
+    if (!fp) throw new Error("Expected qualifying event fingerprint");
     expect(finalTweetValidator(good, { tweetedFingerprints: new Set([fp]) }).code)
       .toBe("REJECT_DUPLICATE_EVENT");
   });

@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries } from "./retry.ts";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -476,7 +476,7 @@ const REJECTION_CODES = {
 } as const;
 
 // V5.0: Maximum age (in minutes) of source pubDate for an article to be considered fresh
-const FRESHNESS_MAX_AGE_MINUTES = 180; // 3 hours
+// Freshness limits are shared with retry-policy tests (6h discovery/publish, 12h queued).
 // Reject items whose pubDate is in the future by more than this (clock skew tolerance)
 const FRESHNESS_FUTURE_TOLERANCE_MINUTES = 60; // 1 hour
 
@@ -1422,22 +1422,26 @@ function parseRssXml(xml: string, sourceName: string): Array<{
     source_name: string;
   }> = [];
 
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+  const itemRegex = /<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let match;
 
   while ((match = itemRegex.exec(xml)) !== null) {
-    const itemContent = match[1];
+    const itemContent = match[2];
     
     const titleMatch = itemContent.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
     const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
     
     const linkMatch = itemContent.match(/<link[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
-    const link = linkMatch ? linkMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
+    const atomLinks = [...itemContent.matchAll(/<link\b([^>]*?)\/?>(?:<\/link>)?/gi)];
+    const atomLink = atomLinks.find(m => !/\brel=["'](?:self|enclosure)["']/i.test(m[1]));
+    const href = atomLink?.[1].match(/\bhref=["']([^"']+)["']/i)?.[1];
+    const link = href || (linkMatch ? linkMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "");
     
     const pubDateMatch = itemContent.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
-    const pubDate = pubDateMatch ? pubDateMatch[1].trim() : "";
+    const fallbackDate = itemContent.match(/<(dc:date|published|updated)\b[^>]*>([\s\S]*?)<\/\1>/i);
+    const pubDate = (pubDateMatch?.[1] || fallbackDate?.[2] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
     
-    const descMatch = itemContent.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+    const descMatch = itemContent.match(/<(?:description|summary|content)\b[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/(?:description|summary|content)>/i);
     let description = descMatch ? descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : "";
     description = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     
@@ -1895,7 +1899,7 @@ serve(async (req) => {
     if (recoveryError) throw new Error(`Interrupted run recovery failed: ${recoveryError.message}`);
 
     const body = await req.json().catch(() => ({}));
-    const triggerType = body.trigger_type || body.triggerType || "manual";
+    const triggerType = inferTriggerType(body, auth.via);
     const perSourceLimit = Number(body.perSourceLimit ?? body.per_source_limit ?? 5);
     const isBackfill = triggerType === "fast_publish_backfill";
     const isReprocess = body.reprocessPending === true || body.reprocess_pending === true;
@@ -1913,7 +1917,7 @@ serve(async (req) => {
     // ============================================
     const { data: dbSources } = await supabase
       .from("newsroom_sources")
-      .select("name, rss_url, priority_tier, last_success_at, is_active, is_primary_data")
+      .select("name, rss_url, priority_tier, last_success_at, is_active, is_primary_data, trust_pub_date")
       .eq("is_active", true)
       .order("last_success_at", { ascending: true, nullsFirst: true });
 
@@ -2148,10 +2152,104 @@ serve(async (req) => {
       sourceTierMap.set(source.name, source.priority_tier || 5);
       sourcePrimaryMap.set(source.name, !!source.is_primary_data);
     }
+    let discoveryRan = false;
+    let sourcesFetched = 0;
+    let writingAttempts = 0;
+    const discoveredArticles: Array<{ title: string; link: string; pubDate: string; description: string; source_name: string; is_opinion?: boolean }> = [];
+    // Fetch discovery first, even when backlog writing uses the whole run allowance.
+    const { error: discoveryError } = await supabase.from("newsroom_runs")
+      .update({ discovery_ran: true }).eq("id", run.id);
+    if (discoveryError) throw new Error(`Discovery accounting failed: ${discoveryError.message}`);
+    discoveryRan = true;
+    const sourcesToFetch = isBackfill
+      ? cappedSources.filter((s: any) => {
+          const domain = sourceNameToDomain.get(s.name) || "";
+          const isFast = FAST_PUBLISH_DOMAINS.has(domain);
+          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || domain.includes(targetSource.toLowerCase());
+          return isFast && matchesTarget;
+        })
+      : cappedSources;
+
+    // V4.0: PARALLEL RSS FETCHING — batch by tier for maximum speed
+    const tier12Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) <= 2);
+    const tier36Sources = sourcesToFetch.filter((s: any) => { const t = s.priority_tier || 5; return t >= 3 && t <= 6; });
+    const tier710Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) >= 7);
+
+    const fetchBatch = async (batch: any[]) => {
+      const results = await Promise.allSettled(batch.map(async (source: any) => {
+        const xml = await fetchRssFeed(source.rss_url);
+        if (xml) {
+          sourcesFetched++;
+          const items = parseRssXml(xml, source.name);
+          await updateSourceHealth(supabase, source.name, true, items.length);
+          return items;
+        } else {
+          await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
+          return [];
+        }
+      }));
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    };
+
+    console.log(`Fetching RSS in parallel: Tier 1-2 (${tier12Sources.length}), Tier 3-6 (${tier36Sources.length}), Tier 7-10 (${tier710Sources.length})`);
+    const [batch1, batch2, batch3] = await Promise.all([
+      fetchBatch(tier12Sources),
+      fetchBatch(tier36Sources),
+      fetchBatch(tier710Sources),
+    ]);
+    discoveredArticles.push(...batch1, ...batch2, ...batch3);
+
+    console.log(`Total RSS items fetched: ${discoveredArticles.length}`);
+
+    // ============================================
+    // FETCH GHANAWEB VIA HTML SCRAPING
+    // ============================================
+    const shouldScrapeGhanaWeb = !targetSource || 
+      targetSource.toLowerCase().includes("ghanaweb") || 
+      targetSource.toLowerCase().includes("ghana web");
+    
+    if (shouldScrapeGhanaWeb) {
+      console.log("Scraping GhanaWeb Business page...");
+      const ghanaWebArticles = await scrapeGhanaWebBusiness();
+      discoveredArticles.push(...ghanaWebArticles);
+      
+      if (ghanaWebArticles.length > 0) {
+        await updateSourceHealth(supabase, "GhanaWeb Business", true, ghanaWebArticles.length);
+      } else {
+        await updateSourceHealth(supabase, "GhanaWeb Business", false, 0, "HTML scrape returned no articles");
+      }
+
+      console.log("Scraping GhanaWeb Opinions page...");
+      const ghanaWebOpinions = await scrapeGhanaWebOpinions();
+      discoveredArticles.push(...ghanaWebOpinions);
+      
+      if (ghanaWebOpinions.length > 0) {
+        await updateSourceHealth(supabase, "GhanaWeb Opinions", true, ghanaWebOpinions.length);
+      } else {
+        await updateSourceHealth(supabase, "GhanaWeb Opinions", false, 0, "HTML scrape returned no articles");
+      }
+    }
+
+
+    // One bulk lookup for this run's feed URLs; page the result to avoid the API row cap.
+    const seenCandidateUrls = new Set<string>();
+    const feedUrls = [...new Set(discoveredArticles.map(article => article.link))];
+    // Keep requests below gateway URL limits and use the indexed source_url filter.
+    for (let batchStart = 0; batchStart < feedUrls.length; batchStart += 30) {
+      const urlBatch = feedUrls.slice(batchStart, batchStart + 30);
+      for (let offset = 0; ; offset += 1000) {
+        const { data: seenRows, error: seenError } = await supabase.from("newsroom_candidates")
+          .select("source_url").gte("created_at", hoursAgo(72).toISOString())
+          .in("source_url", urlBatch).order("source_url").order("id").range(offset, offset + 999);
+        if (seenError) throw new Error(`Seen candidate lookup failed: ${seenError.message}`);
+        for (const row of seenRows || []) seenCandidateUrls.add(row.source_url);
+        if ((seenRows || []).length < 1000) break;
+      }
+    }
     const attemptedBacklog = new Map<string, any>();
     // Both phases use the identical candidate, writing and publication code.
     for (const backlogPhase of [true, false]) {
-      const phaseLimit = backlogPhase ? backlog.length : runLimit - backlog.length;
+      const phaseLimit = phaseCandidateLimit(backlogPhase, backlog.length, runLimit, attemptedBacklog.size);
       if (runTimeExceeded(runStartedAt)) break;
       if (phaseLimit <= 0 || nrUsage.halted) continue;
     // ============================================
@@ -2171,7 +2269,7 @@ serve(async (req) => {
     }> = [];
 
     if (backlogPhase) {
-      allArticles.push(...backlog.map((row: any) => ({
+      allArticles.push(...backlog.slice(0, phaseLimit).map((row: any) => ({
         title: row.original_headline, description: row.original_summary || "",
         link: row.source_url, source_name: row.source_name,
         pubDate: row.source_published_at || row.published_at || "",
@@ -2179,73 +2277,7 @@ serve(async (req) => {
       })));
     } else {
 
-    const sourcesToFetch = isBackfill
-      ? cappedSources.filter((s: any) => {
-          const domain = sourceNameToDomain.get(s.name) || "";
-          const isFast = FAST_PUBLISH_DOMAINS.has(domain);
-          const matchesTarget = !targetSource || s.name.toLowerCase().includes(targetSource.toLowerCase()) || domain.includes(targetSource.toLowerCase());
-          return isFast && matchesTarget;
-        })
-      : cappedSources;
-
-    // V4.0: PARALLEL RSS FETCHING — batch by tier for maximum speed
-    const tier12Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) <= 2);
-    const tier36Sources = sourcesToFetch.filter((s: any) => { const t = s.priority_tier || 5; return t >= 3 && t <= 6; });
-    const tier710Sources = sourcesToFetch.filter((s: any) => (s.priority_tier || 5) >= 7);
-
-    const fetchBatch = async (batch: any[]) => {
-      const results = await Promise.allSettled(batch.map(async (source: any) => {
-        const xml = await fetchRssFeed(source.rss_url);
-        if (xml) {
-          const items = parseRssXml(xml, source.name);
-          await updateSourceHealth(supabase, source.name, true, items.length);
-          return items;
-        } else {
-          await updateSourceHealth(supabase, source.name, false, 0, "RSS fetch failed");
-          return [];
-        }
-      }));
-      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-    };
-
-    console.log(`Fetching RSS in parallel: Tier 1-2 (${tier12Sources.length}), Tier 3-6 (${tier36Sources.length}), Tier 7-10 (${tier710Sources.length})`);
-    const [batch1, batch2, batch3] = await Promise.all([
-      fetchBatch(tier12Sources),
-      fetchBatch(tier36Sources),
-      fetchBatch(tier710Sources),
-    ]);
-    allArticles.push(...batch1, ...batch2, ...batch3);
-
-    console.log(`Total RSS items fetched: ${allArticles.length}`);
-
-    // ============================================
-    // FETCH GHANAWEB VIA HTML SCRAPING
-    // ============================================
-    const shouldScrapeGhanaWeb = !targetSource || 
-      targetSource.toLowerCase().includes("ghanaweb") || 
-      targetSource.toLowerCase().includes("ghana web");
-    
-    if (shouldScrapeGhanaWeb) {
-      console.log("Scraping GhanaWeb Business page...");
-      const ghanaWebArticles = await scrapeGhanaWebBusiness();
-      allArticles.push(...ghanaWebArticles);
-      
-      if (ghanaWebArticles.length > 0) {
-        await updateSourceHealth(supabase, "GhanaWeb Business", true, ghanaWebArticles.length);
-      } else {
-        await updateSourceHealth(supabase, "GhanaWeb Business", false, 0, "HTML scrape returned no articles");
-      }
-
-      console.log("Scraping GhanaWeb Opinions page...");
-      const ghanaWebOpinions = await scrapeGhanaWebOpinions();
-      allArticles.push(...ghanaWebOpinions);
-      
-      if (ghanaWebOpinions.length > 0) {
-        await updateSourceHealth(supabase, "GhanaWeb Opinions", true, ghanaWebOpinions.length);
-      } else {
-        await updateSourceHealth(supabase, "GhanaWeb Opinions", false, 0, "HTML scrape returned no articles");
-      }
-    }
+      allArticles.push(...discoveredArticles);
 
     } // discovery only; backlog has already completed the shared path.
     console.log(`Total items after scraping: ${allArticles.length}`);
@@ -2299,6 +2331,10 @@ serve(async (req) => {
 
     for (const article of allArticles) {
       if (runTimeExceeded(runStartedAt)) break;
+      if (!article._newsroomRecord) {
+        if (seenCandidateUrls.has(article.link)) continue;
+        seenCandidateUrls.add(article.link);
+      }
       if (article._newsroomRecord) {
         const row = article._newsroomRecord;
         if (row.attempts >= MAX_ATTEMPTS) {
@@ -2312,19 +2348,12 @@ serve(async (req) => {
       // ============================================
       // GATE 1 (V5.0): EARLIEST FRESHNESS CHECK — runs BEFORE any other filter.
       // An article is fresh only if its source RSS pubDate is within
-      // FRESHNESS_MAX_AGE_MINUTES (180 min / 3h) of now. Items older than that
+      // 6h for discovery or 12h for previously queued work of now. Items older than that
       // are permanently rejected here — never published, never tweeted, never
       // queued as pending_ai.
       // ============================================
       const trustPubDate = sourceTrustMap.get(article.source_name) !== false;
-      let parsedPubDate: Date | null = null;
-      try {
-        parsedPubDate = new Date(article.pubDate);
-        if (isNaN(parsedPubDate.getTime())) parsedPubDate = null;
-      } catch {
-        parsedPubDate = null;
-      }
-
+      let parsedPubDate = parseFeedDate(article.pubDate);
       if (!parsedPubDate) {
         if (trustPubDate) {
           invalidPubDateCount++;
@@ -2350,11 +2379,12 @@ serve(async (req) => {
       }
 
       // Hard freshness gate
-      if (ageMinutes > FRESHNESS_MAX_AGE_MINUTES) {
+      const freshnessLimit = article._newsroomRecord ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
+      if (ageMinutes > freshnessLimit) {
         staleRejectedCount++;
         console.log(`REJECTED_STALE: "${(article.title || "").substring(0, 60)}" — ${Math.round(ageMinutes)} min old (source: ${article.source_name})`);
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.REJECTED_STALE,
-          `Source pubDate ${Math.round(ageMinutes)} min old (max ${FRESHNESS_MAX_AGE_MINUTES} min)`,
+          `Source pubDate ${Math.round(ageMinutes)} min old (max ${freshnessLimit} min)`,
           { pubDateParsed: parsedPubDate });
         continue;
       }
@@ -2416,14 +2446,7 @@ serve(async (req) => {
       }
 
       // Parse publication date
-      let pubDate: Date | null = null;
-      try {
-        pubDate = new Date(article.pubDate);
-        if (isNaN(pubDate.getTime())) pubDate = null;
-      } catch {
-        pubDate = null;
-      }
-
+      const pubDate = parseFeedDate(article.pubDate) || (!trustPubDate ? parsedPubDate : null);
       if (!pubDate) {
         await logCandidate(supabase, run.id, article, "rejected", REJECTION_CODES.PUBDATE_PARSE_FAILED, 
           `Could not parse date: ${article.pubDate}`, { pubDateParsed: null });
@@ -2836,14 +2859,15 @@ serve(async (req) => {
     // ============================================
     // BATCH CAP: Only process AI_BATCH_SIZE articles, mark overflow as pending_ai
     // ============================================
-    const aiBatchItems = toProcess.slice(0, AI_BATCH_SIZE);
-    const overflowItems = toProcess.slice(AI_BATCH_SIZE);
-    processedCount += backlogPhase ? backlog.length : aiBatchItems.length;
+    const writingSlots = Math.min(AI_BATCH_SIZE, Math.max(0, runLimit - writingAttempts));
+    const aiBatchItems = toProcess.slice(0, writingSlots);
+    const overflowItems = toProcess.slice(writingSlots);
+    processedCount += backlogPhase ? attemptedBacklog.size : aiBatchItems.length;
     deferredCount += overflowItems.length;
 
     if (overflowItems.length > 0) {
       console.log(`⏳ ${overflowItems.length} articles exceed batch cap — marking as pending_ai for next run`);
-      for (let i = AI_BATCH_SIZE; i < toProcess.length; i++) {
+      for (let i = writingSlots; i < toProcess.length; i++) {
         const newsroomRecord = insertedNews?.[i];
         if (newsroomRecord) {
           await supabase.from("newsroom_articles").update({
@@ -2922,6 +2946,7 @@ serve(async (req) => {
           if (error) throw new Error(`Attempt update failed: ${error.message}`);
           if (!claimed?.length) continue;
           newsroomRecord.attempts = priorAttempts + 1;
+          writingAttempts++;
         }
 
         // ============================================
@@ -2930,13 +2955,17 @@ serve(async (req) => {
         // but are now stale by the time AI processes them.
         // ============================================
         {
-          const ageMin = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
-          if (ageMin > FRESHNESS_MAX_AGE_MINUTES) {
+          const queuedDate = parseFeedDate(newsroomRecord.source_published_at || item.pubDate) || item._pubDateParsed;
+          const ageMin = (Date.now() - queuedDate.getTime()) / (1000 * 60);
+          const aiFreshnessLimit = item._newsroomRecord || newsroomRecord.processing_status === "pending_ai"
+            ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
+          if (ageMin > aiFreshnessLimit) {
             console.log(`STALE_BEFORE_AI: "${item.title.substring(0, 60)}" — ${Math.round(ageMin)} min old`);
-            await supabase.from("newsroom_articles").update({
+            const { error: staleError } = await supabase.from("newsroom_articles").update({
               processing_status: "rejected",
               error_message: `STALE_BEFORE_AI: source ${Math.round(ageMin)} min old`,
             }).eq("id", newsroomRecord.id);
+            if (staleError) console.error("STALE_BEFORE_AI status update failed:", staleError.message);
             continue;
           }
         }
@@ -3130,7 +3159,8 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           // inserting into articles. Last line of defence: never publish stale.
           // ============================================
           {
-            const ageMinPub = (Date.now() - item._pubDateParsed.getTime()) / (1000 * 60);
+            const publishDate = parseFeedDate(item.pubDate) || item._pubDateParsed;
+            const ageMinPub = (Date.now() - publishDate.getTime()) / (1000 * 60);
             if (ageMinPub > FRESHNESS_MAX_AGE_MINUTES) {
               console.log(`STALE_BEFORE_PUBLISH: "${item.title.substring(0, 60)}" — ${Math.round(ageMinPub)} min old`);
               await supabase.from("newsroom_articles").update({
@@ -3392,9 +3422,10 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
         if (!acceptedIds.has(row.id)) {
           // Candidate rejection (including freshness/dedupe) is terminal,
           // just as for discovery; do not resurrect editorial rejections.
-          await supabase.from("newsroom_articles").update({
+          const { error: rejectionError } = await supabase.from("newsroom_articles").update({
             processing_status: "rejected", error_message: "Candidate validation/deduplication rejected backlog item",
           }).eq("id", row.id);
+          if (rejectionError) console.error("Backlog rejection update failed:", rejectionError.message);
         }
       }
     }
@@ -3417,7 +3448,11 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
       json_parse_failures: nrUsage.json_parse_failures ?? 0,
       metadata: { 
         method: "rss-feeds-v3-optimized", 
-        sources_checked: cappedSources.length, 
+        sources_checked: cappedSources.length,
+        sources_fetched: sourcesFetched,
+        discovery_ran: discoveryRan,
+        backlog_count: backlog.length,
+        writing_attempts: writingAttempts,
         time_window: timeWindowHours,
         version: "3.0",
         qualifying_number_rules: true,
