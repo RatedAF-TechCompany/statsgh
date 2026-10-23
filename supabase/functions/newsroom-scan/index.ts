@@ -2233,12 +2233,11 @@ serve(async (req) => {
 
     // One bulk lookup for this run's feed URLs; page the result to avoid the API row cap.
     const seenCandidateUrls = new Set<string>();
-    const feedUrls = [...new Set(discoveredArticles.map(article => article.link))];
-    if (feedUrls.length) {
+    if (discoveredArticles.length) {
       for (let offset = 0; ; offset += 1000) {
         const { data: seenRows, error: seenError } = await supabase.from("newsroom_candidates")
           .select("source_url").gte("created_at", hoursAgo(72).toISOString())
-          .in("source_url", feedUrls).order("id").range(offset, offset + 999);
+          .order("id").range(offset, offset + 999);
         if (seenError) throw new Error(`Seen candidate lookup failed: ${seenError.message}`);
         for (const row of seenRows || []) seenCandidateUrls.add(row.source_url);
         if ((seenRows || []).length < 1000) break;
