@@ -2006,7 +2006,21 @@ serve(async (req) => {
 
     // ============================================
     // PHASE 0: recover accepted rows before spending time on discovery.
-    const runLimit = Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
+    // AI pacing: spread the daily StatsGH neuron cap across the UTC day so frequent
+    // sweeps never exhaust it early. Allowance = cap * (elapsed + 2h headroom) / 24h.
+    let paceBlocked = false;
+    try {
+      const cap = Number(Deno.env.get("AI_CAP_STATSGH") ?? 5500);
+      const now = new Date();
+      const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
+      const allowance = cap * Math.min(1, (mins + 120) / 1440);
+      const { data: u } = await supabase.from("ai_proxy_usage").select("neurons")
+        .eq("day", now.toISOString().slice(0, 10)).eq("bucket", "statsgh").maybeSingle();
+      const used = Number(u?.neurons ?? 0);
+      paceBlocked = used >= allowance;
+      console.log(`AI pacing: used=${used.toFixed(0)} allowance=${allowance.toFixed(0)} cap=${cap} blocked=${paceBlocked}`);
+    } catch (e) { console.log(`AI pacing check failed (${(e as Error).message}); proceeding`); }
+    const runLimit = paceBlocked ? 0 : Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
     const { data: backlogRows, error: backlogError } = await supabase
       .from("newsroom_articles")
       .select("*")

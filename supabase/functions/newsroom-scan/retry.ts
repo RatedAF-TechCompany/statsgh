@@ -2,7 +2,7 @@ export const BACKLOG_LIMIT = 3;
 export const BACKLOG_HOURS = 12;
 export const MAX_ATTEMPTS = 3;
 export const DEFAULT_MAX_ARTICLES_PER_RUN = 3;
-export const RUN_WALL_CLOCK_MS = 110_000;
+export const RUN_WALL_CLOCK_MS = 80_000;
 export const INTERRUPTED_RUN_ERROR = "Run did not complete (likely edge function timeout)";
 
 export const DISCOVERY_MIN_SLOTS = 8;
