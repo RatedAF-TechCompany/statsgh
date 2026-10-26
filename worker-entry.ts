@@ -17,6 +17,11 @@ export default {
       url.port = "";
       return new Response(null, { status: 301, headers: { Location: url.toString(), "Cache-Control": "public, max-age=3600" } });
     }
+    // Single organisation byline: retired author profiles 301 to the newsroom page.
+    const m = url.pathname.match(/^\/authors\/([^/]+)\/?$/);
+    if (m && m[1] !== "statsgh-newsroom") {
+      return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/statsgh-newsroom", "Cache-Control": "public, max-age=3600" } });
+    }
     return (handler as any).fetch(request, env, ctx);
   },
 };

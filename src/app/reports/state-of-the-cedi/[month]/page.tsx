@@ -39,7 +39,7 @@ export default async function CediReportPage({ params }: P) {
       <p className="font-ui text-xs mb-2"><Link href="/reports" className="text-[#E3120B]">← Reports</Link></p>
       <p className="kicker">State of the Cedi</p>
       <h1 className="font-headline text-[32px] leading-tight text-[#121212]">{monthLabel(month)}{!d.complete && <span className="text-[18px] text-[#5B5B5B]"> — month in progress</span>}</h1>
-      <p className="font-ui text-xs text-[#5B5B5B] mt-1">By <Link href="/authors/data-desk" className="underline">StatsGH Data Desk</Link> · source: <a className="underline" href={d.source_url}>{d.source}</a> · compiled {fmtDate(r.compiled_at)}</p>
+      <p className="font-ui text-xs text-[#5B5B5B] mt-1">By <Link href="/authors/statsgh-newsroom" className="underline">StatsGH Newsroom</Link> · source: <a className="underline" href={d.source_url}>{d.source}</a> · compiled {fmtDate(r.compiled_at)}</p>
       <div className="my-4"><ShareBar url={url} title={`State of the Cedi: ${monthLabel(month)}`} /></div>
       {sentence && <p className="bg-[#FAF7F2] border-l-4 border-[#E3120B] p-4 mb-6 font-serif text-[17px] leading-[1.7]">{sentence}</p>}
       <MiniChart data={(usd.series || []).map((p: [string, number]) => ({ x: p[0], y: Number(p[1]) }))} label="GH₵ per US dollar, Bank of Ghana interbank mid-rate (higher = weaker cedi)" height={280} />

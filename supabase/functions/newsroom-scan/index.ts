@@ -3302,7 +3302,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
               body: generated.body_html,
-              author_name: assignJournalist(categorySlug, uniqueSlug),
+              author_name: "StatsGH Newsroom", // single organisation byline
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),

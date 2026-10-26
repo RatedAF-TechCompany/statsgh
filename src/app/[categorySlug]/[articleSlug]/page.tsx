@@ -98,7 +98,7 @@ export async function generateMetadata({
       ],
       publishedTime: article.published_at || undefined,
       modifiedTime: article.updated_at || undefined,
-      authors: article.author_name ? [article.author_name] : undefined,
+      authors: ["StatsGH Newsroom"],
       section: article.section || undefined,
     },
     twitter: {
@@ -112,7 +112,7 @@ export async function generateMetadata({
     other: {
       "article:published_time": article.published_at || "",
       "article:modified_time": article.updated_at || "",
-      "article:author": article.author_name || "",
+      "article:author": "https://www.statsgh.com/authors/statsgh-newsroom",
       "article:section": article.section || "",
       news_keywords: keywords,
       "original-source": canonicalUrl,
@@ -140,9 +140,9 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     datePublished: article.published_at,
     dateModified: article.updated_at || article.published_at,
     author: {
-      "@type": "Person",
-      name: article.author_name || "StatsGH Editorial",
-      url: authorSlug ? `${baseUrl}/authors/${authorSlug}` : `${baseUrl}/about/team`,
+      "@type": "Organization",
+      name: "StatsGH Newsroom",
+      url: `${baseUrl}/authors/statsgh-newsroom`,
     },
     publisher: {
       "@type": "NewsMediaOrganization",
@@ -184,12 +184,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     permanentRedirect(`/${article.category_slug}/${article.slug}`);
   }
 
-  let authorSlug: string | null = null;
-  if (article.author_name) {
-    const { data: au } = await createReadOnlyServerClient().from("authors").select("slug").contains("byline_aliases", [article.author_name]).limit(1);
-    authorSlug = au?.[0]?.slug ?? null;
-  }
-  const jsonLd = generateJsonLd(article, authorSlug);
+  const jsonLd = generateJsonLd(article, "statsgh-newsroom");
 
   return (
     <>

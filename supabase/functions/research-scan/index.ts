@@ -814,11 +814,7 @@ Return ONLY valid JSON:
         const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         const wordCount = bodyText.split(/\s+/).length;
 
-        let authorName = generated.author_name || "StatsGH Newsroom";
-        if (item.authors && item.authors !== "Not specified") {
-          // Credit original researchers
-          authorName = `StatsGH Newsroom (Research: ${item.authors.substring(0, 100)})`;
-        }
+        const authorName = "StatsGH Newsroom"; // single organisation byline
 
         // Generate AI hero image
         let heroImageUrl: string | null = null;

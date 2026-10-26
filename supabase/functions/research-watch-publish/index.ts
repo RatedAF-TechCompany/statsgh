@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
 
   const row: Record<string, unknown> = {
     title: b.title.trim(), slug, summary: b.summary.trim(), subtitle: b.subtitle ?? null,
-    seo_description: b.seo_description ?? null, author_name: b.author_name?.trim() || "StatsGH Newsroom",
+    seo_description: b.seo_description ?? null, author_name: "StatsGH Newsroom",
     body, research_scope: scope, category_slug: "data-and-research", category_id: cat?.id ?? null,
     section: "research", tags, hero_image_url: null, image_source: b.image_source || "statsgh_generated",
     image_caption: b.image_caption ?? null, key_data: b.key_data ?? [], why_it_matters: b.why_it_matters ?? null,

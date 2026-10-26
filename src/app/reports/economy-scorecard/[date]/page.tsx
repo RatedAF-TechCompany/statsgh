@@ -57,14 +57,14 @@ export default async function ScorecardPage({ params }: P) {
   const shown = rows.filter((x) => x.now);
   const summary = scorecardSummary(d);
   const url = `https://www.statsgh.com/reports/economy-scorecard/${date}`;
-  const ld = { "@context": "https://schema.org", "@type": "Report", name: `Ghana Economy Scorecard — week ending ${fmtDate(date)}`, url, datePublished: r.compiled_at, dateModified: r.compiled_at, author: { "@type": "Organization", name: "StatsGH Data Desk", url: "https://www.statsgh.com/authors/data-desk" }, publisher: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" } };
+  const ld = { "@context": "https://schema.org", "@type": "Report", name: `Ghana Economy Scorecard — week ending ${fmtDate(date)}`, url, datePublished: r.compiled_at, dateModified: r.compiled_at, author: { "@type": "Organization", name: "StatsGH Newsroom", url: "https://www.statsgh.com/authors/statsgh-newsroom" }, publisher: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" } };
   return (
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       <p className="font-ui text-xs mb-2"><Link href="/reports" className="text-[#E3120B]">← Reports</Link></p>
       <p className="kicker">Ghana Economy Scorecard</p>
       <h1 className="font-headline text-[32px] leading-tight text-[#121212]">Week ending {fmtDate(date)}</h1>
-      <p className="font-ui text-xs text-[#5B5B5B] mt-1">By <Link href="/authors/data-desk" className="underline">StatsGH Data Desk</Link> · compiled automatically from stored data on {fmtDate(r.compiled_at)}</p>
+      <p className="font-ui text-xs text-[#5B5B5B] mt-1">By <Link href="/authors/statsgh-newsroom" className="underline">StatsGH Newsroom</Link> · compiled automatically from stored data on {fmtDate(r.compiled_at)}</p>
       <div className="my-4"><ShareBar url={url} title={`Ghana Economy Scorecard, week ending ${fmtDate(date)}`} /></div>
       {summary.length > 0 && <div className="bg-[#FAF7F2] border-l-4 border-[#E3120B] p-4 mb-6 font-serif text-[17px] leading-[1.7] space-y-2">{summary.map((s) => <p key={s}>{s}</p>)}</div>}
       <div className="overflow-x-auto">

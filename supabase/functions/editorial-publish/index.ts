@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
     ["image_caption", "hero_image_caption"], ["image_credit", "hero_image_credit"], ["tags", "tags"],
   ];
   for (const [k, col] of map) if (has(b, k)) row[col] = b[k];
+  if (has(b, "author_name") || !isUpdate) row.author_name = "StatsGH Newsroom"; // single organisation byline
   if (b._category_id) row.category_id = b._category_id;
   if (has(b, "body")) row.word_count = String(b.body).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
 
