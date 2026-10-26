@@ -119,3 +119,9 @@ verify_jwt = false
 
 [functions.editorial-publish]
 verify_jwt = false
+
+[functions.ai-proxy]
+verify_jwt = false
+
+[functions.bog-rates-scrape]
+verify_jwt = false

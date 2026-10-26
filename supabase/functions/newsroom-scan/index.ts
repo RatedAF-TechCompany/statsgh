@@ -1879,10 +1879,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("AI_API_KEY");
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY or AI_API_KEY is not configured");
     
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const openai = new OpenAI({ apiKey: openaiApiKey, ...(Deno.env.get("OPENAI_API_KEY") ? {} : { baseURL: (Deno.env.get("AI_GATEWAY_URL") ?? "").replace(/\/chat\/completions$/, "") }) });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const auth = await authorizeCaller(req, supabase);
@@ -2880,7 +2880,7 @@ serve(async (req) => {
     // ============================================
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
-    const lovableApiKey = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
+    const lovableApiKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
       await supabase.from("newsroom_runs").update({
@@ -3108,7 +3108,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               await beforeModelCall();
               const result = await callGateway({
                 model: aiModel, messages: [
-                  { role: "system", content: "Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
+                  { role: "system", content: "The headline and the summary must each name Ghana or a Ghanaian place or institution explicitly (e.g. 'Ghana', 'Accra', 'Bank of Ghana'). The body must be at least 350 words. Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
                   { role: "user", content: aiPrompt },
                 ],
                 max_tokens, temperature: 0.3, json: true, usage: nrUsage,
@@ -3140,7 +3140,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
 
           // 7. Title quality gate — reject malformed titles
           const titleToCheck = generated.headline || "";
-          const MALFORMED_CHARS = /[@#$\\|^]/;
+          const MALFORMED_CHARS = /[@#\\|^]|\$(?!\d)/; // "$" allowed only as a currency sign before a number
           const FRONT_PAGES = /front\s*pages?:/i;
           // Only reject if >50% of words are ALL CAPS (allows acronyms like NPRA, GNPC, PIAC)
           const words = titleToCheck.split(/\s+/);

@@ -103,7 +103,7 @@ async function fetchWikimedia(query: string): Promise<{ url: string; creator: st
 // ---------- AI fallback ----------
 async function generateAiImage(prompt: string, supabase: any, slug: string): Promise<string | null> {
   try {
-    const key = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
+    const key = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!key) return null;
     const res = await timedFetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: "POST",

@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const LOVABLE = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
+  const LOVABLE = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
   if (!LOVABLE) return json({ error: "LOVABLE_API_KEY missing" }, 500);
 
   const { data: arts, error } = await sb.from("articles")

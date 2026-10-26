@@ -66,7 +66,7 @@ export interface CallGatewayResult {
 }
 
 export async function callGateway(opts: CallGatewayOpts): Promise<CallGatewayResult> {
-  const apiKey = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
+  const apiKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
   // Short-circuit: if a prior call this run halted on credits/rate-limit, do not

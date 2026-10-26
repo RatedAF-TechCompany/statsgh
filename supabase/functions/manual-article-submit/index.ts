@@ -222,10 +222,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("AI_API_KEY");
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY or AI_API_KEY is not configured");
     
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const openai = new OpenAI({ apiKey: openaiApiKey, ...(Deno.env.get("OPENAI_API_KEY") ? {} : { baseURL: (Deno.env.get("AI_GATEWAY_URL") ?? "").replace(/\/chat\/completions$/, "") }) });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verify user authentication
@@ -558,10 +558,10 @@ Return ONLY valid JSON.`;
     
     // PRIORITY 0: Known image overrides (curated authentic photos & institution logos)
     const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
-      "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-      "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+      "cheddar": "https://www.statsgh.com/images/cheddar-nana-kwame-bediako.jpeg",
+      "nana kwame bediako": "https://www.statsgh.com/images/cheddar-nana-kwame-bediako.jpeg",
+      "alfredo": "https://www.statsgh.com/images/analyst-alfredo.png",
+      "analyst alfredo": "https://www.statsgh.com/images/analyst-alfredo.png",
     };
     
     const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
