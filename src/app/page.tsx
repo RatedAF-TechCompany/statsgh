@@ -33,7 +33,7 @@ const jsonLd = [
     "@type": "Organization",
     name: "StatsGH",
     url: "https://www.statsgh.com",
-    logo: "https://www.statsgh.com/social/statsgh-og-1200x630.png",
+    logo: { "@type": "ImageObject", url: "https://www.statsgh.com/icon-512.png", width: 512, height: 512 },
     sameAs: ["https://twitter.com/StatsGH"],
   },
 ];
