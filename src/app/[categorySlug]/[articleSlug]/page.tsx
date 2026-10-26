@@ -123,17 +123,20 @@ export async function generateMetadata({
 // JSON-LD structured data for Google News
 function generateJsonLd(article: any, authorSlug?: string | null) {
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
-  const imageUrl =
-    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/social/statsgh-og-1200x630.png`;
+  // Per-article generated OG card (1200x630) is always available; hero image (if any) leads.
+  const ogImage = `${baseUrl}/og/article/${article.slug}`;
+  const heroUrl = makeAbsoluteUrl(article.hero_image_url);
+  const images = [
+    ...(heroUrl && heroUrl !== ogImage ? [{ "@type": "ImageObject", url: heroUrl }] : []),
+    { "@type": "ImageObject", url: ogImage, width: 1200, height: 630 },
+  ];
 
   return {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
     description: article.seo_description || article.summary,
-    image: imageUrl
-      ? { "@type": "ImageObject", url: imageUrl, width: 1200, height: 630 }
-      : undefined,
+    image: images,
     datePublished: article.published_at,
     dateModified: article.updated_at || article.published_at,
     author: {
@@ -147,9 +150,9 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
       url: baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}/social/statsgh-og-1200x630.png`,
-        width: 1200,
-        height: 630,
+        url: `${baseUrl}/icon-512.png`,
+        width: 512,
+        height: 512,
       },
       sameAs: ["https://twitter.com/StatsGH", "https://www.facebook.com/StatsGH"],
     },

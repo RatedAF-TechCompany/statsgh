@@ -71,6 +71,9 @@ const nextConfig = {
       { source: "/regulation-and-policy/nchiraa-yam-festival-shooting-two-killed-14-injured", destination: "/crime-justice/nchiraa-yam-festival-shooting-two-killed-14-injured", statusCode: 301 },
       { source: "/regulation-and-policy/nsa-director-general-suspended-world-cup-visa-probe", destination: "/crime-justice/nsa-director-general-suspended-world-cup-visa-probe", statusCode: 301 },
       { source: "/regulation-and-policy/tamale-three-children-found-dead-car-boot-murder-investigation", destination: "/crime-justice/tamale-three-children-found-dead-car-boot-murder-investigation", statusCode: 301 },
+      // Apex → www (worker-entry.ts also enforces this at the edge)
+      { source: "/:path*", has: [{ type: "host", value: "statsgh.com" }], destination: "https://www.statsgh.com/:path*", permanent: true },
+      { source: "/editorial-policy", destination: "/editorial-standards", permanent: true },
       // RSS aliases
       { source: "/rss.xml", destination: "/feed.xml", permanent: true },
       { source: "/rss", destination: "/feed.xml", permanent: true },
