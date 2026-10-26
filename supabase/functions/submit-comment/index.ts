@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     // Send verification email
-    const verificationUrl = `${supabaseUrl.replace('ofhejtwaigiqyejbvncz.supabase.co', 'statsgh.com')}/verify-comment?code=${verificationCode}`;
+    const verificationUrl = `${supabaseUrl.replace('rscqxztgtpcifcqxjskh.supabase.co', 'statsgh.com')}/verify-comment?code=${verificationCode}`;
     
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

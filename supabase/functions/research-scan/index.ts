@@ -457,7 +457,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableApiKey = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
 
     if (!lovableApiKey) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
@@ -735,7 +735,7 @@ Return ONLY valid JSON:
         let aiContent = "";
         try {
           const res = await callGateway({
-            model: "google/gemini-2.5-flash",
+            model: "gemini-2.5-flash",
             messages: [{ role: "user", content: aiPrompt }],
             max_tokens: 1800,
             temperature: 0.3,
@@ -825,14 +825,14 @@ Return ONLY valid JSON:
         try {
           const photoPrompt = `${generated.headline}. Setting: Ghana, West Africa. Academic research, university, data analysis, economics.`;
           
-          const imgResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const imgResp = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${lovableApiKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash-image-preview",
+              model: "gemini-2.5-flash-image-preview",
               messages: [{
                 role: "user",
                 content: `Create a photograph that looks exactly like a real editorial photo from a wire service. SUBJECT: ${photoPrompt}. Documentary journalism style, natural lighting, 16:9, no text overlays, no identifiable faces, no AI look. Must look like Financial Times photography.`,

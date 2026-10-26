@@ -153,7 +153,7 @@ serve(async (req) => {
     let generatedFields: any;
     try {
       generatedFields = await callGatewayJson({
-        model: 'google/gemini-2.5-flash',
+        model: 'gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

@@ -16,11 +16,11 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_URL:
       process.env.NEXT_PUBLIC_SUPABASE_URL ??
       process.env.VITE_SUPABASE_URL ??
-      "https://ofhejtwaigiqyejbvncz.supabase.co",
+      "https://rscqxztgtpcifcqxjskh.supabase.co",
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
       process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9maGVqdHdhaWdpcXllamJ2bmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyOTE1NjUsImV4cCI6MjA3ODg2NzU2NX0.l01PfzD7KDaGQJKRoLFxoBuA46z8OsAM7F0Xc4DTLEo",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzY3F4enRndHBjaWZjcXhqc2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NjQyMDEsImV4cCI6MjEwODU0MDIwMX0.pAMIqM7uhLcOC0MWr9b9qV1mVHX234lICfQ6vwUq2nM",
   },
   // The existing codebase predates Next's lint/type strictness and the old
   // Vite build never enforced them. Don't let lint/type errors gate the build.
@@ -41,7 +41,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "ofhejtwaigiqyejbvncz.supabase.co",
+        hostname: "rscqxztgtpcifcqxjskh.supabase.co",
       },
     ],
   },

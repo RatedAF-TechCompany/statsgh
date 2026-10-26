@@ -308,7 +308,7 @@ Respond in this exact format, one per line:
     try {
       await beforeCall();
       const res = await callGateway({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gemini-2.5-flash-lite",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.15,
@@ -1193,14 +1193,14 @@ async function generateAiImage(
     console.log(`Generating AI image for: ${articleSlug}`);
     
     await beforeCall();
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image-preview',
         messages: [
           {
             role: 'user',
@@ -2880,7 +2880,7 @@ serve(async (req) => {
     // ============================================
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableApiKey = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
       await supabase.from("newsroom_runs").update({
@@ -3097,7 +3097,7 @@ KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, p
 WHY_IT_MATTERS RULES: One plain sentence (max 160 characters) explaining what the key numbers mean for Ghanaians, businesses or the economy. Factual, no hype, no invented figures.
 ENTITIES RULES: Extract named entities that appear in the article. type must be one of: person, company, ministry, law, indicator, organization. 3-8 items typical. Skip generic terms like "government" or "citizens".`;
 
-          const aiModel = "google/gemini-2.5-flash";
+          const aiModel = "gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}) for article restructuring...`);
 
           const { callGateway, parseJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");

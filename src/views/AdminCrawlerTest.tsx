@@ -82,7 +82,7 @@ const AdminCrawlerTest = () => {
   };
 
   const handleTestArticle = (categorySlug: string, slug: string) => {
-    const readerUrl = `https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=${slug}`;
+    const readerUrl = `https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/article-reader?slug=${slug}`;
     setTestUrl(readerUrl);
     setSelectedArticleSlug(slug);
     runCrawlerTest(readerUrl);
@@ -157,7 +157,7 @@ const AdminCrawlerTest = () => {
                       Test Reader
                     </Button>
                     <a
-                      href={`https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=${article.slug}`}
+                      href={`https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/article-reader?slug=${article.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

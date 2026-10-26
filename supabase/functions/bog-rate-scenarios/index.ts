@@ -16,7 +16,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableKey = (Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!lovableKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const { articleId, currentRate, previousRate } = await req.json();
@@ -55,14 +55,14 @@ Generate exactly 3 forward-looking scenarios for the next 3 months. Each scenari
   ]
 }`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${lovableKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 700,
         temperature: 0.3,

@@ -11,8 +11,8 @@ Deno.serve(async (req) => {
   try {
     const sitemaps = [
       'https://statsgh.com/sitemap.xml',
-      'https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap',
-      'https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap',
+      'https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/main-sitemap',
+      'https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/news-sitemap',
     ];
 
     const results = [];
