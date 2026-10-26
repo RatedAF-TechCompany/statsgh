@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { pingIndexNow } from "@/lib/indexnow";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
   if (data) {
     revalidatePath(`/${data.category_slug}`);
     revalidatePath(`/${data.category_slug}/${data.slug}`);
+    await pingIndexNow([`https://www.statsgh.com/${data.category_slug}/${data.slug}`]);
   }
   return Response.json({ revalidated: true, article: data ? `/${data.category_slug}/${data.slug}` : null });
 }

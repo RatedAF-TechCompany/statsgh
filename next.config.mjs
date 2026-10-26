@@ -87,7 +87,7 @@ const nextConfig = {
       ...pair("/speeches-and-press-releases", "/top-stories"),
       ...pair("/culture-and-leisure", "/"),
       ...pair("/social-services", "/"),
-      { source: "/population/:path*", destination: "/population", permanent: true },
+      { source: "/population/:path+", destination: "/population", permanent: true },
 
       // Old article listing patterns (/article/:slug handled by app/article/[slug])
       { source: "/article", destination: "/top-stories", permanent: true },

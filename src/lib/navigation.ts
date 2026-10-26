@@ -39,6 +39,15 @@ export const getSectionLabel = (categorySlug: string): string => {
   return SECTION_LABEL[sectionSlug] || "Top Stories";
 };
 
+// Unique page label for a category/section URL slug: section slugs keep their own label,
+// sub-categories get their own name plus the parent section (e.g. "Public Finance – Economy").
+export const getCategoryPageLabel = (slug: string): string => {
+  if (slug in SECTION_LABEL) return SECTION_LABEL[slug];
+  const own = slug.split("-").map((w) => (w === "and" ? "&" : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+  const parent = getSectionLabel(slug);
+  return parent && parent !== own && parent !== "Top Stories" ? `${own} – ${parent}` : own;
+};
+
 export const getSectionSlug = (categorySlug: string): string => {
   return getSectionForCategory(categorySlug);
 };

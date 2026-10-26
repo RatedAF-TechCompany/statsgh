@@ -1,3 +1,4 @@
+import { getCategoryPageLabel } from "@/lib/navigation";
 import { Metadata } from "next";
 import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
@@ -126,9 +127,12 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
   // Per-article generated OG card (1200x630) is always available; hero image (if any) leads.
   const ogImage = `${baseUrl}/og/article/${article.slug}`;
   const heroUrl = makeAbsoluteUrl(article.hero_image_url);
+  // Google article rich results: images >=1200px wide in 16:9, 4:3 and 1:1.
   const images = [
     ...(heroUrl && heroUrl !== ogImage ? [{ "@type": "ImageObject", url: heroUrl }] : []),
-    { "@type": "ImageObject", url: ogImage, width: 1200, height: 630 },
+    { "@type": "ImageObject", url: `${ogImage}/16x9`, width: 1200, height: 675 },
+    { "@type": "ImageObject", url: `${ogImage}/4x3`, width: 1200, height: 900 },
+    { "@type": "ImageObject", url: `${ogImage}/1x1`, width: 1200, height: 1200 },
   ];
 
   return {
@@ -154,7 +158,8 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
         width: 512,
         height: 512,
       },
-      sameAs: ["https://twitter.com/StatsGH", "https://www.facebook.com/StatsGH"],
+      "@id": `${baseUrl}/#organization`,
+      sameAs: ["https://x.com/StatsGH"],
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": articleUrl },
     url: articleUrl,
@@ -185,12 +190,25 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   }
 
   const jsonLd = generateJsonLd(article, "statsgh-newsroom");
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "StatsGH", item: `${baseUrl}/` },
+      { "@type": "ListItem", position: 2, name: getCategoryPageLabel(article.category_slug), item: `${baseUrl}/${article.category_slug}` },
+      { "@type": "ListItem", position: 3, name: article.title, item: `${baseUrl}/${article.category_slug}/${article.slug}` },
+    ],
+  };
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <ArticleContent article={article} />
     </>
