@@ -35,7 +35,6 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/week-in-numbers`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/explorer`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/politics-policy`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/charts-explainers`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/crime-justice`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/forex`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/gse`, changeFrequency: "daily" as const, priority: 0.8 },
