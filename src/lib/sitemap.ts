@@ -29,6 +29,7 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/dashboards/budget-and-debt`, changeFrequency: "monthly" as const, priority: 0.7 },
   { url: `${BASE_URL}/calendar`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/dashboards`, changeFrequency: "weekly" as const, priority: 0.6 },
+  ...["trade", "agriculture", "energy", "jobs", "health", "education", "living-standards"].map((s) => ({ url: `${BASE_URL}/dashboards/${s}`, changeFrequency: "monthly" as const, priority: 0.5 })),
   { url: `${BASE_URL}/trackers/crime-justice`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/glossary`, changeFrequency: "monthly" as const, priority: 0.5 },
   { url: `${BASE_URL}/tools/cost-of-living`, changeFrequency: "weekly" as const, priority: 0.7 },

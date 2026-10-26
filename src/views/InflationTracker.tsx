@@ -7,6 +7,8 @@ import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { LongRunMacro } from "@/components/markets/LongRunMacro";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchMacro } from "@/lib/macro";
+import { downloadCsv } from "@/lib/bogRates";
 
 type Reading = {
   kind: "headline" | "food" | "non_food";
@@ -69,6 +71,42 @@ const MoneyBox = ({ latest }: { latest?: Reading }) => {
   );
 };
 
+const OfficialMonthly = ({ showMoney }: { showMoney: boolean }) => {
+  const { data } = useQuery({ queryKey: ["macro", "imf_cpi_m"], queryFn: async () => (await fetchMacro(["imf_cpi_m"])).imf_cpi_m });
+  const pts = (data || []).filter((p) => p.period >= "2015-01-01");
+  const last = pts[pts.length - 1];
+  if (!last) return null;
+  return (
+    <>
+      <div className="py-4 border-t border-[#D9D9D9]">
+        <div className="text-xs uppercase tracking-wide text-[#5B5B5B]">Headline inflation, official monthly series</div>
+        <div className="font-serif text-3xl font-bold" style={{ color: COLOR.headline }}>{last.value.toFixed(1)}%</div>
+        <div className="text-xs text-[#5B5B5B]">{monthLabel(last.period)}, year-on-year</div>
+      </div>
+      {showMoney && <MoneyBox latest={{ kind: "headline", period: last.period, value: last.value, article_slug: null, category_slug: null, article_title: null, source_count: 1, extracted_at: last.fetched_at }} />}
+      <section className="border-t border-[#D9D9D9] py-6">
+        <h2 className="kicker mb-2">Monthly headline inflation since 2015 (% year-on-year)</h2>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={pts.map((p) => ({ period: p.period, headline: p.value }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#E8E8E8" vertical={false} />
+              <XAxis dataKey="period" tick={{ fontSize: 11 }} tickFormatter={monthLabel} minTickGap={40} />
+              <YAxis tick={{ fontSize: 11 }} width={40} unit="%" />
+              <Tooltip labelFormatter={(d) => monthLabel(String(d))} formatter={(v: number) => [`${v}%`, "Headline"]} />
+              <Line type="monotone" dataKey="headline" stroke={COLOR.headline} strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-xs text-[#5B5B5B] mt-2">
+          Source: <a className="underline" href={last.source_url} target="_blank" rel="noopener noreferrer">{last.source}</a>, matching the rates published by the{" "}
+          <a className="underline" href="https://www.statsghana.gov.gh/highlights/inflation-rate" target="_blank" rel="noopener noreferrer">Ghana Statistical Service</a> · latest {monthLabel(last.period)} · retrieved {dayLabel(last.fetched_at)}
+        </p>
+        <button className="text-xs underline text-[#E3120B] mt-1" onClick={() => downloadCsv("ghana-cpi-inflation-monthly.csv", [["month", "headline_yoy_pct", "source", "source_url"], ...(data || []).map((p) => [p.period.slice(0, 7), p.value, p.source, p.source_url])])}>Download CSV</button>
+      </section>
+    </>
+  );
+};
+
 const InflationTracker = () => {
   const { data, isLoading, isError } = useQuery({ queryKey: ["inflation-readings"], queryFn: fetchReadings });
   const readings = data || [];
@@ -102,7 +140,7 @@ const InflationTracker = () => {
         {isLoading ? (
           <p className="text-sm text-[#5B5B5B]">Loading…</p>
         ) : isError || readings.length === 0 ? (
-          <p className="font-serif text-[17px] text-[#5B5B5B]">Data unavailable — no inflation readings stored yet.</p>
+          <p className="font-serif text-[15px] text-[#5B5B5B] border-t border-[#D9D9D9] pt-4">Food and non-food readings from StatsGH articles will appear here once they are reported. The official monthly headline series is below.</p>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-4 py-4 border-t border-[#D9D9D9]">
@@ -180,6 +218,7 @@ const InflationTracker = () => {
             </section>
           </>
         )}
+        <OfficialMonthly showMoney={!isLoading && headline.length === 0} />
         <LongRunMacro title="Annual CPI inflation since 1960, % (World Bank and IMF)" wbKey="wb_cpi" imfKey="imf_cpi" csvName="ghana-cpi-inflation-annual" from={1965} />
       </main>
       <div className="max-w-3xl mx-auto px-4 pb-8"><a href="/tools/cost-of-living" className="text-sm font-semibold text-[#E3120B] underline">Cost of Living Calculator: what these prices mean for your budget →</a></div>

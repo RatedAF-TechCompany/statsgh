@@ -14,6 +14,38 @@ const WB = [
   ["wb_cpi", "FP.CPI.TOTL.ZG"], ["wb_gdp", "NY.GDP.MKTP.KD.ZG"], ["wb_revenue", "GC.REV.XGRT.GD.ZS"],
   ["wb_expense", "GC.XPN.TOTL.GD.ZS"], ["wb_balance", "GC.NLD.TOTL.GD.ZS"],
 ];
+// Topic dashboards (/dashboards/[slug]); keep in sync with src/lib/topicDashboards.ts. Reserves stored in US$ bn.
+const WB_TOPIC: [string, string, string][] = [
+  ["wb_exports", "NE.EXP.GNFS.ZS", "% of GDP"],
+  ["wb_imports", "NE.IMP.GNFS.ZS", "% of GDP"],
+  ["wb_current_account", "BN.CAB.XOKA.GD.ZS", "% of GDP"],
+  ["wb_reserves", "FI.RES.TOTL.CD", "US$ bn"],
+  ["wb_fuel_exports", "TX.VAL.FUEL.ZS.UN", "% of merchandise exports"],
+  ["wb_agri_va", "NV.AGR.TOTL.ZS", "% of GDP"],
+  ["wb_agri_jobs", "SL.AGR.EMPL.ZS", "% of employment"],
+  ["wb_cereal_yield", "AG.YLD.CREL.KG", "kg per hectare"],
+  ["wb_food_index", "AG.PRD.FOOD.XD", "2014-16 = 100"],
+  ["wb_elec_access", "EG.ELC.ACCS.ZS", "% of population"],
+  ["wb_elec_rural", "EG.ELC.ACCS.RU.ZS", "% of rural population"],
+  ["wb_renew_cons", "EG.FEC.RNEW.ZS", "% of final energy"],
+  ["wb_renew_elec", "EG.ELC.RNEW.ZS", "% of electricity output"],
+  ["wb_unemp", "SL.UEM.TOTL.ZS", "% of labour force"],
+  ["wb_youth_unemp", "SL.UEM.1524.ZS", "% of labour force 15-24"],
+  ["wb_lfpr", "SL.TLF.CACT.ZS", "% of population 15+"],
+  ["wb_vuln_emp", "SL.EMP.VULN.ZS", "% of employment"],
+  ["wb_mmr", "SH.STA.MMRT", "per 100,000 live births"],
+  ["wb_u5mr", "SH.DYN.MORT", "per 1,000 live births"],
+  ["wb_life_exp", "SP.DYN.LE00.IN", "years"],
+  ["wb_health_spend", "SH.XPD.CHEX.GD.ZS", "% of GDP"],
+  ["wb_prim_enrol", "SE.PRM.ENRR", "%"],
+  ["wb_sec_enrol", "SE.SEC.ENRR", "%"],
+  ["wb_literacy", "SE.ADT.LITR.ZS", "%"],
+  ["wb_edu_spend", "SE.XPD.TOTL.GD.ZS", "% of GDP"],
+  ["wb_poverty_intl", "SI.POV.DDAY", "% of population"],
+  ["wb_poverty_nat", "SI.POV.NAHC", "% of population"],
+  ["wb_water", "SH.H2O.BASW.ZS", "% of population"],
+  ["wb_sanitation", "SH.STA.BASS.ZS", "% of population"],
+];
 const IMF = [
   ["imf_debt", "GGXWDG_NGDP"], ["imf_balance", "GGXCNL_NGDP"], ["imf_revenue", "GGR_NGDP"],
   ["imf_expenditure", "GGX_NGDP"], ["imf_gdp", "NGDP_RPCH"], ["imf_cpi", "PCPIPCH"],
@@ -23,7 +55,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   if (!(await authorizeCaller(req, db)).ok) return json({ error: "unauthorized" }, 401);
-  const jobs = (new URL(req.url).searchParams.get("job") || "wb,imf,gold,calendar").split(",");
+  const jobs = (new URL(req.url).searchParams.get("job") || "wb,imf,imfcpi,gold,calendar").split(",");
   const report: Record<string, string> = {};
   const year = new Date().getUTCFullYear();
   const upsert = async (rows: Record<string, unknown>[]) => {
@@ -44,6 +76,20 @@ Deno.serve(async (req) => {
     } catch (e) { report[key] = `FAILED: ${(e as Error).message}`; }
   }
 
+  if (jobs.includes("wb")) for (const [key, code, unit] of WB_TOPIC) {
+    try {
+      const url = `https://api.worldbank.org/v2/country/GH/indicator/${code}?format=json&per_page=100`;
+      const d = await (await get(url)).json();
+      const scale = unit === "US$ bn" ? 1e-9 : 1;
+      const rows = (d?.[1] || []).filter((x: any) => x.value != null).map((x: any) => ({
+        series_key: key, period: `${x.date}-12-31`, value: x.value * scale, unit, source: `World Bank WDI (${code})`,
+        source_url: `https://data.worldbank.org/indicator/${code}?locations=GH`,
+      }));
+      if (!rows.length) throw new Error("no values");
+      await upsert(rows); report[key] = `${rows.length} years`;
+    } catch (e) { report[key] = `FAILED: ${(e as Error).message}`; }
+  }
+
   if (jobs.includes("imf")) for (const [key, code] of IMF) {
     try {
       const d = await (await get(`https://www.imf.org/external/datamapper/api/v1/${code}/GHA`)).json();
@@ -55,6 +101,25 @@ Deno.serve(async (req) => {
       }));
       await upsert(rows); report[key] = `${rows.length} years`;
     } catch (e) { report[key] = `FAILED: ${(e as Error).message}`; }
+  }
+
+  // Monthly headline CPI inflation (y/y) for Ghana from the IMF CPI dataset (built from the GSS index).
+  if (jobs.includes("imfcpi")) {
+    try {
+      const url = "https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.STA/CPI/+/GHA.CPI._T.YOY_PCH_PA_PT.M?c%5BTIME_PERIOD%5D=ge:2000-01";
+      const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(30000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const times = (d?.data?.structures?.[0]?.dimensions?.observation?.[0]?.values || []).map((v: any) => String(v.value || v.id));
+      const obs = Object.values(d?.data?.dataSets?.[0]?.series || {})[0] as any;
+      const rows = Object.entries(obs?.observations || {}).map(([i, v]: [string, any]) => {
+        const m = /^(\d{4})-M(\d{2})$/.exec(times[Number(i)] || ""); const val = Number(v?.[0]);
+        return m && Number.isFinite(val) ? { series_key: "imf_cpi_m", period: `${m[1]}-${m[2]}-01`, value: Math.round(val * 10) / 10, unit: "%",
+          source: "IMF CPI dataset (Ghana Statistical Service index), headline y/y", source_url: "https://data.imf.org/en/datasets/IMF.STA:CPI" } : null;
+      }).filter(Boolean) as Record<string, unknown>[];
+      if (!rows.length) throw new Error("no values");
+      await upsert(rows); report.imf_cpi_m = `${rows.length} months`;
+    } catch (e) { report.imf_cpi_m = `FAILED: ${(e as Error).message}`; }
   }
 
   if (jobs.includes("gold")) {
