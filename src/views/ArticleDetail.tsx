@@ -1,5 +1,6 @@
 "use client";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { formatArticleBody } from "@/lib/paragraphs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -244,7 +245,7 @@ const ArticleDetail = () => {
     );
   }
 
-  const sanitizedBody = DOMPurify.sanitize(article.body, {
+  const sanitizedBody = DOMPurify.sanitize(formatArticleBody(article.body), {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'img', 'span'],
     ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'style']
   });

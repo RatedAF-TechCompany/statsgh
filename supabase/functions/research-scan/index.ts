@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -719,7 +720,7 @@ Return ONLY valid JSON:
   "subtitle": "",
   "summary": "",
   "seo_description": "",
-  "body_html": "",
+  "body_html": "HTML <p> paragraphs only: lead paragraph first, then short news paragraphs of 2-3 sentences, one idea each",
   "slug": "",
   "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
   "author_name": "",
@@ -879,7 +880,7 @@ Return ONLY valid JSON:
             summary: generated.summary || "",
             subtitle: generated.subtitle || null,
             seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
-            body: generated.body_html,
+            body: formatArticleBody(generated.body_html),
             author_name: authorName,
             hero_image_url: heroImageUrl,
             published_at: new Date().toISOString(),

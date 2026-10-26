@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
@@ -3083,7 +3084,7 @@ Return ONLY valid JSON with these exact keys:
 "subtitle": "",
 "summary": "",
 "seo_description": "MAX 140 characters — hard limit, full sentence ending with period",
-"body_html": "",
+"body_html": "HTML <p> paragraphs only: lead paragraph first, then short news paragraphs of 2-3 sentences, one idea each",
 "slug": "",
 "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
 "author_name": "",
@@ -3232,7 +3233,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             title: generated.headline || item.title,
             summary: generated.summary || item.description || "",
             rss_summary: item.description || "",
-            body: generated.body_html || item._fullText || "",
+            body: formatArticleBody(generated.body_html || item._fullText || ""),
             category_slug: categorySlug,
           };
 
@@ -3301,7 +3302,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               summary: generated.summary || "",
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
-              body: generated.body_html,
+              body: formatArticleBody(generated.body_html),
               author_name: "StatsGH Newsroom", // single organisation byline
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),

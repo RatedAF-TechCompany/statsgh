@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 // Ghana Research Watch publisher. Auth: x-grw-secret header == GRW_PUBLISH_SECRET.
 // No AI calls, no tweets, no other functions invoked.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
   const { data: cat } = await supabase.from("categories").select("id").eq("slug", "data-and-research").maybeSingle();
 
   const scope: string = b.research_scope.trim();
-  const body = `${b.body_html}<h3>Research Scope</h3><p>${esc(scope)}</p>`;
+  const body = `${formatArticleBody(b.body_html)}<h3>Research Scope</h3><p>${esc(scope)}</p>`;
   const wordCount = body.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
   const tags = [...new Set([...(b.tags || []), "Ghana Research Watch", "research", "Ghana"])];
   const now = new Date().toISOString();

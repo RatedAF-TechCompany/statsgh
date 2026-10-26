@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 // Direct editorial publisher. Auth: x-publish-secret header == EDITORIAL_PUBLISH_SECRET.
 // Inserts text exactly as given. No AI calls, no rewriting, no tweets or social triggers.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -110,9 +111,10 @@ Deno.serve(async (req) => {
     ["image_caption", "hero_image_caption"], ["image_credit", "hero_image_credit"], ["tags", "tags"],
   ];
   for (const [k, col] of map) if (has(b, k)) row[col] = b[k];
+  if (has(b, "body") && isStr(b.body)) row.body = formatArticleBody(b.body);
   if (has(b, "author_name") || !isUpdate) row.author_name = "StatsGH Newsroom"; // single organisation byline
   if (b._category_id) row.category_id = b._category_id;
-  if (has(b, "body")) row.word_count = String(b.body).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
+  if (has(b, "body")) row.word_count = String(row.body).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
 
   if (has(b, "hero_image")) {
     try {

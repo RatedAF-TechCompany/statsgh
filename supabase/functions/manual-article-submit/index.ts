@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.20.1";
@@ -538,7 +539,7 @@ Return ONLY valid JSON.`;
     console.log(`Numbers validation passed: ${Math.max(keyNumbersCount, numbersInBody)} numbers found`);
 
     // Use the full article body HTML from GPT
-    const articleBody = String(articleJson.article_body_html || "").trim();
+    const articleBody = formatArticleBody(String(articleJson.article_body_html || "").trim());
 
     const slugBase = String(articleJson.slug || articleJson.headline || "article")
       .toLowerCase()
