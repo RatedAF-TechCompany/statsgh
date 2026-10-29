@@ -34,8 +34,8 @@ const Corrections = () => {
         </p>
         <p className="font-ui text-[13px] text-[#5B5B5B] mb-10">
           Spot an error? Email{" "}
-          <a href="mailto:officeofstatsgh@gmail.com?subject=Correction%20request" className="text-[#E3120B] hover:underline">
-            officeofstatsgh@gmail.com
+          <a href="mailto:Officeofnajib@gmail.com?subject=Correction%20request" className="text-[#E3120B] hover:underline">
+            Officeofnajib@gmail.com
           </a>{" "}
           or see our <Link to="/about#corrections" className="text-[#E3120B] hover:underline">corrections policy</Link>.
         </p>
