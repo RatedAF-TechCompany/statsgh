@@ -29,6 +29,7 @@ const Footer = () => {
               <li><Link to="/advertise" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Advertise</Link></li>
               <li><Link to="/newsletter" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Newsletter</Link></li>
               <li><Link to="/privacy" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Privacy</Link></li>
+              <li><Link to="/cookies" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Cookies</Link></li>
               <li><Link to="/terms" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Terms</Link></li>
               <li><Link to="/glossary" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Glossary</Link></li>
               <li><Link to="/editorial-standards" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Editorial standards</Link></li>

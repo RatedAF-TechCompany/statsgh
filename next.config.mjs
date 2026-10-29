@@ -4,9 +4,66 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const routerShim = path.resolve(__dirname, "src/compat/react-router-dom.tsx");
 
+// Content-Security-Policy, shipped as Report-Only first. Sources are derived
+// from the code: Supabase (REST, auth, realtime, edge functions such as
+// article-reader), https images (article heroes, DiceBear avatars, remote
+// photos), and arbitrary https video iframes (article video_url). Next.js
+// injects inline bootstrap scripts, so 'unsafe-inline' is needed for
+// script-src until nonces are added. Switch the header name to
+// "Content-Security-Policy" once the report-only run is clean.
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "frame-src https:",
+  "media-src 'self' https:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+];
+const csp = (frameAncestors) => [...CSP_DIRECTIVES, `frame-ancestors ${frameAncestors}`].join("; ");
+
+const BASE_SECURITY_HEADERS = [
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  },
+];
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Don't advertise the framework in an X-Powered-By header.
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        // Everything except /embed/* (chart embeds are meant to be iframed by
+        // other sites, see EmbedShare) is non-frameable.
+        source: "/((?!embed(?:/|$)).*)",
+        headers: [
+          ...BASE_SECURITY_HEADERS,
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy-Report-Only", value: csp("'none'") },
+        ],
+      },
+      {
+        source: "/embed/:path*",
+        headers: [
+          ...BASE_SECURITY_HEADERS,
+          { key: "Content-Security-Policy-Report-Only", value: csp("*") },
+        ],
+      },
+    ];
+  },
   // The codebase reads NEXT_PUBLIC_SUPABASE_* but the project env only defines
   // VITE_SUPABASE_*. Map them so the values are inlined at build time on any
   // host. These values are public by design (they ship to the browser; RLS
