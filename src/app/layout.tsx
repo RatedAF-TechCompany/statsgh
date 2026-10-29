@@ -84,7 +84,6 @@ const ORG_LD = {
   ethicsPolicy: "https://www.statsgh.com/editorial-standards",
   verificationFactCheckingPolicy: "https://www.statsgh.com/about",
   diversityPolicy: "https://www.statsgh.com/editorial-standards",
-  ownershipFundingInfo: "https://www.statsgh.com/about",
   actionableFeedbackPolicy: "https://www.statsgh.com/corrections",
   masthead: "https://www.statsgh.com/about/team",
   ownershipFundingInfo: "https://www.statsgh.com/about/team#ownership",
