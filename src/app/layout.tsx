@@ -73,6 +73,7 @@ const ORG_LD = {
   correctionsPolicy: "https://www.statsgh.com/corrections",
   ethicsPolicy: "https://www.statsgh.com/editorial-standards",
   masthead: "https://www.statsgh.com/about/team",
+  ownershipFundingInfo: "https://www.statsgh.com/about/team#ownership",
   contactPoint: { "@type": "ContactPoint", contactType: "editorial", url: "https://www.statsgh.com/contact" },
 };
 

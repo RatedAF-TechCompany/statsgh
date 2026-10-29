@@ -2,6 +2,9 @@
 # Data-driven news from Ghana
 # Last updated: 2026-06-14
 
+User-agent: Googlebot-News
+Allow: /
+
 User-agent: Googlebot
 Allow: /
 Crawl-delay: 1
