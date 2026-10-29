@@ -42,6 +42,25 @@ export const PrivacyPage = () => (
   </PageShell>
 );
 
+export const CookiesPage = () => (
+  <PageShell title="Cookies and storage" intro="What StatsGH stores in your browser, and why.">
+    <Prose>
+      <p>StatsGH does not use advertising, tracking or third-party analytics cookies. Readers who are not signed in get nothing stored except the item below if they dismiss the install prompt.</p>
+      <h2>Browser storage we use</h2>
+      <ul>
+        <li><strong>statsgh-install-dismissed</strong> (local storage): remembers that you closed the &ldquo;install StatsGH&rdquo; prompt so we do not show it again. Strictly necessary for that choice; it holds no personal data and stays until you clear your browser storage.</li>
+        <li><strong>sb-&lt;project&gt;-auth-token</strong> (local storage): set only when a StatsGH staff member signs in. It keeps the staff session signed in. Removed when you sign out.</li>
+      </ul>
+      <h2>Page views</h2>
+      <p>We count article page views on our servers. This does not use a cookie. See our <Link to="/privacy" className="underline text-[#E3120B]">privacy policy</Link> for what is recorded.</p>
+      <h2>Embedded content</h2>
+      <p>Some articles embed a video from another site. That site may set its own cookies when the video loads, under its own policy.</p>
+      <h2>Managing storage</h2>
+      <p>You can clear cookies and local storage in your browser settings at any time. Questions: <Mail />.</p>
+    </Prose>
+  </PageShell>
+);
+
 export const TermsPage = () => (
   <PageShell title="Terms of use" intro="The rules for using StatsGH content and data.">
     <Prose>
