@@ -4,7 +4,7 @@ import { pageMeta } from "@/lib/pageMeta";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { PageShell, ShareBar } from "@/components/vault/VaultBits";
 
-export const metadata = pageMeta("/about/team", "Our team", "The StatsGH bylines and the Data Desk that compiles our automated data products.");
+export const metadata = pageMeta("/about/team", "Our team, ownership and masthead", "The StatsGH masthead and ownership, the bylines on our stories and the Data Desk that compiles our automated data products.");
 
 export default async function TeamPage() {
   const { data } = await createReadOnlyServerClient().from("authors").select("slug, display_name, role, bio, expertise, kind").eq("is_active", true).order("sort_order").order("display_name");
@@ -25,6 +25,10 @@ export default async function TeamPage() {
           ))}
         </div>
       )}
+      <section id="ownership" className="mt-10 border-t border-[#121212] pt-4 max-w-[760px]">
+        <h2 className="section-label text-base mb-2">Ownership and masthead</h2>
+        <p className="font-serif text-[17px] text-[#121212]">StatsGH is an independent Ghana data journalism publication, run by Zebrilla Najib, who is responsible for its editorial direction. Stories are published under the StatsGH Newsroom byline and follow our <Link href="/editorial-standards" className="text-[#E3120B] underline">editorial standards</Link> and <Link href="/corrections" className="text-[#E3120B] underline">corrections policy</Link>. To reach the newsroom, see our <Link href="/contact" className="text-[#E3120B] underline">contact page</Link>.</p>
+      </section>
     </PageShell>
   );
 }
