@@ -7,8 +7,8 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export const NewsletterSignup = ({ source = "footer" }: { source?: string }) => {
   const [email, setEmail] = useState("");
-  const [daily, setDaily] = useState(true);
-  const [weekly, setWeekly] = useState(true);
+  const [daily, setDaily] = useState(false);
+  const [weekly, setWeekly] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
   const [token, setToken] = useState<string | null>(null);
