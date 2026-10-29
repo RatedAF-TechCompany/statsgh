@@ -135,6 +135,10 @@ const nextConfig = {
       { source: "/rss.xml", destination: "/feed.xml", permanent: true },
       { source: "/rss", destination: "/feed.xml", permanent: true },
       { source: "/feed", destination: "/feed.xml", permanent: true },
+      // Publisher-info aliases (Google News transparency)
+      { source: "/ownership", destination: "/about/team#ownership", permanent: true },
+      { source: "/masthead", destination: "/about/team#ownership", permanent: true },
+      { source: "/team", destination: "/about/team", permanent: true },
       // Old category slugs → new category slugs
       ...pair("/democracy", "/security-governance"),
       ...pair("/energy", "/energy-resources"),
