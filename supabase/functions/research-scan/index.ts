@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -457,7 +458,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableApiKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
 
     if (!lovableApiKey) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
@@ -719,7 +720,7 @@ Return ONLY valid JSON:
   "subtitle": "",
   "summary": "",
   "seo_description": "",
-  "body_html": "",
+  "body_html": "HTML <p> paragraphs only: lead paragraph first, then short news paragraphs of 2-3 sentences, one idea each",
   "slug": "",
   "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
   "author_name": "",
@@ -735,7 +736,7 @@ Return ONLY valid JSON:
         let aiContent = "";
         try {
           const res = await callGateway({
-            model: "google/gemini-2.5-flash",
+            model: "gemini-2.5-flash",
             messages: [{ role: "user", content: aiPrompt }],
             max_tokens: 1800,
             temperature: 0.3,
@@ -814,25 +815,21 @@ Return ONLY valid JSON:
         const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         const wordCount = bodyText.split(/\s+/).length;
 
-        let authorName = generated.author_name || "StatsGH Newsroom";
-        if (item.authors && item.authors !== "Not specified") {
-          // Credit original researchers
-          authorName = `StatsGH Newsroom (Research: ${item.authors.substring(0, 100)})`;
-        }
+        const authorName = "StatsGH Newsroom"; // single organisation byline
 
         // Generate AI hero image
         let heroImageUrl: string | null = null;
         try {
           const photoPrompt = `${generated.headline}. Setting: Ghana, West Africa. Academic research, university, data analysis, economics.`;
           
-          const imgResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const imgResp = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${lovableApiKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash-image-preview",
+              model: "gemini-2.5-flash-image-preview",
               messages: [{
                 role: "user",
                 content: `Create a photograph that looks exactly like a real editorial photo from a wire service. SUBJECT: ${photoPrompt}. Documentary journalism style, natural lighting, 16:9, no text overlays, no identifiable faces, no AI look. Must look like Financial Times photography.`,
@@ -883,7 +880,7 @@ Return ONLY valid JSON:
             summary: generated.summary || "",
             subtitle: generated.subtitle || null,
             seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
-            body: generated.body_html,
+            body: formatArticleBody(generated.body_html),
             author_name: authorName,
             hero_image_url: heroImageUrl,
             published_at: new Date().toISOString(),

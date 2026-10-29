@@ -38,6 +38,7 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
+    "worker-entry.ts",
     "node_modules",
     "supabase/functions",
     "playwright.config.ts",

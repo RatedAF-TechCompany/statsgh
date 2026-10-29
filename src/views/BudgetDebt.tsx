@@ -55,7 +55,7 @@ const BudgetDebt = () => {
 
       <section className="border-t border-[#D9D9D9] mt-6 py-4">
         <h2 className="kicker mb-2">Ministry of Finance documents</h2>
-        <p className="font-serif text-[15px] text-[#5B5B5B]">Monthly fiscal data and debt bulletins from the Ministry of Finance are published as PDFs and are not yet loaded here. Read them at the source: <a className="underline" href="https://mofep.gov.gh/debt-operations" target="_blank" rel="noopener noreferrer">mofep.gov.gh/debt-operations</a> and <a className="underline" href="https://mofep.gov.gh/publications/fiscal-data" target="_blank" rel="noopener noreferrer">fiscal data</a>.</p>
+        <p className="font-serif text-[15px] text-[#5B5B5B]">Monthly fiscal data and debt bulletins from the Ministry of Finance are published as PDFs and are not yet loaded here. Read them at the source: <a className="underline" href="https://mofep.gov.gh/debt-operations" target="_blank" rel="noopener noreferrer">mofep.gov.gh/debt-operations</a> and <a className="underline" href="https://mofep.gov.gh/fiscal-data" target="_blank" rel="noopener noreferrer">fiscal data</a>.</p>
       </section>
       <Methodology>
         <p>Debt and the overall balance come from the IMF World Economic Outlook database (GGXWDG_NGDP, GGXCNL_NGDP); revenue and expense from the World Bank (GC.REV.XGRT.GD.ZS, GC.XPN.TOTL.GD.ZS). All are read from the agencies' public APIs daily. Definitions differ from Ministry of Finance budget statements, so figures will not match the national budget exactly.</p>

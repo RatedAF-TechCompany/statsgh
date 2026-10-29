@@ -1,4 +1,5 @@
 "use client";
+import { fetchMacro } from "@/lib/macro";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,6 +120,11 @@ const CommodityTracker = () => {
     );
   };
 
+  const { data: gold } = useQuery({
+    queryKey: ["macro", "gold_usd"],
+    queryFn: async () => (await fetchMacro(["gold_usd"])).gold_usd.slice(-1)[0] ?? null,
+  });
+
   const isLoading = commoditiesLoading || currenciesLoading;
 
   return (
@@ -226,7 +232,17 @@ const CommodityTracker = () => {
                       </CardContent>
                     </Card>
                   );
-                }) : (
+                }).concat(gold ? [
+                  <Card key="gold" className="hover:border-primary/30 transition-colors">
+                    <CardContent className="pt-5 pb-4">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1"><Gem size={14} />Gold (international spot)</p>
+                      <p className="text-2xl font-bold mt-1">${gold.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                      <p className="text-xs text-muted-foreground">per troy ounce</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Source: <a className="underline" href={gold.source_url} target="_blank" rel="noopener noreferrer">{gold.source}</a> · as of {format(new Date(gold.period), "d MMM yyyy")}. Not a Ghana Gold Board buying price.
+                      </p>
+                    </CardContent>
+                  </Card>] : []) : (
                   <Card className="col-span-full">
                     <CardContent className="py-8 text-center text-muted-foreground">
                       <RefreshCw size={24} className="mx-auto mb-2 opacity-50" />
@@ -290,12 +306,12 @@ const CommodityTracker = () => {
             <p className="text-sm text-muted-foreground">
               Exchange rates come from ExchangeRate-API (open.er-api.com) and are checked hourly.
               Brent and WTI are daily U.S. EIA spot prices and cocoa is the monthly IMF price, both via FRED.
-              Share prices come from the GSE feed at dev.kwayisi.org during trading hours. For historical exchange rate data, visit the{" "}
+              Gold is the international spot price from gold-api.com, refreshed daily. Share prices are Ghana Stock Exchange end-of-day figures (delayed). For historical exchange rate data, visit the{" "}
               <button
-                onClick={() => navigate("/data/exchange-rate-ghs-usd")}
+                onClick={() => navigate("/markets/forex")}
                 className="text-primary hover:underline"
               >
-                USD/GHS indicator page
+                Bank of Ghana cedi rates page
               </button>.
             </p>
           </CardContent>

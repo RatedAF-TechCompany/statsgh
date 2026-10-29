@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
-import { redirect } from "next/navigation";
+import { redirect, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
 // Legacy /article/:slug links: resolve the article and forward to its
@@ -24,5 +24,5 @@ export default async function LegacyArticlePage({
   }
 
   // Unknown slug → top stories (matches old fallback behaviour)
-  redirect("/top-stories");
+  permanentRedirect("/");
 }

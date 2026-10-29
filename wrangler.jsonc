@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "statsgh",
+  "main": "worker-entry.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://rscqxztgtpcifcqxjskh.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzY3F4enRndHBjaWZjcXhqc2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NjQyMDEsImV4cCI6MjEwODU0MDIwMX0.pAMIqM7uhLcOC0MWr9b9qV1mVHX234lICfQ6vwUq2nM"
+  }
+}

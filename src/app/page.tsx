@@ -16,27 +16,19 @@ export const metadata: Metadata = {
 // ISR: regenerate at most every 600s; /api/revalidate refreshes it when an article publishes.
 export const revalidate = 600;
 
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "StatsGH",
-    url: "https://www.statsgh.com",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: "https://www.statsgh.com/search?q={search_term_string}",
-      "query-input": "required name=search_term_string",
-    },
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "StatsGH",
-    url: "https://www.statsgh.com",
-    logo: "https://www.statsgh.com/social/statsgh-og-1200x630.png",
-    sameAs: ["https://twitter.com/StatsGH"],
-  },
-];
+// Organization/NewsMediaOrganization comes from the root layout (one @id site-wide).
+// WebSite gives Google the site name; no SearchAction (Google retired the sitelinks
+// search box in Nov 2024 and /search is disallowed in robots.txt).
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://www.statsgh.com/#website",
+  name: "StatsGH",
+  alternateName: ["StatsGH.com", "Stats GH"],
+  url: "https://www.statsgh.com/",
+  inLanguage: "en",
+  publisher: { "@id": "https://www.statsgh.com/#organization" },
+};
 
 export default async function HomePage() {
   // Server prefetch is an optimisation only: if it fails, the page still

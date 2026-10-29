@@ -3,7 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = "gemini-2.5-flash-lite";
 const BATCH_SIZE = 8;
 
 Deno.serve(async (req) => {
@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const LOVABLE = Deno.env.get("LOVABLE_API_KEY");
+  const LOVABLE = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
   if (!LOVABLE) return json({ error: "LOVABLE_API_KEY missing" }, 500);
 
   const { data: arts, error } = await sb.from("articles")
@@ -44,9 +44,9 @@ ${list}
 Respond ONLY as JSON:
 {"results":[{"article_id":"...","score":0,"points_breakdown":{"amount_or_data":0,"policy_action":0,"ghana_economic_impact":0,"surprising_angle":0,"primary_source":0},"recommendation":"publish|editor_review|reject","editorial_note":"..."}]}`;
 
-  const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const aiRes = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": LOVABLE },
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": LOVABLE, "Authorization": `Bearer ${LOVABLE}` },
     body: JSON.stringify({
       model: MODEL, temperature: 0.15, max_tokens: 700,
       response_format: { type: "json_object" },

@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.20.1";
@@ -43,14 +44,14 @@ async function generateAiImage(
     
     console.log(`Generating AI image for: ${articleSlug}`);
     
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image-preview',
         messages: [
           {
             role: 'user',
@@ -222,10 +223,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("AI_API_KEY");
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY or AI_API_KEY is not configured");
     
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const openai = new OpenAI({ apiKey: openaiApiKey, ...(Deno.env.get("OPENAI_API_KEY") ? {} : { baseURL: (Deno.env.get("AI_GATEWAY_URL") ?? "").replace(/\/chat\/completions$/, "") }) });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verify user authentication
@@ -538,7 +539,7 @@ Return ONLY valid JSON.`;
     console.log(`Numbers validation passed: ${Math.max(keyNumbersCount, numbersInBody)} numbers found`);
 
     // Use the full article body HTML from GPT
-    const articleBody = String(articleJson.article_body_html || "").trim();
+    const articleBody = formatArticleBody(String(articleJson.article_body_html || "").trim());
 
     const slugBase = String(articleJson.slug || articleJson.headline || "article")
       .toLowerCase()
@@ -558,10 +559,10 @@ Return ONLY valid JSON.`;
     
     // PRIORITY 0: Known image overrides (curated authentic photos & institution logos)
     const KNOWN_IMAGE_OVERRIDES: Record<string, string> = {
-      "cheddar": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "nana kwame bediako": "https://statsgh.lovable.app/images/cheddar-nana-kwame-bediako.jpeg",
-      "alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
-      "analyst alfredo": "https://statsgh.lovable.app/images/analyst-alfredo.png",
+      "cheddar": "https://www.statsgh.com/images/cheddar-nana-kwame-bediako.jpeg",
+      "nana kwame bediako": "https://www.statsgh.com/images/cheddar-nana-kwame-bediako.jpeg",
+      "alfredo": "https://www.statsgh.com/images/analyst-alfredo.png",
+      "analyst alfredo": "https://www.statsgh.com/images/analyst-alfredo.png",
     };
     
     const headlineAndBodyLower = `${articleJson.headline} ${articleSource.content} ${extractedAuthor || ""}`.toLowerCase();
@@ -615,7 +616,7 @@ Return ONLY valid JSON.`;
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
-        author_name: overrideAuthor || extractedAuthor || "StatsGH Newsroom",
+        author_name: "StatsGH Newsroom",
         article_type: author_type === "expert" ? "expert_commentary" : undefined,
         section: categorySlug,
         status: isScheduled ? "scheduled" : "published",

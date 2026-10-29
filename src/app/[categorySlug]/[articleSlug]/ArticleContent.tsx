@@ -23,6 +23,7 @@ import { JournalistByline } from "@/components/JournalistByline";
 import { KeyNumbers } from "@/components/KeyNumbers";
 import { NumbersBehindStory } from "@/components/NumbersBehindStory";
 import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
+import { formatArticleBody } from "@/lib/paragraphs";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
@@ -121,7 +122,7 @@ const ArticleContent = ({ article }: { article: any }) => {
     }
   };
 
-  const bodyWithHighlightedNumbers = highlightNumbers(article.body || "");
+  const bodyWithHighlightedNumbers = highlightNumbers(formatArticleBody(article.body || ""));
   const sectionLabel = getSectionLabel(article.category_slug);
 
   return (

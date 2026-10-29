@@ -5,7 +5,7 @@
 StatsGH publishes original analysis of Ghana's economic indicators, financial markets, government policy, and demographic trends. The newsroom combines automated data pipelines from official sources (Bank of Ghana, Ghana Statistical Service, Ghana Stock Exchange) with editorial coverage.
 
 For machine-readable article content, use the article-reader endpoint which returns full server-rendered HTML:
-https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
+https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/article-reader?slug=ARTICLE_SLUG
 
 ## Pages
 
@@ -26,5 +26,5 @@ https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=ARTICL
 
 ## Sitemaps
 
-- [Main sitemap](https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/main-sitemap)
-- [News sitemap](https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/news-sitemap)
+- [Main sitemap](https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/main-sitemap)
+- [News sitemap](https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/news-sitemap)

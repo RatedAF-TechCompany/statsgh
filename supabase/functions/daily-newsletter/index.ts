@@ -83,7 +83,7 @@ serve(async (req) => {
         `<tr>
           <td style="padding:12px 0;border-bottom:1px solid #E0CDB5;">
             <span style="color:#9A0044;font-weight:600;font-size:14px;">${i + 1}.</span>
-            <a href="https://statsgh.lovable.app/${s.category_slug}/${s.slug}" 
+            <a href="https://www.statsgh.com/${s.category_slug}/${s.slug}" 
                style="color:#000;text-decoration:none;font-family:Georgia,serif;font-size:16px;font-weight:600;">
               ${s.title}
             </a>
@@ -157,7 +157,7 @@ serve(async (req) => {
     <!-- CTA -->
     <tr>
       <td style="padding:0 20px 24px;text-align:center;">
-        <a href="https://statsgh.lovable.app" 
+        <a href="https://www.statsgh.com" 
            style="display:inline-block;background:#9A0044;color:#F7F1E1;padding:12px 32px;text-decoration:none;font-weight:600;border-radius:4px;">
           Read More on StatsGH →
         </a>

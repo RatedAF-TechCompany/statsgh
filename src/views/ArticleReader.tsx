@@ -10,7 +10,7 @@ const ArticleReader = () => {
     queryKey: ["article-reader", slug],
     queryFn: async () => {
       const response = await fetch(
-        `https://ofhejtwaigiqyejbvncz.supabase.co/functions/v1/article-reader?slug=${slug}`
+        `https://rscqxztgtpcifcqxjskh.supabase.co/functions/v1/article-reader?slug=${slug}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch article");

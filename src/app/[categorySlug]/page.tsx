@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSectionLabel } from "@/lib/navigation";
+import { getCategoryPageLabel } from "@/lib/navigation";
 import Category from "@/views/Category";
 import { notFound } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
@@ -26,7 +26,7 @@ export async function generateMetadata({
   params,
 }: CategoryPageProps): Promise<Metadata> {
   const { categorySlug } = await params;
-  const label = getSectionLabel(categorySlug) || "News";
+  const label = getCategoryPageLabel(categorySlug) || "News";
   const canonicalUrl = `https://www.statsgh.com/${categorySlug}`;
   const description = `Latest ${label} news and data from StatsGH — Ghana's data journalism platform.`;
 

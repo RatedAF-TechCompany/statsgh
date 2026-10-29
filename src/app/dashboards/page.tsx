@@ -4,7 +4,7 @@ import Dashboards from "@/views/Dashboards";
 
 const title = "Dashboards | StatsGH";
 const description =
-  "Interactive dashboards for Ghana's markets and economy — the stock exchange, finance, and commodity trackers.";
+  "Interactive dashboards for Ghana's markets and economy — markets, prices, budget and debt, trade, jobs, health, education and living standards, each with its official source.";
 
 export const metadata: Metadata = {
   title,

@@ -20,7 +20,7 @@ serve(async (req) => {
     );
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const slackKey = Deno.env.get("SLACK_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
 
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
