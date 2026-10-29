@@ -1,4 +1,5 @@
 import { formatArticleBody } from "../_shared/paragraphs.ts";
+import { resolveCategorySlug, CRIME_CATEGORY } from "../_shared/category-resolve.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES, WATCHDOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
@@ -59,6 +60,7 @@ function collapseImmediateWordRepeats(input: string): string {
 
 // Section mapping — mirrors src/lib/sectionMapping.ts
 const SECTION_TO_CATEGORIES: Record<string, string[]> = {
+  'crime-justice': ['crime-justice', 'crime', 'crime-and-justice', 'justice', 'security-governance', 'courts', 'security'],
   'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news'],
   'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy'],
   'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities'],
@@ -3230,12 +3232,23 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           // 8. Insert into articles table
           // published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // is_breaking requires all three: source age <=30 min, Tier 1 source, urgent headline keyword.
-          const categorySlug = generated.category_slug || (item as any)._categoryHint || "top-stories";
+          // Category: crime/court/police -> crime-justice only (never data); else a known slug; never empty.
+          let categorySlug = resolveCategorySlug({
+            category_slug: generated.category_slug || (item as any)._categoryHint || "",
+            title: generated.headline || item.title,
+            summary: generated.summary || item.description || "",
+            body: generated.body_html || "",
+          }, PREFERRED_CATEGORIES, DEFAULT_CATEGORY);
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
           // Ensure category exists in DB (we only use the slug, not a UUID)
-          await ensureCategoryExists(supabase, categorySlug);
+          const ensuredSlug = await ensureCategoryExists(supabase, categorySlug);
+          // ensureCategoryExists falls back to DEFAULT_CATEGORY on failure; never let crime become non-crime silently.
+          if (categorySlug !== CRIME_CATEGORY) categorySlug = ensuredSlug;
+          const { data: catRow } = await supabase.from("categories").select("id").eq("slug", categorySlug).maybeSingle();
+          const categoryId: string | null = catRow?.id ?? null;
+          if (!categoryId) throw new Error(`No categories row for "${categorySlug}" - refusing to publish without a category`);
           const sourcePubDate = item._pubDateParsed.toISOString();
           const source = { priority_tier: sourceTierMap.get(item.source_name) || 5 };
           const headline = generated.headline || item.title || "";
@@ -3350,6 +3363,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               title: generated.headline,
               slug: uniqueSlug,
               category_slug: categorySlug,
+              category_id: categoryId,
               section: getSectionForCategory(categorySlug),
               summary: generated.summary || "",
               subtitle: generated.subtitle || null,
