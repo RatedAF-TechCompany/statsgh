@@ -28,7 +28,7 @@ export const ContactForm = ({ kind = "contact" }: { kind?: "contact" | "advertis
     const { error } = await (supabase as any).from("contact_messages").insert({
       kind, name: d.name, email: d.email.toLowerCase(), organisation: d.organisation || null, subject: d.subject || null, message: d.message,
     });
-    if (error) { setState("idle"); setErr("Could not send your message. Please email officeofstatsgh@gmail.com instead."); return; }
+    if (error) { setState("idle"); setErr("Could not send your message. Please email Officeofnajib@gmail.com instead."); return; }
     setState("done");
   };
 

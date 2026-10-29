@@ -151,8 +151,8 @@ const EditorialStandards = () => {
               <p className="text-muted-foreground">
                 If you believe we have published inaccurate data or misleading content, please 
                 contact us at{" "}
-                <a href="mailto:corrections@statsgh.com" className="text-primary hover:underline">
-                  corrections@statsgh.com
+                <a href="mailto:Officeofnajib@gmail.com" className="text-primary hover:underline">
+                  Officeofnajib@gmail.com
                 </a>. 
                 We commit to reviewing complaints within 48 hours and publishing corrections 
                 where warranted. All corrections are noted at the top of the affected article.
