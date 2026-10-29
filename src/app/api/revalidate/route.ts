@@ -44,6 +44,8 @@ export async function POST(req: Request) {
   const { data } = await createReadOnlyServerClient().from("articles")
     .select("slug, category_slug").eq("id", id).eq("is_published", true).maybeSingle();
   revalidatePath("/");
+  revalidatePath("/news-sitemap.xml");
+  revalidatePath("/sitemap.xml");
   if (data) {
     revalidatePath(`/${data.category_slug}`);
     revalidatePath(`/${data.category_slug}/${data.slug}`);

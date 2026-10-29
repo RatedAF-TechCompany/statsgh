@@ -1,4 +1,5 @@
 import { formatArticleBody } from "../_shared/paragraphs.ts";
+import { isCrimeStory, CRIME_CATEGORY } from "../_shared/category-resolve.ts";
 // Direct editorial publisher. Auth: x-publish-secret header == EDITORIAL_PUBLISH_SECRET.
 // Inserts text exactly as given. No AI calls, no rewriting, no tweets or social triggers.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -98,6 +99,13 @@ Deno.serve(async (req) => {
   }
   if (has(b, "upsert") && typeof b.upsert !== "boolean") errors.push("upsert must be a boolean");
   if (isStr(b.category_slug) && b.category_slug.trim()) {
+    b.category_slug = b.category_slug.trim().toLowerCase();
+    // Crime/court/police stories go only to crime-justice, never to a data category.
+    if (isCrimeStory({ category_slug: b.category_slug, section: isStr(b.section) ? b.section : "", tags: Array.isArray(b.tags) ? b.tags : [],
+      title: isStr(b.title) ? b.title : "", summary: isStr(b.summary) ? b.summary : "", body: isStr(b.body) ? b.body : "" })) {
+      b.category_slug = CRIME_CATEGORY;
+      if (has(b, "section")) b.section = CRIME_CATEGORY;
+    }
     const { data: cat } = await db.from("categories").select("id").eq("slug", b.category_slug).maybeSingle();
     if (!cat) errors.push(`category_slug "${b.category_slug}" does not exist`);
     else b._category_id = cat.id;

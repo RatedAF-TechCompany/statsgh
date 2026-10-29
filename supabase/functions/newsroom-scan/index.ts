@@ -1,6 +1,7 @@
 import { formatArticleBody } from "../_shared/paragraphs.ts";
+import { resolveCategorySlug, CRIME_CATEGORY } from "../_shared/category-resolve.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES, WATCHDOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -59,6 +60,7 @@ function collapseImmediateWordRepeats(input: string): string {
 
 // Section mapping — mirrors src/lib/sectionMapping.ts
 const SECTION_TO_CATEGORIES: Record<string, string[]> = {
+  'crime-justice': ['crime-justice', 'crime', 'crime-and-justice', 'justice', 'security-governance', 'courts', 'security'],
   'top-stories': ['top-stories', 'ghanacrimes', 'general', 'news'],
   'economy': ['macroeconomy', 'public-finance', 'labour-and-jobs', 'economy', 'fiscal-policy', 'monetary-policy'],
   'markets-data': ['markets', 'markets-data', 'stocks', 'forex', 'commodities'],
@@ -1045,7 +1047,25 @@ function isCompetitorImage(imageUrl: string): boolean {
   return false;
 }
 
+// (b) IMAGE RULE (Zeb, 29 Oct 2026): hero images come ONLY from official sources
+// (government, regulators, multilaterals) or a StatsGH-generated chart. Never an
+// outlet's photo. Allowlist replaces the old competitor blocklist, which let any
+// unlisted outlet's photos through.
+const OFFICIAL_IMAGE_HOSTS = [
+  '.gov.gh', 'bog.gov.gh', 'mofep.gov.gh', 'statsghana.gov.gh', 'gra.gov.gh',
+  'presidency.gov.gh', 'parliament.gh', 'gse.com.gh', 'sec.gov.gh', 'npa.gov.gh',
+  'imf.org', 'worldbank.org', 'afdb.org',
+];
+export function isOfficialHost(u: string): boolean {
+  try {
+    const h = new URL(u.startsWith('//') ? `https:${u}` : u).hostname.toLowerCase();
+    return OFFICIAL_IMAGE_HOSTS.some(d => d.startsWith('.') ? h.endsWith(d) : (h === d || h.endsWith(`.${d}`)));
+  } catch { return false; }
+}
+
 async function extractImageFromSourceHtml(html: string, sourceUrl: string): Promise<string | null> {
+  // Only official pages may supply a hero image, and the image itself must be hosted officially.
+  if (!isOfficialHost(sourceUrl)) return null;
   try {
     const patterns = [
       /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
@@ -1074,6 +1094,7 @@ async function extractImageFromSourceHtml(html: string, sourceUrl: string): Prom
     }
     
     if (!imageUrl) return null;
+    if (!isOfficialHost(imageUrl)) return null; // (b) no third-party CDN images
     
     if (imageUrl.startsWith('//')) {
       imageUrl = 'https:' + imageUrl;
@@ -1408,6 +1429,24 @@ function isBusinessRelated(text: string): boolean {
   return BUSINESS_KEYWORDS.some(keyword => lowerText.includes(keyword));
 }
 
+// (d) WordPress REST fallback for outlets that disabled /feed/ (Citi Newsroom
+// redirects /feed/ to the homepage since Oct 2026). rss_url may point at
+// /wp-json/wp/v2/posts?...; the body is a JSON array, mapped to RSS-shaped items.
+function parseWpJson(body: string, sourceName: string) {
+  try {
+    const arr = JSON.parse(body);
+    if (!Array.isArray(arr)) return [];
+    const strip = (h: string) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&#8217;/g, "'").replace(/&#8211;|&#8212;/g, '-').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    return arr.filter((p: any) => p?.link && p?.title?.rendered).map((p: any) => ({
+      title: strip(p.title.rendered),
+      link: p.link,
+      pubDate: p.date_gmt ? `${p.date_gmt}Z` : (p.date || ''),
+      description: strip(p.excerpt?.rendered || ''),
+      source_name: sourceName,
+    }));
+  } catch { return []; }
+}
+
 function parseRssXml(xml: string, sourceName: string): Array<{
   title: string;
   link: string;
@@ -1423,6 +1462,7 @@ function parseRssXml(xml: string, sourceName: string): Array<{
     source_name: string;
   }> = [];
 
+  if (xml.trimStart().startsWith('[')) return parseWpJson(xml, sourceName);
   const itemRegex = /<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let match;
 
@@ -1468,8 +1508,9 @@ async function fetchRssFeed(url: string, timeout = 10000): Promise<string | null
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'StatsGH-Newsroom/1.0 (RSS Reader)',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        // (d) Several Ghana sites (Citi, Asaase) serve a homepage or 403 to non-browser UAs.
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 StatsGH-Newsroom/1.1',
+        'Accept': 'application/rss+xml, application/xml, text/xml, application/json, */*',
       },
     });
     
@@ -2394,7 +2435,9 @@ serve(async (req) => {
       }
 
       // Hard freshness gate
-      const freshnessLimit = article._newsroomRecord ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
+      // (a) Watchdog catch-up runs may reach back 12h so the site never sits idle 07:00-22:00 UK.
+      const freshnessLimit = article._newsroomRecord ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES
+        : triggerType === "watchdog" ? WATCHDOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
       if (ageMinutes > freshnessLimit) {
         staleRejectedCount++;
         console.log(`REJECTED_STALE: "${(article.title || "").substring(0, 60)}" — ${Math.round(ageMinutes)} min old (source: ${article.source_name})`);
@@ -3189,12 +3232,23 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           // 8. Insert into articles table
           // published_at = NOW (when StatsGH publishes), source_published_at = original RSS date
           // is_breaking requires all three: source age <=30 min, Tier 1 source, urgent headline keyword.
-          const categorySlug = generated.category_slug || (item as any)._categoryHint || "top-stories";
+          // Category: crime/court/police -> crime-justice only (never data); else a known slug; never empty.
+          let categorySlug = resolveCategorySlug({
+            category_slug: generated.category_slug || (item as any)._categoryHint || "",
+            title: generated.headline || item.title,
+            summary: generated.summary || item.description || "",
+            body: generated.body_html || "",
+          }, PREFERRED_CATEGORIES, DEFAULT_CATEGORY);
           const baseSlug = (generated.slug || generated.headline || item.title)
             .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
           const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
           // Ensure category exists in DB (we only use the slug, not a UUID)
-          await ensureCategoryExists(supabase, categorySlug);
+          const ensuredSlug = await ensureCategoryExists(supabase, categorySlug);
+          // ensureCategoryExists falls back to DEFAULT_CATEGORY on failure; never let crime become non-crime silently.
+          if (categorySlug !== CRIME_CATEGORY) categorySlug = ensuredSlug;
+          const { data: catRow } = await supabase.from("categories").select("id").eq("slug", categorySlug).maybeSingle();
+          const categoryId: string | null = catRow?.id ?? null;
+          if (!categoryId) throw new Error(`No categories row for "${categorySlug}" - refusing to publish without a category`);
           const sourcePubDate = item._pubDateParsed.toISOString();
           const source = { priority_tier: sourceTierMap.get(item.source_name) || 5 };
           const headline = generated.headline || item.title || "";
@@ -3217,12 +3271,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             // Waterfall: source → (openverse/wikimedia done later by
             // backfill-images) → AI only when breaking=true AND no source
             // image exists. Prevents any duplicate paid gen.
-            if (isBreaking && !sourceImageUrl) {
-              const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug, beforeModelCall);
-            } else {
-              console.log(`⏭️  Skipping AI image (not breaking or source image exists): "${item.title.substring(0, 60)}"`);
-            }
+            // (b) Image rule, 29 Oct 2026: official-source image or a StatsGH chart
+            // card only. No AI images; backfill-images renders the chart card.
+            console.log(`No official image; chart card via backfill: "${item.title.substring(0, 60)}"`);
           }
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
@@ -3312,6 +3363,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               title: generated.headline,
               slug: uniqueSlug,
               category_slug: categorySlug,
+              category_id: categoryId,
               section: getSectionForCategory(categorySlug),
               summary: generated.summary || "",
               subtitle: generated.subtitle || null,

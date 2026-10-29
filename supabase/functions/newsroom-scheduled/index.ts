@@ -28,12 +28,15 @@ Deno.serve(async (req) => {
   if (!ok) return json({ error: "Unauthorized" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const reqBody = await req.json().catch(() => ({}));
+  // (a) forward "watchdog" so newsroom-scan applies the 12h catch-up window
+  const triggerType = reqBody?.triggerType === "watchdog" ? "watchdog" : "scheduled";
   const job = (async () => {
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/newsroom-scan`, {
         method: "POST",
         headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ triggerType: "scheduled" }),
+        body: JSON.stringify({ triggerType }),
       });
       console.log("newsroom-scan finished", res.status);
     } catch (e) {

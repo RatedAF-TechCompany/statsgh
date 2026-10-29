@@ -6,7 +6,8 @@ export const RUN_WALL_CLOCK_MS = 80_000;
 export const INTERRUPTED_RUN_ERROR = "Run did not complete (likely edge function timeout)";
 
 export const DISCOVERY_MIN_SLOTS = 8;
-export const FRESHNESS_MAX_AGE_MINUTES = 360;
+export const FRESHNESS_MAX_AGE_MINUTES = 480; // (c) 8h, was 6h: 344 REJECTED_STALE in 72h
+export const WATCHDOG_FRESHNESS_MAX_AGE_MINUTES = 720; // (a) catch-up run when the site is stale
 export const BACKLOG_FRESHNESS_MAX_AGE_MINUTES = 720;
 
 // Candidate discovery has its own allowance; writing remains capped separately.

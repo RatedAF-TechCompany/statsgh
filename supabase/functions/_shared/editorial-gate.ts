@@ -505,6 +505,14 @@ export function classifyEditorialSubject(a: StoryLike): SubjectResult {
     if (score && (!best || score > best.score)) best = { cat, score };
   }
 
+  // (c) Slightly looser remit: a Ghana-central story with a substantive statistic
+  // is kept under STATISTICAL_REPORT even when no category keyword matched.
+  // Exclusions (sports, crime, gossip...), Ghana check, number check and
+  // duplicate checks are unchanged.
+  if (!best && hasSubstantiveStatistic(a).ok) {
+    best = { cat: "STATISTICAL_REPORT", score: 1 };
+  }
+
   if (!best) {
     return {
       allowed: false,
