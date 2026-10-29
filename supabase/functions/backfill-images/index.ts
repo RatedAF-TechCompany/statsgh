@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,7 +139,53 @@ async function generateAiImage(prompt: string, supabase: any, slug: string): Pro
   }
 }
 
+// SVG -> PNG via resvg-wasm (works in the Supabase edge runtime). Fonts are
+// fetched once per isolate because the runtime has no system fonts.
+let resvgReady: Promise<Uint8Array[]> | null = null;
+function loadResvg(): Promise<Uint8Array[]> {
+  if (!resvgReady) {
+    resvgReady = (async () => {
+      const wasm = await fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm");
+      await initWasm(wasm);
+      const fonts = await Promise.all([
+        "https://cdn.jsdelivr.net/fontsource/fonts/oswald@latest/latin-700-normal.ttf",
+        "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf",
+      ].map(async (u) => new Uint8Array(await (await fetch(u)).arrayBuffer())));
+      return fonts;
+    })().catch((e) => { resvgReady = null; throw e; });
+  }
+  return resvgReady;
+}
+export async function svgToPng(svg: string): Promise<Uint8Array> {
+  const fontBuffers = await loadResvg();
+  const r = new Resvg(svg, { font: { fontBuffers, loadSystemFonts: false, defaultFontFamily: "Inter" } });
+  return r.render().asPng();
+}
+
 // ---------- Main ----------
+// (b) StatsGH chart card from articles.key_data ([{label,value}]). PNG, house
+// style: heavy condensed headline font, plain sans body, no emojis.
+async function renderStatsChart(a: any, supabase: any): Promise<string | null> {
+  const kd = Array.isArray(a.key_data) ? a.key_data.filter((k: any) => k?.label && k?.value != null).slice(0, 4) : [];
+  if (!kd.length) return null;
+  const esc = (x: unknown) => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+  const rows = kd.map((k: any, i: number) => `
+    <text x="80" y="${300 + i * 150}" font-family="Oswald" font-weight="700" font-size="88" fill="#0b6e4f">${esc(k.value)}</text>
+    <text x="80" y="${350 + i * 150}" font-family="Inter" font-size="34" fill="#222">${esc(k.label).slice(0, 70)}</text>`).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${360 + kd.length * 150}" viewBox="0 0 1200 ${360 + kd.length * 150}">
+  <rect width="100%" height="100%" fill="#fafaf7"/><rect width="1200" height="14" fill="#0b6e4f"/>
+  <text x="80" y="150" font-family="Oswald" font-weight="700" font-size="52" fill="#111">${esc(a.title).slice(0, 60)}</text>
+  ${rows}
+  <text x="80" y="${300 + kd.length * 150}" font-family="Inter" font-size="26" fill="#666">StatsGH.com</text></svg>`;
+  let png: Uint8Array;
+  try { png = await svgToPng(svg); } catch (e) { console.error("chart png render failed", e); return null; }
+  const path = `charts/${a.slug}-${Date.now()}.png`;
+  const { error } = await supabase.storage.from("article-images")
+    .upload(path, new Blob([png as BlobPart], { type: "image/png" }), { contentType: "image/png", upsert: true });
+  if (error) return null;
+  return supabase.storage.from("article-images").getPublicUrl(path).data.publicUrl;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -153,7 +200,7 @@ serve(async (req) => {
 
     let q = supabase
       .from("articles")
-      .select("id, title, slug, section, category_slug, hero_image_url")
+      .select("id, title, slug, section, category_slug, hero_image_url, key_data")
       .eq("is_published", true)
       .order("published_at", { ascending: false })
       .limit(limit);
@@ -170,12 +217,10 @@ serve(async (req) => {
       const query = deriveQuery(a.title, a.category_slug || a.section || "");
       try {
         const r = await withTimeout((async () => {
-          const ov = await fetchOpenverse(query);
-          if (ov) return { url: ov.url, source: "openverse", caption: `Photo: ${ov.creator} / Openverse` };
-          const wm = await fetchWikimedia(query);
-          if (wm) return { url: wm.url, source: "wikimedia", caption: `Photo: ${wm.creator} / Wikimedia Commons` };
-          const ai = await generateAiImage(a.title, supabase, a.slug);
-          if (ai) return { url: ai, source: "ai_illustration", caption: "Photo illustration: StatsGH" };
+          // (b) Image rule, 29 Oct 2026: official-source image or a StatsGH chart only.
+          // Openverse, Wikimedia and AI illustrations are no longer used.
+          const chart = await renderStatsChart(a, supabase);
+          if (chart) return { url: chart, source: "statsgh_chart", caption: "Chart: StatsGH" };
           return null;
         })(), ARTICLE_TIMEOUT_MS, "article");
 

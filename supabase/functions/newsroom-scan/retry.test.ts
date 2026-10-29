@@ -55,8 +55,8 @@ describe("newsroom retry policy", () => {
     expect(phaseCandidateLimit(false, 3, 3, 3)).toBe(8);
     expect(phaseCandidateLimit(false, 1, 1, 1)).toBe(8);
   });
-  it("uses six-hour discovery/publication and twelve-hour queued freshness", () => {
-    expect(FRESHNESS_MAX_AGE_MINUTES).toBe(360);
+  it("uses eight-hour discovery/publication and twelve-hour queued freshness", () => {
+    expect(FRESHNESS_MAX_AGE_MINUTES).toBe(480);
     expect(BACKLOG_FRESHNESS_MAX_AGE_MINUTES).toBe(720);
   });
   it.each(["service_role", "cron_secret_env", "scheduler_token"])("applies the scheduled budget guard for %s", via => {
