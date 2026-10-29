@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
 
-const CONTACT_EMAIL = "officeofstatsgh@gmail.com";
+const CONTACT_EMAIL = "Officeofnajib@gmail.com";
 
 const Section = ({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) => (
   <section id={id} className="py-6 border-t border-[#D9D9D9] scroll-mt-32">

@@ -62,7 +62,7 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
 // the colo cache and refreshed in the background once older than 5 minutes.
 const FRESH_SECONDS = 300;
 const MAX_STALE_SECONDS = 86400;
-const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences"];
+const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences", "/news-sitemap.xml", "/sitemap.xml", "/sitemaps/"];
 const TRACKING = /^(utm_|fbclid$|gclid$|ref$|s$|t$)/;
 
 function isCacheable(request: Request, url: URL): boolean {
@@ -81,7 +81,8 @@ function cacheKey(url: URL): Request {
 
 async function fetchAndStore(request: Request, url: URL, key: Request, env: unknown, ctx: any): Promise<Response> {
   const res = await origin(request, url, env, ctx);
-  if ((res.status === 200 || res.status === 301) && !res.headers.has("set-cookie")) {
+  const noStore = /no-store|private/i.test(res.headers.get("cache-control") || "");
+  if ((res.status === 200 || res.status === 301) && !res.headers.has("set-cookie") && !noStore) {
     const copy = new Response(res.clone().body, res);
     copy.headers.set("x-edge-cached-at", String(Date.now()));
     copy.headers.set("Cache-Control", `public, max-age=${MAX_STALE_SECONDS}`);

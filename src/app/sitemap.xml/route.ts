@@ -1,7 +1,8 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { ARTICLES_PER_SITEMAP, BASE_URL, xmlResponse } from "@/lib/sitemap";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // Sitemap index: pages sitemap + one child sitemap per 5,000 published articles + news sitemap.
 export async function GET() {
@@ -17,5 +18,9 @@ export async function GET() {
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${locs.map((l) => `  <sitemap><loc>${l}</loc></sitemap>`).join("\n")}
 </sitemapindex>`;
-  return xmlResponse(xml);
+  const res = xmlResponse(xml);
+  res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.headers.set("CDN-Cache-Control", "no-store");
+  res.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+  return res;
 }
