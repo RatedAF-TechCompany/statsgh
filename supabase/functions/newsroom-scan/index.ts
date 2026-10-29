@@ -1,3 +1,4 @@
+import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES, WATCHDOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
@@ -308,7 +309,7 @@ Respond in this exact format, one per line:
     try {
       await beforeCall();
       const res = await callGateway({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gemini-2.5-flash-lite",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.15,
@@ -1212,14 +1213,14 @@ async function generateAiImage(
     console.log(`Generating AI image for: ${articleSlug}`);
     
     await beforeCall();
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image-preview',
         messages: [
           {
             role: 'user',
@@ -1918,10 +1919,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) throw new Error("OPENAI_API_KEY is not configured");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("AI_API_KEY");
+    if (!openaiApiKey) throw new Error("OPENAI_API_KEY or AI_API_KEY is not configured");
     
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const openai = new OpenAI({ apiKey: openaiApiKey, ...(Deno.env.get("OPENAI_API_KEY") ? {} : { baseURL: (Deno.env.get("AI_GATEWAY_URL") ?? "").replace(/\/chat\/completions$/, "") }) });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const auth = await authorizeCaller(req, supabase);
@@ -2044,7 +2045,21 @@ serve(async (req) => {
 
     // ============================================
     // PHASE 0: recover accepted rows before spending time on discovery.
-    const runLimit = Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
+    // AI pacing: spread the daily StatsGH neuron cap across the UTC day so frequent
+    // sweeps never exhaust it early. Allowance = cap * (elapsed + 2h headroom) / 24h.
+    let paceBlocked = false;
+    try {
+      const cap = Number(Deno.env.get("AI_CAP_STATSGH") ?? 5500);
+      const now = new Date();
+      const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
+      const allowance = cap * Math.min(1, (mins + 120) / 1440);
+      const { data: u } = await supabase.from("ai_proxy_usage").select("neurons")
+        .eq("day", now.toISOString().slice(0, 10)).eq("bucket", "statsgh").maybeSingle();
+      const used = Number(u?.neurons ?? 0);
+      paceBlocked = used >= allowance;
+      console.log(`AI pacing: used=${used.toFixed(0)} allowance=${allowance.toFixed(0)} cap=${cap} blocked=${paceBlocked}`);
+    } catch (e) { console.log(`AI pacing check failed (${(e as Error).message}); proceeding`); }
+    const runLimit = paceBlocked ? 0 : Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
     const { data: backlogRows, error: backlogError } = await supabase
       .from("newsroom_articles")
       .select("*")
@@ -2921,7 +2936,7 @@ serve(async (req) => {
     // ============================================
     // PROCESS PENDING ARTICLES THROUGH AI & PUBLISH
     // ============================================
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovableApiKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!lovableApiKey) {
       console.error("LOVABLE_API_KEY not configured — skipping AI processing");
       await supabase.from("newsroom_runs").update({
@@ -3124,7 +3139,7 @@ Return ONLY valid JSON with these exact keys:
 "subtitle": "",
 "summary": "",
 "seo_description": "MAX 140 characters — hard limit, full sentence ending with period",
-"body_html": "",
+"body_html": "HTML <p> paragraphs only: lead paragraph first, then short news paragraphs of 2-3 sentences, one idea each",
 "slug": "",
 "category_slug": "one of: ${PREFERRED_CATEGORIES.join(", ")}",
 "author_name": "",
@@ -3138,7 +3153,7 @@ KEY_DATA RULES: Extract 2-5 concrete numeric findings from the article (rates, p
 WHY_IT_MATTERS RULES: One plain sentence (max 160 characters) explaining what the key numbers mean for Ghanaians, businesses or the economy. Factual, no hype, no invented figures.
 ENTITIES RULES: Extract named entities that appear in the article. type must be one of: person, company, ministry, law, indicator, organization. 3-8 items typical. Skip generic terms like "government" or "citizens".`;
 
-          const aiModel = "google/gemini-2.5-flash";
+          const aiModel = "gemini-2.5-flash";
           console.log(`Calling AI (${aiModel}) for article restructuring...`);
 
           const { callGateway, parseJson, GatewayHaltError } = await import("../_shared/ai-gateway.ts");
@@ -3149,7 +3164,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               await beforeModelCall();
               const result = await callGateway({
                 model: aiModel, messages: [
-                  { role: "system", content: "Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
+                  { role: "system", content: "The headline and the summary must each name Ghana or a Ghanaian place or institution explicitly (e.g. 'Ghana', 'Accra', 'Bank of Ghana'). The body must be at least 350 words. Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
                   { role: "user", content: aiPrompt },
                 ],
                 max_tokens, temperature: 0.3, json: true, usage: nrUsage,
@@ -3181,7 +3196,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
 
           // 7. Title quality gate — reject malformed titles
           const titleToCheck = generated.headline || "";
-          const MALFORMED_CHARS = /[@#$\\|^]/;
+          const MALFORMED_CHARS = /[@#\\|^]|\$(?!\d)/; // "$" allowed only as a currency sign before a number
           const FRONT_PAGES = /front\s*pages?:/i;
           // Only reject if >50% of words are ALL CAPS (allows acronyms like NPRA, GNPC, PIAC)
           const words = titleToCheck.split(/\s+/);
@@ -3243,12 +3258,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             // Waterfall: source → (openverse/wikimedia done later by
             // backfill-images) → AI only when breaking=true AND no source
             // image exists. Prevents any duplicate paid gen.
-            if (isBreaking && !sourceImageUrl) {
-              const imagePrompt = `${generated.headline}. Setting: Ghana, West Africa. Depict only generic environments, buildings, commodities, or wide establishing shots — no people's faces.`;
-              heroImageUrl = await generateAiImage(imagePrompt, supabase, uniqueSlug, beforeModelCall);
-            } else {
-              console.log(`⏭️  Skipping AI image (not breaking or source image exists): "${item.title.substring(0, 60)}"`);
-            }
+            // (b) Image rule, 29 Oct 2026: official-source image or a StatsGH chart
+            // card only. No AI images; backfill-images renders the chart card.
+            console.log(`No official image; chart card via backfill: "${item.title.substring(0, 60)}"`);
           }
           // If both fail, heroImageUrl stays null — article publishes imageless
           // and backfill-images will fill it in on the next scheduled sweep.
@@ -3273,7 +3285,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             title: generated.headline || item.title,
             summary: generated.summary || item.description || "",
             rss_summary: item.description || "",
-            body: generated.body_html || item._fullText || "",
+            body: formatArticleBody(generated.body_html || item._fullText || ""),
             category_slug: categorySlug,
           };
 
@@ -3342,8 +3354,8 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               summary: generated.summary || "",
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
-              body: generated.body_html,
-              author_name: assignJournalist(categorySlug, uniqueSlug),
+              body: formatArticleBody(generated.body_html),
+              author_name: "StatsGH Newsroom", // single organisation byline
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),
