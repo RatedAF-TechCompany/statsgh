@@ -104,13 +104,13 @@ async function fetchWikimedia(query: string): Promise<{ url: string; creator: st
 // ---------- AI fallback ----------
 async function generateAiImage(prompt: string, supabase: any, slug: string): Promise<string | null> {
   try {
-    const key = Deno.env.get("LOVABLE_API_KEY");
+    const key = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
     if (!key) return null;
-    const res = await timedFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await timedFetch((Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"), {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
+        model: "gemini-2.5-flash-image-preview",
         messages: [
           {
             role: "user",

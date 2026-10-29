@@ -3,7 +3,7 @@
 // temperature, per-call usage capture, and safe-fail on 402/429. Never call the
 // gateway directly from a function.
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
 
 export type GatewayHaltReason = "credits_exhausted" | "rate_limited";
 
@@ -35,12 +35,12 @@ export function createUsage(): UsageAccumulator {
 
 // Rough per-1k-token pricing (USD). Used only for approximate cost visibility.
 const PRICES: Record<string, { in: number; out: number }> = {
-  "google/gemini-2.5-flash": { in: 0.000075, out: 0.0003 },
-  "google/gemini-2.5-flash-lite": { in: 0.0000375, out: 0.00015 },
-  "google/gemini-3-flash-preview": { in: 0.000075, out: 0.0003 },
-  "google/gemini-2.5-pro": { in: 0.00125, out: 0.005 },
-  "openai/gpt-4o": { in: 0.0025, out: 0.01 },
-  "google/gemini-2.5-flash-image-preview": { in: 0.000075, out: 0.0003 },
+  "gemini-2.5-flash": { in: 0.000075, out: 0.0003 },
+  "gemini-2.5-flash-lite": { in: 0.0000375, out: 0.00015 },
+  "gemini-3-flash-preview": { in: 0.000075, out: 0.0003 },
+  "gemini-2.5-pro": { in: 0.00125, out: 0.005 },
+  "gemini-2.5-flash": { in: 0.0025, out: 0.01 },
+  "gemini-2.5-flash-image-preview": { in: 0.000075, out: 0.0003 },
 };
 
 export function estimateCost(model: string, promptTokens: number, completionTokens: number): number {
@@ -66,7 +66,7 @@ export interface CallGatewayResult {
 }
 
 export async function callGateway(opts: CallGatewayOpts): Promise<CallGatewayResult> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const apiKey = (Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY"));
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
   // Short-circuit: if a prior call this run halted on credits/rate-limit, do not
