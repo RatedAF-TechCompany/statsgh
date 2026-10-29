@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.editorial-publish]
 verify_jwt = false
+
+[functions.pipeline-watchdog]
+verify_jwt = false
