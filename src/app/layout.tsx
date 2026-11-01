@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import Script from "next/script";
+
+// Cloudflare Web Analytics. The site is served by a Worker, so Cloudflare's automatic beacon
+// injection never runs; load it explicitly on every page. "spa": true makes the beacon record
+// client-side (Next.js router) navigations too. The token is public (it ships to the browser);
+// set NEXT_PUBLIC_CF_BEACON_TOKEN at build time (Cloudflare dashboard > Web Analytics > site).
+const CF_BEACON_TOKEN = process.env.NEXT_PUBLIC_CF_BEACON_TOKEN;
 
 // No site-wide force-dynamic: home, section and article pages use ISR (revalidate 120s,
 // plus on-demand revalidation via /api/revalidate); other pages opt into dynamic themselves.
@@ -100,6 +107,14 @@ export default function RootLayout({
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
         <Providers>{children}<InstallPrompt /></Providers>
+        {CF_BEACON_TOKEN ? (
+          <Script
+            id="cf-web-analytics"
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            strategy="afterInteractive"
+            data-cf-beacon={JSON.stringify({ token: CF_BEACON_TOKEN, spa: true })}
+          />
+        ) : null}
       </body>
     </html>
   );

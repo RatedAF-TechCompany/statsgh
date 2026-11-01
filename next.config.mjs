@@ -13,11 +13,11 @@ const routerShim = path.resolve(__dirname, "src/compat/react-router-dom.tsx");
 // "Content-Security-Policy" once the report-only run is clean.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com",
   "frame-src https:",
   "media-src 'self' https:",
   "worker-src 'self' blob:",
@@ -70,6 +70,8 @@ const nextConfig = {
   // protects the data), so literal fallbacks are safe and keep the build
   // working even where .env is not present.
   env: {
+    // Cloudflare Web Analytics site token (public, not a secret). Empty = beacon not rendered.
+    NEXT_PUBLIC_CF_BEACON_TOKEN: process.env.NEXT_PUBLIC_CF_BEACON_TOKEN ?? process.env.CF_BEACON_TOKEN ?? "",
     NEXT_PUBLIC_SUPABASE_URL:
       process.env.NEXT_PUBLIC_SUPABASE_URL ??
       process.env.VITE_SUPABASE_URL ??

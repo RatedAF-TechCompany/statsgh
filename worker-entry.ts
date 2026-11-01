@@ -2,6 +2,11 @@
 // @ts-ignore generated at build time by opennextjs-cloudflare
 import handler from "./.open-next/worker.js";
 
+import { SECTION_TO_CATEGORIES } from "./src/lib/sectionMapping";
+
+const KNOWN_SECTION_SLUGS = new Set<string>(Object.keys(SECTION_TO_CATEGORIES));
+const isKnownSectionSlug = (s: string) => KNOWN_SECTION_SLUGS.has(s);
+
 // @ts-ignore
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "./.open-next/worker.js";
 
@@ -46,7 +51,10 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
       const segs = url.pathname.split("/").filter(Boolean);
       if (segs.length >= 2 || /^\/article\//.test(url.pathname)) {
         let target = "/";
-        if (/^[a-z0-9-]+$/.test(segs[0]) && !/^\d+$/.test(segs[0]) && segs[0] !== "article") {
+        if (isKnownSectionSlug(segs[0])) {
+          // Known section: no need to render the section page just to probe it (saves a full SSR).
+          target = `/${segs[0]}`;
+        } else if (/^[a-z0-9-]+$/.test(segs[0]) && !/^\d+$/.test(segs[0]) && segs[0] !== "article") {
           const probe = new URL(`/${segs[0]}`, url);
           const sec: Response = await (handler as any).fetch(new Request(probe.toString(), { headers: request.headers }), env, ctx);
           if (sec.status === 200) target = `/${segs[0]}`;
@@ -62,6 +70,18 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
 // the colo cache and refreshed in the background once older than 5 minutes.
 const FRESH_SECONDS = 300;
 const MAX_STALE_SECONDS = 86400;
+// Generated OG/social images (satori + resvg, the most CPU-hungry route) never change for a
+// given slug once published, so keep them fresh for a week instead of re-rendering every 5 min.
+const OG_FRESH_SECONDS = 7 * 86400;
+const OG_MAX_STALE_SECONDS = 30 * 86400;
+// Cache 404s briefly so crawler storms on dead/legacy URLs (wp-*, *.php) don't SSR every hit.
+const NOT_FOUND_FRESH_SECONDS = 600;
+
+function freshSeconds(url: URL, status: number): number {
+  if (status === 404) return NOT_FOUND_FRESH_SECONDS;
+  if (url.pathname.startsWith("/og/")) return OG_FRESH_SECONDS;
+  return FRESH_SECONDS;
+}
 const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences", "/news-sitemap.xml", "/sitemap.xml", "/sitemaps/"];
 const TRACKING = /^(utm_|fbclid$|gclid$|ref$|s$|t$)/;
 
@@ -82,10 +102,12 @@ function cacheKey(url: URL): Request {
 async function fetchAndStore(request: Request, url: URL, key: Request, env: unknown, ctx: any): Promise<Response> {
   const res = await origin(request, url, env, ctx);
   const noStore = /no-store|private/i.test(res.headers.get("cache-control") || "");
-  if ((res.status === 200 || res.status === 301) && !res.headers.has("set-cookie") && !noStore) {
+  if ((res.status === 200 || res.status === 301 || res.status === 404) && !res.headers.has("set-cookie") && !noStore) {
     const copy = new Response(res.clone().body, res);
+    const og = url.pathname.startsWith("/og/");
     copy.headers.set("x-edge-cached-at", String(Date.now()));
-    copy.headers.set("Cache-Control", `public, max-age=${MAX_STALE_SECONDS}`);
+    copy.headers.set("x-edge-fresh", String(freshSeconds(url, res.status)));
+    copy.headers.set("Cache-Control", `public, max-age=${res.status === 404 ? NOT_FOUND_FRESH_SECONDS : og ? OG_MAX_STALE_SECONDS : MAX_STALE_SECONDS}`);
     ctx.waitUntil((caches as any).default.put(key, copy));
   }
   return res;
@@ -97,10 +119,12 @@ async function edgeCached(request: Request, url: URL, env: unknown, ctx: any): P
   const hit = await cache.match(key);
   if (hit) {
     const age = (Date.now() - Number(hit.headers.get("x-edge-cached-at") || 0)) / 1000;
+    const fresh = Number(hit.headers.get("x-edge-fresh") || FRESH_SECONDS);
     const out = new Response(hit.body, hit);
-    out.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
-    out.headers.set("x-edge-cache", age > FRESH_SECONDS ? "STALE" : "HIT");
-    if (age > FRESH_SECONDS) ctx.waitUntil(fetchAndStore(request.clone(), url, key, env, ctx).catch(() => {}));
+    out.headers.delete("x-edge-fresh");
+    out.headers.set("Cache-Control", url.pathname.startsWith("/og/") ? "public, max-age=86400" : "public, max-age=0, must-revalidate");
+    out.headers.set("x-edge-cache", age > fresh ? "STALE" : "HIT");
+    if (age > fresh) ctx.waitUntil(fetchAndStore(request.clone(), url, key, env, ctx).catch(() => {}));
     return out;
   }
   return fetchAndStore(request, url, key, env, ctx);
