@@ -506,7 +506,7 @@ const ArticleDetail = () => {
           "description": article.seo_description || article.summary,
           "image": article.hero_image_url,
           "datePublished": article.published_at,
-          "dateModified": article.updated_at,
+          "dateModified": article.content_updated_at || article.published_at,
           "author": { "@type": "Person", "name": article.author_name },
           "publisher": { "@type": "Organization", "name": "StatsGH", "logo": { "@type": "ImageObject", "url": "https://www.statsgh.com/social/statsgh-og-1200x630.png" } },
           "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.statsgh.com/${article.category_slug}/${article.slug}` }

@@ -299,6 +299,9 @@ export type Database = {
       }
       articles: {
         Row: {
+          content_updated_at: string | null
+          source_url: string | null
+          story_key: string | null
           approved_at: string | null
           approved_by: string | null
           article_scenarios: Json | null
@@ -359,6 +362,9 @@ export type Database = {
           word_count: number | null
         }
         Insert: {
+          content_updated_at?: string | null
+          source_url?: string | null
+          story_key?: string | null
           approved_at?: string | null
           approved_by?: string | null
           article_scenarios?: Json | null
@@ -419,6 +425,9 @@ export type Database = {
           word_count?: number | null
         }
         Update: {
+          content_updated_at?: string | null
+          source_url?: string | null
+          story_key?: string | null
           approved_at?: string | null
           approved_by?: string | null
           article_scenarios?: Json | null

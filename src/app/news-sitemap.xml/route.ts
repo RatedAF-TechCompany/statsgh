@@ -17,16 +17,17 @@ function escapeXml(str: string): string {
 export async function GET() {
   const supabase = createReadOnlyServerClient();
 
-  // Google News sitemap spec: only articles from the last 48 hours
+  // Google News sitemap: articles published OR content-updated in the last 48 hours
+  // (publication_date always stays the original published_at)
   const fortyEightHoursAgo = new Date();
   fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
 
   const { data: articles } = await supabase
     .from("articles")
-    .select("slug, category_slug, title, published_at, updated_at")
+    .select("slug, category_slug, title, published_at, content_updated_at")
     .eq("is_published", true)
     .eq("is_sponsored", false)
-    .gte("published_at", fortyEightHoursAgo.toISOString())
+    .or(`published_at.gte.${fortyEightHoursAgo.toISOString()},content_updated_at.gte.${fortyEightHoursAgo.toISOString()}`)
     .order("published_at", { ascending: false })
     .limit(1000);
 
@@ -42,7 +43,7 @@ export async function GET() {
       <news:publication_date>${article.published_at}</news:publication_date>
       <news:title>${escapeXml(article.title)}</news:title>
     </news:news>
-    <lastmod>${article.updated_at || article.published_at}</lastmod>
+    <lastmod>${article.content_updated_at || article.published_at}</lastmod>
   </url>`
     )
     .join("\n");
