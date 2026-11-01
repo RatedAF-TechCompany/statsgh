@@ -36,6 +36,18 @@ const getArticle = cache(async (articleSlug: string) => {
   return article;
 });
 
+// Developing-story updates (newest first). Failure here never blocks the article.
+const getStoryUpdates = cache(async (articleId: string) => {
+  const supabase = createReadOnlyServerClient();
+  const { data, error } = await (supabase as any)
+    .from("story_updates")
+    .select("id, posted_at, summary, body_md, sources, kind")
+    .eq("article_id", articleId)
+    .order("posted_at", { ascending: false })
+    .limit(50);
+  return error ? [] : (data ?? []);
+});
+
 // Plain-text fallback description (first ~155 chars of the body) when an article has no
 // seo_description/summary, so every article still gets a unique meta description.
 function describe(article: any): string {
@@ -109,7 +121,7 @@ export async function generateMetadata({
         },
       ],
       publishedTime: article.published_at || undefined,
-      modifiedTime: article.updated_at || undefined,
+      modifiedTime: article.content_updated_at || article.published_at || undefined,
       authors: ["StatsGH Newsroom"],
       section: article.section || undefined,
     },
@@ -123,7 +135,7 @@ export async function generateMetadata({
     },
     other: {
       "article:published_time": article.published_at || "",
-      "article:modified_time": article.updated_at || "",
+      "article:modified_time": article.content_updated_at || article.published_at || "",
       "article:author": "https://www.statsgh.com/authors/statsgh-newsroom",
       "article:section": article.section || "",
       news_keywords: keywords,
@@ -153,7 +165,7 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     description: describe(article),
     image: images,
     datePublished: article.published_at,
-    dateModified: article.updated_at || article.published_at,
+    dateModified: article.content_updated_at || article.published_at,
     author: {
       "@type": "Organization",
       name: "StatsGH Newsroom",
@@ -221,7 +233,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
-      <ArticleContent article={article} />
+      <ArticleContent article={article} updates={await getStoryUpdates(article.id)} />
     </>
   );
 }

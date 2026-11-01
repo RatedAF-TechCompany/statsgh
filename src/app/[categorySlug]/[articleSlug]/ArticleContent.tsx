@@ -18,12 +18,12 @@ import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList,
   BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { format } from "date-fns";
 import { JournalistByline } from "@/components/JournalistByline";
 import { KeyNumbers } from "@/components/KeyNumbers";
 import { NumbersBehindStory } from "@/components/NumbersBehindStory";
 import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
 import { formatArticleBody } from "@/lib/paragraphs";
+import { StoryUpdates, PublishedUpdatedLine, type StoryUpdate } from "@/components/StoryUpdates";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
@@ -34,7 +34,7 @@ function highlightNumbers(html: string) {
   );
 }
 
-const ArticleContent = ({ article }: { article: any }) => {
+const ArticleContent = ({ article, updates = [] }: { article: any; updates?: StoryUpdate[] }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -203,12 +203,8 @@ const ArticleContent = ({ article }: { article: any }) => {
                 <span className="font-ui text-[13px] text-[#5B5B5B]" itemProp="author">
                   <JournalistByline name={article.author_name} />
                   {" "}|{" "}StatsGH
-                  {article.published_at && (
-                    <> | <time dateTime={article.published_at} itemProp="datePublished">
-                      {format(new Date(article.published_at), "MMMM d, yyyy")}
-                    </time></>
-                  )}
                 </span>
+                <div className="mt-1"><PublishedUpdatedLine publishedAt={article.published_at} contentUpdatedAt={article.content_updated_at} /></div>
                 <div className="font-ui text-xs text-[#5B5B5B] mt-1">
                   <ReadingTime content={article.body} />
                 </div>
@@ -229,6 +225,9 @@ const ArticleContent = ({ article }: { article: any }) => {
               </div>
             </div>
           </div>
+
+          {/* Developing-story updates (newest first) + corrections */}
+          <StoryUpdates updates={updates} />
 
           {/* Correction note — shown when this article has a published correction */}
           <ArticleCorrectionNote articleId={article.id} />

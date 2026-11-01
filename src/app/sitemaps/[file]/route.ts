@@ -38,10 +38,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
   const start = (Number(m[1]) - 1) * ARTICLES_PER_SITEMAP;
 
   const sb = createReadOnlyServerClient();
-  const rows: { slug: string; category_slug: string; updated_at: string | null; published_at: string | null }[] = [];
+  const rows: { slug: string; category_slug: string; content_updated_at: string | null; published_at: string | null }[] = [];
   for (let off = start; off < start + ARTICLES_PER_SITEMAP; off += PAGE) {
     const { data, error } = await sb.from("articles")
-      .select("slug, category_slug, updated_at, published_at")
+      .select("slug, category_slug, content_updated_at, published_at")
       .eq("is_published", true)
       .order("published_at", { ascending: false })
       .order("id", { ascending: true })
@@ -53,7 +53,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
   if (!rows.length && start > 0) return new Response("Not found", { status: 404 });
 
   return xmlResponse(urlset(rows.map((a) => {
-    const lm = a.updated_at || a.published_at;
+    const lm = a.content_updated_at || a.published_at;
     return `  <url><loc>${esc(`${BASE_URL}/${a.category_slug}/${a.slug}`)}</loc>${lm ? `<lastmod>${lm}</lastmod>` : ""}</url>`;
   }).join("\n")));
 }

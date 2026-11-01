@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
 
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('slug, category_slug, title, published_at, updated_at')
+      .select('slug, category_slug, title, published_at, content_updated_at')
       .eq('is_published', true)
-      .gte('published_at', fortyEightHoursAgo.toISOString())
+      .or(`published_at.gte.${fortyEightHoursAgo.toISOString()},content_updated_at.gte.${fortyEightHoursAgo.toISOString()}`)
       .order('published_at', { ascending: false })
       .limit(1000);
 
@@ -51,7 +51,7 @@ ${articles?.map(article => `  <url>
       <news:publication_date>${article.published_at}</news:publication_date>
       <news:title>${escapeXml(article.title)}</news:title>
     </news:news>
-    <lastmod>${article.updated_at}</lastmod>
+    <lastmod>${article.content_updated_at || article.published_at}</lastmod>
   </url>`).join('\n') ?? ''}
 </urlset>`;
 

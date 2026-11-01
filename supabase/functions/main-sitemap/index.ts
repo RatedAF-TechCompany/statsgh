@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     // Get all published articles
     const { data: articles, error } = await supabase
       .from('articles')
-      .select('slug, category_slug, updated_at, published_at')
+      .select('slug, category_slug, content_updated_at, published_at')
       .eq('is_published', true)
       .order('published_at', { ascending: false });
 
@@ -67,7 +67,7 @@ ${categories.map(cat => `  <url>
 ${articles?.map(article => `  <url>
     <loc>https://www.statsgh.com/${article.category_slug}/${article.slug}</loc>
     <xhtml:link rel="alternate" type="text/html" href="${edgeFunctionBase}?slug=${article.slug}" />
-    <lastmod>${article.updated_at || article.published_at}</lastmod>
+    <lastmod>${article.content_updated_at || article.published_at}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>`).join('\n') ?? ''}
