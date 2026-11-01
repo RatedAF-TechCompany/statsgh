@@ -4,6 +4,7 @@ import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import ArticleContent from "./ArticleContent";
+import { cache } from "react";
 
 interface ArticlePageProps {
   params: Promise<{
@@ -16,8 +17,9 @@ export const revalidate = 120;
 export const dynamicParams = true;
 export async function generateStaticParams() { return []; }
 
-// Fetch article data for both metadata and page rendering
-async function getArticle(articleSlug: string) {
+// Fetch article data for both metadata and page rendering. Wrapped in React cache() so
+// generateMetadata and the page share ONE Supabase query per render instead of two.
+const getArticle = cache(async (articleSlug: string) => {
   const supabase = createReadOnlyServerClient();
 
   const { data: article, error } = await supabase
@@ -32,6 +34,15 @@ async function getArticle(articleSlug: string) {
   }
 
   return article;
+});
+
+// Plain-text fallback description (first ~155 chars of the body) when an article has no
+// seo_description/summary, so every article still gets a unique meta description.
+function describe(article: any): string {
+  const d = (article.seo_description || article.summary || "").trim();
+  if (d) return d;
+  const text = String(article.body || "").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
+  return text.length > 155 ? text.slice(0, 152).replace(/\s+\S*$/, "") + "…" : text || article.title;
 }
 
 const baseUrl = "https://www.statsgh.com";
@@ -60,7 +71,7 @@ export async function generateMetadata({
   const canonicalUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   const absoluteImageUrl =
     makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}`;
-  const description = article.seo_description || article.summary || "";
+  const description = describe(article);
   const keywords = article.tags?.join(", ") || "";
 
   return {
@@ -139,7 +150,7 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
-    description: article.seo_description || article.summary,
+    description: describe(article),
     image: images,
     datePublished: article.published_at,
     dateModified: article.updated_at || article.published_at,
