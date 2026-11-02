@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ilikeOrTerms } from "@/lib/postgrest-filter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search as SearchIcon, ArrowLeft } from "lucide-react";
@@ -56,7 +57,7 @@ const Search = () => {
         .from("articles")
         .select("id, title, slug, category_slug, summary, hero_image_url, published_at, section")
         .eq("is_published", true)
-        .or(`title.ilike.%${query}%,summary.ilike.%${query}%,body.ilike.%${query}%`)
+        .or(ilikeOrTerms(["title", "summary", "body"], query))
         .order("published_at", { ascending: false })
         .limit(50);
 

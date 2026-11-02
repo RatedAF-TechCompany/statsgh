@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ilikeOr } from "@/lib/postgrest-filter";
 import { Header } from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ export default function AdminWhyMissed() {
         .limit(100);
 
       if (searchQuery) {
-        query = query.or(`headline.ilike.%${searchQuery}%,source_url.ilike.%${searchQuery}%`);
+        query = query.or(ilikeOr(["headline", "source_url"], searchQuery));
       }
       if (filterDecision !== "all") {
         query = query.eq("decision", filterDecision);

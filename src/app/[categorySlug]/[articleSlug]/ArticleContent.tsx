@@ -10,6 +10,7 @@ import { Bookmark, Share2, TrendingUp, Database, ExternalLink } from "lucide-rea
 import { ReadingTime } from "@/components/ReadingTime";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { sanitizeArticleHtml, highlightNumbersInHtml } from "@/lib/safe-html";
 import { CommentSection } from "@/components/CommentSection";
 import { RelatedArticles } from "@/components/RelatedArticles";
 import { RelatedTracker } from "@/components/RelatedTracker";
@@ -28,10 +29,7 @@ import { StoryUpdates, PublishedUpdatedLine, type StoryUpdate } from "@/componen
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
 function highlightNumbers(html: string) {
-  return html.replace(
-    /\b(\d+(?:[.,]\d+)*(?:\s*%|°C|°F|km|m|kg|g|bn|mn|tn|\$|£|€|¢|GH₵)?)\b/g,
-    '<span class="number-highlight">$1</span>'
-  );
+  return highlightNumbersInHtml(sanitizeArticleHtml(html));
 }
 
 const ArticleContent = ({ article, updates = [] }: { article: any; updates?: StoryUpdate[] }) => {

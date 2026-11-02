@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ilikeOr } from "@/lib/postgrest-filter";
 import { Header } from "@/components/Header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,7 @@ const DataIndicators = () => {
       }
 
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+        query = query.or(ilikeOr(["name", "description"], searchQuery));
       }
 
       const { data, error } = await query;

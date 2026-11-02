@@ -18,7 +18,68 @@ const permanent = (loc: string) =>
   new Response(null, { status: 301, headers: { Location: loc, "Cache-Control": "public, max-age=3600" } });
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: unknown): Promise<Response> {
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+    try {
+      const res = await handleFetch(request, env, ctx);
+      if (res.status >= 500 && res.status !== 503) {
+        const u = new URL(request.url);
+        ctx.waitUntil(reportError(env, `HTTP ${res.status} ${u.pathname.split("/").slice(0, 2).join("/") || "/"}`,
+          `${request.method} ${u.pathname}${u.search}\nStatus: ${res.status}\nVersion: ${env.CF_VERSION_METADATA?.id || "?"}`));
+      }
+      return res;
+    } catch (e: any) {
+      const u = new URL(request.url);
+      ctx.waitUntil(reportError(env, `Exception ${String(e?.name || "Error")}: ${String(e?.message || e).slice(0, 80)}`,
+        `${request.method} ${u.pathname}${u.search}\nVersion: ${env.CF_VERSION_METADATA?.id || "?"}\n\n${String(e?.stack || e).slice(0, 4000)}`));
+      throw e;
+    }
+  },
+};
+
+// ---- Error alerts: email officeofnajib@gmail.com via public.sg_notifications (max 1 per error type per hour) ----
+const errorSeen = new Map<string, number>(); // per-isolate pre-filter; the database enforces the hourly limit globally
+async function reportError(env: any, type: string, detail: string): Promise<void> {
+  try {
+    if (!env.SG_ALERT_SECRET) return;
+    const t = Date.now();
+    if ((errorSeen.get(type) ?? 0) > t - 3600_000) return;
+    if (errorSeen.size > 500) errorSeen.clear();
+    errorSeen.set(type, t);
+    console.error("reportError", type);
+    await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/sg_report_worker_error`, {
+      method: "POST",
+      headers: { apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_secret: env.SG_ALERT_SECRET, p_type: type, p_detail: detail }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch { /* alerting must never break a request */ }
+}
+
+// ---- Outbound editor email via the Cloudflare send_email binding (free; delivers only to verified addresses).
+// statsgh.com mail is on Zoho, so Cloudflare Email Routing is NOT enabled there; the sender uses the account's
+// routing-enabled domain. Called by public.sg_send_pending_notifications() with a shared secret (Vault + Worker secret).
+const MAIL_FROM = { name: "StatsGH Alerts", email: "statsgh-alerts@ghanacrimes.com" };
+async function internalMail(request: Request, env: any): Promise<Response> {
+  if (!env.SG_MAIL_SECRET || request.headers.get("x-sg-mail") !== env.SG_MAIL_SECRET) return new Response("forbidden", { status: 403 });
+  if (!env.EMAIL) return new Response("no email binding", { status: 500 });
+  try {
+    const m: any = await request.json();
+    const r = await env.EMAIL.send({ to: String(m.to || "officeofnajib@gmail.com"), from: MAIL_FROM,
+      subject: String(m.subject || "").slice(0, 180), text: String(m.text || ""), replyTo: "officeofnajib@gmail.com" });
+    return Response.json({ id: r?.messageId || null });
+  } catch (e: any) {
+    return Response.json({ error: String(e?.code || ""), message: String(e?.message || e) }, { status: 502 });
+  }
+}
+
+const EDGE_REDIRECTS: Record<string, string> = {
+  "/latest": "/news",
+  "/apple-touch-icon.png": "/favicon.png",
+  "/apple-touch-icon-precomposed.png": "/favicon.png",
+};
+
+async function handleFetch(request: Request, env: any, ctx: any): Promise<Response> {
+  {
     const url = new URL(request.url);
     if (REDIRECT_HOSTS.has(url.hostname) && (url.protocol === "http:" || url.hostname !== CANONICAL_HOST)) {
       url.protocol = "https:";
@@ -31,11 +92,14 @@ export default {
     if (m && m[1] !== "statsgh-newsroom") {
       return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/statsgh-newsroom", "Cache-Control": "public, max-age=3600" } });
     }
+    if (url.pathname === "/__internal/mail") return request.method === "POST" ? internalMail(request, env) : new Response("not found", { status: 404 });
+    const alias = EDGE_REDIRECTS[url.pathname.replace(/\/+$/, "") || "/"];
+    if (alias && (request.method === "GET" || request.method === "HEAD")) return permanent(`https://${CANONICAL_HOST}${alias}`);
     if (url.pathname === "/api/revalidate") return revalidateAndPurge(request, url, env, ctx as any);
     if (!isCacheable(request, url)) return origin(request, url, env, ctx);
     return edgeCached(request, url, env, ctx as any);
-  },
-};
+  }
+}
 
 async function origin(request: Request, url: URL, env: unknown, ctx: unknown): Promise<Response> {
     const res: Response = await (handler as any).fetch(request, env, ctx);
