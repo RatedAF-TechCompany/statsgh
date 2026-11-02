@@ -38,7 +38,7 @@ declare
   v_row jsonb := to_jsonb(new) - 'verification_code' - 'manage_token';
   v_details text; v_snippet text; v_link text; v_extra text := ''; v_art record;
 begin
-  if v_kind = 'comment' and coalesce(new.is_published, false) then return new; end if;
+  if v_kind = 'comment' and coalesce((v_row->>'is_published')::boolean, false) then return new; end if;
   select string_agg(key || ': ' || left(coalesce(value, ''), 2000), E'\n' order by key) into v_details from jsonb_each_text(v_row);
   v_snippet := left(regexp_replace(coalesce(v_row->>'body', v_row->>'subject', v_row->>'title', v_row->>'message', v_row->>'email', ''), '\s+', ' ', 'g'), 70);
   v_link := 'https://supabase.com/dashboard/project/rscqxztgtpcifcqxjskh/editor?schema=public&table=' || tg_table_name;
@@ -122,3 +122,6 @@ grant execute on function public.sg_report_worker_error(text, text, text) to ano
 select cron.unschedule('statsgh-notifications') where exists (select 1 from cron.job where jobname = 'statsgh-notifications');
 select cron.schedule('statsgh-notifications', '* * * * *', 'select public.sg_send_pending_notifications()');
 -- Secrets are set out of band (never in git): vault secret 'sg_mail_secret' and private.sg_settings 'worker_alert_secret_sha256'.
+-- Moderated comments no longer use email verification codes.
+alter table public.comments alter column verification_code drop not null;
+alter table public.comments alter column verification_expires_at drop not null;
