@@ -1,4 +1,5 @@
 "use client";
+import { highlightNumbersInHtml } from "@/lib/safe-html";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { formatArticleBody } from "@/lib/paragraphs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -250,12 +251,7 @@ const ArticleDetail = () => {
     ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'style']
   });
 
-  const highlightNumbers = (html: string) => {
-    return html.replace(
-      /\b(\d+(?:[.,]\d+)*(?:\s*%|°C|°F|km|m|kg|g|bn|mn|tn|\$|£|€|¢|GH₵)?)\b/g,
-      '<span class="number-highlight">$1</span>'
-    );
-  };
+  const highlightNumbers = (html: string) => highlightNumbersInHtml(html);
 
   const bodyWithHighlightedNumbers = highlightNumbers(sanitizedBody);
   const sectionLabel = getSectionLabel(article.category_slug);
