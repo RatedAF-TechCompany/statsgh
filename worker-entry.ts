@@ -72,6 +72,43 @@ async function internalMail(request: Request, env: any): Promise<Response> {
   }
 }
 
+// ---- Site forms (contact, advertise, sponsored reports, fellowship, API, WhatsApp, fact-check claims).
+// Cloudflare Turnstile (free) is verified here with the Worker secret TURNSTILE_SECRET; the row is written by
+// public.sg_submit_form, which checks the Worker secret and applies per-email and site-wide rate limits.
+const FORM_KINDS = new Set(["contact", "advertise", "sponsored", "fellowship", "api", "whatsapp", "factcheck"]);
+const FORM_MSG: Record<string, string> = {
+  bad_email: "Please enter a valid email address.", bad_input: "Please fill in your name and message.",
+  rate_limited: "Too many messages just now. Please try again in a few minutes.", bad_kind: "Unknown form.",
+};
+async function submitForm(request: Request, env: any): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== "https://www.statsgh.com") return Response.json({ error: "Forbidden" }, { status: 403 });
+  let b: any;
+  try { b = await request.json(); } catch { return Response.json({ error: "Bad request" }, { status: 400 }); }
+  if (b?.website) return Response.json({ ok: true }); // honeypot
+  const kind = String(b?.kind || "");
+  if (!FORM_KINDS.has(kind)) return Response.json({ error: FORM_MSG.bad_kind }, { status: 400 });
+  if (!env.TURNSTILE_SECRET || !env.SG_ALERT_SECRET) return Response.json({ error: "Form temporarily unavailable." }, { status: 503 });
+  const fd = new FormData();
+  fd.append("secret", env.TURNSTILE_SECRET);
+  fd.append("response", String(b?.token || ""));
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (ip) fd.append("remoteip", ip);
+  const ts: any = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: fd })
+    .then((r) => r.json()).catch(() => ({ success: false }));
+  if (!ts?.success) return Response.json({ error: "Please complete the security check and try again." }, { status: 400 });
+  const s = (v: unknown, n: number) => String(v ?? "").slice(0, n);
+  const r = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/sg_submit_form`, {
+    method: "POST",
+    headers: { apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_secret: env.SG_ALERT_SECRET, p_kind: kind, p_name: s(b.name, 100), p_email: s(b.email, 254),
+      p_organisation: s(b.organisation, 150), p_subject: s(b.subject, 150), p_message: s(b.message, 3000) }),
+  });
+  const out = r.ok ? await r.json().catch(() => "error") : "error";
+  if (out === "ok") return Response.json({ ok: true });
+  return Response.json({ error: FORM_MSG[out] || "Could not send your message. Please email Officeofnajib@gmail.com instead." }, { status: out === "rate_limited" ? 429 : 400 });
+}
+
 const EDGE_REDIRECTS: Record<string, string> = {
   "/latest": "/news",
   "/apple-touch-icon.png": "/favicon.png",
@@ -92,6 +129,7 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
     if (m && m[1] !== "statsgh-newsroom") {
       return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/statsgh-newsroom", "Cache-Control": "public, max-age=3600" } });
     }
+    if (url.pathname === "/__forms/submit") return request.method === "POST" ? submitForm(request, env) : new Response("not found", { status: 404 });
     if (url.pathname === "/__internal/mail") return request.method === "POST" ? internalMail(request, env) : new Response("not found", { status: 404 });
     const alias = EDGE_REDIRECTS[url.pathname.replace(/\/+$/, "") || "/"];
     if (alias && (request.method === "GET" || request.method === "HEAD")) return permanent(`https://${CANONICAL_HOST}${alias}`);

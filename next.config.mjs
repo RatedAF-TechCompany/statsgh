@@ -13,7 +13,7 @@ const routerShim = path.resolve(__dirname, "src/compat/react-router-dom.tsx");
 // "Content-Security-Policy" once the report-only run is clean.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",

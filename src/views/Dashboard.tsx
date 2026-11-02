@@ -187,6 +187,17 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer border-[#E3120B]/40" onClick={() => navigate("/admin/comments")}>
+            <CardHeader>
+              <FileText className="h-8 w-8 mb-2 text-accent" />
+              <CardTitle>Comments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Approve or reject reader comments
+              </p>
+            </CardContent>
+          </Card>
           <Card className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate("/admin/articles")}>
             <CardHeader>
               <FileText className="h-8 w-8 mb-2 text-accent" />
