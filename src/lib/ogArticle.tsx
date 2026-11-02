@@ -34,9 +34,11 @@ export async function renderOg(slug: string, height: number) {
     .maybeSingle();
 
   const title = article?.title ?? "StatsGH — Ghana in numbers";
-  const items = stats(article?.key_data);
+  const a = article as { category?: string | null; section?: string | null } | null;
+  const isCrime = a?.category === "crime-justice" || a?.section === "crime-justice";
+  const items = isCrime ? [] : stats(article?.key_data);
   let source = "";
-  if (article?.id) {
+  if (article?.id && !isCrime) {
     const { data } = await supabase.rpc("get_article_source", { p_article_id: article.id });
     const row = Array.isArray(data) ? data[0] : data;
     source = row?.source_name || (row?.source_url ? new URL(row.source_url).hostname : "");
@@ -49,7 +51,7 @@ export async function renderOg(slug: string, height: number) {
           <div style={{ fontSize: 40, fontWeight: 800, color: INK, display: "flex" }}>
             Stats<span style={{ color: RED }}>GH</span>
           </div>
-          {article?.section && <div style={{ fontSize: 22, color: RED, textTransform: "uppercase", letterSpacing: 3 }}>{article.section}</div>}
+          {isCrime ? <div style={{ fontSize: 22, color: RED, textTransform: "uppercase", letterSpacing: 3 }}>Crime &amp; Justice</div> : article?.section && <div style={{ fontSize: 22, color: RED, textTransform: "uppercase", letterSpacing: 3 }}>{article.section}</div>}
         </div>
         <div style={{ marginTop: 28, fontSize: items.length ? 48 : 64, fontWeight: 700, color: INK, lineHeight: 1.15, display: "flex" }}>
           {title.length > 140 ? title.slice(0, 137) + "…" : title}
