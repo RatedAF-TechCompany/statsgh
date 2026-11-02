@@ -54,6 +54,16 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/data-vault`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/reports`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/about/team`, changeFrequency: "monthly" as const, priority: 0.4 },
+  { url: `${BASE_URL}/regions`, changeFrequency: "yearly" as const, priority: 0.6 },
+  { url: `${BASE_URL}/budget`, changeFrequency: "weekly" as const, priority: 0.6 },
+  { url: `${BASE_URL}/elections`, changeFrequency: "weekly" as const, priority: 0.6 },
+  { url: `${BASE_URL}/explainers`, changeFrequency: "weekly" as const, priority: 0.6 },
+  { url: `${BASE_URL}/fact-check`, changeFrequency: "weekly" as const, priority: 0.6 },
+  { url: `${BASE_URL}/developers`, changeFrequency: "monthly" as const, priority: 0.5 },
+  { url: `${BASE_URL}/embeds`, changeFrequency: "monthly" as const, priority: 0.5 },
+  { url: `${BASE_URL}/whatsapp`, changeFrequency: "monthly" as const, priority: 0.3 },
+  { url: `${BASE_URL}/sponsored-reports`, changeFrequency: "monthly" as const, priority: 0.3 },
+  { url: `${BASE_URL}/fellows`, changeFrequency: "monthly" as const, priority: 0.3 },
   { url: `${BASE_URL}/sources`, changeFrequency: "weekly" as const, priority: 0.5 },
 ];
 

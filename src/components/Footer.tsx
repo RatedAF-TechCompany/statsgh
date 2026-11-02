@@ -24,6 +24,16 @@ const Footer = () => {
               <li><Link to="/data-vault" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Data Vault</Link></li>
               <li><Link to="/reports" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Reports</Link></li>
               <li><Link to="/about/team" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Our team</Link></li>
+              <li><Link to="/developers" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Data API</Link></li>
+              <li><Link to="/embeds" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Embed charts</Link></li>
+              <li><Link to="/regions" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Regions in numbers</Link></li>
+              <li><Link to="/budget" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Budget tracker</Link></li>
+              <li><Link to="/elections" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Elections hub</Link></li>
+              <li><Link to="/explainers" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Explainers</Link></li>
+              <li><Link to="/fact-check" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Claims vs data</Link></li>
+              <li><Link to="/sponsored-reports" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Sponsored reports</Link></li>
+              <li><Link to="/fellows" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Data fellows</Link></li>
+              <li><Link to="/whatsapp" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">WhatsApp</Link></li>
               <li><Link to="/corrections" className="font-ui text-[13px] text-[#E3120B] hover:underline">Corrections</Link></li>
               <li><Link to="/contact" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Contact</Link></li>
               <li><Link to="/advertise" className="font-ui text-[13px] text-[#5B5B5B] hover:text-[#E3120B]">Advertise</Link></li>
