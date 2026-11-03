@@ -304,11 +304,11 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
         </article>
 
         {/* Data Citations */}
-        {((linkedIndicators && linkedIndicators.length > 0) || (linkedSources && linkedSources.length > 0)) && (
+        {linkedIndicators && linkedIndicators.length > 0 && (
           <aside className="my-12 border-t border-b border-[#D9D9D9] py-8">
             <h2 className="font-headline text-xl font-bold mb-6 flex items-center gap-2 text-[#121212]">
               <Database className="h-5 w-5 text-[#5B5B5B]" />
-              Data sources
+              Data used
             </h2>
             {linkedIndicators && linkedIndicators.length > 0 && (
               <div className="mb-8">
@@ -335,21 +335,7 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
                 </div>
               </div>
             )}
-            {linkedSources && linkedSources.length > 0 && (
-              <div>
-                <h4 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#5B5B5B] mb-4">Sources</h4>
-                <div className="flex flex-wrap gap-2">
-                  {linkedSources.map((item: any) => (
-                    <button key={item.id} onClick={() => item.source?.website_url && window.open(item.source.website_url, "_blank")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-ui text-sm border border-[#D9D9D9] bg-[#FFFFFF] hover:bg-[#D9D9D9] transition-colors">
-                      <span className="font-medium">{item.source?.short_name || item.source?.name}</span>
-                      {item.citation_text && <span className="text-[#5B5B5B]">– {item.citation_text}</span>}
-                      {item.source?.website_url && <ExternalLink className="h-3 w-3 text-[#5B5B5B]" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Source credits are never rendered publicly (Zeb, 3 Nov 2026); internal records are kept. */}
           </aside>
         )}
 

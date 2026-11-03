@@ -1,6 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { explainLabel } from "@/lib/glossary";
 
@@ -32,18 +29,29 @@ const fmt = (v: number | string | undefined) => {
   return Number.isFinite(n) ? n.toLocaleString("en-GB", { maximumFractionDigits: 2 }) : String(v);
 };
 
-export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: string; keyData: unknown; whyItMatters?: string | null }) => {
-  const stats = realStats(keyData).slice(0, 3);
+/** House-style number + unit: 10.01%, GHS 1.35 billion, US$1.5 billion, 301 deaths per 100,000. */
+export function formatStat(v: number | string | undefined, unitRaw?: string) {
+  const num = fmt(v);
+  let u = (unitRaw ?? "").trim().replace(/GH[¢₵]|GHC\b|cedis?\b/gi, "GHS");
+  if (!u) return num;
+  const scale = (x: string) => x.replace(/\bbn\b/i, "billion").replace(/\bm\b|\bmn\b/i, "million").trim();
+  if (/^%$|^per ?cent$|^percent$/i.test(u)) return `${num}%`;
+  if (/^(percentage points?|pp|ppt)$/i.test(u)) return `${num} percentage points`;
+  // "billion USD" / "million €" style: scale first, currency last.
+  const r = u.match(/^(billion|bn|million|mn|m|thousand)\s+(GHS|US\$|USD|\$|€|EUR)$/i);
+  if (r) u = `${r[2]} ${r[1]}`;
+  if (/^(€|EUR)\s*/i.test(u)) return `€${num} ${scale(u.replace(/^(€|EUR)\s*/i, ""))}`.trim();
+  const m = u.match(/^(GHS|US\$|USD|\$)\s*(.*)$/i);
+  if (m) {
+    const cur = /GHS/i.test(m[1]) ? "GHS " : "US$";
+    const rest = scale(m[2]);
+    return `${cur}${num}${rest ? " " + rest : ""}`;
+  }
+  return `${num} ${scale(u)}`;
+}
 
-  const { data: source } = useQuery({
-    queryKey: ["article-source", articleId],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_article_source", { p_article_id: articleId });
-      return (Array.isArray(data) ? data[0] : data) as { source_name: string; source_url: string } | undefined;
-    },
-    enabled: stats.length > 0,
-    staleTime: Infinity,
-  });
+export const KeyNumbers = ({ articleId: _articleId, keyData, whyItMatters }: { articleId: string; keyData: unknown; whyItMatters?: string | null }) => {
+  const stats = realStats(keyData).slice(0, 3);
 
   if (stats.length === 0) return null;
 
@@ -51,13 +59,12 @@ export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: st
     <aside aria-label="Key numbers" className="mb-8 border-l-4 border-[#E3120B] bg-[#FAF7F2] p-5">
       <div className="flex items-center gap-2 mb-4">
         <h2 className="font-ui text-xs font-bold uppercase tracking-[0.14em] text-[#5B5B5B]">Key numbers</h2>
-        <span className="font-ui text-[10px] font-bold uppercase tracking-[0.1em] bg-[#E3120B] text-white px-1.5 py-0.5 rounded-sm">Data</span>
       </div>
       <ul className="grid gap-4 sm:grid-cols-3">
         {stats.map((k, i) => (
           <li key={i} className="flex flex-col">
             <span className="font-mono text-2xl font-bold text-[#121212]">
-              {fmt(k.value)}{k.unit ? ` ${k.unit}` : ""}
+              {formatStat(k.value, k.unit)}
             </span>
             <span className="font-ui text-sm text-[#5B5B5B]">
               {k.label}{k.context ? ` — ${k.context}` : ""}
@@ -71,17 +78,6 @@ export const KeyNumbers = ({ articleId, keyData, whyItMatters }: { articleId: st
           <strong className="font-ui text-xs uppercase tracking-[0.1em] text-[#E3120B] mr-2">Why it matters</strong>
           {whyItMatters.trim()}
         </p>
-      )}
-      {source?.source_url && (
-        <a
-          href={source.source_url}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="mt-4 inline-flex items-center gap-1 font-ui text-xs text-[#5B5B5B] hover:text-[#E3120B] underline"
-        >
-          Source: {source.source_name || new URL(source.source_url).hostname}
-          <ExternalLink className="h-3 w-3" />
-        </a>
       )}
     </aside>
   );

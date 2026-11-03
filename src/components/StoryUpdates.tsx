@@ -8,8 +8,6 @@ export type StoryUpdate = {
   kind: "update" | "correction" | string;
 };
 
-const ukTime = (iso: string) =>
-  new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" }).format(new Date(iso));
 const ukDateTime = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" }).format(new Date(iso));
 
@@ -19,28 +17,18 @@ export function PublishedUpdatedLine({ publishedAt, contentUpdatedAt }: { publis
   return (
     <span className="font-ui text-xs text-[#5B5B5B]">
       Published <time dateTime={publishedAt} itemProp="datePublished">{ukDateTime(publishedAt)} UK</time>
-      {showUpdated && <> · Updated <time dateTime={contentUpdatedAt!} itemProp="dateModified">{ukTime(contentUpdatedAt!)} GMT</time></>}
+      {showUpdated && <> · Updated <time dateTime={contentUpdatedAt!} itemProp="dateModified">{ukDateTime(contentUpdatedAt!)} UK</time></>}
     </span>
   );
 }
-
-function host(u: string) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } }
 
 function Item({ u, label }: { u: StoryUpdate; label: string }) {
   return (
     <li className="py-2 border-b border-[#E5E5E5] last:border-0">
       <p className="font-ui text-[14px] text-[#1A1A1A]">
-        <strong>{label} {ukTime(u.posted_at)} UK:</strong> {u.summary}
+        <strong>{label}, {ukDateTime(u.posted_at)} UK:</strong> {u.summary}
       </p>
       {u.body_md && <p className="font-ui text-[13px] text-[#3A3A3A] mt-1 whitespace-pre-line">{u.body_md}</p>}
-      {u.sources && u.sources.length > 0 && (
-        <p className="font-ui text-[12px] text-[#5B5B5B] mt-1">
-          Sources:{" "}
-          {u.sources.map((s, i) => (
-            <span key={s}>{i > 0 && ", "}{/^https?:\/\//.test(s) ? <a href={s} target="_blank" rel="noopener nofollow" className="underline">{host(s)}</a> : s}</span>
-          ))}
-        </p>
-      )}
     </li>
   );
 }

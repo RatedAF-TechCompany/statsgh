@@ -21,7 +21,9 @@ export default async function DatasetPage({ params }: P) {
   const d = getDataset((await params).slug);
   if (!d) notFound();
   const rows = await datasetRows(createReadOnlyServerClient(), d).catch(() => null);
-  const last = rows?.length ? (rows[rows.length - 1][d.dateCol] as string) : null;
+  const actual = rows?.filter((r) => r.is_projection !== true) ?? [];
+  const last = actual.length ? (actual[actual.length - 1][d.dateCol] as string) : null;
+  const lastProjection = rows?.some((r) => r.is_projection === true) ? (rows[rows.length - 1][d.dateCol] as string) : null;
   const chart = d.chart && rows
     ? rows.filter((r) => Object.entries(d.chart!.where || {}).every(([k, v]) => r[k] === v) && r[d.chart!.y] != null)
         .map((r) => ({ x: String(r[d.dateCol]), y: Number(r[d.chart!.y]) }))
@@ -48,8 +50,9 @@ export default async function DatasetPage({ params }: P) {
         {[
           ["Source", <a key="s" href={d.sourceUrl} className="text-[#E3120B] underline" target="_blank" rel="noopener noreferrer">{d.source}</a>],
           ["Updated", d.frequency],
-          ["Last observation", last ? String(last).slice(0, 10) : "—"],
-          ["Rows", rows ? rows.length.toLocaleString("en-GB") : "unavailable"],
+          ["Latest actual observation", last ? String(last).slice(0, 10) : "Not yet available"],
+          ...(lastProjection ? [["Projection horizon", String(lastProjection).slice(0, 10)]] : []),
+          ["Rows", rows ? (rows.length ? rows.length.toLocaleString("en-GB") : "Not yet available") : "unavailable"],
           ["Licence", <a key="l" href={LICENCE.url} className="underline">{LICENCE.name}, credit StatsGH</a>],
         ].map(([k, v]) => (<div key={String(k)} className="border-t border-[#D9D9D9] pt-2"><dt className="text-xs text-[#5B5B5B]">{k}</dt><dd className="mt-0.5">{v}</dd></div>))}
       </dl>
