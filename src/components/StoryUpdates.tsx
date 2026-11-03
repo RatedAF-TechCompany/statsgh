@@ -48,7 +48,7 @@ export function StoryUpdates({ updates }: { updates?: StoryUpdate[] | null }) {
       )}
       {corr.length > 0 && (
         <section aria-label="Corrections" className="mb-6 border-l-4 border-[#5B5B5B] bg-[#F5F5F5] px-4 py-3">
-          <ul>{corr.map((u) => <Item key={u.id} u={u} label="Correction:" />)}</ul>
+          <ul>{corr.map((u) => <Item key={u.id} u={u} label="Correction" />)}</ul>
         </section>
       )}
     </>
