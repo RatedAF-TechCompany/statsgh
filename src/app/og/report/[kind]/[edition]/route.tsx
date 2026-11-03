@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ kind: s
             </div>
           ))}
         </div>
-        <div style={{ marginTop: "auto", fontSize: 20, color: "#5B5B5B" }}>Sources: Bank of Ghana, Ghana Stock Exchange · statsgh.com/reports</div>
+        <div style={{ marginTop: "auto", fontSize: 20, color: "#5B5B5B" }}>statsgh.com/reports</div>
       </div>
     ),
     { width: 1200, height: 630 },
