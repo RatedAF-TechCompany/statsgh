@@ -82,7 +82,7 @@ export async function generateMetadata({
 
   const canonicalUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   const absoluteImageUrl =
-    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}`;
+    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}${ogVersion(article.slug)}`;
   const description = describe(article);
   const keywords = article.tags?.join(", ") || "";
 
@@ -145,10 +145,16 @@ export async function generateMetadata({
 }
 
 // JSON-LD structured data for Google News
+// Cache-busting for OG cards whose old render is cached immutably at the edge (bare URL only).
+const OG_VERSIONS: Record<string, string> = {
+  "valco-rod-mill-starts-production-targets-1500-jobs-workforce-848-mw0vzpa8": "20261103", // stale "Source:" footer
+};
+const ogVersion = (slug: string) => (OG_VERSIONS[slug] ? `?v=${OG_VERSIONS[slug]}` : "");
+
 function generateJsonLd(article: any, authorSlug?: string | null) {
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   // Per-article generated OG card (1200x630) is always available; hero image (if any) leads.
-  const ogImage = `${baseUrl}/og/article/${article.slug}`;
+  const ogImage = `${baseUrl}/og/article/${article.slug}${ogVersion(article.slug)}`;
   const heroUrl = makeAbsoluteUrl(article.hero_image_url);
   // Google article rich results: images >=1200px wide in 16:9, 4:3 and 1:1.
   const images = [
