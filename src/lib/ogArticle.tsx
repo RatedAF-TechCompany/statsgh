@@ -37,13 +37,7 @@ export async function renderOg(slug: string, height: number) {
   const a = article as { category?: string | null; section?: string | null } | null;
   const isCrime = a?.category === "crime-justice" || a?.section === "crime-justice";
   const items = isCrime ? [] : stats(article?.key_data);
-  let source = "";
-  if (article?.id && !isCrime) {
-    const { data } = await supabase.rpc("get_article_source", { p_article_id: article.id });
-    const row = Array.isArray(data) ? data[0] : data;
-    source = row?.source_name || (row?.source_url ? new URL(row.source_url).hostname : "");
-  }
-
+  // Source credits are never rendered publicly (Zeb, 3 Nov 2026).
   return new ImageResponse(
     (
       <div style={{ width: 1200, height, display: "flex", flexDirection: "column", background: "#FFFFFF", padding: "48px 64px", borderTop: `16px solid ${RED}` }}>
@@ -69,7 +63,7 @@ export async function renderOg(slug: string, height: number) {
           </div>
         )}
         <div style={{ marginTop: items.length ? 24 : "auto", fontSize: 22, color: GREY, display: "flex", justifyContent: "space-between" }}>
-          <span>{source ? `Source: ${source}` : ""}</span>
+          <span></span>
           <span>statsgh.com</span>
         </div>
       </div>

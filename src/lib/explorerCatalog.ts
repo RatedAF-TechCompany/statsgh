@@ -148,13 +148,10 @@ export async function loadSeries(item: CatalogItem): Promise<SeriesData> {
   if (id.startsWith("kn-")) {
     const k = (await loadKeyNumbers()).get(id);
     if (!k) return { points: [], source: "—", updated: null };
-    let source = "StatsGH article";
-    const { data } = await supabase.rpc("get_article_source", { p_article_id: k.article.id });
-    const row: any = Array.isArray(data) ? data[0] : data;
-    if (row?.source_name) source = row.source_name;
+    // Article source credits are never shown publicly (Zeb, 3 Nov 2026).
     return {
       points: [{ date: dayOnly(k.article.published_at), value: k.value }],
-      source, sourceUrl: row?.source_url || item.href, updated: k.article.published_at,
+      source: "StatsGH article", sourceUrl: item.href, updated: k.article.published_at,
       note: "A single figure reported in one article — not a time series.",
     };
   }
