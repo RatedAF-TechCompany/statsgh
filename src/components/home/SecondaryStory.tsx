@@ -1,3 +1,4 @@
+import { ArticleImage } from "@/components/SiteTile";
 import { Link } from "react-router-dom";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 
@@ -53,15 +54,7 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
             )}
           </div>
           {showImage && article.hero_image_url && (
-            <img 
-              src={article.hero_image_url} 
-              alt=""
-              width={80}
-              height={80}
-              loading="lazy"
-              decoding="async"
-              className="w-20 h-20 object-cover flex-shrink-0"
-            />
+            <div className="w-20 h-20 flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" /></div>
           )}
         </div>
       </Link>
@@ -91,15 +84,7 @@ export const SecondaryStory = ({ article, showImage = true, variant = "default" 
     >
       {showImage && article.hero_image_url && (
         <div className="mb-2 overflow-hidden">
-          <img 
-            src={article.hero_image_url} 
-            alt=""
-            width={400}
-            height={300}
-            loading="lazy"
-            decoding="async"
-            className="w-full aspect-[4/3] object-cover group-hover:scale-[1.02] transition-transform duration-300"
-          />
+          <div className="aspect-[4/3] flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" className="group-hover:scale-[1.02] transition-transform duration-300" /></div>
         </div>
       )}
       <p className="font-sans text-[11px] uppercase tracking-wider text-ft-maroon font-semibold mb-1">

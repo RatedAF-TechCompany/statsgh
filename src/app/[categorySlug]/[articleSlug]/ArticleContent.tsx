@@ -237,7 +237,7 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
           {/* Hero Image */}
           {article.hero_image_url && (
             <figure className="mb-10">
-              {isOgCardUrl(article.hero_image_url) ? <div className="w-full aspect-[16/9]"><KeyFigureTile article={article as any} size="lg" /></div> : <div className="w-full aspect-[16/9]"><TreatedImg article={article as any} src={article.hero_image_url} alt={article.title} itemProp="image" eager /></div>}
+              {isOgCardUrl(article.hero_image_url) ? <div className="w-full aspect-[16/9]"><KeyFigureTile article={article as any} size="lg" plain /></div> : <div className="w-full aspect-[16/9]"><TreatedImg article={article as any} src={article.hero_image_url} alt={article.title} itemProp="image" eager /></div>}
               {(article.hero_image_caption || article.hero_image_credit) && (
                 <figcaption className="mt-2 font-ui text-[13px] text-[#5B5B5B]">
                   {article.hero_image_caption && <span className="block">{article.hero_image_caption}</span>}

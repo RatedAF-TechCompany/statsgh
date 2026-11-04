@@ -1,4 +1,5 @@
 "use client";
+import { ArticleImage } from "@/components/SiteTile";
 import { useState } from "react"; // News page
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -43,7 +44,7 @@ const News = () => {
     queryFn: async () => {
       let query = supabase
         .from("articles")
-        .select("id, title, slug, summary, word_count, hero_image_url, published_at, category_slug, author_name, tags", { count: "exact" })
+        .select("id, title, slug, summary, word_count, hero_image_url, key_data, published_at, category_slug, author_name, tags", { count: "exact" })
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -132,11 +133,7 @@ const News = () => {
                 >
                   {article.hero_image_url && (
                     <div className="aspect-video overflow-hidden rounded-lg mb-3 relative">
-                      <img
-                        src={article.hero_image_url}
-                        alt={article.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                      <div className="h-full w-full flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="md" className="group-hover:scale-105 transition-transform duration-300" /></div>
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-2 flex-wrap">

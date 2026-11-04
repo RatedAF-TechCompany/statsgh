@@ -1,4 +1,5 @@
 "use client";
+import { ArticleImage } from "@/components/SiteTile";
 import { highlightNumbersInHtml } from "@/lib/safe-html";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { formatArticleBody } from "@/lib/paragraphs";
@@ -381,7 +382,7 @@ const ArticleDetail = () => {
           {/* Hero Image */}
           {article.hero_image_url && (
             <figure className="mb-10">
-              <img src={article.hero_image_url} alt={article.title} className="w-full aspect-[16/9] object-cover" itemProp="image" />
+              <div className="aspect-[16/9] flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="lg" plain className="" /></div>
               {(article.hero_image_caption || article.hero_image_credit) && (
                 <figcaption className="mt-2 font-ui text-[13px] text-[#5B5B5B]">
                   {article.hero_image_caption && <span className="block">{article.hero_image_caption}</span>}

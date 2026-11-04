@@ -1,3 +1,4 @@
+import { ArticleImage } from "@/components/SiteTile";
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
@@ -46,16 +47,7 @@ export const LeadStory = ({ article }: LeadStoryProps) => {
     >
       {article.hero_image_url && (
         <div className="mb-4 overflow-hidden">
-          <img 
-            src={article.hero_image_url} 
-            alt={article.title}
-            width={800}
-            height={450}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-            className="w-full aspect-[16/9] object-cover group-hover:scale-[1.02] transition-transform duration-300"
-          />
+          <div className="aspect-[16/9] flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="lg" className="group-hover:scale-[1.02] transition-transform duration-300" /></div>
         </div>
       )}
       <div className="space-y-2">

@@ -1,4 +1,5 @@
 "use client";
+import { ArticleImage } from "@/components/SiteTile";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,7 +55,7 @@ const Saved = () => {
             category_slug,
             section,
             summary,
-            hero_image_url,
+            hero_image_url, key_data,
             published_at,
             author_name
           )
@@ -178,11 +179,7 @@ const Saved = () => {
                   {article.hero_image_url && (
                     <div className="w-32 md:w-40 flex-shrink-0">
                       <div className="aspect-[4/3] overflow-hidden">
-                        <img
-                          src={article.hero_image_url}
-                          alt=""
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <div className="h-full w-full flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" className="group-hover:scale-105 transition-transform duration-300" /></div>
                       </div>
                     </div>
                   )}

@@ -1,4 +1,5 @@
 "use client";
+import { ArticleImage } from "@/components/SiteTile";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +56,7 @@ const Search = () => {
     try {
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, category_slug, summary, hero_image_url, published_at, section")
+        .select("id, title, slug, category_slug, summary, hero_image_url, key_data, published_at, section")
         .eq("is_published", true)
         .or(ilikeOrTerms(["title", "summary", "body"], query))
         .order("published_at", { ascending: false })
@@ -128,11 +129,7 @@ const Search = () => {
                   >
                     <div className="flex gap-3">
                       {article.hero_image_url && (
-                        <img
-                          src={article.hero_image_url}
-                          alt={article.title}
-                          className="w-20 h-20 object-cover flex-shrink-0"
-                        />
+                        <div className="w-20 h-20 flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" /></div>
                       )}
                       <div className="flex-1 min-w-0">
                         <h2 className="font-serif text-[17px] leading-[23px] font-medium text-ft-maroon mb-1">

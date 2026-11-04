@@ -1,4 +1,5 @@
 "use client";
+import { ArticleImage } from "@/components/SiteTile";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -185,7 +186,7 @@ const GhanaFinanceDashboard = () => {
       // Get recent articles tagged with economy/finance topics
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, published_at, category_slug, hero_image_url")
+        .select("id, title, slug, published_at, category_slug, hero_image_url, key_data")
         .eq("is_published", true)
         .or("tags.cs.{economy},tags.cs.{finance},tags.cs.{gdp},tags.cs.{inflation}")
         .order("published_at", { ascending: false })
@@ -195,7 +196,7 @@ const GhanaFinanceDashboard = () => {
         // Fallback to most recent articles
         const { data: fallbackData } = await supabase
           .from("articles")
-          .select("id, title, slug, published_at, category_slug, hero_image_url")
+          .select("id, title, slug, published_at, category_slug, hero_image_url, key_data")
           .eq("is_published", true)
           .order("published_at", { ascending: false })
           .limit(4);
@@ -598,11 +599,7 @@ const GhanaFinanceDashboard = () => {
                 >
                   {article.hero_image_url && (
                     <div className="aspect-video overflow-hidden">
-                      <img
-                        src={article.hero_image_url}
-                        alt={article.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="h-full w-full flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" className="" /></div>
                     </div>
                   )}
                   <CardContent className="pt-4">

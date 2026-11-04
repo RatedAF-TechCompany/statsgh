@@ -1,3 +1,4 @@
+import { ArticleImage } from "@/components/SiteTile";
 import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link } from "react-router-dom";
@@ -111,16 +112,7 @@ export const ArticleCard = ({ article, isMostRead = false, backgroundColor }: Ar
       <div className="flex flex-col items-end gap-2">
         {typeof article.hero_image_url === "string" && article.hero_image_url.startsWith("http") && (
           <div className="w-[120px] h-[80px] bg-muted flex-shrink-0 overflow-hidden">
-            <img
-              src={article.hero_image_url}
-              alt={article.title}
-              width={120}
-              height={80}
-              loading="lazy"
-              decoding="async"
-              onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
-              className="w-full h-full object-cover"
-            />
+            <div className="h-full w-full flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" className="" /></div>
           </div>
         )}
         <Button

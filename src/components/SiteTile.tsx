@@ -68,19 +68,20 @@ export function keyFigure(a: TileArticle): { value: string; label: string } | nu
   if (unit === "%" || /^per\s?cent$/i.test(unit)) value = `${num}%`;
   else if (/^(GH[S₵C]|GHS|US\$|\$|USD)$/i.test(unit)) value = `${unit.toUpperCase() === "USD" ? "US$" : unit.toUpperCase() === "GHS" ? "GH₵" : unit}${num}`;
   else if (unit && unit.length <= 4) value = `${num} ${unit}`;
-  else if (unit) label = `${unit} — ${label}`;
+  else if (unit && !label.toLowerCase().includes(unit.toLowerCase())) label = `${unit} — ${label}`;
   return { value, label: label.slice(0, 60) };
 }
 
 const LOGO = "/images/statsgh-logo-tile.png";
 
 /** Large tile for lead / grid slots. Fills its parent; parent sets aspect ratio. */
-export function KeyFigureTile({ article, className = "", size = "md", figureTop = false }: { article: TileArticle; className?: string; size?: "sm" | "md" | "lg"; figureTop?: boolean }) {
+export function KeyFigureTile({ article, className = "", size = "md", figureTop = false, plain = false }: { article: TileArticle; className?: string; size?: "sm" | "md" | "lg"; figureTop?: boolean; plain?: boolean }) {
   const pos = figureTop ? "top-[20%]" : "bottom-[9%]";
   const g = tileGroup(article);
-  const fig = keyFigure(article);
+  const fig = plain ? null : keyFigure(article);
   const crime = g === "crime";
-  const big = size === "lg" ? "text-[56px] md:text-[84px]" : size === "sm" ? "text-[30px]" : "text-[44px] md:text-[56px]";
+  const big = size === "lg" ? "text-[56px] md:text-[84px]" : size === "sm" ? "text-[18px]" : "text-[44px] md:text-[56px]";
+  const sm = size === "sm";
   return (
     <div
       aria-hidden="true"
@@ -88,8 +89,8 @@ export function KeyFigureTile({ article, className = "", size = "md", figureTop 
       style={{ background: SECTION_TILE_COLOURS[g] }}
     >
       <div className="site-tile-texture absolute inset-0" />
-      <span className="absolute left-[6%] top-[8%] font-ui text-[10px] md:text-[11px] font-bold uppercase tracking-[0.18em] text-white/85">{SECTION_NAMES[g]}</span>
-      <img src={LOGO} alt="" width={28} height={28} loading="lazy" className="no-treat absolute right-[5%] top-[6%] h-6 w-6 md:h-7 md:w-7 shadow-sm" />
+      {!sm && <span className="absolute left-[6%] top-[8%] font-ui text-[10px] md:text-[11px] font-bold uppercase tracking-[0.18em] text-white/85">{SECTION_NAMES[g]}</span>}
+      <img src={LOGO} alt="" width={28} height={28} loading="lazy" className={`no-treat absolute right-[6%] top-[6%] shadow-sm ${sm ? "h-4 w-4" : "h-6 w-6 md:h-7 md:w-7"}`} />
       {fig ? (
         <div className={`absolute inset-x-[6%] ${pos}`}>
           <div className={`font-ui font-extrabold leading-none tracking-[-0.03em] ${big}`}>{fig.value}</div>
@@ -112,7 +113,7 @@ export function CompactFigure({ article, className = "" }: { article: TileArticl
   const colour = SECTION_TILE_COLOURS[tileGroup(article)];
   return (
     <div className={`w-24 flex-shrink-0 border-l-4 pl-2 ${className}`} style={{ borderColor: colour }} aria-hidden="true">
-      <div className="font-ui text-[18px] font-extrabold leading-tight tracking-[-0.02em] break-words" style={{ color: colour }}>{fig.value}</div>
+      <div className={`font-ui ${fig.value.length > 7 ? "text-[15px]" : "text-[18px]"} font-extrabold leading-tight tracking-[-0.02em] whitespace-nowrap`} style={{ color: colour }}>{fig.value}</div>
       <div className="mt-0.5 font-ui text-[10px] leading-snug text-[#666] line-clamp-2">{fig.label}</div>
     </div>
   );
@@ -128,12 +129,14 @@ export function photoPalette(a: TileArticle): PhotoPalette {
 }
 
 const hexToRgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+// True duotones (shadows -> ink/colour, highlights -> cream), tuned against palette-refs (4 Nov 2026).
 const STOPS: Record<PhotoPalette, string[]> = {
-  bw: ["#000000", "#2a2a2a", "#FFFFFF"],
-  red: ["#3A0503", "#E3120B", "#FCEFE8"],
-  orange: ["#4A1A08", "#F0643A", "#FFF4EA"],
-  cream: ["#121212", "#6B6660", "#FAF7F2"],
+  bw: ["#0E0E0E", "#3A3A3A", "#7C7C7C", "#C9C9C9", "#FFFFFF"],
+  red: ["#2A0604", "#9E0D07", "#D8392A", "#EFB5A6", "#F3EDE4"],
+  orange: ["#7A2E12", "#E06A3C", "#F2A27E", "#F8D9C6", "#F8F3EC"],
+  cream: ["#141414", "#4D4945", "#8E8983", "#D6CFC5", "#F3EDE4"],
 };
+const LIFT = { slope: 1.2, intercept: 0.08 }; // contrast/brightness lift before the duotone map
 
 /** Render once per page (in the root layout). SVG filters referenced by .photo-treat-*. */
 export function PhotoFilterDefs() {
@@ -145,7 +148,7 @@ export function PhotoFilterDefs() {
         return (
           <filter id={`sgh-${p}`} key={p} colorInterpolationFilters="sRGB">
             <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0" />
-            <feComponentTransfer><feFuncR type="linear" slope={p === "bw" ? 1.35 : 1.15} intercept={p === "bw" ? -0.17 : -0.07} /><feFuncG type="linear" slope={p === "bw" ? 1.35 : 1.15} intercept={p === "bw" ? -0.17 : -0.07} /><feFuncB type="linear" slope={p === "bw" ? 1.35 : 1.15} intercept={p === "bw" ? -0.17 : -0.07} /></feComponentTransfer>
+            <feComponentTransfer><feFuncR type="linear" slope={LIFT.slope} intercept={LIFT.intercept} /><feFuncG type="linear" slope={LIFT.slope} intercept={LIFT.intercept} /><feFuncB type="linear" slope={LIFT.slope} intercept={LIFT.intercept} /></feComponentTransfer>
             <feComponentTransfer><feFuncR type="table" tableValues={t(0)} /><feFuncG type="table" tableValues={t(1)} /><feFuncB type="table" tableValues={t(2)} /></feComponentTransfer>
           </filter>
         );
@@ -164,8 +167,8 @@ export function TreatedImg({ article, src, alt = "", className = "", eager = fal
       <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" onError={onError} itemProp={itemProp} className={`h-full w-full object-cover ${className}`} style={{ filter: `url(#sgh-${p})` }} />
       {p === "cream" && (
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 56" preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={`0,${40 + (hash(article.slug || "") % 8)} 22,36 40,41 58,28 78,31 100,${16 + (hash(article.title) % 10)}`} fill="none" stroke="#E3120B" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 3 }} />
-          <polyline points="0,48 25,46 45,49 65,40 85,43 100,35" fill="none" stroke="#1F4E8C" style={{ strokeWidth: 2 }} vectorEffect="non-scaling-stroke" />
+          <polyline points={`0,${48 + (hash(article.slug || "") % 4)} 18,47 36,51 55,44 74,46 100,${36 + (hash(article.title) % 6)}`} fill="none" stroke="#E3120B" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 2.5 }} />
+          <polyline points="0,54 22,52 44,54 66,49 86,51 100,46" fill="none" stroke="#1F4E8C" style={{ strokeWidth: 1.5 }} vectorEffect="non-scaling-stroke" />
         </svg>
       )}
     </div>
@@ -182,4 +185,13 @@ export function HeroSlot({ article, wrapClass = "", imgClass = "", size = "md", 
   if (!article.hero_image_url) return null;
   if (isOgCardUrl(article.hero_image_url)) return <div className={wrapClass}><KeyFigureTile article={article} size={size} /></div>;
   return <div className={wrapClass}><TreatedImg article={article} src={article.hero_image_url} alt={alt} className={imgClass} eager={eager} /></div>;
+}
+
+/** Drop-in for any article <img>: fills its (sized) parent. /og card -> tile, real photo -> treated. */
+export function ArticleImage({ article, size = "sm", alt = "", className = "", eager = false, plain = false }: {
+  article: TileArticle; size?: "sm" | "md" | "lg"; alt?: string; className?: string; eager?: boolean; plain?: boolean;
+}) {
+  if (!article.hero_image_url) return null;
+  if (isOgCardUrl(article.hero_image_url)) return <KeyFigureTile article={article} size={size} plain={plain} />;
+  return <TreatedImg article={article} src={article.hero_image_url} alt={alt} className={className} eager={eager} />;
 }

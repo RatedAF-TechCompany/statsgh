@@ -1,3 +1,4 @@
+import { ArticleImage } from "@/components/SiteTile";
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
@@ -47,11 +48,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
         className="block pb-4 hover:opacity-90 transition-opacity"
       >
         {article.hero_image_url && (
-          <img 
-            src={article.hero_image_url} 
-            alt={article.title}
-            className="w-full aspect-video object-cover mb-3"
-          />
+          <div className="aspect-video mb-3 flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" className="" /></div>
         )}
         <h2 className="font-serif text-xl font-medium leading-[1.3] text-[#7A0034] mb-1.5">
           {article.title}
@@ -114,11 +111,7 @@ export const RankedArticleItem = ({ article, rank, isHero, showImage = false }: 
           </p>
         </div>
         {showImage && article.hero_image_url && (
-          <img 
-            src={article.hero_image_url} 
-            alt={article.title}
-            className="w-24 h-16 object-cover flex-shrink-0"
-          />
+          <div className="w-24 h-16 flex-shrink-0 overflow-hidden"><ArticleImage article={article as any} size="sm" /></div>
         )}
       </div>
     </Link>
