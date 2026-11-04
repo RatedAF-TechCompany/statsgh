@@ -200,7 +200,8 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-ui text-[13px] text-[#5B5B5B]" itemProp="author">
-                  <JournalistByline name={article.author_name} />
+                  By <a href="/authors/abubakar-saddique" rel="author" className="underline hover:text-[#E3120B]">Abubakar Saddique</a>
+                  {(article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)) && " · Edited by Zebrilla Najib"}
                   {" "}|{" "}StatsGH
                 </span>
                 <div className="mt-1"><PublishedUpdatedLine publishedAt={article.published_at} contentUpdatedAt={article.content_updated_at} /></div>

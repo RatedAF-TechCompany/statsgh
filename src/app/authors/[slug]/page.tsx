@@ -8,7 +8,10 @@ import { PageShell, ShareBar } from "@/components/vault/VaultBits";
 import { fmtDate, monthLabel } from "@/lib/reports";
 
 type P = { params: Promise<{ slug: string }> };
-const load = async (slug: string) =>
+// In-house author (Zeb, 4 Nov 2026): every article is credited to Abubakar Saddique.
+const IN_HOUSE = { slug: "abubakar-saddique", display_name: "Abubakar Saddique", role: "Data journalist", kind: "person",
+  bio: "Abubakar Saddique is StatsGH's in-house data journalist.", expertise: [] as string[], byline_aliases: [] as string[], all: true };
+const load = async (slug: string): Promise<any> => slug === IN_HOUSE.slug ? IN_HOUSE :
   (await createReadOnlyServerClient().from("authors").select("*").eq("slug", slug).eq("is_active", true).maybeSingle()).data;
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
@@ -23,7 +26,7 @@ export default async function AuthorPage({ params }: P) {
   const sb = createReadOnlyServerClient();
   const names = Array.from(new Set([a.display_name, ...(a.byline_aliases || [])]));
   const [{ data: arts }, { data: reps }] = await Promise.all([
-    sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true).in("author_name", names).order("published_at", { ascending: false }).limit(50),
+    (a.all ? sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true) : sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true).in("author_name", names)).order("published_at", { ascending: false }).limit(50),
     a.kind === "desk" ? sb.from("reports").select("kind, edition").order("edition", { ascending: false }).limit(12) : Promise.resolve({ data: [] as { kind: string; edition: string }[] }),
   ]);
   const url = `https://www.statsgh.com/authors/${a.slug}`;

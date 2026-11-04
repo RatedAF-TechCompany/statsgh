@@ -123,7 +123,7 @@ export async function generateMetadata({
       ],
       publishedTime: article.published_at || undefined,
       modifiedTime: article.content_updated_at || article.published_at || undefined,
-      authors: ["StatsGH Newsroom"],
+      authors: ["https://www.statsgh.com/authors/abubakar-saddique"],
       section: article.section || undefined,
     },
     twitter: {
@@ -137,7 +137,7 @@ export async function generateMetadata({
     other: {
       "article:published_time": article.published_at || "",
       "article:modified_time": article.content_updated_at || article.published_at || "",
-      "article:author": "https://www.statsgh.com/authors/statsgh-newsroom",
+      "article:author": "https://www.statsgh.com/authors/abubakar-saddique",
       "article:section": article.section || "",
       news_keywords: keywords,
       "original-source": canonicalUrl,
@@ -151,6 +151,8 @@ const OG_VERSIONS: Record<string, string> = {
   "valco-rod-mill-starts-production-targets-1500-jobs-workforce-848-mw0vzpa8": "20261103", // stale "Source:" footer
 };
 const ogVersion = (slug: string) => (OG_VERSIONS[slug] ? `?v=${OG_VERSIONS[slug]}` : "");
+
+const isResearch = (a: any) => a?.category_slug === "data-and-research" || ["research", "data"].includes(a?.section) || ["research", "data"].includes(a?.category_slug);
 
 function generateJsonLd(article: any, authorSlug?: string | null) {
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
@@ -174,10 +176,11 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     datePublished: article.published_at,
     dateModified: article.content_updated_at || article.published_at,
     author: {
-      "@type": "Organization",
-      name: "StatsGH Newsroom",
-      url: `${baseUrl}/authors/statsgh-newsroom`,
+      "@type": "Person",
+      name: "Abubakar Saddique",
+      url: "https://www.statsgh.com/authors/abubakar-saddique",
     },
+    ...(isResearch(article) ? { editor: { "@type": "Person", name: "Zebrilla Najib", jobTitle: "Research Editor", url: "https://www.statsgh.com/about/team" } } : {}),
     publisher: {
       "@type": "NewsMediaOrganization",
       name: "StatsGH",
@@ -219,7 +222,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     permanentRedirect(`/${article.category_slug}/${article.slug}`);
   }
 
-  const jsonLd = generateJsonLd(article, "statsgh-newsroom");
+  const jsonLd = generateJsonLd(article, "abubakar-saddique");
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

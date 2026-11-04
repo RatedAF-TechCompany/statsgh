@@ -139,10 +139,10 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
       url.port = "";
       return new Response(null, { status: 301, headers: { Location: url.toString(), "Cache-Control": "public, max-age=3600" } });
     }
-    // Single organisation byline: retired author profiles 301 to the newsroom page.
+    // Single in-house byline (Abubakar Saddique): every other author profile 301s to his page.
     const m = url.pathname.match(/^\/authors\/([^/]+)\/?$/);
-    if (m && m[1] !== "statsgh-newsroom") {
-      return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/statsgh-newsroom", "Cache-Control": "public, max-age=3600" } });
+    if (m && m[1] !== "abubakar-saddique") {
+      return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/abubakar-saddique", "Cache-Control": "public, max-age=3600" } });
     }
     if (url.pathname === "/__forms/submit") return request.method === "POST" ? submitForm(request, env) : new Response("not found", { status: 404 });
     if (url.pathname === "/__internal/mail") return request.method === "POST" ? internalMail(request, env) : new Response("not found", { status: 404 });

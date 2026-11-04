@@ -815,7 +815,7 @@ Return ONLY valid JSON:
         const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         const wordCount = bodyText.split(/\s+/).length;
 
-        const authorName = "StatsGH Newsroom"; // single organisation byline
+        const authorName = "Abubakar Saddique"; // in-house byline (Zeb, 4 Nov 2026)
 
         // Generate AI hero image
         let heroImageUrl: string | null = null;

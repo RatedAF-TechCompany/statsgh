@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   ];
   for (const [k, col] of map) if (has(b, k)) row[col] = b[k];
   if (has(b, "body") && isStr(b.body)) row.body = formatArticleBody(b.body);
-  if (has(b, "author_name") || !isUpdate) row.author_name = "StatsGH Newsroom"; // single organisation byline
+  if (has(b, "author_name") || !isUpdate) row.author_name = "Abubakar Saddique"; // in-house byline (Zeb, 4 Nov 2026)
   if (b._category_id) row.category_id = b._category_id;
   if (has(b, "body")) row.word_count = String(row.body).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
 

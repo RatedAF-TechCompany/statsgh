@@ -20,7 +20,7 @@ const dicebearUrl = (name: string) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(slugify(name))}`;
 
 export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: Props) => {
-  const display = name || "StatsGH Newsroom";
+  const display = name || "Abubakar Saddique";
 
   const { data: journalist } = useQuery({
     queryKey: ["journalist-bio", display],

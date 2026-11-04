@@ -25,7 +25,7 @@ export default async function ReportsPage() {
   return (
     <PageShell>
       <div className="border-b border-[#E3120B] pb-3 mb-4"><h1 className="section-label text-base">Reports</h1></div>
-      <p className="font-serif text-[18px] text-[#5B5B5B] max-w-[760px] mb-3">Compiled automatically by the StatsGH Data Desk from datasets in our <Link href="/data-vault" className="text-[#E3120B] underline">Data Vault</Link>. Every figure carries its source and date; where a figure is missing it is left out, not estimated.</p>
+      <p className="font-serif text-[18px] text-[#5B5B5B] max-w-[760px] mb-3">Compiled automatically from datasets in our <Link href="/data-vault" className="text-[#E3120B] underline">Data Vault</Link>. Every figure carries its source and date; where a figure is missing it is left out, not estimated.</p>
       <div className="mb-6"><ShareBar url="https://www.statsgh.com/reports" title="StatsGH Reports" /></div>
       <div className="grid md:grid-cols-2 gap-8">
         <Block title="Ghana Economy Scorecard" blurb="Weekly, every Sunday: cedi, T-bills, policy rate, inflation, GSE and commodities versus last week, month and year." base="/reports/economy-scorecard" rows={sc} label={(e) => `Week ending ${fmtDate(e)}`} />

@@ -3369,7 +3369,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               subtitle: generated.subtitle || null,
               seo_description: generated.seo_description ? String(generated.seo_description).substring(0, 140) : null,
               body: formatArticleBody(generated.body_html),
-              author_name: "StatsGH Newsroom", // single organisation byline
+              author_name: "Abubakar Saddique", // in-house byline (Zeb, 4 Nov 2026)
               hero_image_url: heroImageUrl,
               published_at: new Date().toISOString(),
               source_published_at: item._pubDateParsed.toISOString(),

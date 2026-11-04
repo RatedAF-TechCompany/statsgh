@@ -616,7 +616,7 @@ Return ONLY valid JSON.`;
         category_id: categoryId,
         category_slug: categorySlug,
         author_id: user.id,
-        author_name: "StatsGH Newsroom",
+        author_name: "Abubakar Saddique",
         article_type: author_type === "expert" ? "expert_commentary" : undefined,
         section: categorySlug,
         status: isScheduled ? "scheduled" : "published",
