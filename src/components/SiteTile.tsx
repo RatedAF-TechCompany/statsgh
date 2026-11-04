@@ -72,7 +72,7 @@ export function keyFigure(a: TileArticle): { value: string; label: string } | nu
   return { value, label: label.slice(0, 60) };
 }
 
-const LOGO = "/images/statsgh-logo-tile.png";
+const LOGO = "/images/statsgh-logo-white.png"; // white-on-transparent (Zeb, 4 Nov 2026)
 
 /** Large tile for lead / grid slots. Fills its parent; parent sets aspect ratio. */
 export function KeyFigureTile({ article, className = "", size = "md", figureTop = false, plain = false }: { article: TileArticle; className?: string; size?: "sm" | "md" | "lg"; figureTop?: boolean; plain?: boolean }) {
@@ -90,7 +90,7 @@ export function KeyFigureTile({ article, className = "", size = "md", figureTop 
     >
       <div className="site-tile-texture absolute inset-0" />
       {!sm && <span className="absolute left-[6%] top-[8%] font-ui text-[10px] md:text-[11px] font-bold uppercase tracking-[0.18em] text-white/85">{SECTION_NAMES[g]}</span>}
-      <img src={LOGO} alt="" width={28} height={28} loading="lazy" className={`no-treat absolute right-[6%] top-[6%] shadow-sm ${sm ? "h-4 w-4" : "h-6 w-6 md:h-7 md:w-7"}`} />
+      <img src={LOGO} alt="" width={480} height={111} loading="lazy" className={`no-treat absolute right-[6%] top-[6%] w-auto ${sm ? "h-2.5" : "h-4 md:h-5"}`} />
       {fig ? (
         <div className={`absolute inset-x-[6%] ${pos}`}>
           <div className={`font-ui font-extrabold leading-none tracking-[-0.03em] ${big}`}>{fig.value}</div>
