@@ -81,8 +81,9 @@ export async function generateMetadata({
   }
 
   const canonicalUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
+  const heroAbs = makeAbsoluteUrl(article.hero_image_url);
   const absoluteImageUrl =
-    makeAbsoluteUrl(article.hero_image_url) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}${ogVersion(article.slug)}`;
+    (heroAbs && heroAbs === `${baseUrl}/og/article/${article.slug}` ? heroAbs + ogVersion(article.slug) : heroAbs) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}${ogVersion(article.slug)}`;
   const description = describe(article);
   const keywords = article.tags?.join(", ") || "";
 
