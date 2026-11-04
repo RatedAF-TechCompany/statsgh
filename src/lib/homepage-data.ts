@@ -14,6 +14,7 @@ export type HomepageArticle = {
   summary: string | null;
   word_count: number | null;
   hero_image_url: string | null;
+  key_data?: unknown;
   published_at: string | null;
   author_name: string | null;
   is_breaking: boolean | null;
@@ -36,7 +37,7 @@ export async function fetchHomepageArticles(client: Client): Promise<HomepageArt
   const { data, error } = await client
     .from("articles")
     .select(
-      "id, title, slug, category_slug, section, summary, word_count, hero_image_url, published_at, author_name, is_breaking"
+      "id, title, slug, category_slug, section, summary, word_count, hero_image_url, key_data, published_at, author_name, is_breaking"
     )
     .eq("is_published", true)
     .order("published_at", { ascending: false })

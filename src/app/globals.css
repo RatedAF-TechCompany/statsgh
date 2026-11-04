@@ -1,2 +1,7 @@
 @import "../index.css";
 .company-link{color:#0F5499;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+
+/* On-site key-figure tiles & red duotone for real photos (feat/site-tiles) */
+.site-tile-texture { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 18px), radial-gradient(circle at 85% 110%, rgba(255,255,255,0.16), transparent 55%); }
+/* Safety net: any external photo in page content not routed through <TreatedImg> is still never raw (B&W). */
+main img[src^="http"]:not(.no-treat) { filter: grayscale(1) contrast(1.2); }

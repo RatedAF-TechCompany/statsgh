@@ -3,6 +3,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import Script from "next/script";
+import { PhotoFilterDefs } from "@/components/SiteTile";
 
 // Cloudflare Web Analytics. The site is served by a Worker, so Cloudflare's automatic beacon
 // injection never runs; load it explicitly on every page. "spa": true makes the beacon record
@@ -106,6 +107,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
+        <PhotoFilterDefs />
         <Providers>{children}<InstallPrompt /></Providers>
         {CF_BEACON_TOKEN ? (
           <Script

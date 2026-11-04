@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getSectionLabel } from "@/lib/navigation";
+import { isOgCardUrl, KeyFigureTile, CompactFigure, TreatedImg } from "@/components/SiteTile";
 
 interface StoryItemProps {
   article: {
@@ -14,6 +15,7 @@ interface StoryItemProps {
     author_name?: string | null;
     is_breaking?: boolean;
     section?: string | null;
+    key_data?: unknown;
   };
   variant: "lead" | "secondary" | "compact";
   showImage?: boolean;
@@ -102,6 +104,7 @@ export const StoryItem = ({
   const validUrl =
     typeof article.hero_image_url === "string" &&
     article.hero_image_url.trim().startsWith("http");
+  const isCard = isOgCardUrl(article.hero_image_url);
   const hasImage = showImage && validUrl && !imgError;
 
   const headlineSize =
@@ -115,16 +118,14 @@ export const StoryItem = ({
     if (hasImage) {
       return (
         <Link to={href} className="group relative block h-full min-h-[340px] overflow-hidden bg-[#121212] md:min-h-[430px]">
-          <img
-            src={article.hero_image_url as string}
-            alt=""
-            loading={eager ? "eager" : "lazy"}
-            fetchPriority={eager ? "high" : "auto"}
-            decoding="async"
-            onError={() => setImgError(true)}
-            className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+          {isCard ? (
+            <div className="absolute inset-0"><KeyFigureTile article={article} size="lg" figureTop /></div>
+          ) : (
+            <div className="absolute inset-0">
+              <TreatedImg article={article} src={article.hero_image_url as string} eager={eager} onError={() => setImgError(true)} className="transition-opacity group-hover:opacity-90" />
+            </div>
+          )}
+          <div className={`absolute inset-0 bg-gradient-to-t ${isCard ? "from-black/85 via-black/30 to-transparent" : "from-black/90 via-black/25 to-transparent"}`} />
           <div className="absolute inset-x-0 bottom-0 p-4 text-white md:p-6">
             {article.is_breaking && <span className="mb-2 block font-ui text-[11px] font-bold uppercase text-[#FFB3AF]">Breaking</span>}
             <span className="mb-2 block font-ui text-[10px] font-bold uppercase text-white/80">{label}</span>
@@ -175,18 +176,10 @@ export const StoryItem = ({
       className="block group py-3 border-t border-[#e8e8e8] first:border-t-0"
     >
       <div className="flex items-start gap-3">
-        {hasImage && (
+        {hasImage && isCard && <CompactFigure article={article} />}
+        {hasImage && !isCard && (
           <div className="w-20 h-20 flex-shrink-0 overflow-hidden bg-[#F5F5F5]">
-            <img
-              src={article.hero_image_url as string}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              width={80}
-              height={80}
-              onError={() => setImgError(true)}
-              className="hover-fade w-full h-full object-cover"
-            />
+            <TreatedImg article={article} src={article.hero_image_url as string} onError={() => setImgError(true)} className="hover-fade" />
           </div>
         )}
         <div className="flex-1 min-w-0">

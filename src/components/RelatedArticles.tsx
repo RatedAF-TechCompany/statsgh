@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { HeroSlot } from "@/components/SiteTile";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +39,7 @@ export const RelatedArticles = ({
       if (tags && tags.length > 0) {
         const { data: tagMatches } = await supabase
           .from("articles")
-          .select("id, title, slug, summary, hero_image_url, published_at, category_slug, author_name, tags")
+          .select("id, title, slug, summary, hero_image_url, key_data, published_at, category_slug, author_name, tags")
           .eq("is_published", true)
           .neq("id", articleId)
           .overlaps("tags", tags)
@@ -58,7 +59,7 @@ export const RelatedArticles = ({
       if (categorySlug && matchedArticles.length < maxItems) {
         const { data: categoryMatches } = await supabase
           .from("articles")
-          .select("id, title, slug, summary, hero_image_url, published_at, category_slug, author_name, tags")
+          .select("id, title, slug, summary, hero_image_url, key_data, published_at, category_slug, author_name, tags")
           .eq("is_published", true)
           .eq("category_slug", categorySlug)
           .neq("id", articleId)
@@ -78,7 +79,7 @@ export const RelatedArticles = ({
       if (matchedArticles.length < maxItems) {
         const { data: latestArticles } = await supabase
           .from("articles")
-          .select("id, title, slug, summary, hero_image_url, published_at, category_slug, author_name, tags")
+          .select("id, title, slug, summary, hero_image_url, key_data, published_at, category_slug, author_name, tags")
           .eq("is_published", true)
           .neq("id", articleId)
           .order("published_at", { ascending: false })
@@ -131,15 +132,7 @@ export const RelatedArticles = ({
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {relatedArticles.map((article) => (
           <article key={article.id} className="group relative h-full">
-            {article.hero_image_url && (
-              <div className="aspect-[3/2] overflow-hidden mb-3">
-                <img
-                  src={article.hero_image_url}
-                  alt=""
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            )}
+            <HeroSlot article={article as any} wrapClass="aspect-[3/2] overflow-hidden mb-3" imgClass="group-hover:scale-105 transition-transform duration-300" />
 
             <div className="space-y-2">
               {/* Sits above the stretched title link so it stays clickable */}

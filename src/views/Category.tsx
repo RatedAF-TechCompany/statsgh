@@ -1,4 +1,5 @@
 "use client";
+import { HeroSlot, CompactFigure, isOgCardUrl, TreatedImg } from "@/components/SiteTile";
 import { FollowButton } from "@/components/FollowButton";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -59,7 +60,7 @@ const Category = () => {
       }
       const { data, error } = await supabase
         .from("articles")
-        .select("id, title, slug, category_slug, section, summary, hero_image_url, published_at, author_name, tags")
+        .select("id, title, slug, category_slug, section, summary, hero_image_url, key_data, published_at, author_name, tags")
         .eq("is_published", true)
         .or(filters.join(","))
         .order("published_at", { ascending: false })
@@ -152,13 +153,7 @@ const Category = () => {
                       </span>
                     )}
                   </div>
-                  {leadArticle.hero_image_url && (
-                    <img
-                      src={leadArticle.hero_image_url}
-                      alt={leadArticle.title}
-                      className="w-full aspect-[4/3] object-cover"
-                    />
-                  )}
+                  <HeroSlot article={leadArticle as any} wrapClass="w-full aspect-[4/3]" alt={leadArticle.title} size="lg" eager />
                 </div>
               </article>
             )}
@@ -191,12 +186,12 @@ const Category = () => {
                       </span>
                     )}
                   </div>
-                  {article.hero_image_url && (
-                    <img
-                      src={article.hero_image_url}
-                      alt=""
-                      className="w-20 h-20 object-cover flex-shrink-0"
-                    />
+                  {isOgCardUrl(article.hero_image_url) ? (
+                    <CompactFigure article={article as any} />
+                  ) : article.hero_image_url && (
+                    <div className="w-20 h-20 flex-shrink-0">
+                      <TreatedImg article={article as any} src={article.hero_image_url} />
+                    </div>
                   )}
                 </article>
               ))}
