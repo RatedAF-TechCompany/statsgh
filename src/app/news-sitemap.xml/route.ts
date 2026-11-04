@@ -17,7 +17,7 @@ function escapeXml(str: string): string {
 export async function GET() {
   const supabase = createReadOnlyServerClient();
 
-  // Google News sitemap: articles published OR content-updated in the last 48 hours
+  // Google News sitemap: articles published in the last 48 hours (Google News rule)
   // (publication_date always stays the original published_at)
   const fortyEightHoursAgo = new Date();
   fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
@@ -27,7 +27,7 @@ export async function GET() {
     .select("slug, category_slug, title, published_at, content_updated_at")
     .eq("is_published", true)
     .eq("is_sponsored", false)
-    .or(`published_at.gte.${fortyEightHoursAgo.toISOString()},content_updated_at.gte.${fortyEightHoursAgo.toISOString()}`)
+    .gte("published_at", fortyEightHoursAgo.toISOString())
     .order("published_at", { ascending: false })
     .limit(1000);
 

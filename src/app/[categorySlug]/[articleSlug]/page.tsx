@@ -184,9 +184,9 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
       url: baseUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${baseUrl}/icon-512.png`,
-        width: 512,
-        height: 512,
+        url: `${baseUrl}/statsgh-logo.png`,
+        width: 1254,
+        height: 1254,
       },
       "@id": `${baseUrl}/#organization`,
       sameAs: ["https://x.com/StatsGH"],

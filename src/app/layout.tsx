@@ -82,7 +82,7 @@ const ORG_LD = {
   name: "StatsGH",
   url: "https://www.statsgh.com",
   alternateName: "StatsGH.com",
-  logo: { "@type": "ImageObject", "@id": "https://www.statsgh.com/#logo", url: "https://www.statsgh.com/icon-512.png", width: 512, height: 512 },
+  logo: { "@type": "ImageObject", "@id": "https://www.statsgh.com/#logo", url: "https://www.statsgh.com/statsgh-logo.png", width: 1254, height: 1254 },
   image: "https://www.statsgh.com/icon-512.png",
   description: "Ghana data-journalism site. Every story is built around a real, sourced statistic.",
   areaServed: "Ghana",
