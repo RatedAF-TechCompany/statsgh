@@ -180,7 +180,7 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
       name: "Abubakar Saddique",
       url: "https://www.statsgh.com/authors/abubakar-saddique",
     },
-    ...(isResearch(article) ? { editor: { "@type": "Person", name: "Zebrilla Najib", jobTitle: "Research Editor", url: "https://www.statsgh.com/about/team" } } : {}),
+    ...(isResearch(article) ? { editor: { "@type": "Person", name: "Zebrilla Najib", jobTitle: "Research Editor", url: "https://www.statsgh.com/authors/zebrilla-najib" } } : {}),
     publisher: {
       "@type": "NewsMediaOrganization",
       name: "StatsGH",

@@ -141,7 +141,7 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
     }
     // Single in-house byline (Abubakar Saddique): every other author profile 301s to his page.
     const m = url.pathname.match(/^\/authors\/([^/]+)\/?$/);
-    if (m && m[1] !== "abubakar-saddique") {
+    if (m && !["abubakar-saddique", "hawa-kokonu", "zebrilla-najib"].includes(m[1])) {
       return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/abubakar-saddique", "Cache-Control": "public, max-age=3600" } });
     }
     if (url.pathname === "/__forms/submit") return request.method === "POST" ? submitForm(request, env) : new Response("not found", { status: 404 });

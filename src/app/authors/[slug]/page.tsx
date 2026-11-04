@@ -11,7 +11,11 @@ type P = { params: Promise<{ slug: string }> };
 // In-house author (Zeb, 4 Nov 2026): every article is credited to Abubakar Saddique.
 const IN_HOUSE = { slug: "abubakar-saddique", display_name: "Abubakar Saddique", role: "Data journalist", kind: "person",
   bio: "Abubakar Saddique is StatsGH's in-house data journalist.", expertise: [] as string[], byline_aliases: [] as string[], all: true };
-const load = async (slug: string): Promise<any> => slug === IN_HOUSE.slug ? IN_HOUSE :
+const EDITORS: Record<string, any> = {
+  "hawa-kokonu": { slug: "hawa-kokonu", display_name: "Hawa Kokonu", role: "Chief Editor", kind: "person", bio: "Hawa Kokonu is Chief Editor of StatsGH.", expertise: [], byline_aliases: [], none: true },
+  "zebrilla-najib": { slug: "zebrilla-najib", display_name: "Zebrilla Najib", role: "Research Editor", kind: "person", bio: "Zebrilla Najib is Research Editor of StatsGH and edits its research and data articles.", expertise: [], byline_aliases: [], none: true },
+};
+const load = async (slug: string): Promise<any> => slug === IN_HOUSE.slug ? IN_HOUSE : EDITORS[slug] ? EDITORS[slug] :
   (await createReadOnlyServerClient().from("authors").select("*").eq("slug", slug).eq("is_active", true).maybeSingle()).data;
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
@@ -26,7 +30,7 @@ export default async function AuthorPage({ params }: P) {
   const sb = createReadOnlyServerClient();
   const names = Array.from(new Set([a.display_name, ...(a.byline_aliases || [])]));
   const [{ data: arts }, { data: reps }] = await Promise.all([
-    (a.all ? sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true) : sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true).in("author_name", names)).order("published_at", { ascending: false }).limit(50),
+    (a.none ? sb.from("articles").select("title, slug, category_slug, published_at, summary").limit(0) : a.all ? sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true) : sb.from("articles").select("title, slug, category_slug, published_at, summary").eq("is_published", true).in("author_name", names)).order("published_at", { ascending: false }).limit(50),
     a.kind === "desk" ? sb.from("reports").select("kind, edition").order("edition", { ascending: false }).limit(12) : Promise.resolve({ data: [] as { kind: string; edition: string }[] }),
   ]);
   const url = `https://www.statsgh.com/authors/${a.slug}`;
@@ -48,7 +52,7 @@ export default async function AuthorPage({ params }: P) {
           <ul className="font-ui text-sm space-y-1">{reps.map((r) => <li key={r.kind + r.edition}><Link className="hover:text-[#E3120B]" href={`/reports/${r.kind}/${r.edition}`}>{r.kind === "economy-scorecard" ? `Economy Scorecard, week ending ${fmtDate(r.edition)}` : `State of the Cedi, ${monthLabel(r.edition)}`}</Link></li>)}</ul>
         </section>
       )}
-      <section className="mt-6">
+      {!a.none && <section className="mt-6">
         <h2 className="kicker mb-2">Stories</h2>
         {!arts?.length ? <p className="font-ui text-sm text-[#5B5B5B]">No published stories carry this byline yet.</p> : (
           <ul className="divide-y divide-[#EEE]">{arts.map((x) => (
@@ -57,7 +61,7 @@ export default async function AuthorPage({ params }: P) {
               <p className="font-ui text-xs text-[#5B5B5B] mt-0.5">{fmtDate(x.published_at)}</p>
             </li>))}</ul>
         )}
-      </section>
+      </section>}
     </PageShell>
   );
 }

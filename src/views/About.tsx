@@ -18,7 +18,7 @@ const About = () => (
     <main className="max-w-[760px] mx-auto px-4 md:px-6 py-8">
       <div className="border-b border-[#E3120B] pb-3 mb-2">
         <h1 className="section-label text-base">About &amp; Methodology</h1>
-        <p className="font-ui text-sm text-[#5B5B5B] mt-2 mb-4">Chief Editor: Hawa Kokonu. Research Editor: Zebrilla Najib. Stories are written by Abubakar Saddique, StatsGH's in-house data journalist.</p>
+        <p className="font-ui text-sm text-[#5B5B5B] mt-2 mb-4">Chief Editor: <a href="/authors/hawa-kokonu" className="underline hover:text-[#E3120B]">Hawa Kokonu</a>. Research Editor: <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a>. Stories are written by Abubakar Saddique, StatsGH's in-house data journalist.</p>
       </div>
       <p className="font-serif text-[19px] leading-[1.6] text-[#5B5B5B] py-4">
         StatsGH is a Ghana data-journalism site. Every story we publish is built around a real, sourced

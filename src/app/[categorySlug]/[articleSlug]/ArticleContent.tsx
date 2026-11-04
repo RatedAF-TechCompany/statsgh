@@ -201,7 +201,7 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
               <div>
                 <span className="font-ui text-[13px] text-[#5B5B5B]" itemProp="author">
                   By <a href="/authors/abubakar-saddique" rel="author" className="underline hover:text-[#E3120B]">Abubakar Saddique</a>
-                  {(article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)) && " · Edited by Zebrilla Najib"}
+                  {(article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)) && <> · Edited by <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a></>}
                   {" "}|{" "}StatsGH
                 </span>
                 <div className="mt-1"><PublishedUpdatedLine publishedAt={article.published_at} contentUpdatedAt={article.content_updated_at} /></div>

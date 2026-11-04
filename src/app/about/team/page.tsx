@@ -7,8 +7,8 @@ import { PageShell, ShareBar } from "@/components/vault/VaultBits";
 export const metadata = pageMeta("/about/team", "Our team, ownership and masthead", "The StatsGH masthead and ownership, our editors and the byline on our stories.");
 
 const TEAM = [
-  { name: "Hawa Kokonu", role: "Chief Editor", href: "" },
-  { name: "Zebrilla Najib", role: "Research Editor", href: "" },
+  { name: "Hawa Kokonu", role: "Chief Editor", href: "/authors/hawa-kokonu" },
+  { name: "Zebrilla Najib", role: "Research Editor", href: "/authors/zebrilla-najib" },
   { name: "Abubakar Saddique", role: "Data journalist", href: "/authors/abubakar-saddique" },
 ];
 
