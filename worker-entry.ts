@@ -210,8 +210,11 @@ function isCacheable(request: Request, url: URL): boolean {
   return true;
 }
 
+// Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
+const CACHE_GEN = "2";
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
+  k.searchParams.set("__gen", CACHE_GEN);
   for (const name of [...k.searchParams.keys()]) if (TRACKING.test(name)) k.searchParams.delete(name);
   return new Request(k.toString(), { method: "GET" });
 }
@@ -257,7 +260,7 @@ async function revalidateAndPurge(request: Request, url: URL, env: unknown, ctx:
     const paths = ["/", "/top-stories", "/news", "/feed.xml"];
     if (typeof body?.article === "string") paths.push(body.article, "/" + body.article.split("/")[1]);
     const cache = (caches as any).default as Cache;
-    await Promise.all(paths.map((p) => cache.delete(new Request(`https://${CANONICAL_HOST}${p}`, { method: "GET" }))));
+    await Promise.all(paths.map((p) => cache.delete(cacheKey(new URL(`https://${CANONICAL_HOST}${p}`)))));
   } catch {}
   return res;
 }
