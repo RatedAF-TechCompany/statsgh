@@ -115,9 +115,24 @@ const EDGE_REDIRECTS: Record<string, string> = {
   "/apple-touch-icon-precomposed.png": "/favicon.png",
 };
 
+// WordPress/PHP/secret-file probes and empty user agents get a cheap 403 before any SSR.
+// (Cloudflare zone WAF rules would be better, but the deploy credential has zone read only.)
+const PROBE = /^\/(wp-admin|wp-login|wp-content|wp-includes|wp-json|wordpress|xmlrpc|phpmyadmin|cgi-bin|vendor\/phpunit)(\/|\.|$)|\.(php\d?|asp|aspx|jsp|cgi|env|ini|sql|bak|git)(\/|$)|^\/\.(env|git|aws|ssh|htaccess|htpasswd|DS_Store)/i;
+function isVerifiedBot(request: Request): boolean {
+  const cf: any = (request as any).cf || {};
+  return Boolean(cf.verifiedBotCategory || cf.botManagement?.verifiedBot);
+}
+const INDEXNOW_KEY = "f70a60bf3e4b687b44870e6ce7d2b987";
+
 async function handleFetch(request: Request, env: any, ctx: any): Promise<Response> {
   {
     const url = new URL(request.url);
+    if (!isVerifiedBot(request) && (PROBE.test(url.pathname) || !(request.headers.get("user-agent") || "").trim())) {
+      return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain" } });
+    }
+    if (url.pathname.replace(/\/+$/, "") === "/indexnow" && (request.method === "GET" || request.method === "HEAD")) {
+      return new Response(INDEXNOW_KEY, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" } });
+    }
     if (REDIRECT_HOSTS.has(url.hostname) && (url.protocol === "http:" || url.hostname !== CANONICAL_HOST)) {
       url.protocol = "https:";
       url.hostname = CANONICAL_HOST;
@@ -184,7 +199,7 @@ function freshSeconds(url: URL, status: number): number {
   if (url.pathname.startsWith("/og/")) return OG_FRESH_SECONDS;
   return FRESH_SECONDS;
 }
-const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences", "/news-sitemap.xml", "/sitemap.xml", "/sitemaps/"];
+const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences", "/news-sitemap.xml", "/sitemap.xml", "/sitemaps/", "/feed.xml", "/feeds/"];
 const TRACKING = /^(utm_|fbclid$|gclid$|ref$|s$|t$)/;
 
 function isCacheable(request: Request, url: URL): boolean {
@@ -239,7 +254,7 @@ async function revalidateAndPurge(request: Request, url: URL, env: unknown, ctx:
   if (res.status !== 200) return res;
   try {
     const body = await res.clone().json();
-    const paths = ["/", "/top-stories"];
+    const paths = ["/", "/top-stories", "/news", "/feed.xml"];
     if (typeof body?.article === "string") paths.push(body.article, "/" + body.article.split("/")[1]);
     const cache = (caches as any).default as Cache;
     await Promise.all(paths.map((p) => cache.delete(new Request(`https://${CANONICAL_HOST}${p}`, { method: "GET" }))));
