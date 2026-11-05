@@ -3,6 +3,7 @@ import { ArticleImage } from "@/components/SiteTile";
 import { highlightNumbersInHtml } from "@/lib/safe-html";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { formatArticleBody } from "@/lib/paragraphs";
+import { withHouseAd } from "@/lib/house-ad";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -404,7 +405,7 @@ const ArticleDetail = () => {
             data-article-body="true"
             className="prose prose-lg max-w-none mb-8"
             itemProp="articleBody"
-            dangerouslySetInnerHTML={{ __html: linkCompanies(bodyWithHighlightedNumbers, companies) }}
+            dangerouslySetInnerHTML={{ __html: withHouseAd(linkCompanies(bodyWithHighlightedNumbers, companies)) }}
           />
           {(article as any).research_scope?.trim() && !(article.body || "").includes("Research Scope") && (
             <aside className="mb-8 border border-[#D9D9D9] p-4">

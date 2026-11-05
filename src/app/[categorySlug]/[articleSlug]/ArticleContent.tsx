@@ -1,4 +1,5 @@
 "use client";
+import { withHouseAd } from "@/lib/house-ad";
 
 import { isOgCardUrl, KeyFigureTile, TreatedImg } from "@/components/SiteTile";
 import { useNavigate, Link } from "react-router-dom";
@@ -253,7 +254,7 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
             data-article-body="true"
             className="prose prose-lg max-w-none mb-8"
             itemProp="articleBody"
-            dangerouslySetInnerHTML={{ __html: bodyWithHighlightedNumbers }}
+            dangerouslySetInnerHTML={{ __html: withHouseAd(bodyWithHighlightedNumbers) }}
           />
           {article.research_scope?.trim() && !(article.body || "").includes("Research Scope") && (
             <aside className="mb-8 border border-[#D9D9D9] p-4">

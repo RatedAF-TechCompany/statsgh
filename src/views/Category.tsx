@@ -1,4 +1,5 @@
 "use client";
+import HouseAd from "@/components/HouseAd";
 import { HeroSlot, CompactFigure, isOgCardUrl, TreatedImg } from "@/components/SiteTile";
 import { FollowButton } from "@/components/FollowButton";
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -157,6 +158,7 @@ const Category = () => {
                 </div>
               </article>
             )}
+            <HouseAd />
 
             {/* Rest of articles */}
             <div className="space-y-0">

@@ -1,4 +1,5 @@
 "use client";
+import HouseAd from "@/components/HouseAd";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +115,8 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
               </div>
             </section>
 
+            <HouseAd />
+
             <HomeKeyNumbers />
 
             {/* ═══ ZONE B — SPOTLIGHT ═══ */}
@@ -140,6 +143,8 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
                 </div>
               </section>
             )}
+
+            <HouseAd />
 
             {/* ═══ ZONE C — MAIN + RIGHT RAIL ═══ */}
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-x-6 xl:gap-x-8">
