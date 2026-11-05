@@ -211,7 +211,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "2";
+const CACHE_GEN = "3";
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);
