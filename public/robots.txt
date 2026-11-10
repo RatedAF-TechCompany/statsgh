@@ -1,32 +1,20 @@
 # StatsGH Robots.txt
 # Data-driven news from Ghana
-# Last updated: 2026-06-14
-
-User-agent: Googlebot-News
-Allow: /
-
-User-agent: Googlebot
-Allow: /
-Crawl-delay: 1
-
-User-agent: Bingbot
-Allow: /
-Crawl-delay: 1
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# Last updated: 2026-11-10
+#
+# Crawlers obey only the most specific group that names them, so every group below
+# repeats the private-path rules. (Before 2026-11-10 the Googlebot, Googlebot-News and
+# Bingbot groups said only "Allow: /", which let Google crawl /admin, /auth, /dashboard etc.)
 
 User-agent: *
-Allow: /
 Disallow: /admin
-Disallow: /admin/*
-Disallow: /auth
-Disallow: /dashboard
+Disallow: /auth$
+Disallow: /auth/
+Disallow: /auth?
+Disallow: /dashboard$
+Disallow: /dashboard/
+Disallow: /dashboard?
 Disallow: /reader
-Disallow: /reader/*
 Disallow: /saved
 Disallow: /search
 Disallow: /verify-comment
@@ -36,6 +24,31 @@ Disallow: /wp-admin/
 Disallow: /wp-includes/
 Disallow: /index.php
 Disallow: /*.php$
+Allow: /
+
+# Note: rules are prefix matches, so /auth and /dashboard are anchored ($, /, ?) to keep
+# /authors and /dashboards crawlable.
+
+# Bing honours Crawl-delay (Google ignores it), so Bingbot keeps its own group with the same rules.
+User-agent: Bingbot
+Crawl-delay: 1
+Disallow: /admin
+Disallow: /auth$
+Disallow: /auth/
+Disallow: /auth?
+Disallow: /dashboard$
+Disallow: /dashboard/
+Disallow: /dashboard?
+Disallow: /reader
+Disallow: /saved
+Disallow: /search
+Disallow: /verify-comment
+Disallow: /wp-content/
+Disallow: /wp-admin/
+Disallow: /wp-includes/
+Disallow: /index.php
+Disallow: /*.php$
+Allow: /
 
 # Sitemaps (index lists the page, article and news sitemaps)
 Sitemap: https://www.statsgh.com/sitemap.xml

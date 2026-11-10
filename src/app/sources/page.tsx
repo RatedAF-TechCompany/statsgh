@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import Sources from "@/views/Sources";
+import { createReadOnlyServerClient } from "@/lib/supabase/server";
 
 const title = "Data Sources | StatsGH";
 const description =
@@ -20,6 +21,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", site: "@StatsGH", title, description },
 };
 
-export default function SourcesPage() {
-  return <Sources />;
+export default async function SourcesPage() {
+  let initial: any[] | undefined;
+  try {
+    const { data, error } = await createReadOnlyServerClient().from("data_sources").select("*").order("name");
+    if (!error && data) initial = data;
+  } catch {}
+  return <Sources initialSources={initial} />;
 }

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExternalLink, Building2, Globe } from "lucide-react";
 
-const Sources = () => {
+const Sources = ({ initialSources }: { initialSources?: any[] } = {}) => {
   const { data: sources, isLoading } = useQuery({
     queryKey: ["data-sources"],
     queryFn: async () => {
@@ -18,6 +18,8 @@ const Sources = () => {
       if (error) throw error;
       return data;
     },
+    // Prerendered by app/sources so crawlers see the source list without JavaScript.
+    initialData: initialSources,
   });
 
   // Group sources by type

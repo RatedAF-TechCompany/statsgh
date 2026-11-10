@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
-import { redirect, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { resolveArticleSlug } from "@/lib/articleSlugResolve";
 
 // Legacy /article/:slug links: resolve the article and forward to its
 // canonical /:categorySlug/:articleSlug URL instead of dropping to a listing.
@@ -20,9 +21,11 @@ export default async function LegacyArticlePage({
     .maybeSingle();
 
   if (article?.category_slug) {
-    redirect(`/${article.category_slug}/${article.slug}`);
+    permanentRedirect(`/${article.category_slug}/${article.slug}`);
   }
+  const match = await resolveArticleSlug(slug);
+  if (match) permanentRedirect(`/${match.category_slug}/${match.slug}`);
 
-  // Unknown slug → top stories (matches old fallback behaviour)
-  permanentRedirect("/");
+  // Unknown or unpublished slug: the latest-news index, never a different story.
+  permanentRedirect("/news");
 }

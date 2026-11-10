@@ -12,11 +12,12 @@ import { format } from "date-fns";
 import { formatTime } from "@/components/ReadingTime";
 import { Clock } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { NEWS_COLUMNS, NEWS_PAGE_SIZE } from "@/lib/newsListing";
 
-const News = () => {
+const News = ({ initialData }: { initialData?: { articles: any[]; total: number } } = {}) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = NEWS_PAGE_SIZE;
 
   usePageMeta({
     title: "News — Latest Ghana Data Journalism | StatsGH",
@@ -44,7 +45,7 @@ const News = () => {
     queryFn: async () => {
       let query = supabase
         .from("articles")
-        .select("id, title, slug, summary, word_count, hero_image_url, key_data, published_at, category_slug, author_name, tags", { count: "exact" })
+        .select(NEWS_COLUMNS, { count: "exact" })
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
@@ -57,6 +58,7 @@ const News = () => {
       if (error) throw error;
       return { articles: data || [], total: count || 0 };
     },
+    initialData: !selectedCategory && page === 1 ? initialData : undefined,
   });
 
   const articles = articlesData?.articles || [];

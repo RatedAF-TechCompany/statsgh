@@ -7,22 +7,9 @@ export const SITEMAP_CACHE = "public, max-age=0, s-maxage=300, stale-while-reval
 
 export const STATIC_PAGES = [
   { url: `${BASE_URL}/`, changeFrequency: "hourly" as const, priority: 1.0 },
-  { url: `${BASE_URL}/top-stories`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/economy-inflation`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/public-finance`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/labour-salaries`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/agriculture-food`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/energy-resources`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/trade-investment`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/health-data`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/education`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/infrastructure-transport`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/security-governance`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/technology-innovation`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/environment-climate`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/population`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/business`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/markets-data`, changeFrequency: "daily" as const, priority: 0.8 },
+  { url: `${BASE_URL}/news`, changeFrequency: "hourly" as const, priority: 0.9 },
+  // Section and category listings are added by sitemaps/pages.xml only when they have
+  // published stories (listingUrls below); empty or legacy alias slugs redirect or are noindex.
   { url: `${BASE_URL}/trackers/fuel-and-cedi`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/cpi`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/gdp`, changeFrequency: "monthly" as const, priority: 0.7 },
@@ -35,8 +22,6 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/tools/cost-of-living`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/week-in-numbers`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/explorer`, changeFrequency: "daily" as const, priority: 0.7 },
-  { url: `${BASE_URL}/politics-policy`, changeFrequency: "daily" as const, priority: 0.8 },
-  { url: `${BASE_URL}/crime-justice`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/forex`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/markets/gse`, changeFrequency: "daily" as const, priority: 0.8 },
   { url: `${BASE_URL}/companies`, changeFrequency: "daily" as const, priority: 0.7 },
@@ -66,6 +51,23 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/fellows`, changeFrequency: "monthly" as const, priority: 0.3 },
   { url: `${BASE_URL}/sources`, changeFrequency: "weekly" as const, priority: 0.5 },
 ];
+
+/**
+ * Section and category listing paths that currently have published stories, using the
+ * same rules as the listing page (category_slug in the section's categories, or section
+ * column). Empty listings are noindex or redirect, so they never belong in the sitemap.
+ */
+export function listingSlugs(rows: { category_slug: string | null; section: string | null }[]): string[] {
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (r.category_slug) out.add(r.category_slug);
+    for (const [sec, cats] of Object.entries(SECTION_TO_CATEGORIES)) {
+      if (sec === "top-stories") continue; // /top-stories redirects to /news
+      if (r.section === sec || (r.category_slug && cats.includes(r.category_slug))) out.add(sec);
+    }
+  }
+  return [...out].filter((s) => /^[a-z0-9-]+$/.test(s)).sort();
+}
 
 export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

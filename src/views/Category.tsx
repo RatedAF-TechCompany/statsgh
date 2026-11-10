@@ -9,8 +9,9 @@ import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
-import { CATEGORY_MAPPING, getSectionLabel } from "@/lib/navigation";
-import { getCategoriesForSection, crimeJusticeOrFilter, SECTION_INTROS } from "@/lib/sectionMapping";
+import { CATEGORY_MAPPING, getCategoryPageLabel, getSectionLabel } from "@/lib/navigation";
+import { getCategoriesForSection, SECTION_INTROS } from "@/lib/sectionMapping";
+import { fetchSectionArticles } from "@/lib/sectionArticles";
 import { Button } from "@/components/ui/button";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import NotFound from "./NotFound";
@@ -31,11 +32,11 @@ const getTimeAgo = (publishedAt: string | null) => {
 const Meta = ({ author, publishedAt, className }: { author?: string | null; publishedAt: string | null; className: string }) => (
   <span className={`font-ui text-xs text-[#5B5B5B] block ${className}`}>
     {author ? <>By {author}{publishedAt ? " · " : ""}</> : null}
-    {publishedAt && <time dateTime={publishedAt}>{getTimeAgo(publishedAt)}</time>}
+    {publishedAt && <time dateTime={publishedAt} suppressHydrationWarning>{getTimeAgo(publishedAt)}</time>}
   </span>
 );
 
-const Category = () => {
+const Category = ({ initialArticles }: { initialArticles?: any[] } = {}) => {
   const { categorySlug, slug } = useParams();
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter(Boolean);
@@ -49,26 +50,11 @@ const Category = () => {
     queryKey: ["category-articles", categoryParam, currentPage],
     queryFn: async () => {
       const from = (currentPage - 1) * ARTICLES_PER_PAGE;
-      const to = from + ARTICLES_PER_PAGE - 1;
-
-      // Query by both category_slug (mapped values) AND section column for full coverage
-      const filters = [
-        `category_slug.in.(${categorySlugs.map(s => `"${s}"`).join(',')})`,
-        `section.eq.${categoryParam}`,
-      ];
-      if (categoryParam === "crime-justice") {
-        filters.splice(0, filters.length, crimeJusticeOrFilter());
-      }
-      const { data, error } = await supabase
-        .from("articles")
-        .select("id, title, slug, category_slug, section, summary, hero_image_url, key_data, published_at, author_name, tags")
-        .eq("is_published", true)
-        .or(filters.join(","))
-        .order("published_at", { ascending: false })
-        .range(from, to);
-      if (error) throw error;
-      return data;
+      const { rows } = await fetchSectionArticles(supabase, categoryParam!, from, from + ARTICLES_PER_PAGE - 1);
+      return rows;
     },
+    // Page 1 arrives prerendered from the server so crawlers and first paint see real stories.
+    initialData: currentPage === 1 && initialArticles ? initialArticles : undefined,
     enabled: categorySlugs.length > 0,
   });
 
@@ -83,14 +69,17 @@ const Category = () => {
 
   const isUnknownSection = !!categoryParam && categorySlugs.length === 0;
 
+  // Must match the server metadata in app/[categorySlug]/page.tsx, otherwise the rendered
+  // page gives sub-categories their parent's title (duplicate titles in Google).
+  const pageLabel = categoryParam ? getCategoryPageLabel(categoryParam) : "";
   usePageMeta({
     title: isUnknownSection
       ? "Page not found | StatsGH"
-      : categoryLabel
-        ? `${categoryLabel} — News and Data from Ghana | StatsGH`
+      : pageLabel
+        ? `${pageLabel} | StatsGH`
         : "StatsGH",
-    description: categoryLabel && !isUnknownSection
-      ? `Latest ${categoryLabel.toLowerCase()} news, analysis, and data from Ghana. Data-driven reporting from StatsGH.`
+    description: pageLabel && !isUnknownSection
+      ? `Latest ${pageLabel} news and data from StatsGH — Ghana's data journalism platform.`
       : undefined,
     ogType: "website",
     robots: isUnknownSection ? "noindex, follow" : undefined,

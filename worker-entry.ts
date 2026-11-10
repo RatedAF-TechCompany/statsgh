@@ -3,6 +3,7 @@
 import handler from "./.open-next/worker.js";
 
 import { SECTION_TO_CATEGORIES } from "./src/lib/sectionMapping";
+import { DEFAULT_AUTHOR_SLUG, PUBLIC_AUTHOR_SLUGS } from "./src/lib/authorSlugs";
 
 const KNOWN_SECTION_SLUGS = new Set<string>(Object.keys(SECTION_TO_CATEGORIES));
 const isKnownSectionSlug = (s: string) => KNOWN_SECTION_SLUGS.has(s);
@@ -141,8 +142,8 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
     }
     // Single in-house byline (Abubakar Saddique): every other author profile 301s to his page.
     const m = url.pathname.match(/^\/authors\/([^/]+)\/?$/);
-    if (m && !["abubakar-saddique", "hawa-kokonu", "zebrilla-najib"].includes(m[1])) {
-      return new Response(null, { status: 301, headers: { Location: "https://www.statsgh.com/authors/abubakar-saddique", "Cache-Control": "public, max-age=3600" } });
+    if (m && !(PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(m[1])) {
+      return new Response(null, { status: 301, headers: { Location: `https://www.statsgh.com/authors/${DEFAULT_AUTHOR_SLUG}`, "Cache-Control": "public, max-age=3600" } });
     }
     if (url.pathname === "/__forms/submit") return request.method === "POST" ? submitForm(request, env) : new Response("not found", { status: 404 });
     if (url.pathname === "/__internal/mail") return request.method === "POST" ? internalMail(request, env) : new Response("not found", { status: 404 });
@@ -162,21 +163,32 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
       const loc = res.headers.get("Location");
       if (loc) return permanent(loc);
     }
-    // Old article URLs (archive not migrated): unknown /<section>/<slug>, /article/<slug>
-    // and dated WordPress-style paths 301 to their section page, else the homepage.
+    // Old/unknown article URLs. Never send a reader to a different story:
+    //  - /<listing>/<missing-slug> (the article route already tried same-story typo matches)
+    //    301s to that listing page (or wherever that listing now redirects);
+    //  - /article/<slug> is resolved by app/article/[slug];
+    //  - any other multi-segment path whose last segment looks like a story slug 301s to /news;
+    //  - everything else stays a real 404 (noindex), not a homepage redirect (soft 404).
     if (res.status === 404 && !SKIP.test(url.pathname)) {
       const segs = url.pathname.split("/").filter(Boolean);
-      if (segs.length >= 2 || /^\/article\//.test(url.pathname)) {
-        let target = "/";
-        if (isKnownSectionSlug(segs[0])) {
-          // Known section: no need to render the section page just to probe it (saves a full SSR).
+      if (segs.length >= 2) {
+        let target: string | null = null;
+        if (segs[0] === "top-stories") {
+          target = "/news"; // /top-stories itself redirects to /news
+        } else if (isKnownSectionSlug(segs[0])) {
+          // Top-level section: no need to render the section page just to probe it (saves a full SSR).
           target = `/${segs[0]}`;
         } else if (/^[a-z0-9-]+$/.test(segs[0]) && !/^\d+$/.test(segs[0]) && segs[0] !== "article") {
           const probe = new URL(`/${segs[0]}`, url);
           const sec: Response = await (handler as any).fetch(new Request(probe.toString(), { headers: request.headers }), env, ctx);
           if (sec.status === 200) target = `/${segs[0]}`;
+          else if (sec.status === 301 || sec.status === 308) {
+            const loc = sec.headers.get("Location");
+            if (loc) target = new URL(loc, url).pathname;
+          }
         }
-        return permanent(`https://${CANONICAL_HOST}${target}`);
+        if (!target && /^[a-z0-9]+(-[a-z0-9]+){2,}$/i.test(segs[segs.length - 1])) target = "/news";
+        if (target) return permanent(`https://${CANONICAL_HOST}${target}`);
       }
     }
     return res;
@@ -211,7 +223,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "3";
+const CACHE_GEN = "4";
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);

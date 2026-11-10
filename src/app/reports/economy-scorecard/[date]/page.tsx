@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { date } = await params;
   const r = await load(date);
   if (!r) return { title: "Scorecard not found | StatsGH", robots: { index: false } };
-  const m = pageMeta(`/reports/economy-scorecard/${date}`, `Ghana Economy Scorecard, week ending ${fmtDate(date)}`, scorecardSummary(r.data).slice(0, 2).join(" ").slice(0, 158));
+  const m = pageMeta(`/reports/economy-scorecard/${date}`, `Ghana Economy Scorecard, week ending ${fmtDate(date)}`, `Week ending ${fmtDate(date)}: ${scorecardSummary(r.data).slice(0, 2).join(" ")}`.slice(0, 158));
   const img = `https://www.statsgh.com/og/report/economy-scorecard/${date}`;
   return { ...m, openGraph: { ...m.openGraph, images: [{ url: img, width: 1200, height: 630 }] }, twitter: { ...m.twitter, images: [img] } };
 }

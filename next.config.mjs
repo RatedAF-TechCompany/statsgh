@@ -142,19 +142,20 @@ const nextConfig = {
       { source: "/masthead", destination: "/about/team#ownership", permanent: true },
       { source: "/team", destination: "/about/team", permanent: true },
       // Old category slugs → new category slugs
-      ...pair("/democracy", "/security-governance"),
+      ...pair("/democracy", "/politics-policy"),
       ...pair("/energy", "/energy-resources"),
-      ...pair("/environment", "/environment-climate"),
+      ...pair("/environment", "/energy-resources"),
       ...pair("/national-accounts", "/public-finance"),
-      ...pair("/prices-and-consumption", "/economy-inflation"),
-      ...pair("/speeches-and-press-releases", "/top-stories"),
-      ...pair("/culture-and-leisure", "/"),
-      ...pair("/social-services", "/"),
-      { source: "/population/:path+", destination: "/population", permanent: true },
+      ...pair("/prices-and-consumption", "/macroeconomy"),
+      ...pair("/speeches-and-press-releases", "/news"),
+      ...pair("/culture-and-leisure", "/news"),
+      ...pair("/social-services", "/news"),
+      { source: "/population/:path+", destination: "/economy", permanent: true },
 
-      // Old article listing patterns (/article/:slug handled by app/article/[slug])
-      { source: "/article", destination: "/top-stories", permanent: true },
-      { source: "/news/:path+", destination: "/top-stories", permanent: true },
+      // Old article listing patterns (/article/:slug handled by app/article/[slug]).
+      // /news/<slug> is left to the article route: a real story 301s to its canonical URL,
+      // anything else 404s and the edge worker sends it to /news.
+      { source: "/article", destination: "/news", permanent: true },
 
       // Legacy /category/<slug> → current section slugs (specific before catch-all)
       ...pair("/category/business", "/business"),
@@ -168,16 +169,16 @@ const nextConfig = {
       ...pair("/category/agriculture", "/agriculture"),
       ...pair("/category/technology", "/technology"),
       ...pair("/category/companies", "/companies"),
-      ...pair("/category/analysis", "/analysis"),
+      ...pair("/category/analysis", "/opinion-analysis"),
       ...pair("/category/opinion", "/opinion-analysis"),
       ...pair("/category/opinion-analysis", "/opinion-analysis"),
       ...pair("/category/research", "/research"),
       ...pair("/category/financial-literacy", "/financial-literacy"),
       ...pair("/category/world", "/world"),
-      ...pair("/category/top-stories", "/top-stories"),
-      // Unknown legacy category → homepage (final fallback)
-      { source: "/category", destination: "/", permanent: true },
-      { source: "/category/:path*", destination: "/", permanent: true },
+      ...pair("/category/top-stories", "/news"),
+      // Unknown legacy category → latest-news index (final fallback; a homepage redirect reads as a soft 404)
+      { source: "/category", destination: "/news", permanent: true },
+      { source: "/category/:path*", destination: "/news", permanent: true },
     ];
   },
 };

@@ -5,6 +5,7 @@ import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
 import ArticleContent from "./ArticleContent";
 import { cache } from "react";
+import { resolveArticleSlug } from "@/lib/articleSlugResolve";
 
 interface ArticlePageProps {
   params: Promise<{
@@ -214,6 +215,10 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const article = await getArticle(articleSlug);
 
   if (!article) {
+    // Typo/hyphenation/missing-ID variants of the SAME story 301 to it; anything else 404s
+    // (the edge worker then sends the reader to the section page, never to another story).
+    const match = await resolveArticleSlug(articleSlug);
+    if (match && match.slug !== articleSlug) permanentRedirect(`/${match.category_slug}/${match.slug}`);
     notFound();
   }
 

@@ -1,6 +1,7 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { DATASETS } from "@/lib/dataVault";
-import { ARTICLES_PER_SITEMAP, BASE_URL, STATIC_PAGES, esc, xmlResponse } from "@/lib/sitemap";
+import { ARTICLES_PER_SITEMAP, BASE_URL, STATIC_PAGES, esc, listingSlugs, xmlResponse } from "@/lib/sitemap";
+import { PUBLIC_AUTHOR_SLUGS } from "@/lib/authorSlugs";
 
 export const revalidate = 300;
 
@@ -24,13 +25,32 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       sb0.from("reports").select("kind, edition"),
       sb0.from("authors").select("slug").eq("is_active", true),
     ]);
+    // Category/section of every published story (paged past the PostgREST 1,000-row cap).
+    const cats: { category_slug: string | null; section: string | null }[] = [];
+    for (let off = 0; off < 50_000; off += PAGE) {
+      const { data, error } = await sb0.from("articles").select("category_slug, section").eq("is_published", true)
+        .order("id", { ascending: true }).range(off, off + PAGE - 1);
+      if (error) return new Response("Sitemap temporarily unavailable", { status: 503 });
+      cats.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    const listings = listingSlugs(cats).map((slug) => ({
+      url: `${BASE_URL}/${slug}`, changeFrequency: "daily" as const, priority: 0.8,
+    }));
     const extra = [
+      ...listings,
       ...DATASETS.map((d) => ({ url: `${BASE_URL}/data-vault/${d.slug}`, changeFrequency: "daily" as const, priority: 0.6 })),
       ...(reps ?? []).map((r: { kind: string; edition: string }) => ({ url: `${BASE_URL}/reports/${r.kind}/${r.edition}`, changeFrequency: "monthly" as const, priority: 0.5 })),
-      ...(auths ?? []).map((a: { slug: string }) => ({ url: `${BASE_URL}/authors/${a.slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
+      // Only author pages that render; every other slug 301s to the in-house byline.
+      ...(auths ?? [])
+        .filter((a: { slug: string }) => (PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(a.slug))
+        .map((a: { slug: string }) => ({ url: `${BASE_URL}/authors/${a.slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
     ];
-    return xmlResponse(urlset([...STATIC_PAGES, ...gse, ...extra].map((p) =>
-      `  <url><loc>${p.url}</loc><changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`).join("\n")));
+    // One <url> per address (a listing slug can coincide with a static page such as /companies).
+    const seen = new Set<string>();
+    const all = [...STATIC_PAGES, ...gse, ...extra].filter((p) => !p.url.includes("?") && !seen.has(p.url) && seen.add(p.url));
+    return xmlResponse(urlset(all.map((p) =>
+      `  <url><loc>${esc(p.url)}</loc><changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`).join("\n")));
   }
 
   const m = /^articles-(\d+)\.xml$/.exec(file);
