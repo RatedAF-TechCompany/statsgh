@@ -151,6 +151,13 @@ const nextConfig = {
       ...pair("/culture-and-leisure", "/news"),
       ...pair("/social-services", "/news"),
       { source: "/population/:path+", destination: "/economy", permanent: true },
+      // Old section slugs still reported as 404 in Search Console (6 Nov 2026). Exact paths only:
+      // /<old-slug>/<story> is left to the article route (same story) or the edge fallback.
+      { source: "/annual-budgets", destination: "/public-finance", permanent: true },
+      { source: "/environment-and-sustainability", destination: "/energy-resources", permanent: true },
+      { source: "/education-and-skills", destination: "/research", permanent: true },
+      { source: "/charts-explainers", destination: "/explainers", permanent: true },
+      { source: "/economic-policy", destination: "/economy", permanent: true },
 
       // Old article listing patterns (/article/:slug handled by app/article/[slug]).
       // /news/<slug> is left to the article route: a real story 301s to its canonical URL,

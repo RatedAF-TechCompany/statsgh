@@ -21,7 +21,12 @@ const permanent = (loc: string) =>
 export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     try {
-      const res = await handleFetch(request, env, ctx);
+      let res = await handleFetch(request, env, ctx);
+      // Social-card images must stay crawlable (no robots.txt block) but should not be indexed as pages.
+      if (new URL(request.url).pathname.startsWith("/og/")) {
+        res = new Response(res.body, res);
+        res.headers.set("X-Robots-Tag", "noindex");
+      }
       if (res.status >= 500 && res.status !== 503) {
         const u = new URL(request.url);
         ctx.waitUntil(reportError(env, `HTTP ${res.status} ${u.pathname.split("/").slice(0, 2).join("/") || "/"}`,
