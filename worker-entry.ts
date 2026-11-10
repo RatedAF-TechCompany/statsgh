@@ -185,7 +185,8 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
         } else if (isKnownSectionSlug(segs[0])) {
           // Top-level section: no need to render the section page just to probe it (saves a full SSR).
           target = `/${segs[0]}`;
-        } else if (/^[a-z0-9-]+$/.test(segs[0]) && !/^\d+$/.test(segs[0]) && segs[0] !== "article") {
+        } else if (segs[0] !== "archive" && /^[a-z0-9-]+$/.test(segs[0]) && !/^\d+$/.test(segs[0]) && segs[0] !== "article") {
+          // Invalid /archive dates stay 404. This branch probes a parent listing, which would swallow them.
           const probe = new URL(`/${segs[0]}`, url);
           const sec: Response = await (handler as any).fetch(new Request(probe.toString(), { headers: request.headers }), env, ctx);
           if (sec.status === 200) target = `/${segs[0]}`;
@@ -276,8 +277,13 @@ async function revalidateAndPurge(request: Request, url: URL, env: unknown, ctx:
   if (res.status !== 200) return res;
   try {
     const body = await res.clone().json();
-    const paths = ["/", "/top-stories", "/news", "/feed.xml"];
+    const paths = ["/", "/top-stories", "/news", "/feed.xml", "/archive"];
     if (typeof body?.article === "string") paths.push(body.article, "/" + body.article.split("/")[1]);
+    if (Array.isArray(body?.archive)) {
+      for (const p of body.archive) {
+        if (typeof p === "string" && p.startsWith("/archive/") && p.length < 40) paths.push(p);
+      }
+    }
     const cache = (caches as any).default as Cache;
     await Promise.all(paths.map((p) => cache.delete(cacheKey(new URL(`https://${CANONICAL_HOST}${p}`)))));
   } catch {}

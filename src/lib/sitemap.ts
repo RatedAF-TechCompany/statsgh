@@ -1,5 +1,6 @@
 // Shared helpers for sitemaps and RSS feeds. All URLs use the www origin.
 import { getCategoriesForSection, SECTION_TO_CATEGORIES } from "@/lib/sectionMapping";
+import type { PublicationDay } from "@/lib/archiveDates";
 
 export const BASE_URL = "https://www.statsgh.com";
 export const ARTICLES_PER_SITEMAP = 5000;
@@ -80,6 +81,41 @@ export function isKnownSectionSlug(slug: string): boolean {
 /** Category slugs a feed/section slug should include. */
 export function feedCategories(slug: string): string[] {
   return slug in SECTION_TO_CATEGORIES ? getCategoriesForSection(slug) : [slug];
+}
+
+export type SitemapLoc = {
+  url: string;
+  changeFrequency: "hourly" | "daily" | "weekly" | "monthly" | "yearly";
+  priority: number;
+  lastmod?: string;
+};
+
+/**
+ * Archive index, plus one URL per month and day that has published stories.
+ * Kept out of the news sitemap: these are HTML listings, not Google News articles.
+ */
+export function archiveSitemapEntries(days: PublicationDay[]): SitemapLoc[] {
+  const months = new Map<string, string | undefined>();
+  const out: SitemapLoc[] = [
+    { url: `${BASE_URL}/archive`, changeFrequency: "daily", priority: 0.6, lastmod: days[0]?.lastPublishedAt },
+  ];
+  for (const day of days) {
+    const [year, month, date] = day.publishedOn.split("-");
+    if (!year || !month || !date) continue;
+    const monthKey = `${year}/${month}`;
+    const prev = months.get(monthKey);
+    if (!prev || (day.lastPublishedAt && day.lastPublishedAt > prev)) months.set(monthKey, day.lastPublishedAt);
+    out.push({
+      url: `${BASE_URL}/archive/${year}/${month}/${date}`,
+      changeFrequency: "weekly",
+      priority: 0.4,
+      lastmod: day.lastPublishedAt,
+    });
+  }
+  for (const [key, lastmod] of months) {
+    out.push({ url: `${BASE_URL}/archive/${key}`, changeFrequency: "weekly", priority: 0.5, lastmod });
+  }
+  return out;
 }
 
 export function xmlResponse(xml: string, type = "application/xml") {

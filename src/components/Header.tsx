@@ -1,14 +1,16 @@
+"use client";
+
 import { Search, User, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 import statsghLogoImport from "@/assets/statsgh-logo.png";
 const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { Button } from "@/components/ui/button";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_SECTIONS } from "@/lib/navigation";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { DataAlertBanner } from "@/components/DataAlertBanner";
 import { X_URL, WHATSAPP_CHANNEL_URL } from "@/lib/social";
 import EconomicIndicatorStrip from "@/components/home/EconomicIndicatorStrip";
@@ -60,6 +62,13 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
     return location.pathname.startsWith(href);
   };
 
+  const archiveActive = isActiveSection("/archive");
+  const archiveNavClass = `
+    flex-shrink-0 whitespace-nowrap px-3 h-11 inline-flex items-center font-ui text-[14px] font-medium
+    border-b-[3px] transition-colors
+    ${archiveActive ? "border-[#E3120B] text-[#0D0D0D]" : "border-transparent text-[#0D0D0D] hover:text-[#E3120B]"}
+  `;
+
   const today = new Date();
   const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -85,9 +94,12 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             </span>
           </button>
 
-          <span className="hidden lg:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#757575] whitespace-nowrap">
+          <Link
+            to={`/archive/${today.getUTCFullYear()}/${String(today.getUTCMonth() + 1).padStart(2, "0")}/${String(today.getUTCDate()).padStart(2, "0")}`}
+            className="hidden lg:block font-ui text-[11px] uppercase tracking-[0.12em] text-[#757575] whitespace-nowrap hover:text-[#E3120B]"
+          >
             {dateString}
-          </span>
+          </Link>
 
           <div className="flex items-center gap-2 ml-auto md:ml-6 flex-shrink-0">
             <a href={X_URL} target="_blank" rel="noopener noreferrer" className="hidden sm:inline font-ui text-[12px] font-semibold text-[#121212] hover:text-[#E3120B] px-1" aria-label="Follow StatsGH on X">Follow on X</a>
@@ -168,21 +180,27 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
                 whiteSpace: "nowrap",
               }}
             >
-              {SITE_SECTIONS.map((section) => (
-                <button
-                  key={section.slug}
-                  onClick={() => navigate(section.href)}
-                  className={`
-                    flex-shrink-0 whitespace-nowrap px-3 h-11 font-ui text-[14px] font-medium
-                    border-b-[3px] transition-colors
-                    ${isActiveSection(section.href)
-                      ? "border-[#E3120B] text-[#0D0D0D]"
-                      : "border-transparent text-[#0D0D0D] hover:text-[#E3120B]"
-                    }
-                  `}
-                >
-                  {section.label}
-                </button>
+              {SITE_SECTIONS.map((section, index) => (
+                <Fragment key={section.slug}>
+                  <button
+                    onClick={() => navigate(section.href)}
+                    className={`
+                      flex-shrink-0 whitespace-nowrap px-3 h-11 font-ui text-[14px] font-medium
+                      border-b-[3px] transition-colors
+                      ${isActiveSection(section.href)
+                        ? "border-[#E3120B] text-[#0D0D0D]"
+                        : "border-transparent text-[#0D0D0D] hover:text-[#E3120B]"
+                      }
+                    `}
+                  >
+                    {section.label}
+                  </button>
+                  {index === 0 && (
+                    <Link to="/archive" className={archiveNavClass}>
+                      Archive
+                    </Link>
+                  )}
+                </Fragment>
               ))}
             </nav>
             {/* Fade hint that more sections are scrollable */}
@@ -192,15 +210,28 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
         {menuOpen && (
           <div id="section-menu" className="lg:hidden border-t border-[#D9D9D9] bg-white max-h-[70vh] overflow-y-auto">
             <ul className="max-w-[1280px] mx-auto px-4 md:px-6 py-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-              {SITE_SECTIONS.map((section) => (
-                <li key={section.slug}>
-                  <button
-                    onClick={() => { setMenuOpen(false); navigate(section.href); }}
-                    className={`w-full text-left py-2.5 font-ui text-[14px] border-b border-[#D9D9D9] ${isActiveSection(section.href) ? "text-[#E3120B] font-semibold" : "text-[#0D0D0D]"}`}
-                  >
-                    {section.label}
-                  </button>
-                </li>
+              {SITE_SECTIONS.map((section, index) => (
+                <Fragment key={section.slug}>
+                  <li>
+                    <button
+                      onClick={() => { setMenuOpen(false); navigate(section.href); }}
+                      className={`w-full text-left py-2.5 font-ui text-[14px] border-b border-[#D9D9D9] ${isActiveSection(section.href) ? "text-[#E3120B] font-semibold" : "text-[#0D0D0D]"}`}
+                    >
+                      {section.label}
+                    </button>
+                  </li>
+                  {index === 0 && (
+                    <li>
+                      <Link
+                        to="/archive"
+                        onClick={() => setMenuOpen(false)}
+                        className={`block py-2.5 font-ui text-[14px] border-b border-[#D9D9D9] ${archiveActive ? "text-[#E3120B] font-semibold" : "text-[#0D0D0D]"}`}
+                      >
+                        Archive
+                      </Link>
+                    </li>
+                  )}
+                </Fragment>
               ))}
             </ul>
           </div>
