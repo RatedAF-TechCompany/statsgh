@@ -1,6 +1,7 @@
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { DATASETS } from "@/lib/dataVault";
-import { ARTICLES_PER_SITEMAP, BASE_URL, STATIC_PAGES, esc, listingSlugs, xmlResponse } from "@/lib/sitemap";
+import { accumulatePublicationDays } from "@/lib/archiveDates";
+import { ARTICLES_PER_SITEMAP, BASE_URL, STATIC_PAGES, archiveSitemapEntries, esc, listingSlugs, xmlResponse } from "@/lib/sitemap";
 import { PUBLIC_AUTHOR_SLUGS } from "@/lib/authorSlugs";
 
 export const revalidate = 300;
@@ -26,9 +27,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       sb0.from("authors").select("slug").eq("is_active", true),
     ]);
     // Category/section of every published story (paged past the PostgREST 1,000-row cap).
-    const cats: { category_slug: string | null; section: string | null }[] = [];
+    const cats: { category_slug: string | null; section: string | null; published_at: string | null }[] = [];
     for (let off = 0; off < 50_000; off += PAGE) {
-      const { data, error } = await sb0.from("articles").select("category_slug, section").eq("is_published", true)
+      const { data, error } = await sb0.from("articles").select("category_slug, section, published_at").eq("is_published", true)
         .order("id", { ascending: true }).range(off, off + PAGE - 1);
       if (error) return new Response("Sitemap temporarily unavailable", { status: 503 });
       cats.push(...(data ?? []));
@@ -38,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       url: `${BASE_URL}/${slug}`, changeFrequency: "daily" as const, priority: 0.8,
     }));
     const extra = [
+      ...archiveSitemapEntries(accumulatePublicationDays(cats)),
       ...listings,
       ...DATASETS.map((d) => ({ url: `${BASE_URL}/data-vault/${d.slug}`, changeFrequency: "daily" as const, priority: 0.6 })),
       ...(reps ?? []).map((r: { kind: string; edition: string }) => ({ url: `${BASE_URL}/reports/${r.kind}/${r.edition}`, changeFrequency: "monthly" as const, priority: 0.5 })),
@@ -49,8 +51,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
     // One <url> per address (a listing slug can coincide with a static page such as /companies).
     const seen = new Set<string>();
     const all = [...STATIC_PAGES, ...gse, ...extra].filter((p) => !p.url.includes("?") && !seen.has(p.url) && seen.add(p.url));
-    return xmlResponse(urlset(all.map((p) =>
-      `  <url><loc>${esc(p.url)}</loc><changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`).join("\n")));
+    return xmlResponse(urlset(all.map((p) => {
+      const lastmod = "lastmod" in p && p.lastmod ? `<lastmod>${esc(p.lastmod)}</lastmod>` : "";
+      return `  <url><loc>${esc(p.url)}</loc>${lastmod}<changefreq>${p.changeFrequency}</changefreq><priority>${p.priority}</priority></url>`;
+    }).join("\n")));
   }
 
   const m = /^articles-(\d+)\.xml$/.exec(file);

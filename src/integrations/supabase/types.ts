@@ -4081,6 +4081,13 @@ export type Database = {
       _fx_at: { Args: { p_day: string; p_pair: string }; Returns: Json }
       _gse_at: { Args: { p_day: string }; Returns: Json }
       _tbill_at: { Args: { p_day: string; p_tenor: number }; Returns: Json }
+      archive_publication_days: {
+        Args: never
+        Returns: {
+          article_count: number
+          published_on: string
+        }[]
+      }
       assign_journalist: {
         Args: { p_article_id: string; p_category: string }
         Returns: string
