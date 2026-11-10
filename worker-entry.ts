@@ -143,6 +143,8 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
       url.protocol = "https:";
       url.hostname = CANONICAL_HOST;
       url.port = "";
+      // Strip the trailing slash in the same hop so apex + slash is one 301, not two.
+      if (url.pathname.length > 1 && url.pathname.endsWith("/")) url.pathname = url.pathname.replace(/\/+$/, "");
       return new Response(null, { status: 301, headers: { Location: url.toString(), "Cache-Control": "public, max-age=3600" } });
     }
     // Single in-house byline (Abubakar Saddique): every other author profile 301s to his page.
