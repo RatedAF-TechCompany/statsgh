@@ -156,7 +156,7 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
     if (url.pathname === "/__internal/mail") return request.method === "POST" ? internalMail(request, env) : new Response("not found", { status: 404 });
     const alias = EDGE_REDIRECTS[url.pathname.replace(/\/+$/, "") || "/"];
     if (alias && (request.method === "GET" || request.method === "HEAD")) return permanent(`https://${CANONICAL_HOST}${alias}`);
-    if (url.pathname === "/api/revalidate") return revalidateAndPurge(request, url, env, ctx as any);
+    if (url.pathname === "/api/revalidate" || url.pathname === "/api/revalidate-live") return revalidateAndPurge(request, url, env, ctx as any);
     if (!isCacheable(request, url)) return origin(request, url, env, ctx);
     return edgeCached(request, url, env, ctx as any);
   }
@@ -216,6 +216,7 @@ const NOT_FOUND_FRESH_SECONDS = 600;
 function freshSeconds(url: URL, status: number): number {
   if (status === 404) return NOT_FOUND_FRESH_SECONDS;
   if (url.pathname.startsWith("/og/")) return OG_FRESH_SECONDS;
+  if (url.pathname === "/live" || url.pathname.startsWith("/live/")) return 60;
   return FRESH_SECONDS;
 }
 const NO_CACHE_PREFIXES = ["/admin", "/api", "/auth", "/_next/data", "/reader", "/search", "/verify-comment", "/newsletter/preferences", "/news-sitemap.xml", "/sitemap.xml", "/sitemaps/", "/feed.xml", "/feeds/"];
@@ -276,8 +277,12 @@ async function revalidateAndPurge(request: Request, url: URL, env: unknown, ctx:
   if (res.status !== 200) return res;
   try {
     const body = await res.clone().json();
-    const paths = ["/", "/top-stories", "/news", "/feed.xml"];
+    const paths = ["/", "/top-stories", "/news", "/feed.xml", "/live"];
     if (typeof body?.article === "string") paths.push(body.article, "/" + body.article.split("/")[1]);
+    if (body?.path) {
+      const live = String(body.path).replace(/^\/live\//, "").replace(/^\//, "");
+      paths.push("/live", live ? `/live/${live}` : "/live");
+    }
     const cache = (caches as any).default as Cache;
     await Promise.all(paths.map((p) => cache.delete(cacheKey(new URL(`https://${CANONICAL_HOST}${p}`)))));
   } catch {}

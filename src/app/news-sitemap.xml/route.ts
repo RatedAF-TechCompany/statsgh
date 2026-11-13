@@ -31,8 +31,39 @@ export async function GET() {
     .order("published_at", { ascending: false })
     .limit(1000);
 
-  const urls = (articles ?? [])
-    .map(
+  // Public live blogs started or updated in the same 48-hour window.
+  // Ignore errors so a missing table (migration not yet applied) cannot break the news sitemap.
+  let lives: { path: string; headline: string; started_at: string | null; content_updated_at: string | null; created_at: string | null }[] = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lr = await (supabase as any)
+      .from("live_pages")
+      .select("path, headline, started_at, content_updated_at, created_at")
+      .eq("visibility", "public")
+      .in("status", ["live", "ended"])
+      .or(`started_at.gte.${fortyEightHoursAgo.toISOString()},content_updated_at.gte.${fortyEightHoursAgo.toISOString()}`)
+      .limit(200);
+    if (!lr.error) lives = lr.data ?? [];
+  } catch { /* table may not exist yet */ }
+
+  const liveUrls = (lives ?? []).map((page) => {
+    const published = page.started_at || page.created_at;
+    return `  <url>
+    <loc>${BASE_URL}/live/${page.path}</loc>
+    <news:news>
+      <news:publication>
+        <news:name>StatsGH</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>${published}</news:publication_date>
+      <news:title>${escapeXml(page.headline)}</news:title>
+    </news:news>
+    <lastmod>${page.content_updated_at || published}</lastmod>
+  </url>`;
+  });
+
+  const urls = [
+    ...(articles ?? []).map(
       (article) => `  <url>
     <loc>${BASE_URL}/${article.category_slug}/${article.slug}</loc>
     <news:news>
@@ -46,7 +77,9 @@ export async function GET() {
     <lastmod>${article.content_updated_at || article.published_at}</lastmod>
   </url>`
     )
-    .join("\n");
+    .join("\n"),
+    ...liveUrls,
+  ].filter(Boolean).join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"

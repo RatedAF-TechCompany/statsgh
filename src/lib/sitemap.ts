@@ -8,6 +8,7 @@ export const SITEMAP_CACHE = "public, max-age=0, s-maxage=300, stale-while-reval
 export const STATIC_PAGES = [
   { url: `${BASE_URL}/`, changeFrequency: "hourly" as const, priority: 1.0 },
   { url: `${BASE_URL}/news`, changeFrequency: "hourly" as const, priority: 0.9 },
+  { url: `${BASE_URL}/live`, changeFrequency: "hourly" as const, priority: 0.8 },
   // Section and category listings are added by sitemaps/pages.xml only when they have
   // published stories (listingUrls below); empty or legacy alias slugs redirect or are noindex.
   { url: `${BASE_URL}/trackers/fuel-and-cedi`, changeFrequency: "daily" as const, priority: 0.7 },

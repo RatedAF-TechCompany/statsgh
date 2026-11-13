@@ -32,3 +32,7 @@ out/
 
 .open-next
 .wrangler
+
+# Local live-pages mock store (never commit)
+.live-pages.local.json
+live-pages.local.json

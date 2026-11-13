@@ -20,13 +20,16 @@ import {
   type HomepageArticle,
   type MostReadArticle,
 } from "@/lib/homepage-data";
+import { LiveBanner } from "@/components/live/LiveBanner";
+import type { LiveBannerItem } from "@/lib/live/types";
 
 interface HomeProps {
   initialArticles?: HomepageArticle[];
   initialMostRead?: MostReadArticle[];
+  initialLive?: LiveBannerItem[];
 }
 
-const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
+const Home = ({ initialArticles, initialMostRead, initialLive }: HomeProps = {}) => {
   // Server-rendered batch is passed in as initialData so the article zones are
   // present in the initial HTML; the client hydrates and refetches for freshness.
   const { data: allArticles, isLoading } = useQuery({
@@ -66,6 +69,7 @@ const Home = ({ initialArticles, initialMostRead }: HomeProps = {}) => {
     <div className="min-h-screen bg-white">
       <h1 className="sr-only">StatsGH — Ghana's Premier Data Journalism Platform</h1>
       <Header showTicker />
+      <LiveBanner initial={initialLive} />
 
       {/* Date strip */}
       <div className="border-b border-[#D9D9D9]">

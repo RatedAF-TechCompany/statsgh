@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Home from "@/views/Home";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { fetchHomepageArticles, fetchMostRead } from "@/lib/homepage-data";
+import { getLiveStore } from "@/lib/live/store";
+import type { LiveBannerItem } from "@/lib/live/types";
 
 export const metadata: Metadata = {
   title: "StatsGH – Ghana's Premier Data Journalism Platform",
@@ -35,13 +37,17 @@ export default async function HomePage() {
   // renders and the client fetches the same data instead of a 500.
   let initialArticles: Awaited<ReturnType<typeof fetchHomepageArticles>> | undefined;
   let initialMostRead: Awaited<ReturnType<typeof fetchMostRead>> | undefined;
+  let initialLive: LiveBannerItem[] | undefined;
   try {
     const sb = createReadOnlyServerClient();
-    const [a, m] = await Promise.allSettled([fetchHomepageArticles(sb), fetchMostRead(sb)]);
+    const live = getLiveStore().then((s) => s.listLiveBanner());
+    const [a, m, l] = await Promise.allSettled([fetchHomepageArticles(sb), fetchMostRead(sb), live]);
     if (a.status === "fulfilled") initialArticles = a.value;
     else console.error("Homepage articles prefetch failed", a.reason);
     if (m.status === "fulfilled") initialMostRead = m.value;
     else console.error("Most read prefetch failed", m.reason);
+    if (l.status === "fulfilled") initialLive = l.value;
+    else console.error("Live banner prefetch failed", l.reason);
   } catch (error) {
     console.error("Homepage prefetch failed", error);
   }
@@ -52,7 +58,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Home initialArticles={initialArticles} initialMostRead={initialMostRead} />
+      <Home initialArticles={initialArticles} initialMostRead={initialMostRead} initialLive={initialLive} />
     </>
   );
 }

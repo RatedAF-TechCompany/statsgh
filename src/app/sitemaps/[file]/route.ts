@@ -21,9 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
     const { data: syms } = d?.[0] ? await createReadOnlyServerClient().from("gse_daily_prices").select("symbol").eq("trade_date", d[0].trade_date) : { data: [] };
     const gse = (syms ?? []).map((s: { symbol: string }) => ({ url: `${BASE_URL}/markets/gse/${encodeURIComponent(s.symbol)}`, changeFrequency: "daily" as const, priority: 0.5 }));
     const sb0 = createReadOnlyServerClient();
-    const [{ data: reps }, { data: auths }] = await Promise.all([
+    const [{ data: reps }, { data: auths }, liveRes] = await Promise.all([
       sb0.from("reports").select("kind, edition"),
       sb0.from("authors").select("slug").eq("is_active", true),
+      (sb0 as unknown as { from: (table: string) => { select: (c: string) => { eq: (a: string, b: string) => { in: (a: string, b: string[]) => Promise<{ data: { path: string }[] | null; error?: unknown }> } } } }).from("live_pages").select("path, content_updated_at, visibility, status").eq("visibility", "public").in("status", ["live", "ended"]).then((r) => r.error ? { data: [] } : r).catch(() => ({ data: [] })),
     ]);
     // Category/section of every published story (paged past the PostgREST 1,000-row cap).
     const cats: { category_slug: string | null; section: string | null }[] = [];
@@ -45,6 +46,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       ...(auths ?? [])
         .filter((a: { slug: string }) => (PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(a.slug))
         .map((a: { slug: string }) => ({ url: `${BASE_URL}/authors/${a.slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
+      ...((liveRes && !('error' in liveRes && liveRes.error) ? liveRes.data : null) ?? []).map((r: { path: string }) => ({
+        url: `${BASE_URL}/live/${r.path}`, changeFrequency: "hourly" as const, priority: 0.8,
+      })),
     ];
     // One <url> per address (a listing slug can coincide with a static page such as /companies).
     const seen = new Set<string>();
