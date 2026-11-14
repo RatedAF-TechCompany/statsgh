@@ -76,8 +76,7 @@ export async function GET() {
     </news:news>
     <lastmod>${article.content_updated_at || article.published_at}</lastmod>
   </url>`
-    )
-    .join("\n"),
+    ),
     ...liveUrls,
   ].filter(Boolean).join("\n");
 
