@@ -6,7 +6,11 @@ create table if not exists public.live_pages (
   id uuid primary key default gen_random_uuid(),
   slug text not null,
   slug_date date not null,
-  path text not null generated always as (slug || '-' || to_char(slug_date, 'YYYY-MM-DD')) stored,
+  path text not null generated always as (
+    slug || '-' || lpad(extract(year from slug_date)::int::text, 4, '0')
+         || '-' || lpad(extract(month from slug_date)::int::text, 2, '0')
+         || '-' || lpad(extract(day from slug_date)::int::text, 2, '0')
+  ) stored,
   headline text not null,
   byline text not null,
   summary_bullets text[] not null,
