@@ -14,7 +14,7 @@ export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "./.open-nex
 const CANONICAL_HOST = "www.statsgh.com";
 const REDIRECT_HOSTS = new Set(["statsgh.com", "www.statsgh.com"]);
 
-const SKIP = /^\/(_next|api|og|admin|auth|sitemaps|feeds|cdn-cgi)(\/|$)|\.[a-z0-9]{2,5}$/i;
+const SKIP = /^\/(_next|api|og|admin|auth|sitemaps|feeds|cdn-cgi|live)(\/|$)|\.[a-z0-9]{2,5}$/i;
 const permanent = (loc: string) =>
   new Response(null, { status: 301, headers: { Location: loc, "Cache-Control": "public, max-age=3600" } });
 
@@ -176,6 +176,7 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
     //  - /article/<slug> is resolved by app/article/[slug];
     //  - any other multi-segment path whose last segment looks like a story slug 301s to /news;
     //  - everything else stays a real 404 (noindex), not a homepage redirect (soft 404).
+    //  - /live/<missing> is never redirected: it stays a 404 (noindex), as live pages are dated one-offs.
     if (res.status === 404 && !SKIP.test(url.pathname)) {
       const segs = url.pathname.split("/").filter(Boolean);
       if (segs.length >= 2) {
