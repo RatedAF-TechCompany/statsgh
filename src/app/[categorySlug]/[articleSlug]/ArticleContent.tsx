@@ -22,6 +22,7 @@ import {
   BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { JournalistByline } from "@/components/JournalistByline";
+import { bylineFor, RESEARCH_BYLINE } from "@/lib/authorSlugs";
 import { KeyNumbers } from "@/components/KeyNumbers";
 import { NumbersBehindStory } from "@/components/NumbersBehindStory";
 import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
@@ -35,6 +36,7 @@ function highlightNumbers(html: string) {
 }
 
 const ArticleContent = ({ article, updates = [] }: { article: any; updates?: StoryUpdate[] }) => {
+  const byline = bylineFor(article.author_name);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -201,8 +203,8 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-ui text-[13px] text-[#5B5B5B]" itemProp="author">
-                  By <a href="/authors/abubakar-saddique" rel="author" className="underline hover:text-[#E3120B]">Abubakar Saddique</a>
-                  {(article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)) && <> · Edited by <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a></>}
+                  By <a href={`/authors/${byline.slug}`} rel="author" className="underline hover:text-[#E3120B]">{byline.name}</a>
+                  {byline.slug !== RESEARCH_BYLINE.slug && (article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)) && <> · Edited by <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a></>}
                   {" "}|{" "}StatsGH
                 </span>
                 <div className="mt-1"><PublishedUpdatedLine publishedAt={article.published_at} contentUpdatedAt={article.content_updated_at} /></div>

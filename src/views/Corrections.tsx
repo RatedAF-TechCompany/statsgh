@@ -28,7 +28,7 @@ const Corrections = () => {
         <h1 className="font-headline text-[32px] md:text-[38px] font-bold leading-[1.15] text-[#121212] mb-4">
           Corrections &amp; Clarifications
         </h1>
-        <p className="font-ui text-sm text-[#5B5B5B] mt-2 mb-4">Chief Editor: <a href="/authors/hawa-kokonu" className="underline hover:text-[#E3120B]">Hawa Kokonu</a>. Research Editor: <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a>. Stories are written by Abubakar Saddique, StatsGH's in-house data journalist.</p>
+        <p className="font-ui text-sm text-[#5B5B5B] mt-2 mb-4">Chief Editor: <a href="/authors/hawa-kokonu" className="underline hover:text-[#E3120B]">Hawa Kokonu</a>. Research Editor: <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a>. Stories carry the byline of the desk journalist who wrote them; research articles carry Zebrilla Najib's byline, and other stories are credited to Abubakar Saddique, StatsGH's in-house data journalist.</p>
         <p className="font-serif text-[17px] leading-[1.75] text-[#3B3B3B] mb-3">
           StatsGH corrects errors promptly and visibly. When we get something wrong, we fix the
           article and record the correction here — what was wrong, and what it now says.

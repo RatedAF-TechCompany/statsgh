@@ -1,5 +1,6 @@
 import { getCategoryPageLabel } from "@/lib/navigation";
 import { Metadata } from "next";
+import { bylineFor, RESEARCH_BYLINE } from "@/lib/authorSlugs";
 import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { CATEGORY_MAPPING } from "@/lib/navigation";
@@ -178,10 +179,11 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     dateModified: article.content_updated_at || article.published_at,
     author: {
       "@type": "Person",
-      name: "Abubakar Saddique",
-      url: "https://www.statsgh.com/authors/abubakar-saddique",
+      name: bylineFor(article.author_name).name,
+      jobTitle: bylineFor(article.author_name).role,
+      url: `https://www.statsgh.com/authors/${bylineFor(article.author_name).slug}`,
     },
-    ...(isResearch(article) ? { editor: { "@type": "Person", name: "Zebrilla Najib", jobTitle: "Research Editor", url: "https://www.statsgh.com/authors/zebrilla-najib" } } : {}),
+    ...(isResearch(article) && bylineFor(article.author_name).slug !== RESEARCH_BYLINE.slug ? { editor: { "@type": "Person", name: "Zebrilla Najib", jobTitle: "Research Editor", url: "https://www.statsgh.com/authors/zebrilla-najib" } } : {}),
     publisher: {
       "@type": "NewsMediaOrganization",
       name: "StatsGH",

@@ -8,12 +8,13 @@ import { PageShell, ShareBar } from "@/components/vault/VaultBits";
 import { fmtDate, monthLabel } from "@/lib/reports";
 
 type P = { params: Promise<{ slug: string }> };
-// In-house author (Zeb, 4 Nov 2026): every article is credited to Abubakar Saddique.
+// In-house author: sweep-written and unattributed articles keep the Abubakar Saddique byline.
+// Desk journalists load from the authors table; their stories match on articles.author_name.
 const IN_HOUSE = { slug: "abubakar-saddique", display_name: "Abubakar Saddique", role: "Data journalist", kind: "person",
-  bio: "Abubakar Saddique is StatsGH's in-house data journalist.", expertise: [] as string[], byline_aliases: [] as string[], all: true };
+  bio: "Abubakar Saddique is StatsGH's in-house data journalist.", expertise: [] as string[], byline_aliases: [] as string[] };
 const EDITORS: Record<string, any> = {
   "hawa-kokonu": { slug: "hawa-kokonu", image: "/images/authors/hawa-kokonu.jpg", display_name: "Hawa Kokonu", role: "Chief Editor", kind: "person", bio: "Hawa Kokonu is StatsGH's Chief Editor. She is studying for a BSc in Agribusiness at the University of Energy and Natural Resources (UENR). She has served as Financial Secretary of the UENR Student Representative Council and of the Agripreneur Newsletter, and as Deputy Chief of Staff of the local NUGS.\n\nShe brings strong record-keeping, organisation and communication skills to the newsroom. She makes sure stories are accurate, clear and published on time.", expertise: [], byline_aliases: [], none: true },
-  "zebrilla-najib": { slug: "zebrilla-najib", display_name: "Zebrilla Najib", role: "Research Editor", kind: "person", bio: "Zebrilla Najib founded StatsGH, GhanaCrimes and TheCryptoGhana, and edits StatsGH's research articles. He is a registered Reporting Sonographer with over nine years of clinical and research experience in Ghana, Sweden and the UK, including NHS work and an NIH-funded study at the University of Ghana. He holds a BSc in Diagnostic Medical Sonography from KNUST and is studying for an MBE at Karolinska Institutet.\n\nHe brings an evidence-based approach to StatsGH. He checks that figures match their sources, that methods are sound, and that findings are stated plainly.", expertise: [], byline_aliases: [], none: true },
+  "zebrilla-najib": { slug: "zebrilla-najib", display_name: "Zebrilla Najib", role: "Research Editor", kind: "person", bio: "Zebrilla Najib founded StatsGH, GhanaCrimes and TheCryptoGhana, and edits StatsGH's research articles. He is a registered Reporting Sonographer with over nine years of clinical and research experience in Ghana, Sweden and the UK, including NHS work and an NIH-funded study at the University of Ghana. He holds a BSc in Diagnostic Medical Sonography from KNUST and is studying for an MBE at Karolinska Institutet.\n\nHe brings an evidence-based approach to StatsGH. He checks that figures match their sources, that methods are sound, and that findings are stated plainly.", expertise: [], byline_aliases: [] },
 };
 const load = async (slug: string): Promise<any> => slug === IN_HOUSE.slug ? IN_HOUSE : EDITORS[slug] ? EDITORS[slug] :
   (await createReadOnlyServerClient().from("authors").select("*").eq("slug", slug).eq("is_active", true).maybeSingle()).data;
