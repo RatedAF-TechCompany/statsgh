@@ -14,7 +14,7 @@ export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "./.open-nex
 const CANONICAL_HOST = "www.statsgh.com";
 const REDIRECT_HOSTS = new Set(["statsgh.com", "www.statsgh.com"]);
 
-const SKIP = /^\/(_next|api|og|admin|auth|sitemaps|feeds|cdn-cgi|live)(\/|$)|\.[a-z0-9]{2,5}$/i;
+const SKIP = /^\/(_next|api|og|admin|auth|sitemaps|feeds|cdn-cgi|live|indicators)(\/|$)|\.[a-z0-9]{2,5}$/i;
 const permanent = (loc: string) =>
   new Response(null, { status: 301, headers: { Location: loc, "Cache-Control": "public, max-age=3600" } });
 
@@ -181,6 +181,7 @@ async function origin(request: Request, url: URL, env: unknown, ctx: unknown): P
     //  - any other multi-segment path whose last segment looks like a story slug 301s to /news;
     //  - everything else stays a real 404 (noindex), not a homepage redirect (soft 404).
     //  - /live/<missing> is never redirected: it stays a 404 (noindex), as live pages are dated one-offs.
+    //  - /indicators/<missing> is never redirected either: a 404 (noindex), per the missing-slug rule.
     if (res.status === 404 && !SKIP.test(url.pathname)) {
       const segs = url.pathname.split("/").filter(Boolean);
       if (segs.length >= 2) {
@@ -236,7 +237,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "5"; // 15 Nov 2026: research-plan layout changes (fonts, share row, indicator SSR)
+const CACHE_GEN = "6"; // 15 Nov 2026 stage 2: /indicators missing slugs 404 (drop cached 301s)
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);
