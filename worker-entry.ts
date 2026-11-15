@@ -207,7 +207,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "7"; // 15 Nov 2026 stage 2: missing slugs 404 noindex (drop cached 301s)
+const CACHE_GEN = "8"; // 15 Nov 2026 stage 3: loading rework (new fonts/chunks in HTML)
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);
