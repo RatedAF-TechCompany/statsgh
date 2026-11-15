@@ -1,11 +1,7 @@
+import { useEffect, useState, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import type { BylineJournalist } from "@/components/JournalistBylineTooltip";
 
 interface Props {
   name: string | null | undefined;
@@ -19,6 +15,8 @@ const slugify = (s: string) =>
 const dicebearUrl = (name: string) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(slugify(name))}`;
 
+type TooltipView = ComponentType<{ journalist: BylineJournalist; avatar: string; showAvatar: boolean; avatarSize: number }>;
+
 export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: Props) => {
   const display = name || "Abubakar Saddique";
 
@@ -27,52 +25,22 @@ export const JournalistByline = ({ name, showAvatar = true, avatarSize = 24 }: P
     queryFn: async () => {
       const { data: rows } = await supabase.rpc("get_journalist_byline" as any, { p_name: display });
       const data = Array.isArray(rows) ? rows[0] ?? null : null;
-      return data as unknown as { byline_name: string; specialization: string | null; bio: string | null; photo_url: string | null } | null;
+      return data as unknown as BylineJournalist | null;
     },
   });
 
-  if (!journalist) {
-    return <span>{display}</span>;
+  // The hover card (Radix Tooltip) loads in parallel with the bio lookup, after hydration.
+  const [View, setView] = useState<TooltipView | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import("@/components/JournalistBylineTooltip").then((m) => { if (alive) setView(() => m.default); });
+    return () => { alive = false; };
+  }, []);
+
+  if (!journalist || !View) {
+    return <span>{journalist?.byline_name || display}</span>;
   }
 
   const avatar = journalist.photo_url || dicebearUrl(journalist.byline_name);
-
-  return (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 hover:text-[#E3120B] transition-colors align-middle"
-          >
-            {showAvatar && (
-              <img
-                src={avatar}
-                alt=""
-                width={avatarSize}
-                height={avatarSize}
-                className="rounded-full bg-[#f3ecdf] flex-shrink-0"
-                style={{ width: avatarSize, height: avatarSize }}
-                loading="lazy"
-              />
-            )}
-            <span className="underline decoration-dotted decoration-[#cbb89a] underline-offset-2">
-              {journalist.byline_name}
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs bg-[#121212] text-white font-ui text-[12px] leading-snug px-3 py-2">
-          <div className="font-semibold mb-1">
-            {journalist.byline_name}
-            {journalist.specialization && (
-              <span className="text-[#5B5B5B] font-normal ml-1.5">
-                · {journalist.specialization}
-              </span>
-            )}
-          </div>
-          {journalist.bio && <div className="opacity-90">{journalist.bio}</div>}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  return <View journalist={journalist} avatar={avatar} showAvatar={showAvatar} avatarSize={avatarSize} />;
 };

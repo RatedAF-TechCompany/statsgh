@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/lazyToast";
 import { logAuditEvent } from "@/lib/audit";
 import { SITE_SECTIONS } from "@/lib/navigation";
 import { useRef, useState } from "react";

@@ -2,7 +2,9 @@
 import { FollowButton } from "@/components/FollowButton";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import dynamic from "next/dynamic";
+// Chart code (recharts) loads after first paint; the h-64 wrapper reserves its space.
+const InflationLineChart = dynamic(() => import("@/components/charts/InflationLineChart"), { ssr: false, loading: () => null });
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { LongRunMacro } from "@/components/markets/LongRunMacro";
@@ -74,15 +76,7 @@ const OfficialMonthly = ({ showMoney }: { showMoney: boolean }) => {
       <section className="border-t border-[#D9D9D9] py-6">
         <h2 className="kicker mb-2">Monthly headline inflation since 2015 (% year-on-year)</h2>
         <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={pts.map((p) => ({ period: p.period, headline: p.value }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#E8E8E8" vertical={false} />
-              <XAxis dataKey="period" tick={{ fontSize: 11 }} tickFormatter={monthLabel} minTickGap={40} />
-              <YAxis tick={{ fontSize: 11 }} width={40} unit="%" />
-              <Tooltip labelFormatter={(d) => monthLabel(String(d))} formatter={(v: number) => [`${v}%`, "Headline"]} />
-              <Line type="monotone" dataKey="headline" stroke={COLOR.headline} strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <InflationLineChart data={pts.map((p) => ({ period: p.period, headline: p.value }))} lines={[{ key: "headline", name: "Headline", color: COLOR.headline }]} monthLabel={monthLabel} minTickGap={40} />
         </div>
         <p className="text-xs text-[#5B5B5B] mt-2">
           Source: <a className="underline" href={GSS_INFLATION_URL} target="_blank" rel="noopener noreferrer">Ghana Statistical Service</a> for months stored from GSS releases; earlier months from the{" "}
@@ -154,18 +148,7 @@ const InflationTracker = ({ lead }: { lead?: string } = {}) => {
                 <p className="text-sm text-[#5B5B5B]">Tracking started {monthLabel(periods[0])} — a chart will appear once more months are stored.</p>
               ) : (
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid stroke="#E8E8E8" vertical={false} />
-                      <XAxis dataKey="period" tick={{ fontSize: 11 }} tickFormatter={monthLabel} />
-                      <YAxis tick={{ fontSize: 11 }} width={40} unit="%" />
-                      <Tooltip labelFormatter={(d) => monthLabel(String(d))} formatter={(v: number, n: string) => [`${v}%`, LABEL[n as Reading["kind"]] || n]} />
-                      <Legend formatter={(n) => LABEL[n as Reading["kind"]] || n} />
-                      {(["headline", "food", "non_food"] as const).map((k) => (
-                        <Line key={k} type="monotone" dataKey={k} stroke={COLOR[k]} strokeWidth={2} connectNulls dot />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <InflationLineChart data={chartData} lines={(["headline", "food", "non_food"] as const).map((k) => ({ key: k, name: LABEL[k], color: COLOR[k] }))} monthLabel={monthLabel} legend dot />
                 </div>
               )}
               <p className="text-xs text-[#5B5B5B] mt-2">

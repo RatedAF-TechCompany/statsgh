@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { HOME_SECTION_VISIBLE } from "@/lib/homepage-data";
 import { FTSectionLabel } from "./FTSectionLabel";
 import { StoryItem } from "./StoryItem";
 
@@ -24,7 +25,7 @@ interface SectionBlockProps {
 
 export const SectionBlock = ({ sectionLabel, sectionSlug, articles }: SectionBlockProps) => {
   if (articles.length === 0) return null;
-  const visible = articles.slice(0, 8);
+  const visible = articles.slice(0, HOME_SECTION_VISIBLE);
 
   return (
     <section className="border-b border-[#D9D9D9] py-5 md:py-6">

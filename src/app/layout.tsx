@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Libre_Franklin, Lora } from "next/font/google";
-
-// Self-hosted at build time (no render-blocking Google Fonts request). Variable fonts cover all weights.
-const fontUi = Libre_Franklin({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
-const fontSerif = Lora({ subsets: ["latin"], style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
+// Fonts are self-hosted subset woff2 files declared in src/index.css (--font-serif, --font-ui).
+// Only the serif normal face is preloaded: it is the LCP text (headline or lead) on every page.
+const CRITICAL_FONT = "/fonts/statsgh-serif-v1.woff2";
 import Providers from "./providers";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import Script from "next/script";
@@ -109,7 +107,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en-GH" className={`${fontUi.variable} ${fontSerif.variable}`}>
+    <html lang="en-GH">
+      <head>
+        <link rel="preload" href={CRITICAL_FONT} as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
         <PhotoFilterDefs />

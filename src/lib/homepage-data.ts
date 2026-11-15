@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { getSectionForCategory } from "@/lib/sectionMapping";
 
 type Client = SupabaseClient<Database>;
 
@@ -44,6 +45,23 @@ export async function fetchHomepageArticles(client: Client): Promise<HomepageArt
     .limit(ARTICLES_LIMIT);
   if (error) throw error;
   return (data || []) as HomepageArticle[];
+}
+
+/**
+ * Keeps only the articles the homepage actually renders: the first 8 (top stories and
+ * spotlight) plus the first 8 per section (SectionBlock shows at most 8). The server passes
+ * this subset as initialData, so the page's inline RSC payload carries ~60 stories instead
+ * of 200. Rendering is identical; a client refetch still returns the full batch.
+ */
+export const HOME_SECTION_VISIBLE = 8;
+export function trimHomepageArticles(articles: HomepageArticle[]): HomepageArticle[] {
+  const perSection: Record<string, number> = {};
+  return articles.filter((a, i) => {
+    if (i < 8) return true;
+    const sec = a.section || getSectionForCategory(a.category_slug);
+    perSection[sec] = (perSection[sec] || 0) + 1;
+    return perSection[sec] <= HOME_SECTION_VISIBLE;
+  });
 }
 
 /**

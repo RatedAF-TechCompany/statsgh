@@ -17,14 +17,14 @@ export type CorrectionEntry = {
 export async function fetchCorrectionsLog(): Promise<CorrectionEntry[]> {
   const [legacy, su] = await Promise.all([
     supabase.from("corrections").select("id, article_title, article_url, what_was_wrong, what_was_fixed, corrected_at").order("corrected_at", { ascending: false }),
-    supabase.from("story_updates").select("id, article_id, posted_at, summary, is_material").eq("kind", "correction").order("posted_at", { ascending: false }).limit(500),
+    (supabase as any).from("story_updates").select("id, article_id, posted_at, summary, is_material").eq("kind", "correction").order("posted_at", { ascending: false }).limit(500),
   ]);
   if (legacy.error && su.error) throw su.error;
   const rows = (su.data ?? []) as { id: string; article_id: string; posted_at: string; summary: string | null; is_material: boolean | null }[];
   const ids = [...new Set(rows.map((r) => r.article_id))];
   const arts = new Map<string, { title: string; slug: string; category_slug: string }>();
   for (let i = 0; i < ids.length; i += 100) {
-    const { data } = await supabase.from("articles").select("id, title, slug, category_slug").in("id", ids.slice(i, i + 100)).eq("is_published", true);
+    const { data } = await (supabase as any).from("articles").select("id, title, slug, category_slug").in("id", ids.slice(i, i + 100)).eq("is_published", true);
     for (const a of (data ?? []) as { id: string; title: string; slug: string; category_slug: string }[]) arts.set(a.id, a);
   }
   const out: CorrectionEntry[] = [];

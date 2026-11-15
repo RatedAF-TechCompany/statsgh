@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/lazyToast";
 
 /** "Embed / share" control for a public chart at /embed/<series>. */
 export const EmbedShare = ({ series, title }: { series: string; title: string }) => {

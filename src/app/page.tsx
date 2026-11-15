@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Home from "@/views/Home";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
-import { fetchHomepageArticles, fetchMostRead } from "@/lib/homepage-data";
+import { fetchHomepageArticles, fetchMostRead, trimHomepageArticles } from "@/lib/homepage-data";
 import { getLiveStore } from "@/lib/live/store";
 import type { LiveBannerItem } from "@/lib/live/types";
 
@@ -42,7 +42,7 @@ export default async function HomePage() {
     const sb = createReadOnlyServerClient();
     const live = getLiveStore().then((s) => s.listLiveBanner());
     const [a, m, l] = await Promise.allSettled([fetchHomepageArticles(sb), fetchMostRead(sb), live]);
-    if (a.status === "fulfilled") initialArticles = a.value;
+    if (a.status === "fulfilled") initialArticles = trimHomepageArticles(a.value);
     else console.error("Homepage articles prefetch failed", a.reason);
     if (m.status === "fulfilled") initialMostRead = m.value;
     else console.error("Most read prefetch failed", m.reason);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, Pause, Square, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/lazyToast";
 import { Progress } from "@/components/ui/progress";
 
 interface ListenButtonProps {

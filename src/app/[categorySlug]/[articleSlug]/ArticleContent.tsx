@@ -10,7 +10,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Share2, TrendingUp, Database, ExternalLink } from "lucide-react";
 import { ReadingTime } from "@/components/ReadingTime";
-import { toast } from "sonner";
+import { toast } from "@/lib/lazyToast";
 import { useEffect } from "react";
 import { sanitizeArticleHtml, highlightNumbersInHtml } from "@/lib/safe-html";
 import dynamic from "next/dynamic";
