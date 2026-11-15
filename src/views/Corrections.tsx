@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchCorrectionsLog } from "@/lib/correctionsLog";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
@@ -8,17 +8,7 @@ import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Corrections = () => {
-  const { data: corrections, isLoading } = useQuery({
-    queryKey: ["corrections"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("corrections")
-        .select("id, article_title, article_url, what_was_wrong, what_was_fixed, corrected_at")
-        .order("corrected_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: corrections, isLoading } = useQuery({ queryKey: ["corrections-log"], queryFn: fetchCorrectionsLog });
 
   return (
     <div className="min-h-screen bg-[#FFFFFF]">
@@ -31,7 +21,7 @@ const Corrections = () => {
         <p className="font-ui text-sm text-[#5B5B5B] mt-2 mb-4">Chief Editor: <a href="/authors/hawa-kokonu" className="underline hover:text-[#E3120B]">Hawa Kokonu</a>. Research Editor: <a href="/authors/zebrilla-najib" className="underline hover:text-[#E3120B]">Zebrilla Najib</a>. Stories carry the byline of the desk journalist who wrote them; research articles carry Zebrilla Najib's byline, and other stories are credited to Abubakar Saddique, StatsGH's in-house data journalist.</p>
         <p className="font-serif text-[17px] leading-[1.75] text-[#3B3B3B] mb-3">
           StatsGH corrects errors promptly and visibly. When we get something wrong, we fix the
-          article and record the correction here — what was wrong, and what it now says.
+          article and record the correction on the article and in this log, newest first.
         </p>
         <p className="font-ui text-[13px] text-[#5B5B5B] mb-10">
           Spot an error? Email{" "}
@@ -55,22 +45,28 @@ const Corrections = () => {
             {corrections.map((c) => (
               <article key={c.id} className="border-t border-[#D9D9D9] py-6">
                 <div className="font-ui text-[11px] uppercase tracking-[0.12em] text-[#5B5B5B] mb-2">
-                  Corrected {format(new Date(c.corrected_at), "d MMMM yyyy")}
+                  Corrected {format(new Date(c.date), "d MMMM yyyy")}
                 </div>
                 <h2 className="font-headline text-lg font-bold text-[#121212] mb-3">
-                  <Link to={c.article_url} className="hover:text-[#E3120B] hover:underline">
-                    {c.article_title}
+                  <Link to={c.articleUrl} className="hover:text-[#E3120B] hover:underline">
+                    {c.articleTitle}
                   </Link>
                 </h2>
                 <div className="space-y-2 font-serif text-[15px] leading-[1.7] text-[#3B3B3B]">
-                  <p>
-                    <span className="font-ui text-xs font-bold uppercase tracking-[0.1em] text-[#E3120B]">What was wrong: </span>
-                    {c.what_was_wrong}
-                  </p>
-                  <p>
-                    <span className="font-ui text-xs font-bold uppercase tracking-[0.1em] text-[#121212]">What it now says: </span>
-                    {c.what_was_fixed}
-                  </p>
+                  {c.summary ? (
+                    <p>{c.summary}</p>
+                  ) : (
+                    <>
+                      <p>
+                        <span className="font-ui text-xs font-bold uppercase tracking-[0.1em] text-[#E3120B]">What was wrong: </span>
+                        {c.wrong}
+                      </p>
+                      <p>
+                        <span className="font-ui text-xs font-bold uppercase tracking-[0.1em] text-[#121212]">What it now says: </span>
+                        {c.fixed}
+                      </p>
+                    </>
+                  )}
                 </div>
               </article>
             ))}

@@ -122,7 +122,7 @@ const GhanaAtAGlance = () => {
             variant="ghost"
             size="sm"
             className="kicker hidden sm:flex"
-            onClick={() => navigate('/data')}
+            onClick={() => navigate('/indicators')}
           >
             All data →
           </Button>
@@ -196,7 +196,7 @@ const GhanaAtAGlance = () => {
             variant="link" 
             size="sm" 
             className="text-ft-maroon hover:text-ft-maroon/80 text-xs p-0"
-            onClick={() => navigate('/data')}
+            onClick={() => navigate('/indicators')}
           >
             Explore all data →
           </Button>

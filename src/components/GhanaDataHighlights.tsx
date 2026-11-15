@@ -219,7 +219,7 @@ const GhanaDataHighlights = () => {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-lg font-semibold text-foreground">Ghana Data</h2>
           <Link
-            to="/data"
+            to="/indicators"
             className="text-sm text-primary hover:underline flex items-center gap-1"
           >
             All indicators

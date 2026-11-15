@@ -117,11 +117,10 @@ async function submitForm(request: Request, env: any): Promise<Response> {
 
 const EDGE_REDIRECTS: Record<string, string> = {
   "/latest": "/news",
-  // Research plan (15 Nov 2026): one indicator hub. /data listed "0 indicators"; /trackers and
-  // /markets had no page of their own. Hub-to-hub redirects only; no article is ever redirected.
+  // Research plan (15 Nov 2026): one indicator hub. /data listed "0 indicators" and /trackers had no
+  // page of its own. /markets stays: it is the Markets news section. Hub-to-hub only; no article redirects.
   "/data": "/indicators",
   "/trackers": "/indicators",
-  "/markets": "/indicators",
   "/apple-touch-icon.png": "/favicon.png",
   "/apple-touch-icon-precomposed.png": "/favicon.png",
 };
@@ -237,7 +236,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "4";
+const CACHE_GEN = "5"; // 15 Nov 2026: research-plan layout changes (fonts, share row, indicator SSR)
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);

@@ -191,7 +191,7 @@ const DataRail = () => {
         <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.08em] text-[#5B5B5B] mb-2">Explore</h3>
         <div className="space-y-1.5">
           {[
-            { label: "All Data Indicators", href: "/data" },
+            { label: "All Data Indicators", href: "/indicators" },
             { label: "Cedi Exchange Rates", href: "/markets/forex" },
             { label: "T-bill & Policy Rates", href: "/markets/rates" },
             { label: "Finance Dashboard", href: "/dashboards/finance" },

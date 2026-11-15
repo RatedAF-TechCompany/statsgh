@@ -155,7 +155,7 @@ const TopicDashboard = () => {
         <Header />
         <main className="container mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-bold mb-4">Topic not found</h1>
-          <Button onClick={() => navigate("/data")}>Back to Indicators</Button>
+          <Button onClick={() => navigate("/indicators")}>Back to Indicators</Button>
         </main>
       </div>
     );
@@ -169,7 +169,7 @@ const TopicDashboard = () => {
         {/* Navigation */}
         <Button
           variant="ghost"
-          onClick={() => navigate("/data")}
+          onClick={() => navigate("/indicators")}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

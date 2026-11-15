@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import { Metadata } from "next";
 import Corrections from "@/views/Corrections";
+import { Prefetched } from "@/components/ssr/Prefetched";
+import { fetchCorrectionsLog } from "@/lib/correctionsLog";
 
 export const metadata: Metadata = {
   title: "Corrections & Clarifications | StatsGH",
@@ -16,5 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function CorrectionsPage() {
-  return <Corrections />;
+  return <Prefetched queries={[{ queryKey: ["corrections-log"], queryFn: fetchCorrectionsLog }]}><Corrections /></Prefetched>;
 }

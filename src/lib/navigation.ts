@@ -8,6 +8,7 @@ export const SITE_SECTIONS = [
   { label: "GSE", slug: "markets-gse", href: "/markets/gse" },
   { label: "Fuel & Cedi", slug: "trackers-fuel-and-cedi", href: "/trackers/fuel-and-cedi" },
   { label: "Inflation", slug: "trackers-cpi", href: "/trackers/cpi" },
+  { label: "Indicators", slug: "indicators", href: "/indicators" },
   { label: "Dashboards", slug: "dashboards", href: "/dashboards" },
   { label: "Calendar", slug: "calendar", href: "/calendar" },
   { label: "Data Explorer", slug: "explorer", href: "/explorer" },
@@ -62,7 +63,7 @@ export const SITE_NAVIGATION = {
   defaultCountry: "Ghana",
   primary: [
     { label: "Topics", href: "/topics" },
-    { label: "Data", href: "/data" },
+    { label: "Data", href: "/indicators" },
     { label: "News", href: "/news" },
     { label: "Dashboards", href: "/dashboards" },
     { label: "Sources", href: "/sources" },

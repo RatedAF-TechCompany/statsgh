@@ -120,7 +120,7 @@ const DataHighlightsSidebar = () => {
   if (!indicators || indicators.length === 0) return null;
 
   return (
-    <SidebarSection title="Ghana Data" viewAllHref="/data" viewAllLabel="All data">
+    <SidebarSection title="Ghana Data" viewAllHref="/indicators" viewAllLabel="All data">
       <div className="space-y-0">
         {indicators.map((indicator) => {
           const positive = indicator.change !== null ? indicator.change >= 0 : null;

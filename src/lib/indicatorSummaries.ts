@@ -82,11 +82,11 @@ export const cpiSummary = cache(async (): Promise<Summary | null> => {
   const prev = pts[pts.length - 2];
   const yearAgo = pts.find((x) => x.period === `${Number(last.period.slice(0, 4)) - 1}${last.period.slice(4)}`);
   const m = monthLabel(last.period);
-  const src = last.official ? "Ghana Statistical Service" : last.source;
+  const src = last.official ? "Ghana Statistical Service" : "IMF monthly CPI series, built from the GSS index";
   const f = cpiFreshness(last.period);
-  const lead = `Ghana's annual consumer price inflation was ${num(last.value, 1)}% in ${m} (${src})${prev ? `, ${last.value > prev.value ? "up from" : last.value < prev.value ? "down from" : "unchanged from"} ${num(prev.value, 1)}% in ${monthLabel(prev.period)}` : ""}${yearAgo ? ` and against ${num(yearAgo.value, 1)}% a year earlier` : ""}. The Bank of Ghana's medium-term target is 8% ± 2%. The ${f.nextPeriodLabel} figure is due in early ${f.expectedLabel}.`;
+  const lead = `Ghana's annual consumer price inflation was ${num(last.value, 1)}% in ${m} (${src})${prev ? `, ${last.value > prev.value ? "up from" : last.value < prev.value ? "down from" : "unchanged from"} ${num(prev.value, 1)}% in ${monthLabel(prev.period)}${prev.official || !last.official ? "" : " (IMF series)"}` : ""}${yearAgo ? ` and against ${num(yearAgo.value, 1)}% a year earlier${yearAgo.official ? "" : " in the IMF series"}` : ""}. The Bank of Ghana's medium-term target is 8% ± 2%. The ${f.nextPeriodLabel} figure is due in early ${f.expectedLabel}.`;
   return {
-    title: `Ghana inflation rate: ${num(last.value, 1)}% in ${m} (GSS CPI)`,
+    title: `Ghana inflation rate: ${num(last.value, 1)}% in ${m}${last.official ? " (GSS CPI)" : ""}`,
     description: lead.slice(0, 300),
     lead,
     jsonLd: dataset("/trackers/cpi", "Ghana monthly consumer price inflation (CPI, % year-on-year)", "Monthly headline CPI inflation for Ghana: Ghana Statistical Service releases, with earlier months from the IMF monthly CPI series that matches the GSS rates.",

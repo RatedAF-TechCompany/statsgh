@@ -6,12 +6,13 @@ import { pageMeta } from "@/lib/pageMeta";
 import { PageShell } from "@/components/vault/VaultBits";
 import { StaticLineChart } from "@/components/StaticLineChart";
 import { JsonLd } from "@/components/ssr/Prefetched";
-import { INDICATORS, getIndicator, loadIndicator, fmtVal, fmtDate, change } from "@/lib/indicators";
+import { getIndicator, loadIndicator, fmtVal, fmtDate, change } from "@/lib/indicators";
 import { LICENCE } from "@/lib/dataVault";
 
 type P = { params: Promise<{ slug: string }> };
-export const dynamicParams = false;
-export function generateStaticParams() { return INDICATORS.map((i) => ({ slug: i.slug })); }
+// Rendered on first request and cached (ISR), like article pages; unknown slugs 404.
+export const dynamicParams = true;
+export async function generateStaticParams() { return []; }
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const slug = (await params).slug;
@@ -55,7 +56,7 @@ export default async function IndicatorPage({ params }: P) {
       <h1 className="font-headline text-[30px] md:text-[34px] leading-tight text-[#121212]">{ind.name}</h1>
       {last ? (
         <p className="font-serif text-[20px] leading-[1.5] text-[#121212] mt-3" data-indicator-lead>
-          <strong>{f(last.value)}</strong> in the latest reading ({fmtDate(last.date, ind)}), from the {ind.source}.
+          <strong>{f(last.value)}</strong> in the latest reading ({fmtDate(last.date, ind)}). Source: {ind.source}.
         </p>
       ) : <p className="font-serif text-[18px] text-[#5B5B5B] mt-3">No figure is stored yet for this indicator.</p>}
       <p className="font-serif text-[17px] leading-[1.6] text-[#5B5B5B] mt-2 max-w-[760px]">{ind.definition}</p>
