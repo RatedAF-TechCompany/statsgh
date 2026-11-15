@@ -2,24 +2,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { PageShell, ShareRow, Methodology } from "@/components/markets/MarketBits";
-import { DEAL_TYPES } from "@/lib/companies";
+import { DEAL_TYPES, fetchDeals, type Deal } from "@/lib/companiesData";
 import { downloadCsv, fmtDay } from "@/lib/bogRates";
 
-type Deal = { id: string; title: string; slug: string; category_slug: string; published_at: string | null; deal_type: string; summary: string | null };
 
 const Deals = () => {
   const [type, setType] = useState("");
   const [sector, setSector] = useState("");
-  const q = useQuery({
-    queryKey: ["deals"],
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("articles").select("id, title, slug, category_slug, published_at, deal_type, summary")
-        .eq("is_published", true).eq("is_sponsored", false).not("deal_type", "is", null).order("published_at", { ascending: false }).limit(1000);
-      return (data || []) as Deal[];
-    },
-  });
+  const q = useQuery({ queryKey: ["deals"], queryFn: fetchDeals });
   const all = q.data || [];
   const sectors = [...new Set(all.map((d) => d.category_slug))].sort();
   const rows = all.filter((d) => (!type || d.deal_type === type) && (!sector || d.category_slug === sector));

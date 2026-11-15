@@ -5,27 +5,9 @@ import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
-import { supabase } from "@/integrations/supabase/client";
-import { crimeJusticeOrFilter } from "@/lib/sectionMapping";
+import { fetchStats, fetchMonthly, type Stat as CjStat } from "@/lib/crimeJustice";
 
-type Stat = {
-  id: string;
-  article_slug: string;
-  category_slug: string;
-  article_title: string;
-  published_at: string;
-  metric: "arrests" | "convictions" | "cases" | "amount" | "people";
-  label: string;
-  context: string | null;
-  value: number;
-  unit: string | null;
-  currency: string | null;
-  region: string | null;
-  region_source: "explicit" | "inferred" | null;
-  confidence: "high" | "medium" | "low";
-  confidence_reason: string | null;
-  extracted_at: string;
-};
+type Stat = CjStat;
 
 const METRIC_LABEL: Record<Stat["metric"], string> = {
   arrests: "Arrests & suspects",
@@ -47,34 +29,6 @@ const fmtValue = (s: Stat) => {
   const n = v >= 1e9 ? `${+(v / 1e9).toFixed(2)}bn` : v >= 1e6 ? `${+(v / 1e6).toFixed(2)}m` : v.toLocaleString("en-GB");
   return `${sym}${n}`;
 };
-
-async function fetchStats(): Promise<Stat[]> {
-  const { data, error } = await supabase
-    .from("crime_stats")
-    .select("*")
-    .eq("is_hidden", false)
-    .order("published_at", { ascending: false })
-    .limit(1000);
-  if (error) throw error;
-  return (data || []).map((r: any) => ({ ...r, value: Number(r.value) }));
-}
-
-async function fetchMonthly(): Promise<{ month: string; stories: number }[]> {
-  const { data } = await supabase
-    .from("articles")
-    .select("published_at")
-    .eq("is_published", true)
-    .or(crimeJusticeOrFilter())
-    .not("published_at", "is", null)
-    .order("published_at", { ascending: true })
-    .limit(1000);
-  const m = new Map<string, number>();
-  (data || []).forEach((a: any) => {
-    const k = String(a.published_at).slice(0, 7);
-    m.set(k, (m.get(k) || 0) + 1);
-  });
-  return [...m.entries()].map(([month, stories]) => ({ month, stories }));
-}
 
 const CrimeJusticeTracker = () => {
   const stats = useQuery({ queryKey: ["crime-stats"], queryFn: fetchStats });

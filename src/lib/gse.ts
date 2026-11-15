@@ -36,6 +36,24 @@ export async function fetchGseHistory(symbol: string): Promise<GsePrice[]> {
   return (data || []) as unknown as GsePrice[];
 }
 
+/** 30-day move per symbol: latest close vs the first stored close on or after 30 days before that day (one request). */
+export async function fetchGse30d(latest: GsePrice[]): Promise<Record<string, number | null>> {
+  const out: Record<string, number | null> = {};
+  if (!latest.length) return out;
+  const cutoff = new Date(latest[0].trade_date); cutoff.setDate(cutoff.getDate() - 30);
+  const from = cutoff.toISOString().slice(0, 10);
+  const base = new Map<string, number>();
+  for (let off = 0; off < 20_000; off += 1000) {
+    const { data, error } = await supabase.from("gse_daily_prices").select("symbol, trade_date, close").gte("trade_date", from)
+      .order("trade_date", { ascending: true }).order("symbol", { ascending: true }).range(off, off + 999);
+    if (error) throw error;
+    for (const r of (data || []) as { symbol: string; close: number }[]) if (!base.has(r.symbol)) base.set(r.symbol, Number(r.close));
+    if (!data || data.length < 1000) break;
+  }
+  for (const p of latest) { const b = base.get(p.symbol); out[p.symbol] = b && b > 0 ? ((p.close - b) / b) * 100 : null; }
+  return out;
+}
+
 export const pct = (v: number | null | undefined) => (v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
 export const ghs = (v: number | null | undefined) => (v == null ? "—" : `GH₵${v.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 export const intl = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-GB"));

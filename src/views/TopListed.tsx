@@ -2,8 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PageShell, ShareRow, Methodology } from "@/components/markets/MarketBits";
-import { fetchLatestGse, fetchGseHistory, GSE_LABEL, GSE_URL, ghs, pct, changeCls, nameOf } from "@/lib/gse";
-import { fetchCompanies } from "@/lib/companies";
+import { fetchLatestGse, fetchGse30d, GSE_LABEL, GSE_URL, ghs, pct, changeCls, nameOf } from "@/lib/gse";
+import { fetchCompanies } from "@/lib/companiesData";
 import { downloadCsv, fmtDay } from "@/lib/bogRates";
 
 const TopListed = () => {
@@ -13,18 +13,11 @@ const TopListed = () => {
   const moves = useQuery({
     queryKey: ["gse-30d", latest.data?.length],
     enabled: !!latest.data?.length,
-    queryFn: async () => {
-      const out: Record<string, number | null> = {};
-      await Promise.all((latest.data || []).map(async (p) => {
-        const h = await fetchGseHistory(p.symbol);
-        const cutoff = new Date(p.trade_date); cutoff.setDate(cutoff.getDate() - 30);
-        const base = h.find((r) => new Date(r.trade_date) >= cutoff);
-        out[p.symbol] = base && base.close > 0 ? ((p.close - base.close) / base.close) * 100 : null;
-      }));
-      return out;
-    },
+    queryFn: () => fetchGse30d(latest.data || []),
   });
   const slugOf = new Map((cos.data || []).map((c) => [c.symbol, c.slug]));
+  // Prefer the reference name from companies (gse_daily_prices.name is blank for some tickers, e.g. AADS, ZEN).
+  const coName = new Map((cos.data || []).map((c) => [c.symbol, c.name]));
   const rows = (latest.data || []).map((p) => ({ p, m: moves.data?.[p.symbol] ?? null }))
     .sort((a, b) => (b.m ?? -Infinity) - (a.m ?? -Infinity));
   const asOf = latest.data?.[0]?.trade_date;
@@ -41,7 +34,7 @@ const TopListed = () => {
             <tbody>{rows.map(({ p, m }, i) => (
               <tr key={p.symbol} className="border-b border-[#EFEFEF]">
                 <td className="py-1.5">{i + 1}</td>
-                <td><Link to={slugOf.get(p.symbol) ? `/companies/${slugOf.get(p.symbol)}` : `/markets/gse/${p.symbol}`} className="underline">{nameOf(p)}</Link> <span className="text-[#5B5B5B]">{p.symbol}</span></td>
+                <td><Link to={slugOf.get(p.symbol) ? `/companies/${slugOf.get(p.symbol)}` : `/markets/gse/${p.symbol}`} className="underline">{coName.get(p.symbol) || nameOf(p)}</Link> <span className="text-[#5B5B5B]">{p.symbol}</span></td>
                 <td className="text-right">{ghs(p.close)}</td>
                 <td className={`text-right ${changeCls(p.change_percent)}`}>{pct(p.change_percent)}</td>
                 <td className={`text-right font-semibold ${changeCls(m)}`}>{pct(m)}</td>

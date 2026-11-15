@@ -1,6 +1,8 @@
 export const revalidate = 600; // cached listing page: revalidate at most every 10 minutes
 import type { Metadata } from "next";
 import CrimeJusticeTracker from "@/views/CrimeJusticeTracker";
+import { Prefetched } from "@/components/ssr/Prefetched";
+import { fetchMonthly, fetchStats } from "@/lib/crimeJustice";
 
 const title = "Crime & Justice Statistics Tracker | StatsGH";
 const description = "Arrests, convictions, cases and sums involved in Ghana crime and justice stories, with regional and monthly summaries — every figure linked to its source article.";
@@ -14,5 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <CrimeJusticeTracker />;
+  return (
+    <Prefetched queries={[{ queryKey: ["crime-stats"], queryFn: fetchStats }, { queryKey: ["crime-monthly"], queryFn: fetchMonthly }]}>
+      <CrimeJusticeTracker />
+    </Prefetched>
+  );
 }

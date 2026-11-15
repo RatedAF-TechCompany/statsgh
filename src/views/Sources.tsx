@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExternalLink, Building2, Globe } from "lucide-react";
+import { withCanonicalSourceUrls } from "@/lib/sourceUrls";
 
 const Sources = ({ initialSources }: { initialSources?: any[] } = {}) => {
   const { data: sources, isLoading } = useQuery({
@@ -16,7 +17,7 @@ const Sources = ({ initialSources }: { initialSources?: any[] } = {}) => {
         .select("*")
         .order("name");
       if (error) throw error;
-      return data;
+      return withCanonicalSourceUrls(data || []);
     },
     // Prerendered by app/sources so crawlers see the source list without JavaScript.
     initialData: initialSources,

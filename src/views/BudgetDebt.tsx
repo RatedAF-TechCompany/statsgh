@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { KeyNumbersBox, Methodology, PageShell, ShareRow, TimeChart } from "@/components/markets/MarketBits";
 import { downloadCsv } from "@/lib/bogRates";
-import { byYear, fetchMacro, latestActual, year, type MacroPoint } from "@/lib/macro";
+import { byYear, fetchMacro, latestActual, year, type MacroPoint, BUDGET_DEBT_KEYS } from "@/lib/macro";
 
-const KEYS = ["imf_debt", "imf_balance", "wb_revenue", "wb_expense", "wb_balance"];
+const KEYS = BUDGET_DEBT_KEYS;
 const src = (p?: MacroPoint) => p && <a className="underline" href={p.source_url} target="_blank" rel="noopener noreferrer">{p.source}</a>;
 
 const BudgetDebt = () => {

@@ -12,6 +12,12 @@ export async function fetchMacro(keys: string[]): Promise<Record<string, MacroPo
 }
 
 export const year = (d: string) => d.slice(0, 4);
+
+/** Series behind /dashboards/budget-and-debt (shared by the view and its server prefetch). */
+export const BUDGET_DEBT_KEYS = ["imf_debt", "imf_balance", "wb_revenue", "wb_expense", "wb_balance"];
+/** GSS quarterly real GDP growth, y/y % (period = first day of the quarter). */
+export const GSS_QGDP_KEY = "gss_gdp_q";
+export const quarterLabel = (period: string) => `Q${Math.floor((Number(period.slice(5, 7)) - 1) / 3) + 1} ${period.slice(0, 4)}`;
 /** Latest non-projection point. */
 export const latestActual = (s: MacroPoint[] | undefined) => (s || []).filter((p) => !p.is_projection).slice(-1)[0];
 

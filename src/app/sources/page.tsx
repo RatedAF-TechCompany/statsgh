@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic"; // personalised/live page: render per re
 import type { Metadata } from "next";
 import Sources from "@/views/Sources";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { withCanonicalSourceUrls } from "@/lib/sourceUrls";
 
 const title = "Data Sources | StatsGH";
 const description =
@@ -25,7 +26,7 @@ export default async function SourcesPage() {
   let initial: any[] | undefined;
   try {
     const { data, error } = await createReadOnlyServerClient().from("data_sources").select("*").order("name");
-    if (!error && data) initial = data;
+    if (!error && data) initial = withCanonicalSourceUrls(data as any[]);
   } catch {}
   return <Sources initialSources={initial} />;
 }

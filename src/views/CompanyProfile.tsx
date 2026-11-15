@@ -1,10 +1,9 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { PageShell, ShareRow, KeyNumbersBox, Methodology } from "@/components/markets/MarketBits";
 import { FollowButton } from "@/components/FollowButton";
-import { fetchCompanies, DEAL_TYPES } from "@/lib/companies";
+import { fetchCompanies, fetchCompanyArticles, DEAL_TYPES } from "@/lib/companiesData";
 import { fetchGseHistory, GSE_LABEL, GSE_URL, ghs, pct, intl } from "@/lib/gse";
 import { fmtDay } from "@/lib/bogRates";
 
@@ -26,8 +25,8 @@ const CompanyProfile = () => {
   const cos = useQuery({ queryKey: ["companies"], queryFn: fetchCompanies });
   const c = (cos.data || []).find((x) => x.slug === slug);
   const hist = useQuery({ queryKey: ["gse-hist", c?.symbol], queryFn: () => fetchGseHistory(c!.symbol), enabled: !!c });
-  const arts = useQuery({ queryKey: ["co-arts", c?.symbol], enabled: !!c, queryFn: async () => ((await (supabase as any).rpc("company_articles", { p_symbol: c!.symbol, p_results_only: false, p_limit: 50 })).data || []) as Art[] });
-  const results = useQuery({ queryKey: ["co-results", c?.symbol], enabled: !!c, queryFn: async () => ((await (supabase as any).rpc("company_articles", { p_symbol: c!.symbol, p_results_only: true, p_limit: 50 })).data || []) as Art[] });
+  const arts = useQuery({ queryKey: ["co-arts", c?.symbol], enabled: !!c, queryFn: () => fetchCompanyArticles(c!.symbol, false) as Promise<Art[]> });
+  const results = useQuery({ queryKey: ["co-results", c?.symbol], enabled: !!c, queryFn: () => fetchCompanyArticles(c!.symbol, true) as Promise<Art[]> });
 
   if (cos.isLoading) return <PageShell title="Company"><p className="text-sm text-[#5B5B5B]">Loading…</p></PageShell>;
   if (!c) return <PageShell title="Company not found"><p className="font-serif text-[17px] text-[#5B5B5B]">No listed company matches this address. <Link to="/companies" className="underline text-[#E3120B]">See all companies</Link>.</p></PageShell>;

@@ -1,13 +1,8 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
-export type Company = { slug: string; symbol: string; name: string; sector: string | null; aliases: string[] };
-
-export async function fetchCompanies(): Promise<Company[]> {
-  const { data } = await (supabase as any).from("companies").select("slug, symbol, name, sector, aliases").eq("is_active", true).order("name");
-  return data || [];
-}
+import { fetchCompanies, DEAL_TYPES, type Company } from "@/lib/companiesData";
+export { fetchCompanies, DEAL_TYPES, type Company };
 
 export function useCompanies(): Company[] {
   const q = useQuery({ queryKey: ["companies"], queryFn: fetchCompanies, staleTime: 3600_000 });
@@ -41,7 +36,3 @@ export function linkCompanies(html: string, companies: Company[]): string {
     });
   }).join("");
 }
-
-export const DEAL_TYPES: Record<string, string> = {
-  m_and_a: "M&A", bond: "Bond issue", eurobond: "Eurobond", ipo: "IPO / listing", capital_raise: "Capital raise", contract: "Large contract",
-};

@@ -6,6 +6,8 @@ import { PUBLIC_AUTHOR_SLUGS } from "@/lib/authorSlugs";
 export const revalidate = 300;
 
 const PAGE = 1000; // PostgREST row cap per request
+// Author pages rendered from code (src/views author profiles), not from an authors row.
+const ALWAYS_LISTED_AUTHORS = ["hawa-kokonu", "abubakar-saddique"];
 
 const urlset = (body: string) => `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -43,9 +45,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
       ...DATASETS.map((d) => ({ url: `${BASE_URL}/data-vault/${d.slug}`, changeFrequency: "daily" as const, priority: 0.6 })),
       ...(reps ?? []).map((r: { kind: string; edition: string }) => ({ url: `${BASE_URL}/reports/${r.kind}/${r.edition}`, changeFrequency: "monthly" as const, priority: 0.5 })),
       // Only author pages that render; every other slug 301s to the in-house byline.
-      ...(auths ?? [])
-        .filter((a: { slug: string }) => (PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(a.slug))
-        .map((a: { slug: string }) => ({ url: `${BASE_URL}/authors/${a.slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
+      // Code-defined profiles (Chief Editor Hawa Kokonu, the in-house byline Abubakar Saddique) render without an
+      // active `authors` row, so they are always listed; DB rows add nothing outside PUBLIC_AUTHOR_SLUGS.
+      ...[...new Set([...ALWAYS_LISTED_AUTHORS, ...(auths ?? []).map((a: { slug: string }) => a.slug)])]
+        .filter((slug) => (PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(slug))
+        .map((slug) => ({ url: `${BASE_URL}/authors/${slug}`, changeFrequency: "weekly" as const, priority: 0.4 })),
       ...((liveRes && !('error' in liveRes && liveRes.error) ? liveRes.data : null) ?? []).map((r: { path: string }) => ({
         url: `${BASE_URL}/live/${r.path}`, changeFrequency: "hourly" as const, priority: 0.8,
       })),

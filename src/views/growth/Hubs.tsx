@@ -1,5 +1,6 @@
 "use client";
 import { Link } from "react-router-dom";
+import { HUBS } from "@/lib/articleHub";
 import { ArticleHubList, PageShell, Prose, Section, UpdatesNote } from "./ArticleHub";
 import { ContactForm } from "@/components/ContactForm";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
@@ -9,7 +10,7 @@ import { EMBED_SERIES } from "@/views/EmbedChart";
 
 export const ExplainersPage = () => (
   <PageShell title="Explain this number" intro="Short explainers on the figures behind Ghana's economy: what a number measures, who publishes it and why it moves.">
-    <ArticleHubList tags={["explainer", "explainers", "explain-this-number"]} titleTerms={["explainer", "explained", "what is ", "what are ", "how does ", "why does "]}
+    <ArticleHubList {...HUBS.explainers}
       empty="No explainers published yet. New explainers will appear here as they are published." />
     <Section title="Also useful"><Prose><p>Definitions of the terms we use are in the <Link to="/glossary">Glossary</Link>; sources and methods are on <Link to="/about#methodology">Data sources and methodology</Link>.</p></Prose></Section>
   </PageShell>
@@ -17,7 +18,7 @@ export const ExplainersPage = () => (
 
 export const FactCheckPage = () => (
   <PageShell title="Claims vs data" intro="We test public claims about Ghana's economy against official figures, and show our sources.">
-    <ArticleHubList tags={["fact-check", "factcheck", "claims-vs-data"]} titleTerms={["fact-check", "fact check", "claims vs data", "claim:"]}
+    <ArticleHubList {...HUBS.factCheck}
       empty="No fact-checks published yet. Send us a claim below and an editor will look at it." />
     <Section title="How we check"><Prose><ul>
       <li>We quote the claim word for word and link to where it was made.</li>
@@ -31,7 +32,7 @@ export const FactCheckPage = () => (
 export const ElectionsPage = () => (
   <PageShell title="Elections data hub" intro="StatsGH reporting on Ghana's elections, electoral data and campaign claims, in one place.">
     <UpdatesNote />
-    <ArticleHubList tags={["election", "elections", "electoral-commission"]} titleTerms={["election", "electoral", "polling station", "voter register", "presidential primaries", "parliamentary primaries"]}
+    <ArticleHubList {...HUBS.elections}
       empty="No election stories published yet. Stories will appear here as they are published." />
     <Section title="Check a campaign claim"><Prose><p>Heard a number on the campaign trail? <Link to="/fact-check">Send it to Claims vs data</Link>.</p></Prose></Section>
   </PageShell>
@@ -46,7 +47,7 @@ export const BudgetPage = () => (
       <li><Link to="/data-vault/treasury-bill-rates">Treasury bill rates</Link></li>
     </ul></Prose></Section>
     <Section title="Stories">
-      <ArticleHubList tags={["budget", "mid-year-review", "public-debt", "imf"]} titleTerms={["budget", "mid-year review", "public debt", "fiscal", "debt restructuring"]}
+      <ArticleHubList {...HUBS.budget}
         empty="No budget stories published yet." />
     </Section>
   </PageShell>

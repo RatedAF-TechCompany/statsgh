@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PageShell, ShareRow, Methodology } from "@/components/markets/MarketBits";
-import { fetchCompanies } from "@/lib/companies";
+import { fetchCompanies } from "@/lib/companiesData";
 import { fetchLatestGse, GSE_LABEL, GSE_URL, ghs, pct, changeCls, sectorOf } from "@/lib/gse";
 import { fmtDay } from "@/lib/bogRates";
 

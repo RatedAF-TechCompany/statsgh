@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import WeekInNumbers from "@/views/WeekInNumbers";
+import { Prefetched } from "@/components/ssr/Prefetched";
+import { fetchWeeks } from "@/lib/weekInNumbers";
 
 const title = "Week in Numbers | StatsGH";
 const description = "The week's most-read Ghana stories, each told through its headline number — compiled every Sunday by StatsGH.";
@@ -14,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <WeekInNumbers />;
+  return <Prefetched queries={[{ queryKey: ["week-in-numbers"], queryFn: fetchWeeks }]}><WeekInNumbers /></Prefetched>;
 }
