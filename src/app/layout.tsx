@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Libre_Franklin, Lora } from "next/font/google";
+
+// Self-hosted at build time (no render-blocking Google Fonts request). Variable fonts cover all weights.
+const fontUi = Libre_Franklin({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
+const fontSerif = Lora({ subsets: ["latin"], style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
 import Providers from "./providers";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import Script from "next/script";
@@ -104,7 +109,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en-GH" className={`${fontUi.variable} ${fontSerif.variable}`}>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_LD) }} />
         <PhotoFilterDefs />

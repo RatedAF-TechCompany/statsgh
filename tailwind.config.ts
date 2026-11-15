@@ -13,10 +13,10 @@ export default {
       },
     },
     fontFamily: {
-      headline: ['Lora', 'Georgia', 'serif'],
-      serif: ['Lora', 'Georgia', 'serif'],
-      ui: ['Libre Franklin', 'system-ui', 'sans-serif'],
-      sans: ['Libre Franklin', 'system-ui', 'sans-serif'],
+      headline: ['var(--font-serif)', 'Lora', 'Georgia', 'serif'],
+      serif: ['var(--font-serif)', 'Lora', 'Georgia', 'serif'],
+      ui: ['var(--font-ui)', 'Libre Franklin', 'system-ui', 'sans-serif'],
+      sans: ['var(--font-ui)', 'Libre Franklin', 'system-ui', 'sans-serif'],
     },
     extend: {
       colors: {

@@ -1,5 +1,6 @@
 // Shared helpers for sitemaps and RSS feeds. All URLs use the www origin.
 import { getCategoriesForSection, SECTION_TO_CATEGORIES } from "@/lib/sectionMapping";
+import { INDICATORS } from "@/lib/indicators";
 
 export const BASE_URL = "https://www.statsgh.com";
 export const ARTICLES_PER_SITEMAP = 5000;
@@ -11,6 +12,9 @@ export const STATIC_PAGES = [
   { url: `${BASE_URL}/live`, changeFrequency: "hourly" as const, priority: 0.8 },
   // Section and category listings are added by sitemaps/pages.xml only when they have
   // published stories (listingUrls below); empty or legacy alias slugs redirect or are noindex.
+  { url: `${BASE_URL}/indicators`, changeFrequency: "daily" as const, priority: 0.8 },
+  ...INDICATORS.map((i) => ({ url: `${BASE_URL}/indicators/${i.slug}`, changeFrequency: (i.frequency === "Annual" ? "monthly" : "daily") as "monthly" | "daily", priority: 0.7 })),
+  { url: `${BASE_URL}/editorial-standards`, changeFrequency: "monthly" as const, priority: 0.4 },
   { url: `${BASE_URL}/trackers/fuel-and-cedi`, changeFrequency: "daily" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/cpi`, changeFrequency: "weekly" as const, priority: 0.7 },
   { url: `${BASE_URL}/trackers/gdp`, changeFrequency: "monthly" as const, priority: 0.7 },

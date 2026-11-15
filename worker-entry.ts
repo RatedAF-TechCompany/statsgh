@@ -117,6 +117,11 @@ async function submitForm(request: Request, env: any): Promise<Response> {
 
 const EDGE_REDIRECTS: Record<string, string> = {
   "/latest": "/news",
+  // Research plan (15 Nov 2026): one indicator hub. /data listed "0 indicators"; /trackers and
+  // /markets had no page of their own. Hub-to-hub redirects only; no article is ever redirected.
+  "/data": "/indicators",
+  "/trackers": "/indicators",
+  "/markets": "/indicators",
   "/apple-touch-icon.png": "/favicon.png",
   "/apple-touch-icon-precomposed.png": "/favicon.png",
 };
@@ -147,7 +152,7 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
       if (url.pathname.length > 1 && url.pathname.endsWith("/")) url.pathname = url.pathname.replace(/\/+$/, "");
       return new Response(null, { status: 301, headers: { Location: url.toString(), "Cache-Control": "public, max-age=3600" } });
     }
-    // Single in-house byline (Abubakar Saddique): every other author profile 301s to his page.
+    // Public author profiles are listed in PUBLIC_AUTHOR_SLUGS; every other /authors/<slug> 301s to the in-house byline.
     const m = url.pathname.match(/^\/authors\/([^/]+)\/?$/);
     if (m && !(PUBLIC_AUTHOR_SLUGS as readonly string[]).includes(m[1])) {
       return new Response(null, { status: 301, headers: { Location: `https://www.statsgh.com/authors/${DEFAULT_AUTHOR_SLUG}`, "Cache-Control": "public, max-age=3600" } });

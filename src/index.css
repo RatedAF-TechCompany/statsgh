@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+/* Fonts are self-hosted with next/font (src/app/layout.tsx), exposed as --font-serif and --font-ui. */
 
 @tailwind base;
 @tailwind components;
@@ -59,7 +59,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-serif), 'Lora', Georgia, serif;
     font-size: 17px;
     line-height: 1.55;
     color: #0D0D0D;
@@ -70,13 +70,13 @@
 @layer utilities {
   .font-headline,
   .font-serif {
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-serif), 'Lora', Georgia, serif;
     letter-spacing: -0.015em;
   }
 
   .font-sans,
   .font-ui {
-    font-family: 'Libre Franklin', system-ui, sans-serif;
+    font-family: var(--font-ui), 'Libre Franklin', system-ui, sans-serif;
   }
 
   /* Tight Economist-style headlines */
@@ -86,7 +86,7 @@
 
   /* Rubric (Economist signature) — red bar + label (normal case) */
   .rubric {
-    font-family: 'Libre Franklin', system-ui, sans-serif;
+    font-family: var(--font-ui), 'Libre Franklin', system-ui, sans-serif;
     font-size: 12px;
     font-weight: 600;
     color: #E3120B;
@@ -105,7 +105,7 @@
 
   /* Legacy kicker — Economist rubric style */
   .kicker, .section-label {
-    font-family: 'Libre Franklin', system-ui, sans-serif;
+    font-family: var(--font-ui), 'Libre Franklin', system-ui, sans-serif;
     font-size: 12px;
     font-weight: 600;
     color: #E3120B;
@@ -120,7 +120,7 @@
   .prose,
   [data-article-body] {
     color: #121212;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-serif), 'Lora', Georgia, serif;
     font-size: 18px;
     line-height: 1.65;
     max-width: 660px;
@@ -138,7 +138,7 @@
   /* Drop cap on first paragraph (Economist signature) */
   .prose > p:first-of-type::first-letter,
   [data-article-body] > p:first-of-type::first-letter {
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-serif), 'Lora', Georgia, serif;
     font-weight: 700;
     float: left;
     font-size: 3.2em;
@@ -150,7 +150,7 @@
   .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
     color: #0D0D0D;
     font-weight: 700;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-serif), 'Lora', Georgia, serif;
     margin-top: 1.5em;
     margin-bottom: 0.6em;
     line-height: 1.15;
