@@ -10,7 +10,7 @@ export const metadata = pageMeta("/about/team", "Our team, ownership and masthea
 const TEAM = [
   { name: "Hawa Kokonu", role: "Chief Editor", href: "/authors/hawa-kokonu" },
   { name: "Zebrilla Najib", role: "Research Editor", href: "/authors/zebrilla-najib" },
-  ...DESK_BYLINES.map((b) => ({ name: b.name, role: `${b.role} desk`, href: `/authors/${b.slug}` })),
+  ...DESK_BYLINES.map((b) => ({ name: b.name, role: b.role, href: `/authors/${b.slug}` })),
   ...CONTRIBUTOR_BYLINES.map((b) => ({ name: b.name, role: b.role, href: `/authors/${b.slug}` })),
   { name: "Abubakar Saddique", role: "Data journalist", href: "/authors/abubakar-saddique" },
 ];
@@ -31,7 +31,7 @@ export default async function TeamPage() {
       </div>
       <section id="ownership" className="mt-10 border-t border-[#121212] pt-4 max-w-[760px]">
         <h2 className="section-label text-base mb-2">Ownership and masthead</h2>
-        <p className="font-serif text-[17px] text-[#121212]">StatsGH is an independent Ghana data journalism publication, run by Zebrilla Najib, who is responsible for its editorial direction. Hawa Kokonu is Chief Editor and Zebrilla Najib is Research Editor, editing all research and data articles. Stories carry the byline of the desk journalist who wrote them; research articles carry Zebrilla Najib's byline, and other stories are credited to Abubakar Saddique, StatsGH's in-house data journalist. All follow our <Link href="/editorial-standards" className="text-[#E3120B] underline">editorial standards</Link> and <Link href="/corrections" className="text-[#E3120B] underline">corrections policy</Link>. To reach the newsroom, see our <Link href="/contact" className="text-[#E3120B] underline">contact page</Link>.</p>
+        <p className="font-serif text-[17px] text-[#121212]">StatsGH is an independent Ghana data journalism publication, run by Zebrilla Najib, who is responsible for its editorial direction. Hawa Kokonu is Chief Editor and Zebrilla Najib is Research Editor, editing all research and data articles. Stories carry the byline of the journalist who wrote them; research articles carry Zebrilla Najib's byline, and other stories are credited to Abubakar Saddique, StatsGH's in-house data journalist. All follow our <Link href="/editorial-standards" className="text-[#E3120B] underline">editorial standards</Link> and <Link href="/corrections" className="text-[#E3120B] underline">corrections policy</Link>. To reach the newsroom, see our <Link href="/contact" className="text-[#E3120B] underline">contact page</Link>.</p>
       </section>
     </PageShell>
   );

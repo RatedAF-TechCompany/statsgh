@@ -65,7 +65,7 @@ export const ratesSummary = cache(async (): Promise<Summary | null> => {
   const tDay = t91 ? fmtDay(t91.date) : null;
   const lead = `${t91 ? `At the auction for bills issued on ${tDay}, Treasury bill interest rates were ${parts.join(", ")}.` : ""}${p ? ` The Bank of Ghana policy rate is ${num(p.rate, 1)}%, effective ${fmtDay(p.effective_date)}${p.mpc_dates ? ` (MPC meeting ${p.mpc_dates})` : ""}.` : ""}`.trim();
   return {
-    title: `Ghana T-bill rates: ${t91 ? `91-day ${num(t91.value, 2)}%` : ""}${t364 ? `, 364-day ${num(t364.value, 2)}%` : ""}${tDay ? ` (${tDay})` : ""}${p ? `; policy rate ${num(p.rate, 1)}%` : ""}`,
+    title: `Ghana T-bill rates: ${t91 ? `91-day ${num(t91.value, 2)}%` : ""}${t364 ? `, 364-day ${num(t364.value, 2)}%` : ""}${tDay ? ` (bills issued ${tDay})` : ""}${p ? `; policy rate ${num(p.rate, 1)}%` : ""}`,
     description: `${lead} Official Bank of Ghana figures with history and charts.`,
     lead,
     jsonLd: dataset("/markets/rates", "Ghana Treasury bill rates and Bank of Ghana policy rate", "Weekly 91, 182 and 364-day Treasury bill interest rates from Bank of Ghana auction results, and the Bank of Ghana monetary policy rate by MPC meeting.",

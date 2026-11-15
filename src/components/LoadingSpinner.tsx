@@ -1,4 +1,4 @@
-import statsghLogoImport from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo-header.png"; // 133x84 copy for the 28px-high header (was 837x527, 105 KB)
 const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 
 interface LoadingSpinnerProps {

@@ -13,7 +13,9 @@ import { ReadingTime } from "@/components/ReadingTime";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { sanitizeArticleHtml, highlightNumbersInHtml } from "@/lib/safe-html";
-import { CommentSection } from "@/components/CommentSection";
+import dynamic from "next/dynamic";
+// Below the fold and interactive only: load the comments code after hydration (mobile LCP, 15 Nov 2026).
+const CommentSection = dynamic(() => import("@/components/CommentSection").then((m) => m.CommentSection), { ssr: false });
 import { RelatedArticles } from "@/components/RelatedArticles";
 import { RelatedTracker } from "@/components/RelatedTracker";
 import { getSectionLabel } from "@/lib/navigation";

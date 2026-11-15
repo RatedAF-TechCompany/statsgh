@@ -221,7 +221,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   if (!article) {
     // Typo/hyphenation/missing-ID variants of the SAME story 301 to it; anything else 404s
-    // (the edge worker then sends the reader to the section page, never to another story).
+    // as a real 404 page with noindex (no redirect to the section).
     const match = await resolveArticleSlug(articleSlug);
     if (match && match.slug !== articleSlug) permanentRedirect(`/${match.category_slug}/${match.slug}`);
     notFound();

@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import dynamic from "next/dynamic";
+import type { Series } from "./TimeChart";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { fmtDay } from "@/lib/bogRates";
@@ -57,23 +58,9 @@ export const ShareRow = ({ text, path }: { text: string; path: string }) => {
   );
 };
 
-export type Series = { key: string; name: string; color: string };
-export const TimeChart = ({ data, series, unit, dp = 2, step, yearly }: { data: Record<string, any>[]; series: Series[]; unit: string; dp?: number; step?: boolean; yearly?: boolean }) => (
-  <div className="h-60 w-full">
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid stroke="#E8E8E8" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(d) => (yearly ? String(d).slice(0, 4) : fmtDay(String(d)))} minTickGap={yearly ? 20 : 50} />
-        <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} width={48} />
-        <Tooltip labelFormatter={(d) => (yearly ? String(d).slice(0, 4) : fmtDay(String(d)))} formatter={(v: number, n: string) => [`${Number(v).toFixed(dp)} ${unit}`, n]} />
-        {series.length > 1 && <Legend wrapperStyle={{ fontSize: 11 }} />}
-        {series.map((s) => (
-          <Line key={s.key} type={step ? "stepAfter" : "monotone"} dataKey={s.key} name={s.name} stroke={s.color} strokeWidth={2} dot={false} connectNulls />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-);
+export type { Series };
+// Lazy so recharts is only fetched on pages that actually draw a chart. Fixed height placeholder avoids layout shift.
+export const TimeChart = dynamic(() => import("./TimeChart"), { ssr: false, loading: () => <div className="h-60 w-full" aria-hidden /> });
 
 export const Methodology = ({ children }: { children: React.ReactNode }) => (
   <section className="border-t border-[#D9D9D9] py-6">

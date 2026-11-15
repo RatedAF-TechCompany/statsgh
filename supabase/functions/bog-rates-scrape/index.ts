@@ -4,6 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
+import { extractText, getDocumentProxy } from "npm:unpdf@0.12";
 
 const BOG = "https://www.bog.gov.gh";
 const URLS = {
@@ -12,6 +13,7 @@ const URLS = {
   tbills: `${BOG}/treasury-and-the-markets/treasury-bill-rates/`,
   policy: `${BOG}/monetary-policy/policy-rate-trends/`,
   interbank: `${BOG}/treasury-and-the-markets/interbank-interest-rates/`,
+  auctionFeed: `${BOG}/gog_auction_results/feed/`,
 };
 const UA = "Mozilla/5.0 (compatible; StatsGH-DataBot/1.0; +https://www.statsgh.com/about)";
 const MON: Record<string, string> = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
@@ -59,6 +61,32 @@ function fxRecords(rows: string[][], source_url: string) {
 }
 
 // deno-lint-ignore no-explicit-any
+// The T-bill rates table is keyed on issue date and BoG only adds a tender after its Monday issue,
+// so Friday's auction was missing all weekend (15 Nov 2026: tender 2033 held 13 Nov, issued 16 Nov).
+// The results notice (PDF, same day) is official too; read the weighted-average rates from it and
+// insert only (never overwrite rows the table already gave). Any layout surprise throws and stores nothing.
+type AuctionRow = { issue_date: string; tender_no: string; tenor_days: number; discount_rate: number; interest_rate: number };
+function parseAuctionNotice(text: string): AuctionRow[] {
+  const t = text.replace(/\s+/g, " ");
+  const head = t.match(/RESULTS OF TENDER (\d{3,5}) HELD ON .*?TO BE ISSUED ON (\d{1,2})(?:ST|ND|RD|TH)? ([A-Z]+),? (\d{4})/i);
+  if (!head) throw new Error("auction notice: header not found");
+  const months = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+  const mi = months.indexOf(head[3].toUpperCase());
+  if (mi < 0) throw new Error(`auction notice: bad month ${head[3]}`);
+  const issue = `${head[4]}-${String(mi + 1).padStart(2, "0")}-${head[2].padStart(2, "0")}`;
+  const sec = t.slice(head.index, t.search(/TARGET FOR 91/i) > 0 ? t.search(/TARGET FOR 91/i) : undefined);
+  const secs = [...sec.matchAll(/\b(\d+) (Day Bill|Year Note|Year Bond|Yr \w+)/gi)];
+  if (!secs.length || secs.some((s) => !/Day Bill/i.test(s[2]))) throw new Error("auction notice: securities other than bills; skipped");
+  const tenors = secs.map((s) => parseInt(s[1]));
+  const nums = [...sec.matchAll(/(?<![\d,.])(\d{1,2}\.\d{4})(?![\d])/g)].map((m) => parseFloat(m[1]));
+  const n = tenors.length;
+  if (nums.length < 2 * n) throw new Error("auction notice: rates not found");
+  const tail = nums.slice(-2 * n), disc = tail.slice(0, n), intr = tail.slice(n);
+  const out = tenors.map((d, i) => ({ issue_date: issue, tender_no: head[1], tenor_days: d, discount_rate: disc[i], interest_rate: intr[i] }));
+  if (out.some((r) => !(r.interest_rate >= r.discount_rate && r.interest_rate > 0 && r.interest_rate < 60))) throw new Error("auction notice: rate sanity check failed");
+  return out;
+}
+
 const jobs: Record<string, (db: any) => Promise<number>> = {
   async fx(db) {
     const recs = fxRecords(tableRows(await get(URLS.fx), "31"), URLS.fx);
@@ -84,6 +112,28 @@ const jobs: Record<string, (db: any) => Promise<number>> = {
     const { error } = await db.from("bog_tbill_rates").upsert(recs.map((r) => ({ ...r, fetched_at: new Date().toISOString() })), { onConflict: "issue_date,tenor_days" });
     if (error) throw error;
     return recs.length;
+  },
+  async tbillAuction(db) {
+    // Newest results notices from the BoG feed; insert any tender the rates table does not have yet.
+    const feed = await get(URLS.auctionFeed);
+    const pages = [...feed.matchAll(/<link>(https:\/\/www\.bog\.gov\.gh\/gog_auction_results\/[^<?]+)/g)].map((m) => m[1]).slice(0, 2);
+    if (!pages.length) throw new Error("auction feed: no results pages");
+    let n = 0;
+    for (const page of pages) {
+      const pdfUrl = (await get(page)).match(/href="(https:\/\/www\.bog\.gov\.gh\/wp-content\/uploads\/[^"]+\.pdf)"/i)?.[1];
+      if (!pdfUrl) throw new Error(`auction page: no PDF link (${page})`);
+      const r = await fetch(pdfUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(40000) });
+      if (!r.ok) throw new Error(`${pdfUrl} HTTP ${r.status}`);
+      const { text } = await extractText(await getDocumentProxy(new Uint8Array(await r.arrayBuffer())), { mergePages: true });
+      const recs = parseAuctionNotice(Array.isArray(text) ? text.join(" ") : text).filter((x) => [91, 182, 364].includes(x.tenor_days));
+      const { error } = await db.from("bog_tbill_rates").upsert(
+        recs.map((x) => ({ ...x, source_name: "Bank of Ghana", source_url: pdfUrl, fetched_at: new Date().toISOString() })),
+        { onConflict: "issue_date,tenor_days", ignoreDuplicates: true },
+      );
+      if (error) throw error;
+      n += recs.length;
+    }
+    return n;
   },
   async policy(db) {
     const recs = tableRows(await get(URLS.policy), "103").map((r) => ({
@@ -114,7 +164,7 @@ Deno.serve(async (req) => {
   if (!auth.ok) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   const job = new URL(req.url).searchParams.get("job") ?? "all";
-  const names = job === "all" ? ["fx", "tbills", "policy", "interbank"] : job.split(",").filter((j) => j in jobs);
+  const names = job === "all" ? ["fx", "tbills", "tbillAuction", "policy", "interbank"] : job.split(",").filter((j) => j in jobs);
   if (!names.length) return new Response(JSON.stringify({ error: "unknown job" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   const results: Record<string, unknown> = {};

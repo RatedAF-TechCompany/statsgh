@@ -1,5 +1,5 @@
 import { Search, User, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
-import statsghLogoImport from "@/assets/statsgh-logo.png";
+import statsghLogoImport from "@/assets/statsgh-logo-header.png"; // 133x84 copy for the 28px-high header (was 837x527, 105 KB)
 const statsghLogo: string = (statsghLogoImport as any)?.src ?? (statsghLogoImport as any);
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -79,7 +79,7 @@ export const Header = ({ showTicker = false }: { showTicker?: boolean }) => {
             onClick={() => navigate("/")}
             className="flex items-center gap-2 hover:opacity-90 flex-shrink-0"
           >
-            <img src={statsghLogo} alt="StatsGH" className="h-7" />
+            <img src={statsghLogo} alt="StatsGH" width={44} height={28} className="h-7 w-auto" />
             <span className="font-headline text-2xl font-bold text-[#0D0D0D] tracking-tight">
               StatsGH
             </span>

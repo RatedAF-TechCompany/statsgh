@@ -72,7 +72,7 @@ export function keyFigure(a: TileArticle): { value: string; label: string } | nu
   return { value, label: label.slice(0, 60) };
 }
 
-const LOGO = "/images/statsgh-logo-white.png"; // white-on-transparent (Zeb, 4 Nov 2026)
+const LOGO = "/images/statsgh-logo-white-sm.png"; // white-on-transparent (Zeb, 4 Nov 2026); 259x60 copy, shown at 10-20px high
 
 /** Large tile for lead / grid slots. Fills its parent; parent sets aspect ratio. */
 export function KeyFigureTile({ article, className = "", size = "md", figureTop = false, plain = false }: { article: TileArticle; className?: string; size?: "sm" | "md" | "lg"; figureTop?: boolean; plain?: boolean }) {
@@ -90,7 +90,7 @@ export function KeyFigureTile({ article, className = "", size = "md", figureTop 
     >
       <div className="site-tile-texture absolute inset-0" />
       {!sm && <span className="absolute left-[6%] top-[8%] font-ui text-[10px] md:text-[11px] font-bold uppercase tracking-[0.18em] text-white/85">{SECTION_NAMES[g]}</span>}
-      <img src={LOGO} alt="" width={480} height={111} loading="lazy" className={`no-treat absolute right-[6%] top-[6%] w-auto ${sm ? "h-2.5" : "h-4 md:h-5"}`} />
+      <img src={LOGO} alt="" width={259} height={60} loading="lazy" className={`no-treat absolute right-[6%] top-[6%] w-auto ${sm ? "h-2.5" : "h-4 md:h-5"}`} />
       {fig ? (
         <div className={`absolute inset-x-[6%] ${pos}`}>
           <div className={`font-ui font-extrabold leading-none tracking-[-0.03em] ${big}`}>{fig.value}</div>
@@ -164,7 +164,7 @@ export function TreatedImg({ article, src, alt = "", className = "", eager = fal
   const p = photoPalette(article);
   return (
     <div className={`photo-treat photo-treat-${p} relative h-full w-full overflow-hidden`}>
-      <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" onError={onError} itemProp={itemProp} className={`h-full w-full object-cover ${className}`} style={{ filter: `url(#sgh-${p})` }} />
+      <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : undefined} decoding="async" onError={onError} itemProp={itemProp} className={`h-full w-full object-cover ${className}`} style={{ filter: `url(#sgh-${p})` }} />
       {p === "cream" && (
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 56" preserveAspectRatio="none" aria-hidden="true">
           <polyline points={`0,${48 + (hash(article.slug || "") % 4)} 18,47 36,51 55,44 74,46 100,${36 + (hash(article.title) % 6)}`} fill="none" stroke="#E3120B" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 2.5 }} />

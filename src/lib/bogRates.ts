@@ -27,9 +27,11 @@ export async function fetchBogFx(days = 120): Promise<FxRow[]> {
   return (data || []).map((r: any) => ({ ...r, mid: Number(r.mid), buying: r.buying == null ? null : Number(r.buying), selling: r.selling == null ? null : Number(r.selling) }));
 }
 export async function fetchTbills(): Promise<TbillRow[]> {
+  // Newest first, then oldest-first for callers: the API caps a response at 1,000 rows and the
+  // table now holds history back to 2017, so an ascending query returned only the oldest rows.
   const { data } = await db.from("bog_tbill_rates").select("issue_date,tender_no,tenor_days,discount_rate,interest_rate,source_url")
-    .order("issue_date", { ascending: true }).limit(2000);
-  return (data || []).map((r: any) => ({ ...r, interest_rate: Number(r.interest_rate), discount_rate: r.discount_rate == null ? null : Number(r.discount_rate) }));
+    .order("issue_date", { ascending: false }).order("tenor_days", { ascending: true }).limit(1000);
+  return (data || []).slice().reverse().map((r: any) => ({ ...r, interest_rate: Number(r.interest_rate), discount_rate: r.discount_rate == null ? null : Number(r.discount_rate) }));
 }
 export async function fetchPolicy(): Promise<PolicyRow[]> {
   const { data } = await db.from("bog_policy_rates").select("meeting_no,mpc_dates,effective_date,rate,source_url").order("meeting_no", { ascending: true }).limit(500);

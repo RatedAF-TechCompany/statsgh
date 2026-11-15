@@ -19,9 +19,10 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const s = await loadIndicator(slug);
   if (!s) return { title: "Indicator not found | StatsGH", robots: { index: false, follow: true } };
   const { ind, last, prev } = s;
-  const title = last ? `${ind.name}: ${fmtVal(ind, last.value)} (${fmtDate(last.date, ind)})` : ind.name;
+  const when = (d: string) => (ind.slug.includes("treasury-bill") ? `bills issued ${fmtDate(d, ind)}` : fmtDate(d, ind)); // T-bills are dated by issue date
+  const title = last ? `${ind.name}: ${fmtVal(ind, last.value)} (${when(last.date)})` : ind.name;
   const ch = change(ind, last, prev);
-  const desc = last ? `${ind.short} was ${fmtVal(ind, last.value)} in the latest reading (${fmtDate(last.date, ind)})${ch ? `, ${ch} on the previous reading` : ""}. Source: ${ind.source}. ${ind.definition}` : ind.definition;
+  const desc = last ? `${ind.short} was ${fmtVal(ind, last.value)} in the latest reading (${when(last.date)})${ch ? `, ${ch} on the previous reading` : ""}. Source: ${ind.source}. ${ind.definition}` : ind.definition;
   return pageMeta(`/indicators/${ind.slug}`, title, desc.slice(0, 300));
 }
 
@@ -56,7 +57,7 @@ export default async function IndicatorPage({ params }: P) {
       <h1 className="font-headline text-[30px] md:text-[34px] leading-tight text-[#121212]">{ind.name}</h1>
       {last ? (
         <p className="font-serif text-[20px] leading-[1.5] text-[#121212] mt-3" data-indicator-lead>
-          <strong>{f(last.value)}</strong> in the latest reading ({fmtDate(last.date, ind)}). Source: {ind.source}.
+          <strong>{f(last.value)}</strong> in the latest reading ({ind.slug.includes("treasury-bill") ? "bills issued " : ""}{fmtDate(last.date, ind)}). Source: {ind.source}.
         </p>
       ) : <p className="font-serif text-[18px] text-[#5B5B5B] mt-3">No figure is stored yet for this indicator.</p>}
       <p className="font-serif text-[17px] leading-[1.6] text-[#5B5B5B] mt-2 max-w-[760px]">{ind.definition}</p>
