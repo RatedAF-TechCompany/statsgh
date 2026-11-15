@@ -87,6 +87,9 @@ export async function generateMetadata({
   const absoluteImageUrl =
     (heroAbs && heroAbs === `${baseUrl}/og/article/${article.slug}` ? heroAbs + ogVersion(article.slug) : heroAbs) || `${baseUrl}/og/article/${encodeURIComponent(article.slug)}${ogVersion(article.slug)}`;
   const description = describe(article);
+  // Author and section signals must match the visible byline and breadcrumb (research plan, 15 Nov 2026).
+  const authorUrl = `${baseUrl}/authors/${bylineFor(article.author_name).slug}`;
+  const sectionName = getCategoryPageLabel(article.category_slug);
   const keywords = article.tags?.join(", ") || "";
 
   return {
@@ -125,8 +128,8 @@ export async function generateMetadata({
       ],
       publishedTime: article.published_at || undefined,
       modifiedTime: article.content_updated_at || article.published_at || undefined,
-      authors: ["https://www.statsgh.com/authors/abubakar-saddique"],
-      section: article.section || undefined,
+      authors: [authorUrl],
+      section: sectionName,
     },
     twitter: {
       card: "summary_large_image",
@@ -139,8 +142,8 @@ export async function generateMetadata({
     other: {
       "article:published_time": article.published_at || "",
       "article:modified_time": article.content_updated_at || article.published_at || "",
-      "article:author": "https://www.statsgh.com/authors/abubakar-saddique",
-      "article:section": article.section || "",
+      "article:author": authorUrl,
+      "article:section": sectionName,
       news_keywords: keywords,
       "original-source": canonicalUrl,
     },
@@ -156,7 +159,7 @@ const ogVersion = (slug: string) => (OG_VERSIONS[slug] ? `?v=${OG_VERSIONS[slug]
 
 const isResearch = (a: any) => a?.category_slug === "data-and-research" || ["research", "data"].includes(a?.section) || ["research", "data"].includes(a?.category_slug);
 
-function generateJsonLd(article: any, authorSlug?: string | null) {
+function generateJsonLd(article: any) {
   const articleUrl = `${baseUrl}/${article.category_slug}/${article.slug}`;
   // Per-article generated OG card (1200x630) is always available; hero image (if any) leads.
   const ogImage = `${baseUrl}/og/article/${article.slug}${ogVersion(article.slug)}`;
@@ -200,9 +203,9 @@ function generateJsonLd(article: any, authorSlug?: string | null) {
     mainEntityOfPage: { "@type": "WebPage", "@id": articleUrl },
     url: articleUrl,
     isAccessibleForFree: true,
-    inLanguage: "en",
+    inLanguage: "en-GH",
     keywords: article.tags?.join(", ") || undefined,
-    articleSection: article.section || undefined,
+    articleSection: getCategoryPageLabel(article.category_slug),
   };
 }
 
@@ -229,7 +232,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     permanentRedirect(`/${article.category_slug}/${article.slug}`);
   }
 
-  const jsonLd = generateJsonLd(article, "abubakar-saddique");
+  const jsonLd = generateJsonLd(article);
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

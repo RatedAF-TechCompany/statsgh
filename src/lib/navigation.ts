@@ -29,9 +29,11 @@ export const SITE_SECTIONS = [
   { label: "World", slug: "world", href: "/world" },
 ] as const;
 
-export const SECTION_LABEL: Record<string, string> = Object.fromEntries(
-  SITE_SECTIONS.map(s => [s.slug, s.label])
-);
+export const SECTION_LABEL: Record<string, string> = {
+  ...Object.fromEntries(SITE_SECTIONS.map(s => [s.slug, s.label])),
+  // Sections with a label but no header/footer menu link.
+  education: "Education",
+};
 
 // Get section label for a category_slug
 export const getSectionLabel = (categorySlug: string): string => {

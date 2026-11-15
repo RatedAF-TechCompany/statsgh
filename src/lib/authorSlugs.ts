@@ -16,8 +16,14 @@ export const DESK_BYLINES: Byline[] = [
 
 export const RESEARCH_BYLINE: Byline = { name: "Zebrilla Najib", slug: "zebrilla-najib", role: "Research Editor" };
 
+// Contributors with a profile page whose pieces run under another byline (house rules: Yaw's
+// thesis-to-news pieces carry the Research Editor's byline).
+export const CONTRIBUTOR_BYLINES: Byline[] = [
+  { name: "Yaw Bosompim", slug: "yaw-bosompim", role: "Thesis-to-News" },
+];
+
 const BY_NAME = new Map<string, Byline>(
-  [DEFAULT_BYLINE, RESEARCH_BYLINE, ...DESK_BYLINES].map((b) => [b.name.toLowerCase(), b]),
+  [DEFAULT_BYLINE, RESEARCH_BYLINE, ...DESK_BYLINES, ...CONTRIBUTOR_BYLINES].map((b) => [b.name.toLowerCase(), b]),
 );
 
 /** Byline for an article's author_name. Unknown or empty names fall back to the in-house byline. */
@@ -30,5 +36,6 @@ export function bylineFor(authorName: string | null | undefined): Byline {
 export const PUBLIC_AUTHOR_SLUGS = [
   "abubakar-saddique", "hawa-kokonu", "zebrilla-najib",
   ...DESK_BYLINES.map((b) => b.slug),
+  ...CONTRIBUTOR_BYLINES.map((b) => b.slug),
 ] as const;
 export const DEFAULT_AUTHOR_SLUG = DEFAULT_BYLINE.slug;

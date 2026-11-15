@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchHeadlineFx } from "@/lib/bogRates";
 import { supabase } from "@/integrations/supabase/client";
 import { isEstimateSource, isStale, GSE_STALE_DAYS, GSE_SOURCE, sourceLabel, asOfLabel } from "@/lib/dataProvenance";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,19 +44,9 @@ const DataRail = () => {
   };
 
   const { data: currencies, isLoading: currLoading } = useQuery({
-    queryKey: ["rail-currencies"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("currency_rates")
-        .select("id, base_currency, target_currency, rate, change_percent, source, fetched_at")
-        .in("base_currency", ["USD", "EUR", "GBP", "CNY"])
-        .eq("target_currency", "GHS").order("fetched_at", { ascending: false }).limit(20);
-      if (error) throw error;
-      const seen = new Set<string>();
-      return (data || [])
-        .filter((r) => isValidLabel(r.base_currency))
-        .filter((r) => { const k = r.base_currency || ""; if (seen.has(k)) return false; seen.add(k); return true; });
-    },
-    refetchInterval: 60000,
+    queryKey: ["headline-fx", "USD,EUR,GBP,CNY"],
+    queryFn: () => fetchHeadlineFx(["USD", "EUR", "GBP", "CNY"]),
+    refetchInterval: 600000,
   });
 
   const { data: commodities, isLoading: comLoading } = useQuery({
@@ -132,7 +123,7 @@ const DataRail = () => {
             <div className="space-y-0 mb-4">
               {(currencies || []).slice(0, 4).map((rate) => (
                 <div key={rate.id} className="flex items-center justify-between py-1.5 border-t border-[#D9D9D9]">
-                  <span className="font-ui text-[11px] font-medium text-[#121212]">{rate.base_currency}/GHS</span>
+                  <span className="font-ui text-[11px] font-medium text-[#121212]">{rate.base_currency}/GHS{!(rate as any).official && <span className="block font-ui text-[9px] text-[#5B5B5B]">{sourceLabel(rate.source)} market rate, not official</span>}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-ui text-[12px] font-semibold text-[#121212]">{rate.rate.toFixed(2)}</span>
                     <ChangeIndicator change={rate.change_percent} />

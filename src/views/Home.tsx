@@ -1,5 +1,6 @@
 "use client";
 import HouseAd from "@/components/HouseAd";
+import { fetchHeadlineFx } from "@/lib/bogRates";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,22 +212,9 @@ const Home = ({ initialArticles, initialMostRead, initialLive }: HomeProps = {})
 // ── Inline data widget for Zone A col 4 ──
 const DataWidget = () => {
   const { data: currencies } = useQuery({
-    queryKey: ["widget-currencies"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("currency_rates")
-        .select("base_currency, rate, change_percent")
-        .eq("target_currency", "GHS")
-        .order("fetched_at", { ascending: false })
-        .limit(5);
-      const seen = new Set<string>();
-      return (data || []).filter((r) => {
-        if (seen.has(r.base_currency || "")) return false;
-        seen.add(r.base_currency || "");
-        return true;
-      });
-    },
-    refetchInterval: 60000,
+    queryKey: ["headline-fx", "USD,EUR,GBP"],
+    queryFn: () => fetchHeadlineFx(["USD", "EUR", "GBP"]),
+    refetchInterval: 600000,
   });
 
   const { data: commodities } = useQuery({

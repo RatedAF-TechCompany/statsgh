@@ -11,7 +11,7 @@ type P = { params: Promise<{ slug: string }> };
 // In-house author: sweep-written and unattributed articles keep the Abubakar Saddique byline.
 // Desk journalists load from the authors table; their stories match on articles.author_name.
 const IN_HOUSE = { slug: "abubakar-saddique", display_name: "Abubakar Saddique", role: "Data journalist", kind: "person",
-  bio: "Abubakar Saddique is StatsGH's in-house data journalist.", expertise: [] as string[], byline_aliases: [] as string[] };
+  bio: "Abubakar Saddique is StatsGH's in-house data journalist. Stories under this byline come from StatsGH's regular sweep of official releases and news reports, and from pieces not filed by a named desk. Each one links to the primary sources it cites and follows StatsGH's editorial standards.", expertise: ["Official data releases", "Ghana economy and public finance"] as string[], byline_aliases: [] as string[] };
 const EDITORS: Record<string, any> = {
   "hawa-kokonu": { slug: "hawa-kokonu", image: "/images/authors/hawa-kokonu.jpg", display_name: "Hawa Kokonu", role: "Chief Editor", kind: "person", bio: "Hawa Kokonu is StatsGH's Chief Editor. She is studying for a BSc in Agribusiness at the University of Energy and Natural Resources (UENR). She has served as Financial Secretary of the UENR Student Representative Council and of the Agripreneur Newsletter, and as Deputy Chief of Staff of the local NUGS.\n\nShe brings strong record-keeping, organisation and communication skills to the newsroom. She makes sure stories are accurate, clear and published on time.", expertise: [], byline_aliases: [], none: true },
   "zebrilla-najib": { slug: "zebrilla-najib", display_name: "Zebrilla Najib", role: "Research Editor", kind: "person", bio: "Zebrilla Najib founded StatsGH, GhanaCrimes and TheCryptoGhana, and edits StatsGH's research articles. He is a registered Reporting Sonographer with over nine years of clinical and research experience in Ghana, Sweden and the UK, including NHS work and an NIH-funded study at the University of Ghana. He holds a BSc in Diagnostic Medical Sonography from KNUST and is studying for an MBE at Karolinska Institutet.\n\nHe brings an evidence-based approach to StatsGH. He checks that figures match their sources, that methods are sound, and that findings are stated plainly.", expertise: [], byline_aliases: [] },
@@ -39,7 +39,7 @@ export default async function AuthorPage({ params }: P) {
   const url = `https://www.statsgh.com/authors/${a.slug}`;
   const ld = a.kind === "desk"
     ? { "@context": "https://schema.org", "@type": "Organization", name: a.display_name, url, description: a.bio, parentOrganization: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" } }
-    : { "@context": "https://schema.org", "@type": "Person", name: a.display_name, url, jobTitle: a.role || undefined, image: a.image ? `https://www.statsgh.com${a.image}` : undefined, description: a.bio || undefined, knowsAbout: a.expertise, worksFor: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" } };
+    : { "@context": "https://schema.org", "@type": "ProfilePage", url, mainEntity: { "@type": "Person", "@id": `${url}#person`, name: a.display_name, url, jobTitle: a.role || undefined, image: a.image ? `https://www.statsgh.com${a.image}` : undefined, description: a.bio || undefined, knowsAbout: a.expertise?.length ? a.expertise : undefined, worksFor: { "@type": "NewsMediaOrganization", "@id": "https://www.statsgh.com/#organization", name: "StatsGH", url: "https://www.statsgh.com" } } };
   return (
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
@@ -58,7 +58,7 @@ export default async function AuthorPage({ params }: P) {
       )}
       {!a.none && <section className="mt-6">
         <h2 className="kicker mb-2">Stories</h2>
-        {!arts?.length ? <p className="font-ui text-sm text-[#5B5B5B]">No published stories carry this byline yet.</p> : (
+        {!arts?.length ? <p className="font-ui text-sm text-[#5B5B5B]">{a.slug === "yaw-bosompim" ? <>Thesis-to-News pieces run under the Research Editor's byline; see <Link href="/authors/zebrilla-najib" className="text-[#E3120B] underline">Zebrilla Najib</Link>.</> : "No published stories carry this byline yet."}</p> : (
           <ul className="divide-y divide-[#EEE]">{arts.map((x) => (
             <li key={x.slug} className="py-3">
               <Link href={`/${x.category_slug}/${x.slug}`} className="font-headline text-[18px] text-[#121212] hover:text-[#E3120B]">{x.title}</Link>

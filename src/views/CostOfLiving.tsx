@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
-import { fetchFx, fetchPump } from "@/views/FuelCediTracker";
-import { fetchReadings } from "@/views/InflationTracker";
+import { fetchFxPreferBog, fetchPump } from "@/lib/fuelCedi";
+import { fetchReadings } from "@/lib/inflation";
 
 const ghs = (n: number) => `GHS ${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -24,7 +24,7 @@ const Unavailable = ({ what }: { what: string }) => (
 
 const CostOfLiving = () => {
   const pump = useQuery({ queryKey: ["fct-pump"], queryFn: fetchPump });
-  const usd = useQuery({ queryKey: ["fct-fx", "USD"], queryFn: () => fetchFx("USD") });
+  const usd = useQuery({ queryKey: ["fct-fx-bog", "USD"], queryFn: async () => (await fetchFxPreferBog("USD")).points });
   const infl = useQuery({ queryKey: ["inflation-readings"], queryFn: fetchReadings });
 
   const [fuelType, setFuelType] = useState<"petrol" | "diesel">("petrol");
@@ -138,7 +138,7 @@ const CostOfLiving = () => {
                   <p className="text-[15px]">GHS {fxNow.value.toFixed(2)} to the US dollar on {dayLabel(fxNow.date)}.
                     {fxChange !== null && fxBase ? <> Since {dayLabel(fxBase.date)} (GHS {fxBase.value.toFixed(2)}), the dollar costs <strong>{pct(fxChange)}</strong> in cedis — goods priced in dollars, such as imported food and fuel, move in that direction.</> : baseline ? <> No stored rate on or before {monthLabel(baseline)}.</> : null}
                   </p>
-                  <p className="text-xs text-[#5B5B5B] mt-1">Source: open.er-api.com, stored hourly by StatsGH · tracking started {fx[0] ? dayLabel(fx[0].date) : "—"}.</p>
+                  <p className="text-xs text-[#5B5B5B] mt-1">Source: Bank of Ghana interbank mid-rate (open.er-api.com market rate only if no official figure is stored) · tracking started {fx[0] ? dayLabel(fx[0].date) : "—"}.</p>
                 </>
               )}
             </section>

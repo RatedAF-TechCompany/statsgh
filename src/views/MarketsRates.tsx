@@ -10,7 +10,7 @@ const Src = ({ href, label }: { href: string; label: string }) => (
   <p className="text-xs text-[#5B5B5B] mt-1">Source: <a className="underline" href={href} target="_blank" rel="noopener noreferrer">{BOG_SOURCE} — {label}</a></p>
 );
 
-const MarketsRates = () => {
+const MarketsRates = ({ lead }: { lead?: string } = {}) => {
   const tb = useQuery({ queryKey: ["bog-tbills"], queryFn: fetchTbills });
   const pol = useQuery({ queryKey: ["bog-policy"], queryFn: fetchPolicy });
   const ib = useQuery({ queryKey: ["bog-interbank"], queryFn: fetchInterbank });
@@ -47,7 +47,7 @@ const MarketsRates = () => {
       wide
       kicker={<><Link to="/markets-data" className="hover:underline">Markets &amp; Data</Link> · Markets</>}
       title="Interest rates: T-bills, policy rate, interbank"
-      intro="Ghana's benchmark interest rates as published by the Bank of Ghana: weekly Treasury bill auction results, the Monetary Policy Committee's policy rate, and the interbank lending rate."
+      intro={<>{lead && <p className="text-[#121212] mb-2" data-indicator-lead>{lead}</p>}Ghana's benchmark interest rates as published by the Bank of Ghana: weekly Treasury bill auction results, the Monetary Policy Committee's policy rate, and the interbank lending rate.</>}
     >
       <nav className="font-ui text-[12px] flex gap-4 mb-2">
         <Link to="/markets/forex" className="underline text-[#E3120B]">Forex</Link>

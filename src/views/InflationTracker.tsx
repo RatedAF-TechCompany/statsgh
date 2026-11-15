@@ -6,20 +6,10 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 import { LongRunMacro } from "@/components/markets/LongRunMacro";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchMacro } from "@/lib/macro";
 import { downloadCsv } from "@/lib/bogRates";
 
-type Reading = {
-  kind: "headline" | "food" | "non_food";
-  period: string;
-  value: number;
-  article_slug: string | null;
-  category_slug: string | null;
-  article_title: string | null;
-  source_count: number;
-  extracted_at: string;
-};
+import { fetchReadings, fetchOfficialCpi, cpiFreshness, GSS_INFLATION_URL, type Reading } from "@/lib/inflation";
+export { fetchReadings } from "@/lib/inflation";
 
 const LABEL: Record<Reading["kind"], string> = { headline: "Headline", food: "Food", non_food: "Non-food" };
 const COLOR: Record<Reading["kind"], string> = { headline: "#E3120B", food: "#1F6F50", non_food: "#2E5AAC" };
@@ -29,15 +19,6 @@ const monthLabel = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 const dayLabel = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-
-export async function fetchReadings(): Promise<Reading[]> {
-  const { data, error } = await supabase
-    .from("inflation_readings")
-    .select("kind, period, value, article_slug, category_slug, article_title, source_count, extracted_at")
-    .order("period", { ascending: true });
-  if (error) throw error;
-  return (data || []).map((r: any) => ({ ...r, value: Number(r.value) }));
-}
 
 const MoneyBox = ({ latest }: { latest?: Reading }) => {
   if (!latest) return null;
@@ -72,7 +53,7 @@ const MoneyBox = ({ latest }: { latest?: Reading }) => {
 };
 
 const OfficialMonthly = ({ showMoney }: { showMoney: boolean }) => {
-  const { data } = useQuery({ queryKey: ["macro", "imf_cpi_m"], queryFn: async () => (await fetchMacro(["imf_cpi_m"])).imf_cpi_m });
+  const { data } = useQuery({ queryKey: ["cpi-official"], queryFn: fetchOfficialCpi });
   const pts = (data || []).filter((p) => p.period >= "2015-01-01");
   const last = pts[pts.length - 1];
   if (!last) return null;
@@ -81,7 +62,13 @@ const OfficialMonthly = ({ showMoney }: { showMoney: boolean }) => {
       <div className="py-4 border-t border-[#D9D9D9]">
         <div className="text-xs uppercase tracking-wide text-[#5B5B5B]">Headline inflation, official monthly series</div>
         <div className="font-serif text-3xl font-bold" style={{ color: COLOR.headline }}>{last.value.toFixed(1)}%</div>
-        <div className="text-xs text-[#5B5B5B]">{monthLabel(last.period)}, year-on-year</div>
+        <div className="text-xs text-[#5B5B5B]">{monthLabel(last.period)}, year-on-year · {last.official ? "Ghana Statistical Service" : last.source}</div>
+        {(() => { const f = cpiFreshness(last.period); return (
+          <div className="text-xs text-[#5B5B5B] mt-1">
+            Next: the {f.nextPeriodLabel} figure, which GSS usually publishes in early {f.expectedLabel}.{" "}
+            {f.overdue && <strong className="text-[#E3120B]">That release looks overdue; this page will update when it is stored.</strong>}
+          </div>
+        ); })()}
       </div>
       {showMoney && <MoneyBox latest={{ kind: "headline", period: last.period, value: last.value, article_slug: null, category_slug: null, article_title: null, source_count: 1, extracted_at: last.fetched_at }} />}
       <section className="border-t border-[#D9D9D9] py-6">
@@ -98,16 +85,16 @@ const OfficialMonthly = ({ showMoney }: { showMoney: boolean }) => {
           </ResponsiveContainer>
         </div>
         <p className="text-xs text-[#5B5B5B] mt-2">
-          Source: <a className="underline" href={last.source_url} target="_blank" rel="noopener noreferrer">{last.source}</a>, matching the rates published by the{" "}
-          <a className="underline" href="https://www.statsghana.gov.gh/highlights/inflation-rate" target="_blank" rel="noopener noreferrer">Ghana Statistical Service</a> · latest {monthLabel(last.period)} · retrieved {dayLabel(last.fetched_at)}
+          Source: <a className="underline" href={GSS_INFLATION_URL} target="_blank" rel="noopener noreferrer">Ghana Statistical Service</a> for months stored from GSS releases; earlier months from the{" "}
+          <a className="underline" href={pts.find((p) => !p.official)?.source_url || "https://data.imf.org"} target="_blank" rel="noopener noreferrer">IMF monthly CPI series</a>, which matches the GSS rates · latest {monthLabel(last.period)} · retrieved {dayLabel(last.fetched_at)}
         </p>
-        <button className="text-xs underline text-[#E3120B] mt-1" onClick={() => downloadCsv("ghana-cpi-inflation-monthly.csv", [["month", "headline_yoy_pct", "source", "source_url"], ...(data || []).map((p) => [p.period.slice(0, 7), p.value, p.source, p.source_url])])}>Download CSV</button>
+        <button className="text-xs underline text-[#E3120B] mt-1" onClick={() => downloadCsv("ghana-cpi-inflation-monthly.csv", [["month", "headline_yoy_pct", "source", "source_url"], ...(data || []).map((p) => [p.period.slice(0, 7), p.value, p.official ? "Ghana Statistical Service" : p.source, p.source_url])])}>Download CSV</button>
       </section>
     </>
   );
 };
 
-const InflationTracker = () => {
+const InflationTracker = ({ lead }: { lead?: string } = {}) => {
   const { data, isLoading, isError } = useQuery({ queryKey: ["inflation-readings"], queryFn: fetchReadings });
   const readings = data || [];
   const headline = readings.filter((r) => r.kind === "headline");
@@ -132,6 +119,7 @@ const InflationTracker = () => {
           <h1 className="section-label text-base">Inflation Explainer</h1>
           <div className="mt-2"><FollowButton type="indicator" targetKey="cpi-inflation" label="CPI inflation" /></div>
         </div>
+        {lead && <p className="font-serif text-[19px] leading-[1.6] text-[#121212] pt-4" data-indicator-lead>{lead}</p>}
         <p className="font-serif text-[19px] leading-[1.6] text-[#5B5B5B] py-4">
           Ghana's monthly consumer price inflation — headline, food and non-food — as published by the Ghana
           Statistical Service and reported in StatsGH articles. Each figure links to the article it came from.

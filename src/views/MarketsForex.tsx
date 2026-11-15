@@ -21,7 +21,7 @@ async function fetchFallback() {
   return data || [];
 }
 
-const MarketsForex = () => {
+const MarketsForex = ({ lead }: { lead?: string } = {}) => {
   const [range, setRange] = useState<30 | 90>(30);
   const fx = useQuery({ queryKey: ["bog-fx", 120], queryFn: () => fetchBogFx(120) });
   const rows = fx.data;
@@ -56,7 +56,7 @@ const MarketsForex = () => {
       wide
       kicker={<><Link to="/markets-data" className="hover:underline">Markets &amp; Data</Link> · Markets</>}
       title="Cedi exchange rates (Bank of Ghana)"
-      intro="Official Bank of Ghana interbank mid-rates for the cedi against the dollar, pound and euro, published each business day."
+      intro={<>{lead && <p className="text-[#121212] mb-2" data-indicator-lead>{lead}</p>}Official Bank of Ghana interbank mid-rates for the cedi against the dollar, pound and euro, published each business day.</>}
     >
       <nav className="font-ui text-[12px] flex gap-4 mb-2">
         <span className="font-bold">Forex</span>

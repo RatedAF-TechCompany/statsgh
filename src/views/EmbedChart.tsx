@@ -1,12 +1,17 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { fetchFx, fetchBrent, fetchPump } from "@/views/FuelCediTracker";
+import { fetchFxPreferBog, fetchBrent, fetchPump } from "@/lib/fuelCedi";
+
+// FX embeds use the official Bank of Ghana interbank mid-rate (one cedi rate site-wide); the
+// open.er-api.com market rate is used, and labelled, only when no official figure is stored.
+const BOG_FX = "Bank of Ghana interbank mid-rate";
+const fxLoad = (base: string) => async () => { const r = await fetchFxPreferBog(base); return Object.assign(r.points, { sourceLabel: r.official ? BOG_FX : "open.er-api.com market mid-rate (not official)" }); };
 
 export const EMBED_SERIES: Record<string, { title: string; unit: string; source: string; load: () => Promise<{ date: string; value: number }[]> }> = {
-  usd: { title: "US dollar to cedi", unit: "GHS per US$", source: "open.er-api.com", load: () => fetchFx("USD") },
-  eur: { title: "Euro to cedi", unit: "GHS per €", source: "open.er-api.com", load: () => fetchFx("EUR") },
-  gbp: { title: "Pound to cedi", unit: "GHS per £", source: "open.er-api.com", load: () => fetchFx("GBP") },
+  usd: { title: "US dollar to cedi", unit: "GHS per US$", source: BOG_FX, load: fxLoad("USD") },
+  eur: { title: "Euro to cedi", unit: "GHS per €", source: BOG_FX, load: fxLoad("EUR") },
+  gbp: { title: "Pound to cedi", unit: "GHS per £", source: BOG_FX, load: fxLoad("GBP") },
   brent: { title: "Brent crude", unit: "US$ per barrel", source: "FRED (EIA) DCOILBRENTEU", load: fetchBrent },
   petrol: { title: "Ghana petrol pump price", unit: "GHS per litre", source: "Figures cited in StatsGH articles", load: async () => (await fetchPump()).petrol },
   diesel: { title: "Ghana diesel pump price", unit: "GHS per litre", source: "Figures cited in StatsGH articles", load: async () => (await fetchPump()).diesel },
@@ -43,7 +48,7 @@ const EmbedChart = ({ series }: { series: string }) => {
         )}
       </div>
       <p className="text-[11px] text-[#5B5B5B] mt-1">
-        Source: {cfg.source}{last ? ` · Last updated ${fmt(last.date)}` : ""} ·{" "}
+        Source: {(data as any)?.sourceLabel || cfg.source}{last ? ` · Last updated ${fmt(last.date)}` : ""} ·{" "}
         <a href="https://www.statsgh.com/trackers/fuel-and-cedi" target="_blank" rel="noopener noreferrer" className="text-[#E3120B] font-semibold">StatsGH</a>
       </p>
     </div>

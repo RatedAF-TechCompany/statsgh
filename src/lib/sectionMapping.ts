@@ -11,7 +11,9 @@ export const SECTION_TO_CATEGORIES: Record<string, string[]> = {
   'technology': ['technology-and-digital-economy', 'technology', 'tech', 'digital', 'fintech', 'telecoms', 'technology-innovation'],
   'companies': ['corporate-ghana', 'companies', 'corporate', 'banking', 'insurance'],
   'opinion-analysis': ['opinion-analysis', 'opinion', 'commentary', 'editorial', 'analysis', 'long-form', 'deep-dive'],
-  'research': ['data-and-research', 'research', 'academic', 'report', 'survey', 'health-data', 'education'],
+  'research': ['data-and-research', 'research', 'academic', 'report', 'survey', 'health-data'],
+  // Education stands alone (Zeb, 15 Nov 2026): breadcrumb and kicker read "Education", not "Education – Research". No menu link.
+  'education': ['education'],
   'financial-literacy': ['financial-literacy', 'explainer', 'personal-finance', 'literacy'],
   'world': ['regional-economy', 'world', 'africa', 'international', 'global'],
 };

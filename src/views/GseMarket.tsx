@@ -25,7 +25,7 @@ const MiniList = ({ title, rows, metric }: { title: string; rows: GsePrice[]; me
   </section>
 );
 
-const GseMarket = () => {
+const GseMarket = ({ lead }: { lead?: string } = {}) => {
   const prices = useQuery({ queryKey: ["gse-latest"], queryFn: fetchLatestGse });
   const index = useQuery({ queryKey: ["gse-index"], queryFn: () => fetchGseIndex(250) });
   const [q, setQ] = useState("");
@@ -86,7 +86,7 @@ const GseMarket = () => {
 
   return (
     <PageShell wide kicker={<><Link to="/markets-data" className="hover:underline">Markets &amp; Data</Link> · Markets</>} title="Ghana Stock Exchange"
-      intro="End-of-day share prices, index levels and trading volumes for every equity on the Ghana Stock Exchange. Figures are delayed, not real-time.">
+      intro={<>{lead && <p className="text-[#121212] mb-2" data-indicator-lead>{lead}</p>}End-of-day share prices, index levels and trading volumes for every equity on the Ghana Stock Exchange. Figures are delayed, not real-time.</>}>
       <nav className="font-ui text-[12px] flex gap-4 mb-2">
         <Link to="/markets/forex" className="underline text-[#E3120B]">Forex</Link>
         <Link to="/markets/rates" className="underline text-[#E3120B]">Interest rates</Link>

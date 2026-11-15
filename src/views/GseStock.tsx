@@ -8,7 +8,7 @@ import { GseTicker } from "@/components/markets/GseTicker";
 import { downloadCsv, fmtDay } from "@/lib/bogRates";
 import { GSE_LABEL, GSE_URL, fetchGseHistory, fetchLatestGse, nameOf, sectorOf, pct, ghs, intl, changeCls } from "@/lib/gse";
 
-const GseStock = () => {
+const GseStock = ({ lead }: { lead?: string } = {}) => {
   const { symbol: raw } = useParams();
   const symbol = String(raw || "").toUpperCase();
   const hist = useQuery({ queryKey: ["gse-hist", symbol], queryFn: () => fetchGseHistory(symbol), enabled: !!symbol });
@@ -40,7 +40,7 @@ const GseStock = () => {
   const traded = rows.filter((r) => (r.volume ?? 0) > 0);
   return (
     <PageShell wide kicker={<><Link to="/markets/gse" className="hover:underline">Ghana Stock Exchange</Link> · {sectorOf(l)}</>} title={`${name} (${symbol})`}
-      intro={`End-of-day share price for ${name} on the Ghana Stock Exchange. Delayed, not real-time.`}>
+      intro={<>{lead && <p className="text-[#121212] mb-2" data-indicator-lead>{lead}</p>}{`End-of-day share price for ${name} on the Ghana Stock Exchange. Delayed, not real-time.`}</>}>
       <GseTicker />
       <KeyNumbersBox source={GSE_LABEL} sourceHref={l.source_url || GSE_URL} asOf={l.trade_date} items={[
         { label: "Closing price", value: ghs(l.close), note: l.previous_close != null ? `Previous ${ghs(l.previous_close)}` : undefined },

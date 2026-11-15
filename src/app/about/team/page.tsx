@@ -3,7 +3,7 @@ import Link from "next/link";
 import { pageMeta } from "@/lib/pageMeta";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { PageShell, ShareBar } from "@/components/vault/VaultBits";
-import { DESK_BYLINES } from "@/lib/authorSlugs";
+import { DESK_BYLINES, CONTRIBUTOR_BYLINES } from "@/lib/authorSlugs";
 
 export const metadata = pageMeta("/about/team", "Our team, ownership and masthead", "The StatsGH masthead and ownership, our editors and the byline on our stories.");
 
@@ -11,6 +11,7 @@ const TEAM = [
   { name: "Hawa Kokonu", role: "Chief Editor", href: "/authors/hawa-kokonu" },
   { name: "Zebrilla Najib", role: "Research Editor", href: "/authors/zebrilla-najib" },
   ...DESK_BYLINES.map((b) => ({ name: b.name, role: `${b.role} desk`, href: `/authors/${b.slug}` })),
+  ...CONTRIBUTOR_BYLINES.map((b) => ({ name: b.name, role: b.role, href: `/authors/${b.slug}` })),
   { name: "Abubakar Saddique", role: "Data journalist", href: "/authors/abubakar-saddique" },
 ];
 

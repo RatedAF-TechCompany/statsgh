@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   if (!(await authorizeCaller(req, db)).ok) return json({ error: "unauthorized" }, 401);
-  const jobs = (new URL(req.url).searchParams.get("job") || "wb,imf,imfcpi,gold,calendar").split(",");
+  const jobs = (new URL(req.url).searchParams.get("job") || "wb,imf,imfcpi,gsscpi,gold,calendar").split(",");
   const report: Record<string, string> = {};
   const year = new Date().getUTCFullYear();
   const upsert = async (rows: Record<string, unknown>[]) => {
@@ -120,6 +120,26 @@ Deno.serve(async (req) => {
       if (!rows.length) throw new Error("no values");
       await upsert(rows); report.imf_cpi_m = `${rows.length} months`;
     } catch (e) { report.imf_cpi_m = `FAILED: ${(e as Error).message}`; }
+  }
+
+  // Headline CPI inflation straight from the Ghana Statistical Service "Inflation Rate" highlight,
+  // which states "Inflation rate stands at X in <Month> <Year>". GSS publishes a month or more
+  // before the IMF series catches up. Nothing is written unless the sentence parses exactly.
+  if (jobs.includes("gsscpi")) {
+    try {
+      const src = "https://www.statsghana.gov.gh/highlights/inflation-rate";
+      const html = await (await get(src)).text();
+      const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+      const m = /Inflation rate stands at (-?\d+(?:\.\d+)?)%? in (January|February|March|April|May|June|July|August|September|October|November|December) (20\d\d)/i.exec(text);
+      if (!m) throw new Error("GSS inflation sentence not found");
+      const months = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+      const mm = String(months.indexOf(m[2].toLowerCase()) + 1).padStart(2, "0");
+      const value = Number(m[1]);
+      if (!Number.isFinite(value) || value < -50 || value > 200) throw new Error(`implausible value ${m[1]}`);
+      await upsert([{ series_key: "gss_cpi_m", period: `${m[3]}-${mm}-01`, value, unit: "%", is_projection: false,
+        source: "Ghana Statistical Service, CPI headline inflation y/y", source_url: src }]);
+      report.gss_cpi_m = `${m[2]} ${m[3]}: ${value}%`;
+    } catch (e) { report.gss_cpi_m = `FAILED: ${(e as Error).message}`; }
   }
 
   if (jobs.includes("gold")) {

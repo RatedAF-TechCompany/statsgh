@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCalendar } from "@/lib/calendar";
 import { Methodology, PageShell, ShareRow } from "@/components/markets/MarketBits";
 
 type Ev = {
@@ -56,7 +57,7 @@ const AdminForm = ({ onSaved }: { onSaved: () => void }) => {
   );
 };
 
-const EconomicCalendar = () => {
+const EconomicCalendar = ({ lead }: { lead?: string } = {}) => {
   const qc = useQueryClient();
   const [view, setView] = useState<"upcoming" | "past">("upcoming");
   const [isEditor, setIsEditor] = useState(false);
@@ -70,23 +71,14 @@ const EconomicCalendar = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ["calendar", view],
-    queryFn: async () => {
-      // Week-precision entries stay "upcoming" through their week.
-      const cut = new Date(Date.now() - (view === "upcoming" ? 6 : 0) * 864e5).toISOString();
-      let q = supabase.from("economic_calendar").select("*").not("source_url", "is", null);
-      q = view === "upcoming" ? q.gte("scheduled_date", cut).order("scheduled_date", { ascending: true }).limit(80)
-        : q.lt("scheduled_date", new Date().toISOString()).order("scheduled_date", { ascending: false }).limit(80);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []) as unknown as Ev[];
-    },
+    queryFn: () => fetchCalendar(view) as Promise<Ev[]>,
   });
   const evs = (data || []).filter((e) => view === "past" || e.date_precision === "week" || new Date(e.scheduled_date) >= new Date(Date.now() - 864e5));
   const del = async (id: string) => { await supabase.from("economic_calendar").delete().eq("id", id); qc.invalidateQueries({ queryKey: ["calendar"] }); };
 
   return (
     <PageShell wide kicker={<Link to="/dashboards" className="hover:underline">Dashboards</Link>} title="Ghana economic and data release calendar"
-      intro="When Ghana's key numbers come out: Statistical Service releases (CPI, GDP and more), Bank of Ghana policy decisions and weekly T-bill auctions. Every entry links to its source.">
+      intro={<>{lead && <p className="text-[#121212] mb-2" data-indicator-lead>{lead}</p>}When Ghana's key numbers come out: Statistical Service releases (CPI, GDP and more), Bank of Ghana policy decisions and weekly T-bill auctions. Every entry links to its source.</>}>
       <div className="flex flex-wrap items-center gap-4 font-ui text-[13px] mb-2">
         {(["upcoming", "past"] as const).map((v) => (
           <button key={v} onClick={() => setView(v)} className={view === v ? "font-bold border-b-2 border-[#E3120B]" : "underline text-[#E3120B]"}>{v === "upcoming" ? "Upcoming" : "Past"}</button>

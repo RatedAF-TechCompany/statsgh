@@ -28,6 +28,8 @@ import { NumbersBehindStory } from "@/components/NumbersBehindStory";
 import { ArticleCorrectionNote } from "@/components/ArticleCorrectionNote";
 import { formatArticleBody } from "@/lib/paragraphs";
 import { StoryUpdates, PublishedUpdatedLine, type StoryUpdate } from "@/components/StoryUpdates";
+import { HowThisWasMade } from "@/components/HowThisWasMade";
+import { ArticleShareRow } from "@/components/ArticleShareRow";
 
 // Highlight standalone numbers/units in the article body. Runs identically on
 // server and client (no DOM access) so SSR markup and hydration agree.
@@ -258,6 +260,8 @@ const ArticleContent = ({ article, updates = [] }: { article: any; updates?: Sto
             itemProp="articleBody"
             dangerouslySetInnerHTML={{ __html: withHouseAd(bodyWithHighlightedNumbers) }}
           />
+          <HowThisWasMade authorName={article.author_name} isResearch={article.category_slug === "data-and-research" || ["research", "data"].includes(article.section) || ["research", "data"].includes(article.category_slug)} />
+          <ArticleShareRow title={article.title} url={`https://www.statsgh.com/${article.category_slug}/${article.slug}`} />
           {article.research_scope?.trim() && !(article.body || "").includes("Research Scope") && (
             <aside className="mb-8 border border-[#D9D9D9] p-4">
               <h3 className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[#5B5B5B] mb-2">Research Scope</h3>

@@ -82,3 +82,32 @@ export function downloadCsv(filename: string, header: string[] | (string | numbe
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
+
+export type HeadlineFx = { id: string; base_currency: string; target_currency: "GHS"; rate: number; change_percent: number | null; source: string; fetched_at: string; official: boolean };
+/**
+ * One cedi rate site-wide (research plan, 15 Nov 2026): the official Bank of Ghana interbank
+ * mid-rate for USD, GBP and EUR, dated with the Bank's own rate date. A pair with no stored BoG
+ * figure falls back to the open.er-api.com market rate, labelled "ExchangeRate-API" by sourceLabel().
+ * Currencies BoG figures are not scraped for (e.g. CNY) only ever come from the labelled market feed.
+ */
+export async function fetchHeadlineFx(bases: string[] = ["USD", "EUR", "GBP"]): Promise<HeadlineFx[]> {
+  const rows = await fetchBogFx(14);
+  const out: HeadlineFx[] = [];
+  const missing: string[] = [];
+  for (const b of bases) {
+    const l = latestFx(rows, `${b}GHS`);
+    if (l) out.push({ id: `bog-${b}`, base_currency: b, target_currency: "GHS", rate: l.value, change_percent: l.prev ? ((l.value - l.prev) / l.prev) * 100 : null, source: BOG_SOURCE, fetched_at: l.date, official: true });
+    else missing.push(b);
+  }
+  if (missing.length) {
+    const { data } = await db.from("currency_rates").select("id, base_currency, rate, change_percent, source, fetched_at")
+      .eq("target_currency", "GHS").eq("source", "open.er-api.com").in("base_currency", missing).order("fetched_at", { ascending: false }).limit(20);
+    const seen = new Set<string>();
+    for (const r of data || []) {
+      if (seen.has(r.base_currency)) continue;
+      seen.add(r.base_currency);
+      out.push({ id: r.id, base_currency: r.base_currency, target_currency: "GHS", rate: Number(r.rate), change_percent: r.change_percent == null ? null : Number(r.change_percent), source: r.source, fetched_at: r.fetched_at, official: false });
+    }
+  }
+  return bases.map((b) => out.find((o) => o.base_currency === b)).filter(Boolean) as HeadlineFx[];
+}

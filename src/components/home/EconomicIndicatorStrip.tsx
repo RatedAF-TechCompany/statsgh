@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchHeadlineFx } from "@/lib/bogRates";
 import { supabase } from "@/integrations/supabase/client";
 import { isEstimateSource, sourceLabel, asOfLabel } from "@/lib/dataProvenance";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -53,24 +54,9 @@ function cleanCommodityName(raw: string): string {
 
 const EconomicIndicatorStrip = () => {
   const { data: currencies } = useQuery({
-    queryKey: ["strip-currencies"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("currency_rates")
-        .select("id, base_currency, target_currency, rate, change_percent, source, fetched_at")
-        .eq("target_currency", "GHS")
-        .order("fetched_at", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      const seen = new Set<string>();
-      return (data || []).filter((r) => {
-        const key = r.base_currency || "";
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    },
-    refetchInterval: 60000,
+    queryKey: ["headline-fx", "USD,EUR,GBP"],
+    queryFn: () => fetchHeadlineFx(["USD", "EUR", "GBP"]),
+    refetchInterval: 600000,
   });
 
   const { data: commodities } = useQuery({
