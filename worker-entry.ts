@@ -130,9 +130,30 @@ function isVerifiedBot(request: Request): boolean {
 }
 const INDEXNOW_KEY = "f70a60bf3e4b687b44870e6ce7d2b987";
 
+// Junk Next.js requests (scanner POSTs with a Next-Action header; RSC requests with a malformed
+// Next-Router-State-Tree header) made Next throw and return 500, which fired the Site-error alert emails.
+// The site has no Server Actions, so answer these at the edge with 404 / 400 before Next runs.
+function nextJunkResponse(request: Request): Response | null {
+  const h = { "Content-Type": "text/plain", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
+  if (request.headers.has("next-action")) return new Response("Not Found", { status: 404, headers: h });
+  const t = request.headers.get("next-router-state-tree");
+  if (t !== null) {
+    let ok = false;
+    try {
+      const v = JSON.parse(decodeURIComponent(t));
+      ok = t.length <= 40000 && Array.isArray(v) && v.length >= 2 && (typeof v[0] === "string" || Array.isArray(v[0])) &&
+        v[1] !== null && typeof v[1] === "object" && !Array.isArray(v[1]);
+    } catch {}
+    if (!ok) return new Response("Bad Request", { status: 400, headers: h });
+  }
+  return null;
+}
+
 async function handleFetch(request: Request, env: any, ctx: any): Promise<Response> {
   {
     const url = new URL(request.url);
+    const junk = nextJunkResponse(request);
+    if (junk) return junk;
     if (!isVerifiedBot(request) && (PROBE.test(url.pathname) || !(request.headers.get("user-agent") || "").trim())) {
       return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain" } });
     }
