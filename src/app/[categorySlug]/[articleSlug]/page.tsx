@@ -35,7 +35,15 @@ const getArticle = cache(async (articleSlug: string) => {
     return null;
   }
 
-  return article;
+  // Internal editorial fields must not reach client components (they are
+  // serialized into the RSC payload and would otherwise appear in the page HTML).
+  const publicArticle = { ...article } as typeof article & {
+    source_url?: unknown;
+    story_key?: unknown;
+  };
+  delete publicArticle.source_url;
+  delete publicArticle.story_key;
+  return publicArticle;
 });
 
 // Developing-story updates (newest first). Failure here never blocks the article.

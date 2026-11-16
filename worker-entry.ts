@@ -207,7 +207,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "9"; // 15 Nov 2026 e2e fixes: SSR of 18 hub/tracker pages, company 404s, sitemap authors
+const CACHE_GEN = "10"; // 16 Nov 2026: strip source_url/story_key from article RSC payload
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);
