@@ -3,6 +3,7 @@
 // 15 Nov 2026: "Put the number in the HTML on every data page"). Numbers come only from stored
 // rows; when a row is missing the summary falls back to the page's generic wording.
 import { cache } from "react";
+import { LICENCE } from "@/lib/dataVault";
 import { BOG_SOURCE, BOG_URLS, fetchBogFx, fetchPolicy, fetchTbills, latestFx, latestTbill, fmtDay } from "@/lib/bogRates";
 import { fetchOfficialCpi, monthLabel, GSS_INFLATION_URL, cpiFreshness } from "@/lib/inflation";
 import { fetchBrent, fetchPump } from "@/lib/fuelCedi";
@@ -24,6 +25,7 @@ function dataset(path: string, name: string, description: string, creator: { nam
     description,
     url: `${SITE}${path}`,
     isAccessibleForFree: true,
+    license: LICENCE.url,
     creator: { "@type": "Organization", name: creator.name, url: creator.url },
     publisher: { "@type": "NewsMediaOrganization", "@id": `${SITE}/#organization`, name: "StatsGH", url: SITE },
     ...(first && last ? { temporalCoverage: `${first}/${last}` } : {}),

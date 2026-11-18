@@ -15,7 +15,8 @@ export default async function DataVaultPage() {
   const ld = {
     "@context": "https://schema.org", "@type": "DataCatalog", name: "StatsGH Data Vault", url: "https://www.statsgh.com/data-vault",
     publisher: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url,
-    dataset: DATASETS.map((d) => ({ "@type": "Dataset", name: d.title, url: `https://www.statsgh.com/data-vault/${d.slug}` })),
+    dataset: DATASETS.map((d) => ({ "@type": "Dataset", name: d.title, description: d.description || d.title, url: `https://www.statsgh.com/data-vault/${d.slug}`,
+      creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url, isAccessibleForFree: true })),
   };
   return (
     <PageShell>

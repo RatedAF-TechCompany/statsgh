@@ -4,6 +4,7 @@ import { pageMeta } from "@/lib/pageMeta";
 import { PageShell } from "@/components/vault/VaultBits";
 import { INDICATORS, loadIndicator, fmtVal, fmtDate, change } from "@/lib/indicators";
 import { JsonLd } from "@/components/ssr/Prefetched";
+import { LICENCE } from "@/lib/dataVault";
 
 export const metadata = pageMeta("/indicators", "Ghana economic indicators: latest values and sources", "The latest official figure, date and source for Ghana's key indicators: inflation, the cedi, T-bill rates, the policy rate, the GSE, GDP growth, public debt, oil and gold.");
 
@@ -11,7 +12,8 @@ export default async function IndicatorsHub() {
   const snaps = await Promise.all(INDICATORS.map((i) => loadIndicator(i.slug)));
   const ld = { "@context": "https://schema.org", "@type": "DataCatalog", name: "StatsGH Ghana economic indicators", url: "https://www.statsgh.com/indicators",
     publisher: { "@type": "NewsMediaOrganization", "@id": "https://www.statsgh.com/#organization", name: "StatsGH" },
-    dataset: INDICATORS.map((i) => ({ "@type": "Dataset", name: i.name, url: `https://www.statsgh.com/indicators/${i.slug}` })) };
+    dataset: INDICATORS.map((i) => ({ "@type": "Dataset", name: i.name, description: i.definition || i.name, url: `https://www.statsgh.com/indicators/${i.slug}`,
+      creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url, isAccessibleForFree: true })) };
   return (
     <PageShell>
       <JsonLd data={ld} />

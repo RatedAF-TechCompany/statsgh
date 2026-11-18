@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
-import { permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
 import { resolveArticleSlug } from "@/lib/articleSlugResolve";
 
@@ -26,6 +26,7 @@ export default async function LegacyArticlePage({
   const match = await resolveArticleSlug(slug);
   if (match) permanentRedirect(`/${match.category_slug}/${match.slug}`);
 
-  // Unknown or unpublished slug: the latest-news index, never a different story.
-  permanentRedirect("/news");
+  // Unknown or unpublished slug: a real 404 with noindex (Zeb, 15 Nov 2026: no redirect of missing
+  // addresses to /news). Google counted the old 301 to /news as Soft 404 / Page with redirect.
+  notFound();
 }

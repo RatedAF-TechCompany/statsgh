@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { LICENCE } from "@/lib/dataVault";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -196,7 +197,10 @@ const IndicatorDetail = () => {
           "@type": "Dataset",
           name: indicator.name,
           description: indicator.description || `Ghana indicator: ${indicator.name}`,
-          creator: { "@type": "Organization", name: "StatsGH" },
+          url: `https://www.statsgh.com/data/${indicator.slug}`,
+          creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" },
+          license: LICENCE.url,
+          isAccessibleForFree: true,
           keywords: ["Ghana", indicator.name, indicator.topic?.name].filter(Boolean),
           measurementTechnique: indicator.unit || undefined,
         }

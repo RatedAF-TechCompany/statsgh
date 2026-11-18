@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"; // personalised/live page: render per request
 import type { Metadata } from "next";
 import { createReadOnlyServerClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import TopicDashboard from "@/views/TopicDashboard";
 
 interface TopicPageProps {
@@ -51,6 +52,10 @@ export async function generateMetadata({
   };
 }
 
-export default function TopicPage() {
+// Unknown topic slugs are a real 404 (Search Console counted the old 200 + noindex shell as Soft 404).
+export default async function TopicPage({ params }: TopicPageProps) {
+  const { slug } = await params;
+  const { data: topic } = await createReadOnlyServerClient().from("data_topics").select("slug").eq("slug", slug).maybeSingle();
+  if (!topic) notFound();
   return <TopicDashboard />;
 }
