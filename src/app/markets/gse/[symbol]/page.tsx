@@ -1,5 +1,6 @@
 export const revalidate = 600; // cached listing page: revalidate at most every 10 minutes
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { pageMeta } from "@/lib/pageMeta";
 import GseStock from "@/views/GseStock";
 import { Prefetched, JsonLd } from "@/components/ssr/Prefetched";
@@ -17,6 +18,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 export default async function Page({ params }: P) {
   const symbol = (await params).symbol.toUpperCase();
   const s = await gseStockSummary(symbol);
+  // Unknown symbol: real 404, not a 200 noindex shell (soft 404). A database error throws (500, not cached as 404).
+  if (!s && (await fetchGseHistory(symbol)).length === 0) notFound();
   return (
     <Prefetched queries={[
       { queryKey: ["gse-hist", symbol], queryFn: () => fetchGseHistory(symbol) },

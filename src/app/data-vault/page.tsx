@@ -14,6 +14,8 @@ export default async function DataVaultPage() {
   const metas = await Promise.all(DATASETS.map((d) => datasetMeta(sb, d).catch(() => ({ rows: 0, lastUpdated: null }))));
   const ld = {
     "@context": "https://schema.org", "@type": "DataCatalog", name: "StatsGH Data Vault", url: "https://www.statsgh.com/data-vault",
+    description: "Open Ghana datasets stored by StatsGH, free to download as CSV or JSON: Bank of Ghana rates, Treasury bills, CPI inflation, GDP, Ghana Stock Exchange prices, fiscal data and commodities. Each dataset names its original source and its latest actual observation.",
+    creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, isAccessibleForFree: true,
     publisher: { "@type": "NewsMediaOrganization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url,
     dataset: DATASETS.map((d) => ({ "@type": "Dataset", name: d.title, description: d.description || d.title, url: `https://www.statsgh.com/data-vault/${d.slug}`,
       creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url, isAccessibleForFree: true })),

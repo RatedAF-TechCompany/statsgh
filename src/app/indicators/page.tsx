@@ -11,6 +11,8 @@ export const metadata = pageMeta("/indicators", "Ghana economic indicators: late
 export default async function IndicatorsHub() {
   const snaps = await Promise.all(INDICATORS.map((i) => loadIndicator(i.slug)));
   const ld = { "@context": "https://schema.org", "@type": "DataCatalog", name: "StatsGH Ghana economic indicators", url: "https://www.statsgh.com/indicators",
+    description: "The latest official figure, date and source for Ghana's key economic indicators: inflation, cedi exchange rates, the policy rate, the interbank rate, the GSE Composite Index, GDP growth, public debt, Brent crude and gold.",
+    creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url, isAccessibleForFree: true,
     publisher: { "@type": "NewsMediaOrganization", "@id": "https://www.statsgh.com/#organization", name: "StatsGH" },
     dataset: INDICATORS.map((i) => ({ "@type": "Dataset", name: i.name, description: i.definition || i.name, url: `https://www.statsgh.com/indicators/${i.slug}`,
       creator: { "@type": "Organization", name: "StatsGH", url: "https://www.statsgh.com" }, license: LICENCE.url, isAccessibleForFree: true })) };
