@@ -25,8 +25,14 @@ export default {
       }
       if (res.status >= 500 && res.status !== 503) {
         const u = new URL(request.url);
+        // Keep a short body excerpt (Next's error digest / message) so the alert and Workers
+        // Observability show WHY it failed, not just that it did (22 Nov 2026 RSC 500s had no detail).
+        const excerpt = await res.clone().text().then((t) => t.slice(0, 600)).catch(() => "");
+        console.error("http5xx", res.status, request.method, u.pathname + u.search, isRsc(request, u) ? "rsc" : "html", excerpt);
         ctx.waitUntil(reportError(env, `HTTP ${res.status} ${u.pathname.split("/").slice(0, 2).join("/") || "/"}`,
-          `${request.method} ${u.pathname}${u.search}\nStatus: ${res.status}\nVersion: ${env.CF_VERSION_METADATA?.id || "?"}`));
+          `${request.method} ${u.pathname}${u.search}\nStatus: ${res.status}\nVersion: ${env.CF_VERSION_METADATA?.id || "?"}` +
+          `\nKind: ${isRsc(request, u) ? "RSC (client navigation/prefetch)" : "HTML"}\nUA: ${(request.headers.get("user-agent") || "").slice(0, 160)}` +
+          (excerpt ? `\n\nResponse excerpt:\n${excerpt}` : "")));
       }
       return res;
     } catch (e: any) {
@@ -46,14 +52,16 @@ async function reportError(env: any, type: string, detail: string): Promise<void
     const t = Date.now();
     if ((errorSeen.get(type) ?? 0) > t - 3600_000) return;
     if (errorSeen.size > 500) errorSeen.clear();
-    errorSeen.set(type, t);
     console.error("reportError", type);
-    await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/sg_report_worker_error`, {
+    const r = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/sg_report_worker_error`, {
       method: "POST",
       headers: { apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_secret: env.SG_ALERT_SECRET, p_type: type, p_detail: detail }),
       signal: AbortSignal.timeout(5000),
     });
+    // Only suppress repeats once the alert was actually recorded: while the database is down the
+    // insert fails, and the old pre-filter then silenced that error type in this isolate for an hour.
+    if (r.ok) errorSeen.set(type, t);
   } catch { /* alerting must never break a request */ }
 }
 
@@ -183,8 +191,18 @@ async function handleFetch(request: Request, env: any, ctx: any): Promise<Respon
   }
 }
 
+function isRsc(request: Request, url: URL): boolean {
+  return url.searchParams.has("_rsc") || request.headers.has("rsc") || request.headers.has("next-router-state-tree");
+}
+
 async function origin(request: Request, url: URL, env: unknown, ctx: unknown): Promise<Response> {
-    const res: Response = await (handler as any).fetch(request, env, ctx);
+    let res: Response = await (handler as any).fetch(isRsc(request, url) && request.method === "GET" ? request.clone() : request, env, ctx);
+    // RSC (client navigation/prefetch) GETs are never edge-cached, so a transient render failure
+    // surfaces directly as a 500. Retry once before giving up; GET renders are side-effect free.
+    if (res.status >= 500 && res.status !== 503 && request.method === "GET" && isRsc(request, url)) {
+      console.error("rsc5xx-retry", res.status, url.pathname + url.search);
+      res = await (handler as any).fetch(request, env, ctx);
+    }
     if (request.method !== "GET" && request.method !== "HEAD") return res;
     // Next emits 308 for permanent redirects; serve the conventional 301.
     if (res.status === 308) {
@@ -222,7 +240,7 @@ const TRACKING = /^(utm_|fbclid$|gclid$|ref$|s$|t$)/;
 function isCacheable(request: Request, url: URL): boolean {
   if (request.method !== "GET") return false;
   if (NO_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return false;
-  if (url.searchParams.has("_rsc") || request.headers.has("rsc") || request.headers.has("next-router-state-tree")) return false;
+  if (isRsc(request, url)) return false;
   if (/sb-|auth/i.test(request.headers.get("cookie") || "")) return false;
   return true;
 }

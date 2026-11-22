@@ -104,7 +104,33 @@ async function runLite(table: string, calls: Call[]) {
   if (!sp.has("select")) sp.set("select", "*");
   if (countMode) headers.Prefer = `count=${countMode}`;
   if (single) headers.Accept = "application/vnd.pgrst.object+json";
-  return finish(await fetch(url.toString(), { method, headers, signal }), { maybeSingle, countMode, head: method === "HEAD" });
+  return guarded(() => fetch(url.toString(), { method, headers, signal: signal ?? serverSignal() }), { maybeSingle, countMode, head: method === "HEAD" });
+}
+
+// Server renders must not hang or throw when the database is slow or down (22 Nov 2026: Disk IO
+// budget exhaustion made PostgREST stall for 90s+). Server-side reads time out after 8s, and a
+// network failure or timeout comes back as { error } (same shape supabase-js uses) instead of
+// throwing, so pages fall back to their empty/client-loaded state rather than a 500.
+const SERVER_FETCH_TIMEOUT_MS = 8000;
+function serverSignal(): AbortSignal | undefined {
+  if (typeof window !== "undefined") return undefined;
+  try { return AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS); } catch { return undefined; }
+}
+async function guarded(doFetch: () => Promise<Response>, o: { maybeSingle?: boolean; countMode?: string; head?: boolean }) {
+  let res: Response;
+  try {
+    res = await doFetch();
+  } catch (e: any) {
+    if (typeof window !== "undefined") throw e; // browser behaviour unchanged
+    const message = `${e?.name || "Error"}: ${e?.message || e}`;
+    return { error: { message, details: "", hint: "", code: "" }, data: null, count: null, status: 0, statusText: "" };
+  }
+  try {
+    return await finish(res, o);
+  } catch (e: any) {
+    if (typeof window !== "undefined") throw e;
+    return { error: { message: String(e?.message || e), details: "", hint: "", code: "" }, data: null, count: null, status: 0, statusText: "" };
+  }
 }
 
 async function finish(res: Response, o: { maybeSingle?: boolean; countMode?: string; head?: boolean }) {
@@ -154,12 +180,12 @@ function builder(table: string, calls: Call[] = []): any {
 
 async function rpcLite(fn: string, args: any, opts: any = {}) {
   if (opts.head || opts.get || opts.count) return loadFullClient().then((c) => (c as any).rpc(fn, args, opts));
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+  return guarded(() => fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
     method: "POST",
     headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify(args ?? {}),
-  });
-  return finish(res, {});
+    signal: serverSignal(),
+  }), {});
 }
 
 function rpcBuilder(fn: string, args: any, opts: any, calls: Call[] = []): any {
