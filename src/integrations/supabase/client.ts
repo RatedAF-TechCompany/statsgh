@@ -20,8 +20,12 @@ const AUTH_KEY = `sb-${PROJECT_REF}-auth-token`;
 type Full = SupabaseClient<Database>;
 let fullPromise: Promise<Full> | null = null;
 export function loadFullClient(): Promise<Full> {
-  if (!fullPromise) fullPromise = import("./client-full").then((m) => m.supabase as unknown as Full);
-  return fullPromise;
+  const start = () => (fullPromise = import("./client-full").then((m) => m.supabase as unknown as Full));
+  if (!fullPromise) return start();
+  // On Cloudflare Workers a pending promise started by a request that was then cancelled can never
+  // settle; drop a failed shared load and load again inside this request (once).
+  const shared = fullPromise;
+  return shared.catch(() => { if (fullPromise === shared) fullPromise = null; return start(); });
 }
 
 /** True when a session may exist (or we cannot tell), so the real client must handle the call. */

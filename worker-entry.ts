@@ -195,13 +195,25 @@ function isRsc(request: Request, url: URL): boolean {
   return url.searchParams.has("_rsc") || request.headers.has("rsc") || request.headers.has("next-router-state-tree");
 }
 
+// Root cause of the 22 Nov 2026 RSC 500s (wrangler tail): "This promise was created by a request that
+// has since ended, so it can never settle" (handle_cross_request_promise_resolution). A crawler fired
+// parallel prefetches and dropped one mid-render; a lazily-initialised promise that request had started
+// inside Next/OpenNext was shared with the others and could never settle, so every request awaiting it in
+// that isolate answered 500 until the isolate recycled. Registering each render with ctx.waitUntil keeps
+// the creating request alive until Next has produced its response, even if the client disconnects.
+function runNext(request: Request, env: unknown, ctx: any): Promise<Response> {
+  const p: Promise<Response> = (handler as any).fetch(request, env, ctx);
+  try { ctx?.waitUntil?.(p.then(() => undefined, () => undefined)); } catch {}
+  return p;
+}
+
 async function origin(request: Request, url: URL, env: unknown, ctx: unknown): Promise<Response> {
-    let res: Response = await (handler as any).fetch(isRsc(request, url) && request.method === "GET" ? request.clone() : request, env, ctx);
+    let res: Response = await runNext(isRsc(request, url) && request.method === "GET" ? request.clone() : request, env, ctx);
     // RSC (client navigation/prefetch) GETs are never edge-cached, so a transient render failure
     // surfaces directly as a 500. Retry once before giving up; GET renders are side-effect free.
     if (res.status >= 500 && res.status !== 503 && request.method === "GET" && isRsc(request, url)) {
       console.error("rsc5xx-retry", res.status, url.pathname + url.search);
-      res = await (handler as any).fetch(request, env, ctx);
+      res = await runNext(request, env, ctx);
     }
     if (request.method !== "GET" && request.method !== "HEAD") return res;
     // Next emits 308 for permanent redirects; serve the conventional 301.
@@ -288,7 +300,7 @@ async function edgeCached(request: Request, url: URL, env: unknown, ctx: any): P
 // Publishing: let Next revalidate as before, then drop the edge copies of the home,
 // section and article pages so the new story shows without waiting for the 5-min window.
 async function revalidateAndPurge(request: Request, url: URL, env: unknown, ctx: any): Promise<Response> {
-  const res: Response = await (handler as any).fetch(request, env, ctx);
+  const res: Response = await runNext(request, env, ctx);
   if (res.status !== 200) return res;
   try {
     const body = await res.clone().json();
