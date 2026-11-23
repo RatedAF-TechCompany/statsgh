@@ -111,6 +111,10 @@ export async function callGateway(opts: CallGatewayOpts): Promise<CallGatewayRes
       body: JSON.stringify(body),
     });
     if (resp.status !== 429 || attempt >= maxRetries) break;
+    // The ai-proxy answers 429 "Daily AI budget reached" when the free daily
+    // neuron cap is used up; that will not clear within seconds, so halt now.
+    const peek = await resp.clone().text().catch(() => "");
+    if (/daily ai budget/i.test(peek)) break;
     const waitMs = backoffDelayMs(attempt, resp.headers.get("retry-after"));
     await resp.body?.cancel().catch(() => {});
     console.log(`Gateway 429: backoff ${waitMs}ms (retry ${attempt + 1}/${maxRetries})`);

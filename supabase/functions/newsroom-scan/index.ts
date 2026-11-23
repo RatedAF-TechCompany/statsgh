@@ -1942,6 +1942,16 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const triggerType = inferTriggerType(body, auth.via);
+    // newsroom_runs.trigger_type only accepts 'manual' | 'scheduled' (two CHECK
+    // constraints). Watchdog and backfill runs used to fail on insert; store an
+    // allowed value and keep the requested type in metadata.
+    const storedTriggerType = ["manual", "scheduled"].includes(triggerType) ? triggerType
+      : triggerType === "watchdog" ? "scheduled" : "manual";
+    // One-off recovery (body.recovery=true, trusted callers only): re-queued items
+    // up to 24h old, oldest first, not held back by the intra-day pacing (the
+    // proxy's hard daily cap still applies).
+    const recoveryMode = body.recovery === true;
+    const freshMode = recoveryMode ? "recovery" : triggerType;
     const perSourceLimit = Number(body.perSourceLimit ?? body.per_source_limit ?? 5);
     const isBackfill = triggerType === "fast_publish_backfill";
     const isReprocess = body.reprocessPending === true || body.reprocess_pending === true;
@@ -2058,7 +2068,7 @@ serve(async (req) => {
       const { data: u } = await supabase.from("ai_proxy_usage").select("neurons")
         .eq("day", now.toISOString().slice(0, 10)).eq("bucket", "statsgh").maybeSingle();
       const used = Number(u?.neurons ?? 0);
-      paceBlocked = used >= allowance;
+      paceBlocked = recoveryMode ? used >= cap : used >= allowance;
       console.log(`AI pacing: used=${used.toFixed(0)} allowance=${allowance.toFixed(0)} cap=${cap} blocked=${paceBlocked}`);
     } catch (e) { console.log(`AI pacing check failed (${(e as Error).message}); proceeding`); }
     const runLimit = paceBlocked ? 0 : Math.min(BACKLOG_LIMIT, Math.max(0, Math.floor(maxArticlesPerRun)), DAILY_PUBLISH_LIMIT - currentDailyCount);
@@ -2067,10 +2077,10 @@ serve(async (req) => {
       .select("*")
       .in("processing_status", ["pending", "pending_ai"])
       .eq("dead_letter", false)
-      .gt("created_at", hoursAgo(backlogHours(triggerType)).toISOString())
+      .gt("created_at", hoursAgo(backlogHours(freshMode)).toISOString())
       // Newest first: oldest-first let the 3-per-run backlog age past the
       // freshness gates before it was ever written (23 Nov 2026).
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: recoveryMode })
       .limit(runLimit);
     if (backlogError) throw new Error(`Backlog lookup failed: ${backlogError.message}`);
     const backlog = backlogRows || [];
@@ -2138,7 +2148,7 @@ serve(async (req) => {
     const { data: run, error: runError } = await supabase
       .from("newsroom_runs")
       .insert({
-        trigger_type: triggerType,
+        trigger_type: storedTriggerType,
         status: "running",
         articles_found: 0,
         articles_created: 0,
@@ -2438,7 +2448,7 @@ serve(async (req) => {
 
       // Hard freshness gate
       // (a) Watchdog catch-up runs may reach back 12h so the site never sits idle 07:00-22:00 UK.
-      const freshnessLimit = article._newsroomRecord ? backlogFreshnessLimit(triggerType)
+      const freshnessLimit = article._newsroomRecord ? backlogFreshnessLimit(freshMode)
         : triggerType === "watchdog" ? WATCHDOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
       if (ageMinutes > freshnessLimit) {
         staleRejectedCount++;
@@ -3029,7 +3039,7 @@ serve(async (req) => {
           const queuedDate = parseFeedDate(newsroomRecord.source_published_at || item.pubDate) || item._pubDateParsed;
           const ageMin = (Date.now() - queuedDate.getTime()) / (1000 * 60);
           const aiFreshnessLimit = item._newsroomRecord || newsroomRecord.processing_status === "pending_ai"
-            ? backlogFreshnessLimit(triggerType) : FRESHNESS_MAX_AGE_MINUTES;
+            ? backlogFreshnessLimit(freshMode) : FRESHNESS_MAX_AGE_MINUTES;
           if (ageMin > aiFreshnessLimit) {
             console.log(`STALE_BEFORE_AI: "${item.title.substring(0, 60)}" — ${Math.round(ageMin)} min old`);
             const { error: staleError } = await supabase.from("newsroom_articles").update({
@@ -3302,7 +3312,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             const publishDate = parseFeedDate(item.pubDate) || item._pubDateParsed;
             const ageMinPub = (Date.now() - publishDate.getTime()) / (1000 * 60);
             const publishFreshnessLimit = item._newsroomRecord || newsroomRecord.processing_status === "pending_ai"
-              ? backlogFreshnessLimit(triggerType) : FRESHNESS_MAX_AGE_MINUTES;
+              ? backlogFreshnessLimit(freshMode) : FRESHNESS_MAX_AGE_MINUTES;
             if (ageMinPub > publishFreshnessLimit) {
               console.log(`STALE_BEFORE_PUBLISH: "${item.title.substring(0, 60)}" — ${Math.round(ageMinPub)} min old`);
               await supabase.from("newsroom_articles").update({
@@ -3617,6 +3627,8 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
         stale_rejected_count: staleRejectedCount,
         invalid_pubdate_count: invalidPubDateCount,
         freshness_max_age_minutes: FRESHNESS_MAX_AGE_MINUTES,
+        requested_trigger: triggerType,
+        recovery: recoveryMode,
         optimizations: {
           pre_filter_blocked: preFilterBlockedCount,
           source_skipped: sourceSkippedCount,
