@@ -1,5 +1,5 @@
 // Calabashe house ad. 728x90 on desktop (md+), 320x100 on mobile. Height reserved via width/height attrs + aspect-ratio.
-const HREF = "https://calabashe.com/write-review";
+const HREF = "https://calabashe.com/";
 const ALT = "Calabashe: Seen a doctor lately? Tell Ghana how it went. Leave a review";
 // Accessible name on the link itself (the image is its only content), so crawlers and screen readers get link text.
 const LABEL = "Advertisement: write a review of a Ghanaian clinic or doctor on Calabashe (opens in a new tab)";

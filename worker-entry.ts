@@ -258,7 +258,7 @@ function isCacheable(request: Request, url: URL): boolean {
 }
 
 // Bump CACHE_GEN to drop every edge HTML copy at once (zone purge isn't available to the deploy token).
-const CACHE_GEN = "11"; // 18 Nov 2026: DataCatalog JSON-LD fields; /data/<slug> 301/404; GSE symbol 404
+const CACHE_GEN = "12"; // 23 Nov 2026: Calabashe house-ad href to homepage
 function cacheKey(url: URL): Request {
   const k = new URL(url.toString());
   k.searchParams.set("__gen", CACHE_GEN);
