@@ -41,12 +41,17 @@ Deno.serve(async (req) => {
   for (const r of runs ?? []) { if (isFailed(r)) consecutive++; else break; }
   const failing = (runs?.length ?? 0) >= 3 && consecutive >= 3;
 
-  // At most one catch-up per 30 min.
+  // Catch-up only when the newsroom itself has not run recently. newsroom_runs
+  // never stores trigger_type "watchdog" (CHECK constraint allows only
+  // manual/scheduled), so the old per-type check never matched; with job 20 on
+  // */30 a catch-up would just race it. This is now a safety net for a stopped job.
   let catchupFired = false;
+  let catchupSkipped = false;
   if (needsCatchup) {
-    const since = new Date(now.getTime() - 30 * 60e3).toISOString();
+    const since = new Date(now.getTime() - 35 * 60e3).toISOString();
     const { count } = await supabase.from("newsroom_runs").select("id", { count: "exact", head: true })
-      .eq("trigger_type", "watchdog").gte("started_at", since);
+      .gte("started_at", since);
+    catchupSkipped = !!count;
     if (!count) {
       const res = await fetch(`${supabaseUrl}/functions/v1/newsroom-scheduled`, {
         method: "POST",
@@ -67,7 +72,8 @@ Deno.serve(async (req) => {
     last_run_at: runs?.[0]?.started_at ?? null,
     consecutive_failed_runs: consecutive,
     notes: [failing ? `Last 3 runs failed: ${runs?.[0]?.error_message ?? "no error message"}` : null,
-            catchupFired ? "watchdog catch-up scan fired" : null].filter(Boolean).join(" | ").slice(0, 500) || null,
+            catchupFired ? "watchdog catch-up scan fired" : null,
+            catchupSkipped ? "catch-up skipped: newsroom ran in last 35 min" : null].filter(Boolean).join(" | ").slice(0, 500) || null,
   };
   const { error } = await supabase.from("pipeline_health").insert(row);
   if (error) return json({ error: error.message }, 500);
