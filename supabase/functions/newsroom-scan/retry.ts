@@ -143,3 +143,64 @@ export async function writeWithRetries(
   }
   throw new Error(`AI generation failed after 3 calls: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
+// Recovery runs (triggerType "recovery") may reach back 24h for re-queued items.
+export const RECOVERY_FRESHNESS_MAX_AGE_MINUTES = 1440;
+export const RECOVERY_BACKLOG_HOURS = 24;
+
+export function backlogFreshnessLimit(triggerType: string) {
+  return triggerType === "recovery" ? RECOVERY_FRESHNESS_MAX_AGE_MINUTES : BACKLOG_FRESHNESS_MAX_AGE_MINUTES;
+}
+
+export function backlogHours(triggerType: string) {
+  return triggerType === "recovery" ? RECOVERY_BACKLOG_HOURS : BACKLOG_HOURS;
+}
+
+export const MIN_WORDS = 250; // publication gate; never lowered
+export const TARGET_WORDS_MIN = 320;
+export const TARGET_WORDS_MAX = 450;
+
+export function countBodyWords(html: string): number {
+  const text = (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return text ? text.split(/\s+/).filter((w) => w.length > 0).length : 0;
+}
+
+function escapeRe(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// House rules that code can check: no source credits (links, "according to",
+// "Source:" lines, the outlet's own name), no hashtags, no colon in headline.
+export function houseRuleIssues(
+  generated: { headline?: string; summary?: string; subtitle?: string; body_html?: string },
+  sourceName = "",
+): string[] {
+  const issues: string[] = [];
+  const headline = generated.headline || "";
+  const text = [headline, generated.subtitle || "", generated.summary || "", generated.body_html || ""].join("\n");
+  const plain = text.replace(/<[^>]+>/g, " ");
+  if (headline.includes(":")) issues.push("colon in headline");
+  if (/<a\b|https?:\/\/|\bwww\./i.test(text)) issues.push("link");
+  if (/\baccording to\b/i.test(plain)) issues.push("'according to'");
+  if (/(^|\s)#[A-Za-z][\w]*/.test(plain)) issues.push("hashtag");
+  if (/\bsources?\s*:/i.test(plain)) issues.push("source credit line");
+  const outlet = sourceName.replace(/\s*[—–-].*$/, "").trim();
+  // Only check outlet-style names (not institutions such as Bank of Ghana).
+  const institutional = /\b(bank of ghana|ministry|authority|commission|exchange|statistical service|revenue|sec ghana|government)\b/i;
+  if (outlet.length >= 4 && !institutional.test(outlet) && new RegExp(`\\b${escapeRe(outlet)}\\b`, "i").test(plain)) {
+    issues.push(`outlet name (${outlet})`);
+  }
+  return issues;
+}
+
+// Deterministic last-resort clean-up after the model has had its revise call.
+export function applyHouseFixes<T extends { headline?: string; body_html?: string; summary?: string; subtitle?: string }>(g: T): T {
+  const stripLinks = (s: string) => (s || "").replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, "$1");
+  const stripTags = (s: string) => (s || "").replace(/(^|\s)#([A-Za-z][\w]*)/g, "$1$2");
+  return {
+    ...g,
+    headline: (g.headline || "").replace(/\s*:\s*/g, " ").replace(/\s{2,}/g, " ").trim(),
+    body_html: stripTags(stripLinks(g.body_html || "")),
+    summary: stripTags(stripLinks(g.summary || "")),
+    subtitle: stripTags(stripLinks(g.subtitle || "")),
+  };
+}

@@ -1,7 +1,7 @@
 import { formatArticleBody } from "../_shared/paragraphs.ts";
 import { resolveCategorySlug, CRIME_CATEGORY } from "../_shared/category-resolve.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES, WATCHDOG_FRESHNESS_MAX_AGE_MINUTES } from "./retry.ts";
+import { BACKLOG_LIMIT, BACKLOG_HOURS, MAX_ATTEMPTS, DEFAULT_MAX_ARTICLES_PER_RUN, runTimeExceeded, interruptedRunCutoff, INTERRUPTED_RUN_ERROR, failureState, writeWithRetries, phaseCandidateLimit, inferTriggerType, parseFeedDate, FRESHNESS_MAX_AGE_MINUTES, BACKLOG_FRESHNESS_MAX_AGE_MINUTES, WATCHDOG_FRESHNESS_MAX_AGE_MINUTES, backlogFreshnessLimit, backlogHours, MIN_WORDS, TARGET_WORDS_MIN, TARGET_WORDS_MAX, countBodyWords, houseRuleIssues, applyHouseFixes } from "./retry.ts";
 import { createUsage } from "../_shared/ai-gateway.ts";
 import { authorizeCaller } from "../_shared/scheduler-auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -2067,8 +2067,10 @@ serve(async (req) => {
       .select("*")
       .in("processing_status", ["pending", "pending_ai"])
       .eq("dead_letter", false)
-      .gt("created_at", hoursAgo(BACKLOG_HOURS).toISOString())
-      .order("created_at", { ascending: true })
+      .gt("created_at", hoursAgo(backlogHours(triggerType)).toISOString())
+      // Newest first: oldest-first let the 3-per-run backlog age past the
+      // freshness gates before it was ever written (23 Nov 2026).
+      .order("created_at", { ascending: false })
       .limit(runLimit);
     if (backlogError) throw new Error(`Backlog lookup failed: ${backlogError.message}`);
     const backlog = backlogRows || [];
@@ -2436,7 +2438,7 @@ serve(async (req) => {
 
       // Hard freshness gate
       // (a) Watchdog catch-up runs may reach back 12h so the site never sits idle 07:00-22:00 UK.
-      const freshnessLimit = article._newsroomRecord ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES
+      const freshnessLimit = article._newsroomRecord ? backlogFreshnessLimit(triggerType)
         : triggerType === "watchdog" ? WATCHDOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
       if (ageMinutes > freshnessLimit) {
         staleRejectedCount++;
@@ -3006,6 +3008,17 @@ serve(async (req) => {
           newsroomRecord.attempts = priorAttempts + 1;
           writingAttempts++;
         }
+        const queuedStatus = newsroomRecord.processing_status === "pending_ai" ? "pending_ai" : "pending";
+        const deferOnHalt = async (message: string) => {
+          const { error: deferError } = await supabase.from("newsroom_articles").update({
+            attempts: Math.max(0, (newsroomRecord.attempts || 1) - 1),
+            processing_status: queuedStatus,
+            dead_letter: false,
+            error_message: `${message} (deferred to next run after backoff)`.slice(0, 500),
+          }).eq("id", newsroomRecord.id);
+          if (deferError) console.error("Halt deferral update failed:", deferError.message);
+          deferredCount++;
+        };
 
         // ============================================
         // GATE 2 (V5.0): STALE_BEFORE_AI — Re-check freshness right before
@@ -3016,7 +3029,7 @@ serve(async (req) => {
           const queuedDate = parseFeedDate(newsroomRecord.source_published_at || item.pubDate) || item._pubDateParsed;
           const ageMin = (Date.now() - queuedDate.getTime()) / (1000 * 60);
           const aiFreshnessLimit = item._newsroomRecord || newsroomRecord.processing_status === "pending_ai"
-            ? BACKLOG_FRESHNESS_MAX_AGE_MINUTES : FRESHNESS_MAX_AGE_MINUTES;
+            ? backlogFreshnessLimit(triggerType) : FRESHNESS_MAX_AGE_MINUTES;
           if (ageMin > aiFreshnessLimit) {
             console.log(`STALE_BEFORE_AI: "${item.title.substring(0, 60)}" — ${Math.round(ageMin)} min old`);
             const { error: staleError } = await supabase.from("newsroom_articles").update({
@@ -3033,8 +3046,11 @@ serve(async (req) => {
           const batchResult = batchFilterResults.get(item.title);
           if (batchResult && !batchResult.pass) {
             console.log(`⊘ Batch filter REJECTED: "${item.title.substring(0, 60)}..." — ${batchResult.reason}`);
+            // Editorial rejection is terminal: re-asking the same filter only
+            // burned backlog slots (up to 3 runs per item).
             await supabase.from("newsroom_articles").update({
-              ...failureState(newsroomRecord.attempts, `Batch editorial filter: ${batchResult.reason}`),
+              processing_status: "rejected",
+              error_message: `Batch editorial filter: ${batchResult.reason}`.slice(0, 500),
             }).eq("id", newsroomRecord.id);
             continue;
           }
@@ -3095,7 +3111,7 @@ serve(async (req) => {
           }
 
           // 2. Call AI to restructure into article + generate metadata
-          const aiPrompt = `You are a senior editor at Ghana's most respected data journalism publication. Your job is to write a complete, accurate news article of at least 400 words based on the source material provided.
+          const aiPrompt = `You are a senior editor at Ghana's most respected data journalism publication. Your job is to write a complete, accurate news article of ${TARGET_WORDS_MIN} to ${TARGET_WORDS_MAX} words based on the source material provided.
 
 Write clearly enough that a 12-year-old can understand every word you use. Write with the authority and precision of the Financial Times.
 
@@ -3103,8 +3119,10 @@ STRUCTURE (follow this exactly):
 1. Lead paragraph (2-3 sentences): State the core fact immediately. What happened, who did it, what is the number or outcome. No scene-setting. No "In a recent development". No throat-clearing.
 2. Supporting detail (3-4 sentences): Expand with the most important supporting detail — why it happened, what triggered it, who is affected.
 3. Broader context (3-4 sentences): How does this fit into the broader Ghana economic or political story. Reference relevant data, trends, or prior events.
-4. Attribution (2-3 sentences): Quote or attributed statement if available in the source. If none available, add expert or institutional context.
-5. Implications (2-3 sentences): What happens next — implications, what to watch, what decision-makers or markets will respond to.
+4. Statements (2-3 sentences): Quote or report what the named person or institution said ("the Bank of Ghana said"). Never credit the news outlet. If none available, add institutional context from the source.
+5. The numbers (2-3 sentences): Restate the key figures from the source and what they compare with (previous period, target, or total).
+6. Implications (2-3 sentences): What happens next — implications, what to watch, what decision-makers or markets will respond to.
+Every section above is REQUIRED. Six sections of 2-4 sentences each gives the required length.
 
 WRITING RULES:
 - Short sentences. Maximum 25 words per sentence.
@@ -3116,14 +3134,16 @@ WRITING RULES:
 - Every paragraph must contain at least one specific fact, figure, name, or date.
 - No filler phrases: remove "it is worth noting", "it should be mentioned", "as previously stated", "in light of the foregoing".
 - No emojis, no decorative sections, ASCII characters only.
-- Do not write a summary. Write a complete article. MANDATORY MINIMUM: 450 words. Articles under 400 words will be rejected. Expand with context, background, and implications until you reach at least 450 words. Count your words before responding.
+- Do not write a summary. Write a complete article. LENGTH: body_html must be ${TARGET_WORDS_MIN} to ${TARGET_WORDS_MAX} words. Anything under ${MIN_WORDS} words is automatically rejected. Use only facts in the source text; add context from the source, never invented figures. Count your words before responding.
+- NO SOURCE CREDITS: never name the news outlet or publication the source came from, never write "according to", never include links, URLs or a "Source" line.
+- No hashtags anywhere.
 
 EDITORIAL FILTER:
 Before writing, evaluate the story. Publish ONLY if it has economic/financial substance, affects markets, currency, banking, taxation, jobs, public finance, or involves large monetary values.
 If the story fails the filter, return exactly: Rejected – Does not meet StatsGH economic impact threshold.
 
 HEADLINE RULES:
-- No colons, no long dashes, no dates in headline
+- No colons (:), no long dashes, no dates in headline
 - Include a key number if relevant
 - Keep factual and direct
 
@@ -3166,7 +3186,7 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
               await beforeModelCall();
               const result = await callGateway({
                 model: aiModel, messages: [
-                  { role: "system", content: "The headline and the summary must each name Ghana or a Ghanaian place or institution explicitly (e.g. 'Ghana', 'Accra', 'Bank of Ghana'). The body must be at least 350 words. Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions." },
+                  { role: "system", content: `The headline and the summary must each name Ghana or a Ghanaian place or institution explicitly (e.g. 'Ghana', 'Accra', 'Bank of Ghana'). The body_html must be ${TARGET_WORDS_MIN} to ${TARGET_WORDS_MAX} words (never under ${MIN_WORDS}), written in six required sections. Never name the news outlet, never write 'according to', no links, no hashtags, no colon in the headline. Return a single valid JSON object with every existing OUTPUT field, including nonempty headline, body_html and slug. Encode newlines and double quotes inside string values with JSON escapes. Do not wrap JSON in markdown or return an alternative field layout. Do not invent facts or override the editorial instructions.` },
                   { role: "user", content: aiPrompt },
                 ],
                 max_tokens, temperature: 0.3, json: true, usage: nrUsage,
@@ -3175,26 +3195,88 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
             }, content => parseJson(content, nrUsage), error => error instanceof GatewayHaltError);
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown AI failure";
+            if (error instanceof GatewayHaltError) {
+              // Persistent 429/402 after backoff: not the item's fault. Give the
+              // attempt back and leave it queued for the next run.
+              await deferOnHalt(message);
+              publishErrors.push(message);
+              break;
+            }
             await supabase.from("newsroom_articles").update(failureState(newsroomRecord.attempts, message)).eq("id", newsroomRecord.id);
             publishErrors.push(message);
-            if (error instanceof GatewayHaltError) break;
             continue;
           }
 
-          // 6. WORD COUNT GATE — minimum 250 words
-          const bodyText = generated.body_html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          const wordCount = bodyText.split(/\s+/).filter((w: string) => w.length > 0).length;
-
-          if (wordCount < 250) {
-            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min 250)`);
+          if (/^\s*rejected\b/i.test(String(generated.headline || ""))) {
             await supabase.from("newsroom_articles").update({
-              ...failureState(newsroomRecord.attempts, `TOO_SHORT: ${wordCount} words (minimum 250)`),
+              processing_status: "rejected", error_message: "Writer editorial filter: below economic impact threshold",
+            }).eq("id", newsroomRecord.id);
+            continue;
+          }
+
+          // 6. WORD COUNT GATE — minimum MIN_WORDS (250), never lowered.
+          // One revise call when the draft is short or breaks a house rule.
+          let wordCount = countBodyWords(generated.body_html);
+          let issues = houseRuleIssues(generated, item.source_name);
+          if (wordCount < MIN_WORDS || issues.length) {
+            const problems = [
+              ...(wordCount < MIN_WORDS ? [`the body is ${wordCount} words; it must be ${TARGET_WORDS_MIN} to ${TARGET_WORDS_MAX} words (absolute minimum ${MIN_WORDS})`] : []),
+              ...issues.map(x => `house rule broken: ${x}`),
+            ];
+            console.log(`↻ REVISE: "${String(generated.headline).substring(0, 60)}" — ${problems.join("; ")}`);
+            try {
+              const revised = await writeWithRetries(async (max_tokens) => {
+                await beforeModelCall();
+                const result = await callGateway({
+                  model: aiModel, messages: [
+                    { role: "system", content: `You revise a StatsGH news article. Return the same JSON object with every field. body_html must be ${TARGET_WORDS_MIN} to ${TARGET_WORDS_MAX} words in HTML <p> paragraphs. Use only facts in the SOURCE TEXT; never invent figures, names, quotes or dates. Never name the news outlet, never write 'according to', no links, no hashtags, no colon in the headline. Encode newlines and double quotes inside strings with JSON escapes.` },
+                    { role: "user", content: `Fix these problems: ${problems.join("; ")}.\nTo lengthen, add the required sections that are thin or missing: supporting detail, broader Ghana context, statements by named people or institutions, the key numbers and what they compare with, and implications. Keep every existing correct fact.\n\nDRAFT JSON:\n${JSON.stringify(generated).substring(0, 9000)}\n\nSOURCE HEADLINE: ${item.title}\nSOURCE TEXT: ${articleText.substring(0, 6000)}` },
+                  ],
+                  max_tokens, temperature: 0.3, json: true, usage: nrUsage,
+                });
+                return result.content;
+              }, content => parseJson(content, nrUsage), error => error instanceof GatewayHaltError);
+              const revisedWords = countBodyWords(revised.body_html);
+              const revisedIssues = houseRuleIssues(revised, item.source_name);
+              if (revisedWords >= wordCount || revisedWords >= MIN_WORDS) {
+                generated = { ...generated, ...revised };
+                wordCount = revisedWords;
+                issues = revisedIssues;
+              }
+            } catch (error) {
+              if (error instanceof GatewayHaltError) {
+                await deferOnHalt((error as Error).message);
+                publishErrors.push((error as Error).message);
+                break;
+              }
+              console.log(`Revise call failed: ${(error as Error).message}`);
+            }
+          }
+
+          if (wordCount < MIN_WORDS) {
+            console.log(`❌ REJECTED (TOO_SHORT): "${generated.headline?.substring(0, 60)}..." — ${wordCount} words (min ${MIN_WORDS})`);
+            await supabase.from("newsroom_articles").update({
+              ...failureState(newsroomRecord.attempts, `TOO_SHORT: ${wordCount} words (minimum ${MIN_WORDS}) after revise`),
             }).eq("id", newsroomRecord.id);
             publishErrors.push(`TOO_SHORT (${wordCount}w): "${item.title.substring(0, 40)}"`);
             continue;
           }
 
-          console.log(`Word count: ${wordCount} — passes minimum (350)`);
+          // Deterministic clean-up (links, hashtags, headline colon), then
+          // re-check: any remaining credit ("according to", outlet name) blocks.
+          generated = applyHouseFixes(generated);
+          wordCount = countBodyWords(generated.body_html);
+          issues = houseRuleIssues(generated, item.source_name);
+          if (issues.length) {
+            console.log(`❌ REJECTED (HOUSE_RULES): "${generated.headline?.substring(0, 60)}" — ${issues.join(", ")}`);
+            await supabase.from("newsroom_articles").update({
+              ...failureState(newsroomRecord.attempts, `HOUSE_RULES: ${issues.join(", ")}`),
+            }).eq("id", newsroomRecord.id);
+            publishErrors.push(`HOUSE_RULES (${issues.join(", ")}): "${item.title.substring(0, 40)}"`);
+            continue;
+          }
+
+          console.log(`Word count: ${wordCount} — passes minimum (${MIN_WORDS})`);
 
           // 7. Title quality gate — reject malformed titles
           const titleToCheck = generated.headline || "";
@@ -3219,7 +3301,9 @@ ENTITIES RULES: Extract named entities that appear in the article. type must be 
           {
             const publishDate = parseFeedDate(item.pubDate) || item._pubDateParsed;
             const ageMinPub = (Date.now() - publishDate.getTime()) / (1000 * 60);
-            if (ageMinPub > FRESHNESS_MAX_AGE_MINUTES) {
+            const publishFreshnessLimit = item._newsroomRecord || newsroomRecord.processing_status === "pending_ai"
+              ? backlogFreshnessLimit(triggerType) : FRESHNESS_MAX_AGE_MINUTES;
+            if (ageMinPub > publishFreshnessLimit) {
               console.log(`STALE_BEFORE_PUBLISH: "${item.title.substring(0, 60)}" — ${Math.round(ageMinPub)} min old`);
               await supabase.from("newsroom_articles").update({
                 processing_status: "rejected",

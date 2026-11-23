@@ -35,7 +35,6 @@ export function createUsage(): UsageAccumulator {
 
 // Rough per-1k-token pricing (USD). Used only for approximate cost visibility.
 const PRICES: Record<string, { in: number; out: number }> = {
-  "gemini-2.5-flash": { in: 0.000075, out: 0.0003 },
   "gemini-2.5-flash-lite": { in: 0.0000375, out: 0.00015 },
   "gemini-3-flash-preview": { in: 0.000075, out: 0.0003 },
   "gemini-2.5-pro": { in: 0.00125, out: 0.005 },
@@ -48,6 +47,18 @@ export function estimateCost(model: string, promptTokens: number, completionToke
   return (promptTokens / 1000) * p.in + (completionTokens / 1000) * p.out;
 }
 
+export const RATE_LIMIT_RETRIES = 3;
+const BACKOFF_BASE_MS = 2000;
+const BACKOFF_MAX_MS = 10000;
+
+// Exponential backoff (2s, 4s, 8s) with jitter; honours a short Retry-After.
+export function backoffDelayMs(attempt: number, retryAfter?: string | null, rand = Math.random): number {
+  const ra = Number(retryAfter);
+  if (retryAfter && Number.isFinite(ra) && ra > 0) return Math.min(BACKOFF_MAX_MS, Math.round(ra * 1000));
+  const base = BACKOFF_BASE_MS * 2 ** attempt;
+  return Math.min(BACKOFF_MAX_MS, Math.round(base + base * 0.25 * rand()));
+}
+
 export interface CallGatewayOpts {
   model: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: any }>;
@@ -56,6 +67,7 @@ export interface CallGatewayOpts {
   json?: boolean; // request JSON object response_format
   usage?: UsageAccumulator;
   extra?: Record<string, unknown>; // e.g. modalities for image models
+  retry429?: number; // bounded 429 retries with backoff (default RATE_LIMIT_RETRIES)
 }
 
 export interface CallGatewayResult {
@@ -84,14 +96,26 @@ export async function callGateway(opts: CallGatewayOpts): Promise<CallGatewayRes
     ...(opts.extra ?? {}),
   };
 
-  const resp = await fetch(GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  // 429 (rate limited): bounded exponential backoff before halting the run.
+  // 402 (credits) halts at once. Total wait is capped so a run stays inside its
+  // wall-clock budget; on a persistent 429 the caller leaves items pending.
+  const maxRetries = Math.max(0, opts.retry429 ?? RATE_LIMIT_RETRIES);
+  let resp: Response;
+  for (let attempt = 0; ; attempt++) {
+    resp = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (resp.status !== 429 || attempt >= maxRetries) break;
+    const waitMs = backoffDelayMs(attempt, resp.headers.get("retry-after"));
+    await resp.body?.cancel().catch(() => {});
+    console.log(`Gateway 429: backoff ${waitMs}ms (retry ${attempt + 1}/${maxRetries})`);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
 
   if (resp.status === 402 || resp.status === 429) {
     const reason: GatewayHaltReason = resp.status === 402 ? "credits_exhausted" : "rate_limited";
